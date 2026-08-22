@@ -21,7 +21,7 @@ interface Props {
   onReorder: (from: number, to: number) => void;
   onPrint: () => void;
   onDelete: () => void;
-  onUnreadableSymbol?: () => void;
+  onUnreadableSymbol?: (id: string) => void;
 }
 
 export function SentenceRow({

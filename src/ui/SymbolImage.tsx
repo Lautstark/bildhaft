@@ -6,7 +6,7 @@ interface Props {
   provider: ProviderId;
   id: string | null | undefined;
   /** Reports an unreadable symbol so the app can explain a whole row of them. */
-  onUnreadable?: () => void;
+  onUnreadable?: (id: string) => void;
   /** Only used as a tooltip. See the note on alt below. */
   alt: string;
   placeholder?: string;
@@ -21,8 +21,8 @@ export function SymbolImage({ provider, id, alt, placeholder = '+', onUnreadable
   // 'error' means resolution gave up; a broken <img> means the source lied.
   // Either way the symbol is unreadable and the app should be able to say so.
   useEffect(() => {
-    if (state === 'error' || broken) onUnreadable?.();
-  }, [state, broken, onUnreadable]);
+    if (id && (state === 'error' || broken)) onUnreadable?.(id);
+  }, [id, state, broken, onUnreadable]);
 
   if (state === 'empty') return <span className="slot__blank" aria-hidden="true">{placeholder}</span>;
   if (state === 'loading') return <span className="slot__blank" aria-hidden="true"><span className="spinner" /></span>;

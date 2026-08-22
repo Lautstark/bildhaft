@@ -802,3 +802,9 @@ kbd {
   text-underline-offset: 2px;
 }
 .dialog__body a:hover { color: var(--accent); }
+
+/* Working, not broken: same shape as the warning, none of its alarm. */
+.banner--busy {
+  background: var(--surface-2);
+  color: var(--text-dim);
+}

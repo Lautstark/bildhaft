@@ -299,3 +299,92 @@ test('a folder that survives a reload just works', async ({ page }) => {
   await expect(page.locator('.banner')).toBeHidden();
   await expect(page.locator('.slot__blank--error')).toHaveCount(0);
 });
+
+test('a missing symbol is not reported as an unreadable folder', async ({ page }) => {
+  /*
+   * A bug I introduced. The warning counts symbols that fail to resolve, and at
+   * first it counted all of them — so a sentence built against one folder, shown
+   * with another, produced "bildhaft cannot read your folder" about a folder it
+   * was reading perfectly well. Anyone reorganising or swapping folders hits it.
+   *
+   * The sentence is written straight into storage because it has to carry
+   * METACOM ids the current folder does not contain, which is precisely the
+   * state that a fresh translation would never produce.
+   */
+  await page.evaluate(async () => {
+    const png = Uint8Array.from(
+      atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+      (c) => c.charCodeAt(0),
+    );
+    const root = await navigator.storage.getDirectory();
+    const dir = await root.getDirectoryHandle('METACOM_other', { create: true });
+    const file = await dir.getFileHandle('Etwas.png', { create: true });
+    const writable = await file.createWritable();
+    await writable.write(png);
+    await writable.close();
+
+    const source = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('bildquelle');
+      request.onsuccess = () => resolve(request.result);
+    });
+    await new Promise((resolve) => {
+      const tx = source.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
+      tx.objectStore('metacomIndex').put({
+        key: 'metacom',
+        rootName: 'METACOM_other',
+        entries: [{ path: 'Etwas.png', label: 'Etwas', terms: ['etwas'] }],
+        ts: Date.now(),
+      });
+      tx.objectStore('metacomHandles').put({ key: 'metacomDir', handle: dir });
+      tx.oncomplete = resolve;
+    });
+
+    const app = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('bildhaft');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const collectionId = 'c-missing';
+    const slot = (id: string, word: string) => ({
+      id: `s-${word}`,
+      sourceToken: word,
+      concept: word.toLowerCase(),
+      origin: 'lemma',
+      // Paths from some other folder: readable source, absent file.
+      choice: { metacom: id },
+      candidates: { metacom: [{ id, label: word, score: 100 }] },
+    });
+    await new Promise((resolve) => {
+      const tx = app.transaction(['collections', 'sentences', 'settings'], 'readwrite');
+      tx.objectStore('collections').put({
+        id: collectionId, name: 'Anderer Ordner', sentenceIds: ['x1'],
+        createdAt: Date.now(), updatedAt: Date.now(),
+      });
+      tx.objectStore('sentences').put({
+        id: 'x1',
+        normalizedInput: 'ich möchte schlafen',
+        rawInput: 'Ich möchte schlafen',
+        collectionId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        slots: [slot('Alt/Ich.png', 'Ich'), slot('Alt/moechten.png', 'möchte'), slot('Alt/schlafen.png', 'schlafen')],
+      });
+      const put = tx.objectStore('settings').get('app');
+      put.onsuccess = () => {
+        const settings = put.result ?? {};
+        settings.activeProvider = 'metacom';
+        settings.lastCollectionId = collectionId;
+        tx.objectStore('settings').put(settings, 'app');
+      };
+      tx.oncomplete = resolve;
+    });
+  });
+
+  await page.reload();
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  // Long enough for three symbols to fail and the counter to reach its threshold.
+  await page.waitForTimeout(6000);
+
+  await expect(page.locator('.row .slot')).toHaveCount(3);
+  // Symbols the folder does not have are missing, and missing is not broken.
+  await expect(page.locator('.banner')).toBeHidden();
+});

@@ -143,9 +143,27 @@ export default function App() {
    * judging it before then flashed the warning on screen and took it away again.
    */
   const [sourceSettled, setSourceSettled] = useState(false);
-  const noteUnreadable = useCallback(() => setUnreadable((n) => n + 1), []);
+  const noteUnreadable = useCallback(async (id: string) => {
+    if (providerId !== 'metacom') return;
+    /*
+     * A symbol the current folder simply does not contain is missing, not
+     * unreadable — that is the ordinary result of pointing at a differently
+     * organised folder, and it must not be reported as the folder being
+     * unreadable. Only count symbols the index still knows about.
+     */
+    const known = await metacom.labelFor(id).catch(() => null);
+    if (known) setUnreadable((n) => n + 1);
+  }, [providerId]);
   useEffect(() => { setUnreadable(0); }, [providerId, activeId]);
-  const sourceUnusable = sourceSettled
+  /*
+   * Indexing a real METACOM folder walks tens of thousands of files and takes
+   * seconds. The source is not ready during that, but it is not broken either —
+   * showing the warning through it left the user looking at an unchanged alarm
+   * with no sign that the folder they just picked was being read.
+   */
+  const metacomStatus = metacom.status();
+  const sourceBusy = providerId === 'metacom' && metacomStatus.kind === 'loading';
+  const sourceUnusable = sourceSettled && !sourceBusy
     && (!provider.isReady() || (providerId === 'metacom' && unreadable >= 3));
 
   const refreshCollections = useCallback(async () => {
@@ -530,6 +548,15 @@ export default function App() {
               * was "(nicht bereit)" in grey next to the composer, while every row
               * showed broken symbols and offered nothing to click.
               */}
+            {sourceBusy && (
+              <div className="banner banner--busy" role="status">
+                <span className="spinner" />
+                <span style={{ flex: 1 }}>
+                  {metacomStatus.kind === 'loading' ? metacomStatus.message : 'Einen Moment …'}
+                </span>
+              </div>
+            )}
+
             {sourceUnusable && (
               <div className="banner" role="alert">
                 <span style={{ flex: 1 }}>
