@@ -98,7 +98,8 @@ export default function App() {
       setCollections(all);
       setActiveId(wanted.id);
 
-      metacom.restore().catch(() => undefined);
+      // Only judge the symbol source once it has had its chance to come back.
+      metacom.restore().catch(() => undefined).finally(() => setSourceSettled(true));
     })();
   }, []);
 
@@ -134,9 +135,16 @@ export default function App() {
    * unreadable symbols catches that, where asking the provider does not.
    */
   const [unreadable, setUnreadable] = useState(0);
+  /*
+   * False until the first restore attempt finishes. Restoring is asynchronous,
+   * so the source reports itself unready for a moment on every single load —
+   * judging it before then flashed the warning on screen and took it away again.
+   */
+  const [sourceSettled, setSourceSettled] = useState(false);
   const noteUnreadable = useCallback(() => setUnreadable((n) => n + 1), []);
   useEffect(() => { setUnreadable(0); }, [providerId, activeId]);
-  const sourceUnusable = !provider.isReady() || (providerId === 'metacom' && unreadable >= 3);
+  const sourceUnusable = sourceSettled
+    && (!provider.isReady() || (providerId === 'metacom' && unreadable >= 3));
 
   const refreshCollections = useCallback(async () => {
     const all = await listCollections();
