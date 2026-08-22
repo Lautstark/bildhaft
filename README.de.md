@@ -16,8 +16,12 @@ mit einem nicht sprechenden Kind arbeiten und oft dutzende Zeilen am Stück
 Konten, keine API-Schlüssel, kein Tracking. Sätze, Sammlungen und
 METACOM-Dateien verlassen den eigenen Rechner nie. Das Einzige, was ihn verlässt,
 ist ein einzelnes Wort: es geht an ARASAAC, wenn dort ein passendes Piktogramm
-gesucht wird. Jedes Wort wird zwischengespeichert, geht also einmal und nicht bei
-jeder Suche.
+gesucht wird. Die Antworten werden zwischengespeichert — das ist zuerst eine Frage
+des Datenschutzes und erst dann eine der Geschwindigkeit: Wer dasselbe Bilderbuch
+über Wochen bearbeitet, schickt ein Wort einmal statt bei jedem Öffnen erneut.
+Nach 30 Tagen läuft die gespeicherte Antwort ab; wird das Wort danach wieder
+gebraucht, geht es noch einmal an ARASAAC. Die Bilddateien selbst werden einmal
+geladen und dann behalten, ohne Ablauf.
 
 > Die Oberfläche ist deutsch, weil das die Sprache der Menschen ist, für die
 > bildhaft gebaut ist. Code und Dokumentation sind englisch.

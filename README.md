@@ -15,8 +15,12 @@ sitting — a whole picture book, say.
 **bildhaft runs entirely in the browser.** No server, no database, no accounts, no
 API keys, no tracking. Your sentences, your collections and your METACOM files
 never leave your machine. The only thing that does is a single word, sent to
-ARASAAC when it is asked for a matching pictogram. Each word is cached, so it
-goes once rather than on every lookup.
+ARASAAC when it is asked for a matching pictogram. Answers are cached, which is a
+privacy property before it is a speed one: working through the same picture book
+over several weeks sends a word once rather than every time a board is reopened.
+A word is re-sent if it is used again more than 30 days later, when its cached
+answer has expired. The pictogram images themselves are fetched once and then
+kept, with no expiry.
 
 > The interface is German, because that is the language of the people it is for.
 > The code, comments and documentation are English.
