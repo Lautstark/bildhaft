@@ -154,9 +154,12 @@ test('says so when the folder is indexed but unreadable', async ({ page }) => {
     });
     const entries = files
       .filter((f) => f.endsWith('.png'))
-      .map((path) => {
-        const label = (path.split('/').pop() ?? path).replace(/\.png$/, '');
-        return { path, label, terms: [label.toLowerCase()] };
+      .map((rel) => {
+        const label = (rel.split('/').pop() ?? rel).replace(/\.png$/, '');
+        // The stored slots hold folder-prefixed paths, because that is what the
+        // directory pick produced. The index has to speak the same ids or it
+        // cannot say whether a failing symbol is one of its own.
+        return { path: `${folder}/${rel}`, label, terms: [label.toLowerCase()] };
       });
     const tx = db.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
     tx.objectStore('metacomIndex').put({ key: 'metacom', rootName: folder, entries, ts: Date.now() });
@@ -200,9 +203,12 @@ test('symbols come back once the folder can be read again', async ({ page }) => 
     });
     const entries = files
       .filter((f) => f.endsWith('.png'))
-      .map((path) => {
-        const label = (path.split('/').pop() ?? path).replace(/\.png$/, '');
-        return { path, label, terms: [label.toLowerCase()] };
+      .map((rel) => {
+        const label = (rel.split('/').pop() ?? rel).replace(/\.png$/, '');
+        // The stored slots hold folder-prefixed paths, because that is what the
+        // directory pick produced. The index has to speak the same ids or it
+        // cannot say whether a failing symbol is one of its own.
+        return { path: `${folder}/${rel}`, label, terms: [label.toLowerCase()] };
       });
     const tx = db.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
     tx.objectStore('metacomIndex').put({ key: 'metacom', rootName: folder, entries, ts: Date.now() });
