@@ -33,7 +33,7 @@ const FILES = [
   'Liesmich.txt', // not an image; must be ignored by the index
 ];
 
-async function chooseFakeFolder(page: Page): Promise<void> {
+async function chooseFakeFolder(page: Page, folder: string = FOLDER): Promise<void> {
   await page.evaluate(
     ({ folder, files, b64 }) => {
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -50,7 +50,7 @@ async function chooseFakeFolder(page: Page): Promise<void> {
       input.files = transfer.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
     },
-    { folder: FOLDER, files: FILES, b64: PNG_BASE64 },
+    { folder, files: FILES, b64: PNG_BASE64 },
   );
 }
 
@@ -393,4 +393,35 @@ test('a missing symbol is not reported as an unreadable folder', async ({ page }
   await expect(page.locator('.row .slot')).toHaveCount(3);
   // Symbols the folder does not have are missing, and missing is not broken.
   await expect(page.locator('.banner')).toBeHidden();
+});
+test('a sentence still renders after the folder comes back under another name', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Verwenden' }).click();
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+  await expect(page.locator('.row .slot img')).toHaveCount(3);
+
+  /*
+   * The stored slots now hold ids like "METACOM_9_Desktop/Verben/schlafen.png"
+   * — paths into the copy of the collection that was indexed when the choice
+   * was made. People rename folders, move them to another disk, re-read the
+   * same collection on another machine. The paths change; the pictures do
+   * not. Reading the same files under a new root must not blank every stored
+   * sentence: a missed lookup falls back to bildquelle's name resolution,
+   * which matches the path below the root.
+   */
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page, 'METACOM_9_Kopie');
+  await expect(page.locator('.card', { hasText: 'METACOM' })).toContainText('METACOM_9_Kopie');
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+
+  const images = page.locator('.row .slot img');
+  await expect(images).toHaveCount(3);
+  for (let i = 0; i < 3; i++) {
+    await expect(images.nth(i)).toHaveAttribute('src', /^blob:/);
+    await expect
+      .poll(() => images.nth(i).evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
+  }
 });

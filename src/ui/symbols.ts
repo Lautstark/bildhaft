@@ -1,5 +1,5 @@
 import type { ProviderId } from '../core/types.ts';
-import { getProvider } from '@lautstark/bildquelle';
+import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, svg } from './dom.ts';
 
 /**
@@ -22,6 +22,23 @@ export function peekSymbolUrl(provider: ProviderId, id: string): string | null {
   return cache.get(cacheKey(provider, id)) ?? null;
 }
 
+/**
+ * A stored METACOM id is a path into the copy of the collection that was
+ * indexed when the choice was made. The same folder acquired again later -
+ * renamed, moved to another machine, picked as a directory handle where it was
+ * once a file list - indexes different paths for the same pictures, and the
+ * direct lookup misses. bildquelle 1.2 answers the name behind such a path
+ * (most-specific match first, root-independent, ending at the bare stem), so a
+ * miss asks by name before giving up. ARASAAC ids are opaque numbers and get
+ * no second try.
+ */
+async function resolveUrl(provider: ProviderId, id: string): Promise<string | null> {
+  const direct = await getProvider(provider).getImageUrl(id);
+  if (direct || provider !== 'metacom') return direct;
+  const path = metacom.idForName(id.replace(/\.[^.]+$/, ''));
+  return path && path !== id ? metacom.getImageUrl(path) : null;
+}
+
 export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<string | null> {
   const key = cacheKey(provider, id);
 
@@ -32,7 +49,7 @@ export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<stri
   if (inFlight) return inFlight;
 
   const task = Promise.race([
-    getProvider(provider).getImageUrl(id),
+    resolveUrl(provider, id),
     new Promise<null>((resolve) => setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS)),
   ])
     .then((url) => {

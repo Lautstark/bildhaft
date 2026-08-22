@@ -1,5 +1,5 @@
 import type { Candidate, ProviderId, Slot } from '../core/types.ts';
-import { getProvider } from '@lautstark/bildquelle';
+import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import { symbolView, type SymbolView } from './symbols.ts';
@@ -78,18 +78,41 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     for (const view of views) view.destroy();
     views = [];
 
+    /*
+     * METACOM ships parallel rendering folders holding identical file names,
+     * so a search can answer several tiles that all say "ja" and differ only
+     * in picture. When a label repeats, the tile also names the folder its
+     * rendering came from. Display only - the candidate that is stored and
+     * chosen is untouched.
+     */
+    const twins = new Map<string, boolean>();
+    for (const candidate of candidates) twins.set(candidate.label, twins.has(candidate.label));
+
     fill(grid, ...candidates.map((candidate) => {
       const view = symbolView({ provider, id: candidate.id, alt: candidate.label });
       views.push(view);
+      const folder = provider === 'metacom' && twins.get(candidate.label)
+        ? folderOf(candidate.id) : '';
+      const caption = folder ? `${candidate.label} · ${folder}` : candidate.label;
       return el('button', {
         class: `picker__item${candidate.id === chosen ? ' picker__item--active' : ''}`,
-        attrs: { type: 'button', title: candidate.label },
+        attrs: { type: 'button', title: caption },
         on: { click: () => finish(() => handlers.onChoose(candidate)) },
       },
         el('span', { class: 'slot__img' }, view.node),
-        el('span', { text: candidate.label }),
+        el('span', { text: caption }),
       );
     }));
+  }
+
+  /** The folder a candidate's picture sits in, said the way a human would -
+   *  "PNG ohne Rahmen" - or '' for a file straight under the collection root.
+   *  Ids only start with the root when the collection came in as a file list
+   *  or zip, so the root is compared, never assumed. */
+  function folderOf(id: string): string {
+    const segments = id.split('/');
+    const inside = segments[0] === metacom.rootName ? segments.slice(1) : segments;
+    return inside.length > 1 ? inside[inside.length - 2].replace(/_/g, ' ') : '';
   }
 
   function idleMessage(): string {
