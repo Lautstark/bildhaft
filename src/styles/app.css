@@ -8,7 +8,8 @@
   --line: rgba(28, 26, 23, .09);
   --text: #1c1a17;
   --text-dim: #6c665e;
-  --text-faint: #9a938a;
+  /* Darkened to clear AA: the old #9a938a was 2.89:1 on --bg. */
+  --text-faint: #726c64;
 
   /*
    * Brand orange. Token names match the sibling project mitreden, which uses the
@@ -20,13 +21,23 @@
   --accent-ink: #2b1206;
   /* Darkened for accent-coloured TEXT on light surfaces (5.2:1 on white). */
   --accent-strong: #c2410c;
+  /* An explicit hover value rather than a brightness filter, which shifts hue
+     on a saturated orange. On a light ground hover goes darker. */
+  --accent-hover: #f2551c;
   --accent-soft: #fff0e9;
 
   --danger: #b3261e;
+  /* Text placed ON the danger fill, mirroring --accent-ink. A hardcoded #fff
+     here read at 2.48:1 once a dark scheme existed. */
+  --danger-ink: #ffffff;
   --danger-soft: #fdeceb;
 
   --radius: 14px;
   --radius-sm: 9px;
+  /* Anything whose height sets its shape: chips, icon buttons, toasts. */
+  --radius-pill: 999px;
+  /* A row inside a popup. */
+  --radius-item: 7px;
   --shadow-sm: 0 1px 2px rgba(28, 26, 23, .05);
   --shadow: 0 2px 6px rgba(28, 26, 23, .06), 0 12px 32px rgba(28, 26, 23, .08);
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -43,15 +54,21 @@
     --line: rgba(255, 255, 255, .09);
     --text: #eeebe6;
     --text-dim: #a49d93;
-    --text-faint: #7b746a;
+    /* Solved against the tightest ground it actually sits on (--surface-2, the
+       field fill), not against --bg. The old #7b746a was 3.92:1; a value ported
+       from mitreden still failed there at 4.04:1. This clears 4.67:1. */
+    --text-faint: #999084;
 
     --accent: #ff6b35;
     /* On a dark surface the brand orange itself clears AA, lightened slightly. */
     --accent-strong: #ff8b5e;
+    /* On a dark ground hover goes lighter. */
+    --accent-hover: #ff8355;
     --accent-soft: #2e1c13;
     --accent-ink: #2b1206;
 
     --danger: #f2867a;
+    --danger-ink: #2a1210;
     --danger-soft: #35201d;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
@@ -85,7 +102,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 7px;
   padding: 8px 14px;
   border: none;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   color: var(--text);
   cursor: pointer;
@@ -96,18 +113,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .btn--primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.btn--primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.06); }
+.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
 
 .btn--quiet { background: transparent; color: var(--text-dim); }
 .btn--quiet:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
 
 .btn--danger { background: transparent; color: var(--danger); }
 .btn--danger:hover:not(:disabled) { background: var(--danger-soft); }
-.btn--danger-solid { background: var(--danger); color: #fff; font-weight: 600; }
-.btn--danger-solid:hover:not(:disabled) { background: var(--danger); filter: brightness(1.08); }
+.btn--danger-solid { background: var(--danger); color: var(--danger-ink); font-weight: 600; }
+.btn--danger-solid:hover:not(:disabled) { background: var(--danger); opacity: .9; }
 
 .btn--sm { padding: 5px 11px; font-size: 13.5px; }
-.btn--icon { padding: 7px; border-radius: 50%; }
+.btn--icon { padding: 7px; border-radius: var(--radius-pill); }
 
 .field {
   width: 100%;
@@ -262,7 +279,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   white-space: nowrap;
   font-size: 14px;
 }
-.list__count { font-size: 12px; opacity: .7; font-variant-numeric: tabular-nums; }
+/* No opacity: at .7 over --accent-soft this fell to 2.91:1. It inherits the
+   row's colour instead, which is contrast-checked. */
+.list__count { font-size: 12px; font-variant-numeric: tabular-nums; }
 
 .hit {
   width: 100%;
@@ -603,14 +622,14 @@ kbd {
   display: flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
 }
 .segmented button {
   flex: 1;
   padding: 6px 10px;
   border: none;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: transparent;
   font-size: 13.5px;
   color: var(--text-dim);
@@ -649,7 +668,7 @@ kbd {
 
 .tag {
   padding: 2px 9px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--accent-soft);
   color: var(--accent-strong);
   font-size: 11.5px;
@@ -696,7 +715,7 @@ kbd {
   z-index: 60;
   transform: translateX(-50%);
   padding: 10px 18px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--text);
   color: var(--bg);
   font-size: 13.5px;
@@ -798,7 +817,7 @@ kbd {
 .menu__item {
   padding: 8px 11px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-item);
   background: transparent;
   text-align: left;
   font-size: 14px;
