@@ -18,6 +18,7 @@ import {
 } from './db/exportImport.ts';
 import { Composer } from './ui/Composer.tsx';
 import { Confirm } from './ui/Confirm.tsx';
+import { About } from './ui/About.tsx';
 import { Footer } from './ui/Footer.tsx';
 import { Logo } from './ui/Logo.tsx';
 import { Menu } from './ui/Menu.tsx';
@@ -52,6 +53,7 @@ export default function App() {
   const [picker, setPicker] = useState<{ sentenceId: string; slotId: string } | null>(null);
   const [printIds, setPrintIds] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [, forceRender] = useState(0);
 
@@ -649,7 +651,7 @@ export default function App() {
             )}
           </div>
 
-          <Footer attribution={provider.attribution} />
+          <Footer attribution={provider.attribution} onAbout={() => setAboutOpen(true)} />
         </main>
       </div>
 
@@ -732,6 +734,8 @@ export default function App() {
           }}
         />
       )}
+
+      {aboutOpen && <About onClose={() => setAboutOpen(false)} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
     </>

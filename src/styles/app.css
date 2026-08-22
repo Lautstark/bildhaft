@@ -774,3 +774,31 @@ kbd {
   font-size: 13.5px;
   line-height: 1.5;
 }
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+/* A button that has to read as a link, because it opens a dialog rather than
+   navigating — the footer should not look like it has two kinds of thing in it. */
+.linklike {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linklike:hover { color: var(--text); }
+
+/* Links inside dialogs and prose, so they are not browser-default blue. */
+.dialog__body a {
+  color: var(--accent-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.dialog__body a:hover { color: var(--accent); }
