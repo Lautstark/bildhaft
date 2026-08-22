@@ -268,7 +268,7 @@ layout · user-uploaded images.
 
 ## Related
 
-[mitreden](https://github.com/SteffiPeTaffy/mitreden) is a companion project: type a
+[mitreden](https://github.com/Lautstark/mitreden) is a companion project: type a
 sentence, get an audio file back, so every device speaks with the same voice. Same
 speech-bubble mark, in pink.
 

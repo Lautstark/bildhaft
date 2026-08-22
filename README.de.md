@@ -277,7 +277,7 @@ mobile Optimierung · hochgeladene eigene Bilder.
 
 ## Verwandt
 
-[mitreden](https://github.com/SteffiPeTaffy/mitreden) ist ein Schwesterprojekt: Satz
+[mitreden](https://github.com/Lautstark/mitreden) ist ein Schwesterprojekt: Satz
 eintippen, Audiodatei zurückbekommen, damit alle Geräte mit derselben Stimme
 sprechen. Gleiches Sprechblasen-Zeichen, in Pink.
 
