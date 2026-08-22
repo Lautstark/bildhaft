@@ -7,7 +7,7 @@ import { Dialog } from './Dialog.tsx';
  * und dass eine ARASAAC-Anfrage die IP-Adresse mitnimmt.
  */
 
-const EMAIL = 'stefanie.grewenig@googlemail.com';
+const EMAIL = 'lautstark@grewenig.online';
 
 export function Datenschutz({ onClose }: { onClose: () => void }) {
   return (

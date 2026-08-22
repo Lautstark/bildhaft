@@ -7,7 +7,7 @@ import { Dialog } from './Dialog.tsx';
  */
 
 /** Die eine Zeile, die man ändert, wenn eine andere Adresse öffentlich sein soll. */
-const EMAIL = 'stefanie.grewenig@googlemail.com';
+const EMAIL = 'lautstark@grewenig.online';
 const ISSUES = 'https://github.com/Lautstark/bildhaft/issues';
 
 export function Impressum({ onClose }: { onClose: () => void }) {
