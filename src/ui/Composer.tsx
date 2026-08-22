@@ -21,8 +21,10 @@ export function Composer({
 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  // Focused on load: typing is the entire interaction.
+  // Focused on load: typing is the entire interaction. Skipped on touch devices,
+  // where it would immediately open the on-screen keyboard and shrink the viewport.
   useEffect(() => {
+    if (window.matchMedia('(hover: none)').matches) return;
     ref.current?.focus();
   }, []);
 

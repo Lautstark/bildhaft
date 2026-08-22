@@ -25,6 +25,8 @@ import { SentenceRow } from './ui/SentenceRow.tsx';
 import { SettingsDialog } from './ui/SettingsDialog.tsx';
 import { Sidebar } from './ui/Sidebar.tsx';
 import { SlotPicker } from './ui/SlotPicker.tsx';
+import { TopBar } from './ui/TopBar.tsx';
+import { MOBILE_QUERY, useMediaQuery } from './ui/useMediaQuery.ts';
 
 type PendingConfirm = {
   title: string; body: string; confirmLabel: string; danger?: boolean; action: () => Promise<void>;
@@ -50,6 +52,14 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [, forceRender] = useState(0);
+
+  /*
+   * Mobile navigation is deliberately NOT the persisted desktop preference.
+   * Sharing one flag meant a sidebar left open on desktop loaded open on the
+   * phone — and, when left closed, hid the only control that could reopen it.
+   */
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const providerId = settings?.activeProvider ?? 'arasaac';
   const provider = getProvider(providerId);
@@ -402,32 +412,58 @@ export default function App() {
     return <div className="empty-state"><span className="spinner" /></div>;
   }
 
-  const sidebarOpen = settings.sidebarOpen;
+  const sidebarOpen = isMobile ? mobileNavOpen : settings.sidebarOpen;
+
+  const toggleSidebar = () => {
+    if (isMobile) setMobileNavOpen((open) => !open);
+    else persistSettings({ ...settings, sidebarOpen: !settings.sidebarOpen });
+  };
+  // On mobile the panel overlays the content, so acting on it should dismiss it.
+  const closeNavOnMobile = () => { if (isMobile) setMobileNavOpen(false); };
 
   return (
     <>
-      <div id="app-root" className={`app${sidebarOpen ? '' : ' app--collapsed'}`}>
+      <div
+        id="app-root"
+        className={
+          `app${sidebarOpen ? '' : ' app--collapsed'}` +
+          `${isMobile && mobileNavOpen ? ' app--nav-open' : ''}`
+        }
+      >
         <Sidebar
           collections={collections}
           counts={counts}
           activeId={activeId}
-          onSelect={(id) => { setActiveId(id); setQuery(''); }}
-          onNew={handleNewCollection}
+          onSelect={(id) => { setActiveId(id); setQuery(''); closeNavOnMobile(); }}
+          onNew={() => { handleNewCollection(); closeNavOnMobile(); }}
           searchQuery={query}
           onSearchChange={setQuery}
           searchResults={results}
-          onOpenResult={(sentence) => { setActiveId(sentence.collectionId); setQuery(''); }}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenResult={(sentence) => {
+            setActiveId(sentence.collectionId);
+            setQuery('');
+            closeNavOnMobile();
+          }}
+          onOpenSettings={() => { setSettingsOpen(true); closeNavOnMobile(); }}
           onImport={handleImport}
-          onCollapse={() => persistSettings({ ...settings, sidebarOpen: false })}
+          onCollapse={toggleSidebar}
         />
+
+        {isMobile && mobileNavOpen && (
+          <button
+            type="button"
+            className="scrim"
+            aria-label="Menü schließen"
+            onClick={() => setMobileNavOpen(false)}
+          />
+        )}
 
         {!sidebarOpen && (
           <div className="rail">
             <button
               type="button"
               className="btn btn--quiet btn--icon"
-              onClick={() => persistSettings({ ...settings, sidebarOpen: true })}
+              onClick={toggleSidebar}
               title="Seitenleiste einblenden"
             >
               <MenuIcon />
@@ -437,6 +473,8 @@ export default function App() {
         )}
 
         <main className="main">
+          <TopBar onToggleNav={toggleSidebar} title={activeCollection?.name ?? 'bildhaft'} />
+
           <div className="main__inner">
             <Composer
               value={draft}
