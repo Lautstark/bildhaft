@@ -14,7 +14,7 @@
     "test:e2e:only": "playwright test"
   },
   "dependencies": {
-    "@lautstark/bildquelle": "github:Lautstark/bildquelle#0813d58fe250247e1bb451e8871d1bda1a7f1e45",
+    "@lautstark/bildquelle": "github:Lautstark/bildquelle#semver:^1.0.0",
     "@lautstark/design": "github:Lautstark/design#v1.0.1",
     "idb": "^8.0.3"
   },
