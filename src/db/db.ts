@@ -1,14 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Candidate, Collection, Override, Sentence, AppSettings } from '../core/types.ts';
-
-export interface MetacomEntry {
-  /** Path relative to the chosen root, used as the symbol id. */
-  path: string;
-  /** Filename without extension, cleaned up for display. */
-  label: string;
-  /** Lowercased, umlaut-folded label tokens for matching. */
-  terms: string[];
-}
+import type { Collection, Override, Sentence, AppSettings } from '../core/types.ts';
 
 interface BildhaftDB extends DBSchema {
   collections: { key: string; value: Collection };
@@ -19,23 +10,31 @@ interface BildhaftDB extends DBSchema {
   };
   overrides: { key: string; value: Override; indexes: { byProvider: string } };
   settings: { key: string; value: AppSettings };
-  /** ARASAAC search results, cached so repeated lines cost no network. */
-  arasaacSearch: { key: string; value: { lemma: string; candidates: Candidate[]; ts: number } };
-  /** ARASAAC image blobs, cached so a session works offline once fetched. */
-  arasaacImages: { key: string; value: { id: string; blob: Blob; ts: number } };
-  /**
-   * METACOM filename index. This never leaves the browser — see the licensing
-   * rules in the README. It is derived from the user's own licensed files.
-   */
-  metacomIndex: { key: string; value: { key: string; rootName: string; entries: MetacomEntry[]; ts: number } };
-  /** Persisted FileSystemDirectoryHandle, so the folder pick is a one-time step. */
-  handles: { key: string; value: { key: string; handle: unknown } };
 }
 
+/*
+ * Cached symbols used to live here too. They are bildquelle's now: it owns a
+ * database of its own, so the METACOM rules are enforced in one place rather
+ * than in every app that shows a symbol. v3 hands the stores over.
+ */
+
 const DB_NAME = 'bildhaft';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<BildhaftDB>> | null = null;
+
+/** Rescued from the v2 database during the upgrade. See the v3 step below. */
+let legacyMetacomHandle: unknown = null;
+
+/**
+ * The METACOM folder handle from before the move to bildquelle, if this browser
+ * had one. Returns it once and forgets it: whoever takes it owns it.
+ */
+export function takeLegacyMetacomHandle(): FileSystemDirectoryHandle | null {
+  const handle = legacyMetacomHandle as FileSystemDirectoryHandle | null;
+  legacyMetacomHandle = null;
+  return handle;
+}
 
 /** Set when another tab is holding an older version of the database open. */
 let blockedByOtherTab = false;
@@ -114,6 +113,32 @@ export function getDB(): Promise<IDBPDatabase<BildhaftDB>> {
 
           sentences.createIndex('byCollection', 'collectionId');
         }
+
+        if (oldVersion < 3) {
+          /*
+           * v2 -> v3. The symbol caches move to bildquelle's own database.
+           *
+           * The ARASAAC stores are pure caches and simply go; they refill on
+           * first use. The METACOM folder handle is not a cache — losing it
+           * means asking the user to pick their licensed folder all over again —
+           * so it is carried out of the transaction in memory and handed to
+           * bildquelle on startup. The filename index is deliberately *not*
+           * carried over: bildquelle rebuilds it from the folder itself, which
+           * keeps that data something only it ever produces.
+           */
+          const legacy = tx as unknown as {
+            objectStore(name: string): { get(key: string): Promise<{ handle?: unknown } | undefined> };
+          };
+
+          if (db.objectStoreNames.contains('handles' as never)) {
+            const row = await legacy.objectStore('handles').get('metacomDir');
+            legacyMetacomHandle = row?.handle ?? null;
+          }
+
+          for (const name of ['arasaacSearch', 'arasaacImages', 'metacomIndex', 'handles'] as const) {
+            if (db.objectStoreNames.contains(name as never)) db.deleteObjectStore(name as never);
+          }
+        }
       },
 
       /*
@@ -159,10 +184,6 @@ function createStores(db: IDBPDatabase<BildhaftDB>): void {
   overrides.createIndex('byProvider', 'provider');
 
   db.createObjectStore('settings');
-  db.createObjectStore('arasaacSearch', { keyPath: 'lemma' });
-  db.createObjectStore('arasaacImages', { keyPath: 'id' });
-  db.createObjectStore('metacomIndex', { keyPath: 'key' });
-  db.createObjectStore('handles', { keyPath: 'key' });
 }
 
 export type { BildhaftDB };

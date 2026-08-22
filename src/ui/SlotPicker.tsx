@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Candidate, ProviderId, Slot } from '../core/types.ts';
-import { getProvider } from '../providers/registry.ts';
+import { getProvider } from '@lautstark/bildquelle';
 import { Dialog } from './Dialog.tsx';
 import { SymbolImage } from './SymbolImage.tsx';
 

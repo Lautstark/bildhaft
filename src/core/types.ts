@@ -11,15 +11,14 @@
  * and in METACOM for someone with one.
  */
 
-export type ProviderId = 'arasaac' | 'metacom';
-
-/** A symbol offered for a slot. `id` is provider-local. */
-export interface Candidate {
-  id: string;
-  label: string;
-  /** Higher is better. Used only for ordering within one provider's results. */
-  score: number;
-}
+/**
+ * Which symbol sources exist, and what one of their symbols looks like, are
+ * bildquelle's to define — it is where the sources live and where the rules that
+ * come with them are enforced. Re-exported so the rest of the app keeps taking
+ * its model from one place.
+ */
+import type { Candidate, ProviderId } from '@lautstark/bildquelle';
+export type { Candidate, ProviderId };
 
 /** How a slot's concept was arrived at — surfaced as a tooltip, nothing more. */
 export type SlotOrigin =

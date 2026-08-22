@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ProviderId } from '../core/types.ts';
-import { getProvider } from '../providers/registry.ts';
+import { getProvider } from '@lautstark/bildquelle';
 
 /**
  * Process-wide cache of resolved image URLs. Rows, the slot picker and the print

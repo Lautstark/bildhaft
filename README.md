@@ -55,6 +55,11 @@ How bildhaft handles it:
 Without your own METACOM licence the feature simply does not work. That is
 deliberate.
 
+Both symbol sources, and the rules above, live in
+[bildquelle](https://github.com/Lautstark/bildquelle) — a small package shared
+with [vorlaut](https://github.com/Lautstark/vorlaut), so the METACOM rule is
+written down, enforced and tested once instead of once per app.
+
 ### Why this is safe by construction
 
 What gets stored is **symbol references, not images.** A saved sentence is a list
@@ -206,11 +211,13 @@ publishes if it passes.**
 | Path | Contents |
 | --- | --- |
 | `src/core/` | Matching pipeline and data model, free of UI |
-| `src/providers/` | Symbol sources behind a shared interface |
 | `src/db/` | IndexedDB schema, repository, export/import |
 | `src/ui/` | React components |
 | `src/data/` | Generated lexicon data |
 | `scripts/` | Lexicon generator and its word lists |
+
+Symbol sources are not in this repository. They come from
+[bildquelle](https://github.com/Lautstark/bildquelle), pinned by commit.
 
 ### Constraints
 
