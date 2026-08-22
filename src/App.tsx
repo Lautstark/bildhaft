@@ -108,6 +108,17 @@ export default function App() {
   const [dbBlocked, setDbBlocked] = useState(false);
   useEffect(() => onBlockedChange(() => setDbBlocked(isBlockedByOtherTab())), []);
 
+  /*
+   * A METACOM folder grant is per site and per browsing session. The index is
+   * cached, so the source can report itself ready while every actual file read
+   * is refused — the app looks fine and every symbol is blank. Counting
+   * unreadable symbols catches that, where asking the provider does not.
+   */
+  const [unreadable, setUnreadable] = useState(0);
+  const noteUnreadable = useCallback(() => setUnreadable((n) => n + 1), []);
+  useEffect(() => { setUnreadable(0); }, [providerId, activeId]);
+  const sourceUnusable = !provider.isReady() || (providerId === 'metacom' && unreadable >= 3);
+
   const refreshCollections = useCallback(async () => {
     const all = await listCollections();
     setCollections(all);
@@ -490,20 +501,29 @@ export default function App() {
               * was "(nicht bereit)" in grey next to the composer, while every row
               * showed broken symbols and offered nothing to click.
               */}
-            {!provider.isReady() && (
+            {sourceUnusable && (
               <div className="banner" role="alert">
                 <span style={{ flex: 1 }}>
                   {providerId === 'metacom'
-                    ? 'bildhaft hat keinen Zugriff mehr auf deinen METACOM-Ordner. Browser merken sich diesen Zugriff pro Adresse — nach einem Umzug oder gelöschten Website-Daten muss er einmal neu erteilt werden. Deine Sätze bleiben erhalten.'
+                    ? 'bildhaft kann deinen METACOM-Ordner gerade nicht lesen. Browser geben den Zugriff auf einen Ordner nicht dauerhaft frei — nach dem Neuladen muss er einmal bestätigt werden. Deine Sätze bleiben erhalten.'
                     : 'Die aktive Symbolquelle ist gerade nicht verfügbar.'}
                 </span>
-                {providerId === 'metacom' && MetacomProvider.supportsPersistentPicker && (
+                {providerId === 'metacom' && (
                   <button
                     type="button"
-                    className="btn btn--sm"
-                    onClick={() => metacom.pickDirectory().catch(() => undefined)}
+                    className="btn btn--sm btn--primary"
+                    onClick={async () => {
+                      // Both need the click: re-granting and re-picking are
+                      // gated on a user gesture and cannot happen on load.
+                      const ok = await metacom.requestPermission().catch(() => false);
+                      if (!ok && MetacomProvider.supportsPersistentPicker) {
+                        await metacom.pickDirectory().catch(() => undefined);
+                      }
+                      setUnreadable(0);
+                      forceRender((n) => n + 1);
+                    }}
                   >
-                    Ordner wählen
+                    Zugriff bestätigen
                   </button>
                 )}
                 <button type="button" className="btn btn--sm" onClick={() => setSettingsOpen(true)}>
@@ -581,6 +601,7 @@ export default function App() {
                     onOpenSlot={(slotId) => setPicker({ sentenceId: sentence.id, slotId })}
                     onAddSlot={() => handleAddSlot(sentence.id)}
                     onReorder={(from, to) => handleReorder(sentence.id, from, to)}
+                    onUnreadableSymbol={noteUnreadable}
                     onPrint={() => setPrintIds([sentence.id])}
                     onDelete={() => setConfirm({
                       title: 'Zeile löschen',

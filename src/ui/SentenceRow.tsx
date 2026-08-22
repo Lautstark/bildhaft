@@ -21,10 +21,12 @@ interface Props {
   onReorder: (from: number, to: number) => void;
   onPrint: () => void;
   onDelete: () => void;
+  onUnreadableSymbol?: () => void;
 }
 
 export function SentenceRow({
   sentence, provider, onOpenSlot, onAddSlot, onReorder, onPrint, onDelete,
+  onUnreadableSymbol,
 }: Props) {
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -102,7 +104,12 @@ export function SentenceRow({
               onDragEnd={reset}
             >
               <span className="slot__img">
-                <SymbolImage provider={provider} id={chosen} alt={slot.sourceToken} />
+                <SymbolImage
+                  provider={provider}
+                  id={chosen}
+                  alt={slot.sourceToken}
+                  onUnreadable={onUnreadableSymbol}
+                />
               </span>
               <span className="slot__label">{slot.sourceToken}</span>
             </div>
