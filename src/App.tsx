@@ -266,8 +266,9 @@ export default function App() {
       // A slot added by hand takes its word from the chosen symbol.
       sourceToken: isNew ? candidate.label : slot.sourceToken,
       concept: isNew ? candidate.label.toLowerCase() : slot.concept,
-      origin: isNew ? 'manual' : slot.origin,
-      manual: true,
+      // Either way a human chose this, so say so. Leaving the pipeline's origin
+      // in place made the tooltip claim a lemma lookup had picked the symbol.
+      origin: 'manual',
       choice: { ...slot.choice, [providerId]: candidate.id },
       candidates: {
         ...slot.candidates,
@@ -304,7 +305,6 @@ export default function App() {
       sourceToken: '',
       concept: '',
       origin: 'manual',
-      manual: true,
       choice: {},
       candidates: {},
     };

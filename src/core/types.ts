@@ -28,7 +28,7 @@ export type SlotOrigin =
   | 'compound' // part of a split compound, e.g. Apfelsaft -> Apfel + Saft
   | 'synonym' // resolved via the synonym table
   | 'raw' // matched on the surface form
-  | 'manual' // added by hand from the picker
+  | 'manual' // chosen by hand from the picker, whether added or corrected
   | 'unmatched'; // nothing found; user must pick manually
 
 export interface Slot {
@@ -38,14 +38,6 @@ export interface Slot {
   /** The portable concept key. This, not the image, is what travels. */
   concept: string;
   origin: SlotOrigin;
-  /**
-   * True once the user has overridden the automatic pick, or added the slot by
-   * hand. Nothing renders this: clicking a slot is how you edit it, so a badge
-   * saying "you edited this" only repeats what the symbol already shows. Kept
-   * because it is provenance — it travels in exports and distinguishes a human
-   * choice from a pipeline guess.
-   */
-  manual: boolean;
 
   /**
    * Per-provider choice: providerId -> symbol id, or null for "not chosen yet".

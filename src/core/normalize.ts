@@ -13,18 +13,3 @@ export function normalizeInput(raw: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
-
-/** Normalizes a single token for dictionary lookup. */
-export function normalizeToken(token: string): string {
-  return token.toLowerCase().replace(PUNCT, '').trim();
-}
-
-/** Fold umlauts and ß, for forgiving comparison against symbol filenames. */
-export function foldGerman(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss');
-}

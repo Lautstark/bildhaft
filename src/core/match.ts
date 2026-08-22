@@ -72,7 +72,6 @@ function toSlot(spec: SlotSpec, provider: ProviderId): Slot {
     sourceToken: spec.sourceToken,
     concept: spec.concept,
     origin: spec.origin,
-    manual: false,
     choice: { [provider]: chosen },
     candidates: { [provider]: kept },
   };

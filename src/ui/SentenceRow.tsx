@@ -9,7 +9,7 @@ const ORIGIN_HINT: Record<Slot['origin'], string> = {
   compound: 'Zusammengesetztes Wort geteilt',
   synonym: 'Über ein Synonym gefunden',
   raw: 'Direkt gefunden',
-  manual: 'Von Hand hinzugefügt',
+  manual: 'Von Hand gewählt',
   unmatched: 'Kein Symbol gefunden',
 };
 

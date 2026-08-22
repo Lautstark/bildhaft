@@ -116,6 +116,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     const next = { ...s, id: newId(), collectionId, createdAt: s.createdAt ?? now, updatedAt: now };
     delete next.sessionId;
     delete (next as { reviewed?: boolean }).reviewed;
+    for (const slot of next.slots ?? []) delete (slot as { manual?: boolean }).manual;
     return next;
   });
 
