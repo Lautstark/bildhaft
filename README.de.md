@@ -186,6 +186,26 @@ node scripts/build-lexicon.mjs
 Die erzeugten JSON-Dateien unter `src/data/` sind eingecheckt, damit der Build
 keinen Codegenerierungs-Schritt braucht.
 
+### Tests
+
+```bash
+npm run test:e2e
+```
+
+End-to-End-Tests laufen mit Playwright gegen das echte Produktions-Bundle und
+decken die wichtigen Pfade ab: einen Satz übersetzen, ein Symbol korrigieren und
+die Korrektur wiederverwenden, Felder hinzufügen/entfernen/umsortieren,
+Persistenz nach dem Neuladen, Druckgeometrie in Millimetern, Export ohne
+Bilddaten und die mobile Navigation.
+
+ARASAAC wird dabei simuliert. Die Tests müssen zuverlässig genug sein, um einen
+Deploy abzusichern, und sollen einen kostenlosen öffentlichen Dienst nicht bei
+jedem Push belasten. Der Preis: eine Änderung an der echten API würde hier nicht
+auffallen.
+
+Die CI führt die Tests bei jedem Push und Pull Request aus. **GitHub Pages wird
+nur veröffentlicht, wenn sie bestehen.**
+
 ### Aufbau
 
 | Pfad | Inhalt |

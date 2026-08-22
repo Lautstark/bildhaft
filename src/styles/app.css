@@ -810,3 +810,21 @@ kbd {
 .menu__item:disabled { opacity: .4; cursor: not-allowed; }
 .menu__item--danger { color: var(--danger); }
 .menu__item--danger:hover:not(:disabled) { background: var(--danger-soft); }
+
+/* Failed symbol: an affordance to retry, never an endless spinner. */
+.slot__blank--error {
+  cursor: pointer;
+  color: var(--danger);
+  font-size: 17px;
+}
+.slot__blank--error:hover { background: var(--danger-soft); border-radius: var(--radius-sm); }
+
+.banner {
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13.5px;
+  line-height: 1.5;
+}

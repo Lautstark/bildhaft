@@ -37,7 +37,7 @@ export function Dialog({ title, onClose, children, footer, wide }: Props) {
       >
         <div className="dialog__head">
           <h2>{title}</h2>
-          <button type="button" className="btn btn--ghost btn--icon" onClick={onClose} aria-label="Schließen">
+          <button type="button" className="btn btn--ghost btn--icon" onClick={onClose} aria-label="Dialog schließen">
             ✕
           </button>
         </div>

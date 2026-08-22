@@ -11,14 +11,35 @@ interface Props {
 }
 
 export function SymbolImage({ provider, id, alt, placeholder = '+' }: Props) {
-  const url = useSymbolUrl(provider, id);
-  const [failed, setFailed] = useState(false);
+  const { url, state, retry } = useSymbolUrl(provider, id);
+  const [broken, setBroken] = useState(false);
 
-  useEffect(() => setFailed(false), [url]);
+  useEffect(() => setBroken(false), [url]);
 
-  if (!id) return <span className="slot__blank" aria-hidden="true">{placeholder}</span>;
-  if (!url) return <span className="slot__blank" aria-hidden="true"><span className="spinner" /></span>;
-  if (failed) return <span className="slot__blank" aria-hidden="true">!</span>;
+  if (state === 'empty') return <span className="slot__blank" aria-hidden="true">{placeholder}</span>;
+  if (state === 'loading') return <span className="slot__blank" aria-hidden="true"><span className="spinner" /></span>;
+
+  if (state === 'error' || broken || !url) {
+    return (
+      <span
+        className="slot__blank slot__blank--error"
+        role="button"
+        tabIndex={0}
+        title="Symbol konnte nicht geladen werden. Zum erneuten Versuch klicken."
+        onClick={(e) => { e.stopPropagation(); setBroken(false); retry(); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            setBroken(false);
+            retry();
+          }
+        }}
+      >
+        ↻
+      </span>
+    );
+  }
 
   return (
     <img
@@ -33,7 +54,7 @@ export function SymbolImage({ provider, id, alt, placeholder = '+' }: Props) {
       title={alt}
       loading="lazy"
       draggable={false}
-      onError={() => setFailed(true)}
+      onError={() => setBroken(true)}
     />
   );
 }

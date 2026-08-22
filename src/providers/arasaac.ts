@@ -139,7 +139,10 @@ export class ArasaacProvider implements SymbolProvider {
 
     try {
       const res = await fetch(IMAGE(id));
-      if (!res.ok) return null;
+      // A non-OK response is often transient (rate limiting, a 5xx). Hand back the
+      // remote URL rather than null: the <img> can still try, and can report a real
+      // failure through onError instead of leaving a spinner up forever.
+      if (!res.ok) return IMAGE(id);
       const blob = await res.blob();
       await db.put('arasaacImages', { id, blob, ts: Date.now() });
       const url = URL.createObjectURL(blob);

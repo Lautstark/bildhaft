@@ -92,7 +92,7 @@ function CardSheet({ sentences, settings, provider }: Omit<Props, 'attribution' 
 
 function Card({ slot, settings, provider }: { slot: Slot; settings: PrintSettings; provider: ProviderId }) {
   const id = slot.choice[provider] ?? null;
-  const url = useSymbolUrl(provider, id);
+  const { url } = useSymbolUrl(provider, id);
   const label = slot.sourceToken || slot.concept;
   const [failed, setFailed] = useState(false);
 

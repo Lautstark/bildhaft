@@ -5,6 +5,7 @@ import type {
 import { normalizeInput } from './core/normalize.ts';
 import { buildSlots, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom } from './providers/registry.ts';
+import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
 import {
   clearEverything, countSentences, createCollection, defaultCollectionName,
   deleteCollectionDeep, deleteSentence, findByNormalized, libraryTotals,
@@ -101,6 +102,11 @@ export default function App() {
   }, []);
 
   useEffect(() => metacom.subscribe(() => forceRender((n) => n + 1)), []);
+
+  // A stale tab holding an older database version blocks the upgrade here, which
+  // would otherwise present as symbols stuck loading with no explanation.
+  const [dbBlocked, setDbBlocked] = useState(false);
+  useEffect(() => onBlockedChange(() => setDbBlocked(isBlockedByOtherTab())), []);
 
   const refreshCollections = useCallback(async () => {
     const all = await listCollections();
@@ -476,6 +482,14 @@ export default function App() {
           <TopBar onToggleNav={toggleSidebar} title={activeCollection?.name ?? 'bildhaft'} />
 
           <div className="main__inner">
+            {dbBlocked && (
+              <div className="banner" role="alert">
+                bildhaft ist noch in einem anderen Tab geöffnet und blockiert die
+                Aktualisierung der Datenbank. Schließe die anderen Tabs und lade
+                diese Seite neu.
+              </div>
+            )}
+
             <Composer
               value={draft}
               onChange={setDraft}

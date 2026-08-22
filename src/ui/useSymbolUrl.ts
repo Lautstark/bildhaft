@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ProviderId } from '../core/types.ts';
 import { getProvider } from '../providers/registry.ts';
 
@@ -11,6 +11,12 @@ const cache = new Map<string, string>();
 const pending = new Map<string, Promise<string | null>>();
 
 const cacheKey = (provider: ProviderId, id: string) => `${provider}:${id}`;
+
+/**
+ * Resolution must not be able to hang. Every caller here awaits the database,
+ * which can stall indefinitely if another tab is blocking a version upgrade.
+ */
+const RESOLVE_TIMEOUT_MS = 12_000;
 
 export function peekSymbolUrl(provider: ProviderId, id: string): string | null {
   return cache.get(cacheKey(provider, id)) ?? null;
@@ -25,9 +31,12 @@ export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<stri
   const inFlight = pending.get(key);
   if (inFlight) return inFlight;
 
-  const task = getProvider(provider)
-    .getImageUrl(id)
+  const task = Promise.race([
+    getProvider(provider).getImageUrl(id),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS)),
+  ])
     .then((url) => {
+      // Only successes are cached, so a later attempt can still succeed.
       if (url) cache.set(key, url);
       return url;
     })
@@ -52,30 +61,54 @@ export async function warmSymbols(provider: ProviderId, ids: string[]): Promise<
   await Promise.all([...new Set(ids)].map((id) => resolveSymbolUrl(provider, id)));
 }
 
-export function useSymbolUrl(provider: ProviderId, id: string | null | undefined): string | null {
+export type SymbolState = 'empty' | 'loading' | 'ready' | 'error';
+
+export interface SymbolUrl {
+  url: string | null;
+  state: SymbolState;
+  retry: () => void;
+}
+
+/**
+ * Distinguishes "still loading" from "gave up". Collapsing the two meant any
+ * failure showed an indistinguishable spinner that never resolved.
+ */
+export function useSymbolUrl(provider: ProviderId, id: string | null | undefined): SymbolUrl {
   const [url, setUrl] = useState<string | null>(() => (id ? peekSymbolUrl(provider, id) : null));
+  const [state, setState] = useState<SymbolState>(() => {
+    if (!id) return 'empty';
+    return peekSymbolUrl(provider, id) ? 'ready' : 'loading';
+  });
+  const [nonce, setNonce] = useState(0);
+
+  const retry = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
     if (!id) {
       setUrl(null);
+      setState('empty');
       return;
     }
 
     const known = peekSymbolUrl(provider, id);
     if (known) {
       setUrl(known);
+      setState('ready');
       return;
     }
 
     let alive = true;
     setUrl(null);
-    resolveSymbolUrl(provider, id).then((next) => {
-      if (alive) setUrl(next);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [provider, id]);
+    setState('loading');
 
-  return url;
+    resolveSymbolUrl(provider, id).then((next) => {
+      if (!alive) return;
+      setUrl(next);
+      setState(next ? 'ready' : 'error');
+    });
+
+    return () => { alive = false; };
+  }, [provider, id, nonce]);
+
+  return { url, state, retry };
 }

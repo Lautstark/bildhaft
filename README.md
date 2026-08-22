@@ -182,6 +182,25 @@ node scripts/build-lexicon.mjs
 The generated JSON under `src/data/` is committed, so the build needs no codegen
 step.
 
+### Tests
+
+```bash
+npm run test:e2e
+```
+
+End-to-end tests run with Playwright against the real production bundle, and
+cover the paths that matter: translating a sentence, correcting a symbol and
+having that correction reused, adding/removing/reordering slots, persistence
+across a reload, print geometry in millimetres, export containing references
+only, and the mobile navigation.
+
+ARASAAC is mocked. The suite has to be deterministic enough to gate a deploy,
+and it should not hammer a free public service on every push. The trade-off is
+that a breaking change to the real API would not be caught here.
+
+CI runs the suite on every push and pull request, and **GitHub Pages only
+publishes if it passes.**
+
 ### Layout
 
 | Path | Contents |
