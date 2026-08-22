@@ -439,7 +439,6 @@ kbd {
 }
 
 .slot {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -486,15 +485,6 @@ kbd {
   font-size: 12px;
   font-weight: 550;
   color: var(--text);
-  pointer-events: none;
-}
-
-.slot__pen {
-  position: absolute;
-  top: 4px;
-  right: 5px;
-  font-size: 9px;
-  color: var(--accent-strong);
   pointer-events: none;
 }
 

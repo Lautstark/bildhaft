@@ -101,7 +101,6 @@ export function SentenceRow({
               }}
               onDragEnd={reset}
             >
-              {slot.manual && <span className="slot__pen" aria-hidden="true">✎</span>}
               <span className="slot__img">
                 <SymbolImage provider={provider} id={chosen} alt={slot.sourceToken} />
               </span>

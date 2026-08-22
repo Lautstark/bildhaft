@@ -38,7 +38,13 @@ export interface Slot {
   /** The portable concept key. This, not the image, is what travels. */
   concept: string;
   origin: SlotOrigin;
-  /** True once the user has overridden the automatic pick. */
+  /**
+   * True once the user has overridden the automatic pick, or added the slot by
+   * hand. Nothing renders this: clicking a slot is how you edit it, so a badge
+   * saying "you edited this" only repeats what the symbol already shows. Kept
+   * because it is provenance — it travels in exports and distinguishes a human
+   * choice from a pipeline guess.
+   */
   manual: boolean;
 
   /**
