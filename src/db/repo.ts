@@ -1,3 +1,4 @@
+import { clearAllProviderData } from '@lautstark/bildquelle';
 import { getDB } from './db.ts';
 import stopwordSeed from '../data/stopwords.json';
 import {
@@ -182,13 +183,12 @@ export async function libraryTotals(): Promise<{
  */
 export async function clearEverything(): Promise<void> {
   const db = await getDB();
-  const stores = [
-    'collections', 'sentences', 'overrides',
-    'arasaacSearch', 'arasaacImages', 'metacomIndex', 'handles',
-  ] as const;
+  const stores = ['collections', 'sentences', 'overrides'] as const;
   const tx = db.transaction(stores, 'readwrite');
   for (const store of stores) await tx.objectStore(store).clear();
   await tx.done;
+  // The cached symbols and the folder handle live in bildquelle's database now.
+  await clearAllProviderData();
 }
 
 /* ------------------------------------------------------------ overrides --- */

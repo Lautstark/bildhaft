@@ -58,6 +58,12 @@ bildhaft geht damit so um:
 Ohne eigene METACOM-Lizenz ist diese Funktion schlicht nicht nutzbar. Das ist
 Absicht.
 
+Beide Symbolquellen und die Regeln von oben liegen in
+[bildquelle](https://github.com/Lautstark/bildquelle) — einem kleinen Paket, das
+sich bildhaft mit [vorlaut](https://github.com/Lautstark/vorlaut) teilt. So steht
+die METACOM-Regel an einer Stelle, wird dort durchgesetzt und dort getestet,
+statt einmal pro Anwendung.
+
 ### Warum das architektonisch sicher ist
 
 Gespeichert werden **Symbol-Verweise, keine Bilder.** Ein gespeicherter Satz ist
@@ -211,11 +217,13 @@ nur veröffentlicht, wenn sie bestehen.**
 | Pfad | Inhalt |
 | --- | --- |
 | `src/core/` | Zuordnungs-Pipeline und Datenmodell, frei von UI |
-| `src/providers/` | Symbolquellen hinter einer gemeinsamen Schnittstelle |
 | `src/db/` | IndexedDB-Schema, Repository, Export/Import |
 | `src/ui/` | React-Komponenten |
 | `src/data/` | Erzeugte Lexikondaten |
 | `scripts/` | Lexikon-Generator und seine Wortlisten |
+
+Die Symbolquellen liegen nicht in diesem Repository. Sie kommen aus
+[bildquelle](https://github.com/Lautstark/bildquelle), auf einen Commit gepinnt.
 
 ### Technische Rahmenbedingungen
 

@@ -5,7 +5,7 @@ import { findSeparableMerge } from './separable.ts';
 import { splitCompound } from './compound.ts';
 import { newId } from '../db/repo.ts';
 import type { Candidate, Override, ProviderId, Slot, SlotOrigin } from './types.ts';
-import type { SymbolProvider } from '../providers/types.ts';
+import type { SymbolProvider } from '@lautstark/bildquelle';
 
 const SYNONYMS = synonymTable as Record<string, string[]>;
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AppSettings, Collection, Override, ProviderId } from '../core/types.ts';
-import { arasaac, metacom } from '../providers/registry.ts';
-import { MetacomProvider } from '../providers/metacom.ts';
+import { arasaac, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { clearSymbolCache } from './useSymbolUrl.ts';
 import { Dialog } from './Dialog.tsx';

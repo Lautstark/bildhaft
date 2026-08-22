@@ -9,13 +9,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false",
+    "typecheck": "tsc -b --force",
     "test:e2e": "npm run build && playwright test",
     "test:e2e:only": "playwright test"
   },
   "dependencies": {
+    "@lautstark/bildquelle": "github:Lautstark/bildquelle#d0649d29284b023fdd1c3b89e25baa3a19f6d10c",
     "idb": "^8.0.3",
-    "jszip": "^3.10.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
