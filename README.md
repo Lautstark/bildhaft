@@ -194,6 +194,23 @@ node scripts/build-lexicon.mjs
 The generated JSON under `src/data/` is committed, so the build needs no codegen
 step.
 
+### If the site moves, the data does not follow
+
+Browser storage is scoped to the origin. Changing the address the app is served
+from — transferring the repository, switching to a custom domain — leaves every
+collection, sentence and dictionary entry behind at the old origin. The app at
+the new address starts empty and cannot reach the old data, and no amount of
+reloading will bring it back.
+
+The old origin usually still responds, even if it now serves a 404, and that is
+enough to get the data out. `scripts/rescue-old-origin.js` is a read-only
+snippet: paste it into the developer console **at the old address**, and it
+downloads a normal bildhaft backup file that the new address can import through
+*Importieren*. Instructions are in the file's header comment.
+
+The real lesson is the one the backup section already makes: export before
+anything about the address changes.
+
 ### Measuring lexicon coverage
 
 ```bash
