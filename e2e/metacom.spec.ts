@@ -183,3 +183,47 @@ test('says so when the folder is indexed but unreadable', async ({ page }) => {
   await expect(page.locator('.banner')).toContainText('METACOM');
   await expect(page.getByRole('button', { name: 'Zugriff bestätigen' })).toBeVisible();
 });
+
+test('symbols come back once the folder can be read again', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Verwenden' }).click();
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+  await expect(page.locator('.row .slot img')).toHaveCount(3);
+
+  // Take the folder away, exactly as a reload does, and let the symbols give up.
+  await page.evaluate(async ({ folder, files }) => {
+    const db: IDBDatabase = await new Promise((resolve) => {
+      const request = indexedDB.open('bildquelle');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const entries = files
+      .filter((f) => f.endsWith('.png'))
+      .map((path) => {
+        const label = (path.split('/').pop() ?? path).replace(/\.png$/, '');
+        return { path, label, terms: [label.toLowerCase()] };
+      });
+    const tx = db.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
+    tx.objectStore('metacomIndex').put({ key: 'metacom', rootName: folder, entries, ts: Date.now() });
+    tx.objectStore('metacomHandles').put({ key: 'metacomDir', handle: { name: folder } });
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+  }, { folder: FOLDER, files: FILES });
+
+  await page.reload();
+  await expect(page.locator('.banner')).toBeVisible({ timeout: 25_000 });
+  await expect(page.locator('.row .slot img')).toHaveCount(0);
+
+  /*
+   * Give the folder back. The regression this guards: a symbol that has given up
+   * has the same provider and the same id as before, so nothing about it changes
+   * when access returns and it stays blank — which made the recovery button look
+   * broken even though the permission had been restored.
+   */
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+
+  await expect(page.locator('.row .slot img')).toHaveCount(3, { timeout: 20_000 });
+  await expect(page.locator('.banner')).toBeHidden();
+});

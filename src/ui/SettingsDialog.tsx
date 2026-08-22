@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AppSettings, Collection, Override, ProviderId } from '../core/types.ts';
 import { arasaac, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { deleteOverride, listOverrides } from '../db/repo.ts';
-import { clearSymbolCache } from './useSymbolUrl.ts';
+import { resetSymbolResolution } from './useSymbolUrl.ts';
 import { Dialog } from './Dialog.tsx';
 
 type Tab = 'symbols' | 'dictionary' | 'stopwords' | 'data';
@@ -67,7 +67,7 @@ function SymbolsTab({ settings, onChange, onProviderChanged, onNotify }: Props) 
     setBusy(true);
     try {
       await task();
-      clearSymbolCache('metacom');
+      resetSymbolResolution('metacom');
       onProviderChanged();
       onNotify(done);
     } catch (err) {

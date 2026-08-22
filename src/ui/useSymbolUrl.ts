@@ -47,6 +47,24 @@ export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<stri
   return task;
 }
 
+/*
+ * Bumped when a source becomes usable again. Every mounted symbol watches it,
+ * because nothing else about them changes: same provider, same id. Without it a
+ * symbol that gave up once stays given up for the life of the page, which made
+ * the "confirm access" button appear to do nothing at all.
+ */
+let generation = 0;
+const resetListeners = new Set<() => void>();
+
+/** Makes every mounted symbol try again. */
+export function resetSymbolResolution(provider?: ProviderId): void {
+  if (provider) clearSymbolCache(provider);
+  else cache.clear();
+  pending.clear();
+  generation += 1;
+  for (const listener of resetListeners) listener();
+}
+
 /** Dropped when a provider is reconfigured and its object URLs are revoked. */
 export function clearSymbolCache(provider: ProviderId): void {
   const prefix = `${provider}:`;
@@ -80,8 +98,15 @@ export function useSymbolUrl(provider: ProviderId, id: string | null | undefined
     return peekSymbolUrl(provider, id) ? 'ready' : 'loading';
   });
   const [nonce, setNonce] = useState(0);
+  const [reset, setReset] = useState(generation);
 
   const retry = useCallback(() => setNonce((n) => n + 1), []);
+
+  useEffect(() => {
+    const listener = () => setReset(generation);
+    resetListeners.add(listener);
+    return () => { resetListeners.delete(listener); };
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -108,7 +133,7 @@ export function useSymbolUrl(provider: ProviderId, id: string | null | undefined
     });
 
     return () => { alive = false; };
-  }, [provider, id, nonce]);
+  }, [provider, id, nonce, reset]);
 
   return { url, state, retry };
 }

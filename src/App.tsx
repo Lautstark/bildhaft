@@ -26,6 +26,7 @@ import { SentenceRow } from './ui/SentenceRow.tsx';
 import { SettingsDialog } from './ui/SettingsDialog.tsx';
 import { Sidebar } from './ui/Sidebar.tsx';
 import { SlotPicker } from './ui/SlotPicker.tsx';
+import { resetSymbolResolution } from './ui/useSymbolUrl.ts';
 import { TopBar } from './ui/TopBar.tsx';
 import { MOBILE_QUERY, useMediaQuery } from './ui/useMediaQuery.ts';
 
@@ -101,7 +102,25 @@ export default function App() {
     })();
   }, []);
 
-  useEffect(() => metacom.subscribe(() => forceRender((n) => n + 1)), []);
+  /*
+   * Whenever METACOM becomes usable again — a folder picked, a zip read,
+   * permission re-granted — every symbol has to be told to try again. Nothing
+   * about a slot changes when access returns, so without this the ones that had
+   * already given up stay blank and the recovery looks like it did nothing.
+   */
+  useEffect(() => {
+    let wasReady = metacom.isReady();
+    return metacom.subscribe(() => {
+      const nowReady = metacom.isReady();
+      if (nowReady && !wasReady) {
+        resetSymbolResolution('metacom');
+        // Forget the old failures too, or the warning outlives the problem.
+        setUnreadable(0);
+      }
+      wasReady = nowReady;
+      forceRender((n) => n + 1);
+    });
+  }, []);
 
   // A stale tab holding an older database version blocks the upgrade here, which
   // would otherwise present as symbols stuck loading with no explanation.
@@ -505,7 +524,7 @@ export default function App() {
               <div className="banner" role="alert">
                 <span style={{ flex: 1 }}>
                   {providerId === 'metacom'
-                    ? 'bildhaft kann deinen METACOM-Ordner gerade nicht lesen. Browser geben den Zugriff auf einen Ordner nicht dauerhaft frei — nach dem Neuladen muss er einmal bestätigt werden. Deine Sätze bleiben erhalten.'
+                    ? 'bildhaft kann deinen METACOM-Ordner gerade nicht lesen. Bestätige den Zugriff einmal — wähle dabei „Bei jedem Besuch zulassen“, dann fragt der Browser künftig nicht mehr. Deine Sätze bleiben ohnehin erhalten.'
                     : 'Die aktive Symbolquelle ist gerade nicht verfügbar.'}
                 </span>
                 {providerId === 'metacom' && (
@@ -519,6 +538,9 @@ export default function App() {
                       if (!ok && MetacomProvider.supportsPersistentPicker) {
                         await metacom.pickDirectory().catch(() => undefined);
                       }
+                      // Re-granting alone changes nothing on screen: the symbols
+                      // already gave up and nothing about them has changed.
+                      resetSymbolResolution('metacom');
                       setUnreadable(0);
                       forceRender((n) => n + 1);
                     }}
