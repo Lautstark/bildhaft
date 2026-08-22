@@ -200,24 +200,6 @@ node scripts/build-lexicon.mjs
 Die erzeugten JSON-Dateien unter `src/data/` sind eingecheckt, damit der Build
 keinen Codegenerierungs-Schritt braucht.
 
-### Zieht die Seite um, ziehen die Daten nicht mit
-
-Browser-Speicher gehört zur Adresse (Origin). Wird die Anwendung künftig unter
-einer anderen Adresse ausgeliefert — Repository verschoben, eigene Domain —,
-bleiben Sammlungen, Sätze und Wörterbuch an der alten Adresse zurück. Unter der
-neuen Adresse startet die Anwendung leer und kommt an die alten Daten nicht
-heran; Neuladen hilft nicht.
-
-Die alte Adresse antwortet meist weiterhin, selbst wenn dort nur noch eine
-404-Seite steht — das genügt, um die Daten herauszuholen.
-`scripts/rescue-old-origin.js` ist ein rein lesendes Schnipsel: in der
-Entwicklerkonsole **an der alten Adresse** einfügen, es lädt eine normale
-bildhaft-Sicherung herunter, die sich an der neuen Adresse über *Importieren*
-einspielen lässt. Die Anleitung steht im Kopf der Datei.
-
-Die eigentliche Lehre ist die aus dem Sicherungs-Abschnitt: exportieren, bevor
-sich an der Adresse etwas ändert.
-
 ### Abdeckung des Lexikons messen
 
 ```bash

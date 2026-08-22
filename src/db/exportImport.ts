@@ -1,5 +1,5 @@
 import {
-  BACKUP_FORMAT, BACKUP_VERSION, EXPORT_FORMAT, EXPORT_VERSION, LEGACY_EXPORT_FORMAT,
+  BACKUP_FORMAT, BACKUP_VERSION, EXPORT_FORMAT, EXPORT_VERSION,
   type BackupExport, type Collection, type CollectionExport, type Override, type Sentence,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
@@ -78,33 +78,29 @@ interface AnyExport {
   format?: string;
   version?: number;
   collection?: Partial<Collection>;
-  /** v1 field name. */
-  session?: Partial<Collection>;
   /** Full-backup field. */
   collections?: Collection[];
-  sentences?: (Sentence & { sessionId?: string })[];
+  sentences?: Sentence[];
   overrides?: Override[];
 }
 
 /**
  * Imports a collection file. Always creates a NEW collection with fresh ids rather
  * than overwriting anything: importing must never be able to destroy existing work.
- *
- * Accepts v1 files, which used the term "session" and carried a `reviewed` flag.
  */
 export async function importCollectionFile(file: File): Promise<ImportResult> {
   const parsed = JSON.parse(await file.text()) as AnyExport;
 
   if (parsed?.format === BACKUP_FORMAT) return importBackup(parsed);
 
-  if (parsed?.format !== EXPORT_FORMAT && parsed?.format !== LEGACY_EXPORT_FORMAT) {
+  if (parsed?.format !== EXPORT_FORMAT) {
     throw new Error('Das ist keine bildhaft-Datei.');
   }
   if (typeof parsed.version !== 'number' || parsed.version > EXPORT_VERSION) {
     throw new Error('Diese Datei stammt aus einer neueren Version von bildhaft.');
   }
 
-  const source = parsed.collection ?? parsed.session;
+  const source = parsed.collection;
   if (!source || !Array.isArray(parsed.sentences)) {
     throw new Error('Die Datei ist unvollständig.');
   }
@@ -113,11 +109,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   const collectionId = newId();
 
   const sentences: Sentence[] = parsed.sentences.map((s) => {
-    const next = { ...s, id: newId(), collectionId, createdAt: s.createdAt ?? now, updatedAt: now };
-    delete next.sessionId;
-    delete (next as { reviewed?: boolean }).reviewed;
-    for (const slot of next.slots ?? []) delete (slot as { manual?: boolean }).manual;
-    return next;
+    return { ...s, id: newId(), collectionId, createdAt: s.createdAt ?? now, updatedAt: now };
   });
 
   const collection: Collection = {
@@ -178,7 +170,6 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
       createdAt: source.createdAt ?? now,
       updatedAt: now,
     };
-    delete (sentence as { sessionId?: string }).sessionId;
     sentences.push(sentence);
     byCollection.get(target)!.sentenceIds.push(sentence.id);
   }

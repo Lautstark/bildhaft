@@ -23,19 +23,6 @@ const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<BildhaftDB>> | null = null;
 
-/** Rescued from the v2 database during the upgrade. See the v3 step below. */
-let legacyMetacomHandle: unknown = null;
-
-/**
- * The METACOM folder handle from before the move to bildquelle, if this browser
- * had one. Returns it once and forgets it: whoever takes it owns it.
- */
-export function takeLegacyMetacomHandle(): FileSystemDirectoryHandle | null {
-  const handle = legacyMetacomHandle as FileSystemDirectoryHandle | null;
-  legacyMetacomHandle = null;
-  return handle;
-}
-
 /** Set when another tab is holding an older version of the database open. */
 let blockedByOtherTab = false;
 const blockedListeners = new Set<() => void>();
@@ -59,86 +46,15 @@ export function getDB(): Promise<IDBPDatabase<BildhaftDB>> {
   if (!dbPromise) {
     let opened: Promise<IDBPDatabase<BildhaftDB>>;
     opened = openDB<BildhaftDB>(DB_NAME, DB_VERSION, {
-      async upgrade(db, oldVersion, _newVersion, tx) {
-        if (oldVersion < 1) {
-          createStores(db);
-          return;
-        }
-
-        if (oldVersion < 2) {
-          /*
-           * v1 -> v2. "Sitzung" became "Sammlung", and the reviewed/archived
-           * flags were dropped. Existing work is migrated rather than discarded.
-           *
-           * Only transaction-derived promises are awaited here — awaiting anything
-           * else would let the versionchange transaction commit underneath us.
-           */
-          const legacy = tx as unknown as {
-            objectStore(name: string): {
-              getAll(): Promise<Record<string, unknown>[]>;
-              put(value: unknown): Promise<unknown>;
-              deleteIndex(name: string): void;
-              createIndex(name: string, path: string): unknown;
-              indexNames: DOMStringList;
-            };
-          };
-
-          const collections = db.createObjectStore('collections', { keyPath: 'id' });
-
-          if (db.objectStoreNames.contains('sessions' as never)) {
-            for (const old of await legacy.objectStore('sessions').getAll()) {
-              await collections.put({
-                id: old.id as string,
-                name: (old.name as string) ?? 'Sammlung',
-                sentenceIds: (old.sentenceIds as string[]) ?? [],
-                createdAt: (old.createdAt as number) ?? Date.now(),
-                updatedAt: (old.updatedAt as number) ?? Date.now(),
-              });
-            }
-            db.deleteObjectStore('sessions' as never);
-          }
-
-          const sentences = legacy.objectStore('sentences');
-          if (sentences.indexNames.contains('bySession')) sentences.deleteIndex('bySession');
-
-          for (const row of await sentences.getAll()) {
-            const next: Record<string, unknown> = {
-              ...row,
-              collectionId: row.collectionId ?? row.sessionId,
-            };
-            delete next.sessionId;
-            delete next.reviewed;
-            await sentences.put(next);
-          }
-
-          sentences.createIndex('byCollection', 'collectionId');
-        }
-
-        if (oldVersion < 3) {
-          /*
-           * v2 -> v3. The symbol caches move to bildquelle's own database.
-           *
-           * The ARASAAC stores are pure caches and simply go; they refill on
-           * first use. The METACOM folder handle is not a cache — losing it
-           * means asking the user to pick their licensed folder all over again —
-           * so it is carried out of the transaction in memory and handed to
-           * bildquelle on startup. The filename index is deliberately *not*
-           * carried over: bildquelle rebuilds it from the folder itself, which
-           * keeps that data something only it ever produces.
-           */
-          const legacy = tx as unknown as {
-            objectStore(name: string): { get(key: string): Promise<{ handle?: unknown } | undefined> };
-          };
-
-          if (db.objectStoreNames.contains('handles' as never)) {
-            const row = await legacy.objectStore('handles').get('metacomDir');
-            legacyMetacomHandle = row?.handle ?? null;
-          }
-
-          for (const name of ['arasaacSearch', 'arasaacImages', 'metacomIndex', 'handles'] as const) {
-            if (db.objectStoreNames.contains(name as never)) db.deleteObjectStore(name as never);
-          }
-        }
+      /*
+       * No migrations. This is a single-user tool, and carrying schema history
+       * forward cost more than the data was worth: every version bump added a
+       * branch, and two of them shipped bugs. An older database is simply
+       * rebuilt empty, which is the behaviour the one user asked for.
+       */
+      upgrade(db) {
+        for (const name of [...db.objectStoreNames]) db.deleteObjectStore(name);
+        createStores(db);
       },
 
       /*

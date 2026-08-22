@@ -5,7 +5,7 @@ import type {
 import { normalizeInput } from './core/normalize.ts';
 import { buildSlots, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
-import { isBlockedByOtherTab, onBlockedChange, takeLegacyMetacomHandle } from './db/db.ts';
+import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
 import {
   clearEverything, countSentences, createCollection, defaultCollectionName,
   deleteCollectionDeep, deleteSentence, findByNormalized, libraryTotals,
@@ -97,11 +97,7 @@ export default function App() {
       setCollections(all);
       setActiveId(wanted.id);
 
-      // A folder picked before the move to bildquelle is handed over once, so
-      // nobody has to go looking for their METACOM directory a second time.
-      const legacy = takeLegacyMetacomHandle();
-      const attach = legacy ? metacom.useDirectoryHandle(legacy) : metacom.restore();
-      attach.catch(() => undefined);
+      metacom.restore().catch(() => undefined);
     })();
   }, []);
 

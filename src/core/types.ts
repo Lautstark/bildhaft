@@ -131,8 +131,6 @@ export interface AppSettings {
 /* --------------------------------------------------------------- export --- */
 
 export const EXPORT_FORMAT = 'bildhaft.collection' as const;
-/** v1 used the term "session"; importing still accepts those files. */
-export const LEGACY_EXPORT_FORMAT = 'bildhaft.session' as const;
 export const EXPORT_VERSION = 2 as const;
 
 /** Whole-library backup: every collection, sentence and dictionary entry. */
