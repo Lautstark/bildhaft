@@ -4,7 +4,7 @@ import type {
 } from './core/types.ts';
 import { normalizeInput } from './core/normalize.ts';
 import { buildSlots, resolveSlotsForProvider } from './core/match.ts';
-import { getProvider, metacom } from '@lautstark/bildquelle';
+import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
 import {
   clearEverything, countSentences, createCollection, defaultCollectionName,
@@ -482,6 +482,36 @@ export default function App() {
           <TopBar onToggleNav={toggleSidebar} title={activeCollection?.name ?? 'bildhaft'} />
 
           <div className="main__inner">
+            {/*
+              * The active source cannot answer. For METACOM this is the normal
+              * state after anything that resets a browser's per-site permissions
+              * — a new address, cleared site data — because the folder grant is
+              * scoped to the site, not to the app. Without this the only signal
+              * was "(nicht bereit)" in grey next to the composer, while every row
+              * showed broken symbols and offered nothing to click.
+              */}
+            {!provider.isReady() && (
+              <div className="banner" role="alert">
+                <span style={{ flex: 1 }}>
+                  {providerId === 'metacom'
+                    ? 'bildhaft hat keinen Zugriff mehr auf deinen METACOM-Ordner. Browser merken sich diesen Zugriff pro Adresse — nach einem Umzug oder gelöschten Website-Daten muss er einmal neu erteilt werden. Deine Sätze bleiben erhalten.'
+                    : 'Die aktive Symbolquelle ist gerade nicht verfügbar.'}
+                </span>
+                {providerId === 'metacom' && MetacomProvider.supportsPersistentPicker && (
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={() => metacom.pickDirectory().catch(() => undefined)}
+                  >
+                    Ordner wählen
+                  </button>
+                )}
+                <button type="button" className="btn btn--sm" onClick={() => setSettingsOpen(true)}>
+                  Einstellungen
+                </button>
+              </div>
+            )}
+
             {dbBlocked && (
               <div className="banner" role="alert">
                 bildhaft ist noch in einem anderen Tab geöffnet und blockiert die
