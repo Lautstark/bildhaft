@@ -1,0 +1,229 @@
+import { getDB } from './db.ts';
+import stopwordSeed from '../data/stopwords.json';
+import {
+  DEFAULT_PRINT_SETTINGS,
+  type AppSettings, type Collection, type Override, type ProviderId, type Sentence,
+} from '../core/types.ts';
+
+const SETTINGS_KEY = 'app';
+
+export const newId = (): string =>
+  globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+/* ------------------------------------------------------------- settings --- */
+
+export function defaultSettings(): AppSettings {
+  return {
+    activeProvider: 'arasaac',
+    stopwords: [...(stopwordSeed as string[])],
+    print: { ...DEFAULT_PRINT_SETTINGS },
+    lastCollectionId: null,
+    sidebarOpen: false,
+  };
+}
+
+export async function loadSettings(): Promise<AppSettings> {
+  const db = await getDB();
+  const stored = await db.get('settings', SETTINGS_KEY);
+  // Merge so settings added in later versions get their defaults.
+  return stored
+    ? { ...defaultSettings(), ...stored, print: { ...DEFAULT_PRINT_SETTINGS, ...stored.print } }
+    : defaultSettings();
+}
+
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  const db = await getDB();
+  await db.put('settings', settings, SETTINGS_KEY);
+}
+
+/* ---------------------------------------------------------- collections --- */
+
+export async function listCollections(): Promise<Collection[]> {
+  const db = await getDB();
+  const all = await db.getAll('collections');
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function getCollection(id: string): Promise<Collection | undefined> {
+  return (await getDB()).get('collections', id);
+}
+
+export function defaultCollectionName(): string {
+  return `Sammlung vom ${new Date().toLocaleDateString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  })}`;
+}
+
+export async function createCollection(name?: string): Promise<Collection> {
+  const now = Date.now();
+  const collection: Collection = {
+    id: newId(),
+    name: name?.trim() || defaultCollectionName(),
+    sentenceIds: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  const db = await getDB();
+  await db.put('collections', collection);
+  return collection;
+}
+
+export async function putCollection(collection: Collection): Promise<void> {
+  const db = await getDB();
+  await db.put('collections', { ...collection, updatedAt: Date.now() });
+}
+
+export async function renameCollection(id: string, name: string): Promise<void> {
+  const collection = await getCollection(id);
+  if (!collection) return;
+  await putCollection({ ...collection, name: name.trim() || collection.name });
+}
+
+/** Deletes a collection AND its sentences. Only ever called behind a named confirm. */
+export async function deleteCollectionDeep(id: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['collections', 'sentences'], 'readwrite');
+  const sentenceIds = await tx.objectStore('sentences').index('byCollection').getAllKeys(id);
+  for (const key of sentenceIds) await tx.objectStore('sentences').delete(key);
+  await tx.objectStore('collections').delete(id);
+  await tx.done;
+}
+
+/* ------------------------------------------------------------ sentences --- */
+
+export async function listSentences(collectionId: string): Promise<Sentence[]> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('sentences', 'byCollection', collectionId);
+  return all.sort((a, b) => b.createdAt - a.createdAt); // newest on top
+}
+
+export async function putSentence(sentence: Sentence): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['sentences', 'collections'], 'readwrite');
+  await tx.objectStore('sentences').put({ ...sentence, updatedAt: Date.now() });
+
+  const collections = tx.objectStore('collections');
+  const collection = await collections.get(sentence.collectionId);
+  if (collection && !collection.sentenceIds.includes(sentence.id)) {
+    await collections.put({
+      ...collection,
+      sentenceIds: [...collection.sentenceIds, sentence.id],
+      updatedAt: Date.now(),
+    });
+  }
+  await tx.done;
+}
+
+export async function deleteSentence(id: string): Promise<void> {
+  const db = await getDB();
+  const sentence = await db.get('sentences', id);
+  const tx = db.transaction(['sentences', 'collections'], 'readwrite');
+  await tx.objectStore('sentences').delete(id);
+  if (sentence) {
+    const collections = tx.objectStore('collections');
+    const collection = await collections.get(sentence.collectionId);
+    if (collection) {
+      await collections.put({
+        ...collection,
+        sentenceIds: collection.sentenceIds.filter((s) => s !== id),
+        updatedAt: Date.now(),
+      });
+    }
+  }
+  await tx.done;
+}
+
+/**
+ * "You have translated this line before." Looks across every collection, because
+ * the value of a past translation is not confined to the book it came from.
+ */
+export async function findByNormalized(normalized: string): Promise<Sentence[]> {
+  const db = await getDB();
+  const hits = await db.getAllFromIndex('sentences', 'byNormalized', normalized);
+  return hits.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Flat substring search across every sentence the user has ever made. */
+export async function searchSentences(query: string, limit = 60): Promise<Sentence[]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const db = await getDB();
+  const out: Sentence[] = [];
+  let cursor = await db.transaction('sentences').store.index('byUpdated').openCursor(null, 'prev');
+  while (cursor && out.length < limit) {
+    if (cursor.value.normalizedInput.includes(q)) out.push(cursor.value);
+    cursor = await cursor.continue();
+  }
+  return out;
+}
+
+export async function countSentences(collectionId: string): Promise<number> {
+  const db = await getDB();
+  return db.countFromIndex('sentences', 'byCollection', collectionId);
+}
+
+/** Counts used by the "delete everything" confirmation, so it can name what goes. */
+export async function libraryTotals(): Promise<{
+  collections: number; sentences: number; overrides: number;
+}> {
+  const db = await getDB();
+  return {
+    collections: await db.count('collections'),
+    sentences: await db.count('sentences'),
+    overrides: await db.count('overrides'),
+  };
+}
+
+/**
+ * Wipes everything: collections, sentences, the personal dictionary and the
+ * cached symbol data. Only ever reachable behind a confirmation that spells out
+ * the counts. The METACOM folder handle goes too, so nothing is left pointing at
+ * the user's disk.
+ */
+export async function clearEverything(): Promise<void> {
+  const db = await getDB();
+  const stores = [
+    'collections', 'sentences', 'overrides',
+    'arasaacSearch', 'arasaacImages', 'metacomIndex', 'handles',
+  ] as const;
+  const tx = db.transaction(stores, 'readwrite');
+  for (const store of stores) await tx.objectStore(store).clear();
+  await tx.done;
+}
+
+/* ------------------------------------------------------------ overrides --- */
+
+const overrideKey = (provider: ProviderId, token: string) => `${provider}:${token.toLowerCase()}`;
+
+export async function putOverride(
+  provider: ProviderId, token: string, symbolId: string, label: string,
+): Promise<void> {
+  const db = await getDB();
+  await db.put('overrides', {
+    key: overrideKey(provider, token),
+    provider,
+    token: token.toLowerCase(),
+    symbolId,
+    label,
+    updatedAt: Date.now(),
+  });
+}
+
+export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('overrides', overrideKey(provider, token));
+}
+
+export async function listOverrides(provider?: ProviderId): Promise<Override[]> {
+  const db = await getDB();
+  const all = provider
+    ? await db.getAllFromIndex('overrides', 'byProvider', provider)
+    : await db.getAll('overrides');
+  return all.sort((a, b) => a.token.localeCompare(b.token, 'de'));
+}
+
+/** Loads the whole override table into a map — small, and consulted per token. */
+export async function overrideMap(provider: ProviderId): Promise<Map<string, Override>> {
+  const list = await listOverrides(provider);
+  return new Map(list.map((o) => [o.token, o]));
+}
