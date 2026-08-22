@@ -28,9 +28,9 @@ export function actionMenu(label: string, items: () => MenuItem[]): HTMLElement 
   };
 
   const open = () => {
-    pop = el('div', { class: 'menu__pop', attrs: { role: 'menu' } },
+    pop = el('div', { class: 'menu', attrs: { role: 'menu' } },
       ...items().map((item) => el('button', {
-        class: `menu__item${item.danger ? ' menu__item--danger' : ''}`,
+        class: item.danger ? 'danger' : undefined,
         text: item.label,
         attrs: { type: 'button', role: 'menuitem', disabled: item.disabled ?? false },
         on: { click: () => { close(); item.onSelect(); } },
@@ -43,11 +43,11 @@ export function actionMenu(label: string, items: () => MenuItem[]): HTMLElement 
   };
 
   const trigger = el('button', {
-    class: 'btn btn--quiet btn--icon',
+    class: 'btn quiet icon',
     attrs: { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': label, title: label },
     on: { click: () => (pop ? close() : open()) },
   }, icons.dots());
 
-  const root = el('div', { class: 'menu' }, trigger);
+  const root = el('div', { class: 'menu-anchor' }, trigger);
   return root;
 }

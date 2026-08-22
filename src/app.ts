@@ -82,7 +82,7 @@ export function mountApp(root: HTMLElement): void {
 
   /* ------------------------------------------------------------ chrome --- */
 
-  const loading = el('div', { class: 'empty-state' }, el('span', { class: 'spinner' }));
+  const loading = el('div', { class: 'loading-state' }, el('span', { class: 'spinner' }));
 
   const sidebarView = sidebar({
     onSelect: (id) => { setActive(id); query = ''; closeNavOnMobile(); render(); },
@@ -107,7 +107,7 @@ export function mountApp(root: HTMLElement): void {
 
   const rail = el('div', { class: 'rail' },
     el('button', {
-      class: 'btn btn--quiet btn--icon',
+      class: 'btn quiet icon',
       attrs: { type: 'button', title: 'Seitenleiste einblenden' },
       on: { click: () => toggleSidebar() },
     }, icons.menu()),
@@ -141,7 +141,7 @@ export function mountApp(root: HTMLElement): void {
   const rowCount = el('span', { class: 'small faint', style: { whiteSpace: 'nowrap' } });
 
   const printAll = el('button', {
-    class: 'btn btn--quiet btn--sm',
+    class: 'btn quiet sm',
     text: 'Drucken',
     attrs: { type: 'button' },
     on: { click: () => openPrint(sentences.map((s) => s.id)) },
@@ -156,8 +156,9 @@ export function mountApp(root: HTMLElement): void {
   );
 
   const rowsHost = el('div', { class: 'rows' });
-  const emptyState = el('div', { class: 'empty-state' },
-    el('p', { style: { margin: '0' }, html: 'Tippe oben einen Satz und drücke <kbd>Enter</kbd>.' }));
+  const emptyState = el('div', { class: 'empty' },
+    el('b', { text: 'Noch keine Sätze' }),
+    el('small', { html: 'Tippe oben einen Satz und drücke <kbd>Enter</kbd>.' }));
 
   const inner = el('div', { class: 'main__inner' },
     composerView.node, collectionHead, rowsHost);
@@ -184,7 +185,7 @@ export function mountApp(root: HTMLElement): void {
 
   const unusableMessage = el('span', { style: { flex: '1' } });
   const regrant = el('button', {
-    class: 'btn btn--sm btn--primary',
+    class: 'btn sm primary',
     text: 'Zugriff bestätigen',
     attrs: { type: 'button' },
     on: {
@@ -205,7 +206,7 @@ export function mountApp(root: HTMLElement): void {
   });
   const unusableBanner = el('div', { class: 'banner', attrs: { role: 'alert' } },
     unusableMessage, regrant,
-    el('button', { class: 'btn btn--sm', text: 'Einstellungen',
+    el('button', { class: 'btn sm', text: 'Einstellungen',
       attrs: { type: 'button' }, on: { click: () => openAppSettings() } }),
   );
 

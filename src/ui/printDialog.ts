@@ -36,7 +36,7 @@ export function openPrintDialog(options: PrintOptions): void {
 
   const controls = el('div');
   const meta = el('span', { class: 'small faint' });
-  const printButton = el('button', { class: 'btn btn--primary', attrs: { type: 'button' },
+  const printButton = el('button', { class: 'btn primary', attrs: { type: 'button' },
     on: { click: () => void run() } });
 
   const dialog = openDialog({

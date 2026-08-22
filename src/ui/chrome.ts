@@ -57,7 +57,7 @@ export function topBar(onToggleNav: () => void): { node: HTMLElement; setTitle(t
   const title = el('span', { class: 'topbar__title' });
   const node = el('header', { class: 'topbar' },
     el('button', {
-      class: 'btn btn--quiet btn--icon',
+      class: 'btn quiet icon',
       attrs: { type: 'button', 'aria-label': 'Menü öffnen' },
       on: { click: onToggleNav },
     }, icons.menuMobile()),
@@ -115,7 +115,7 @@ export function sidebar(handlers: SidebarHandlers): {
       logo(),
       el('h1', { text: 'bildhaft' }),
       el('button', {
-        class: 'btn btn--quiet btn--icon',
+        class: 'btn quiet icon',
         attrs: { type: 'button', title: 'Seitenleiste ausblenden' },
         on: { click: handlers.onCollapse },
       }, icons.chevronLeft()),
@@ -124,9 +124,9 @@ export function sidebar(handlers: SidebarHandlers): {
     listSection,
     el('div', { class: 'sidebar__section',
       style: { marginTop: 'auto', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
-      el('button', { class: 'btn btn--quiet btn--sm', text: 'Einstellungen',
+      el('button', { class: 'btn quiet sm', text: 'Einstellungen',
         attrs: { type: 'button' }, on: { click: handlers.onOpenSettings } }),
-      el('label', { class: 'btn btn--quiet btn--sm', text: 'Importieren', style: { cursor: 'pointer' } },
+      el('label', { class: 'btn quiet sm', text: 'Importieren', style: { cursor: 'pointer' } },
         importInput),
     ),
   );
@@ -166,7 +166,7 @@ export function sidebar(handlers: SidebarHandlers): {
           el('span', { class: 'list__count', text: String(state.counts[collection.id] ?? 0) }),
         )),
       ),
-      el('button', { class: 'btn btn--quiet btn--sm', text: '+ Neue Sammlung',
+      el('button', { class: 'btn quiet sm', text: '+ Neue Sammlung',
         style: { marginTop: '6px' }, attrs: { type: 'button' }, on: { click: handlers.onNew } }),
     );
   }

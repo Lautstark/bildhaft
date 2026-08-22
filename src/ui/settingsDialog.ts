@@ -89,7 +89,7 @@ export function openSettings(options: SettingsOptions): void {
       input.setAttribute('directory', '');
       input.setAttribute('multiple', '');
     }
-    return el('label', { class: 'btn btn--sm', text: label, style: { cursor: 'pointer' } }, input);
+    return el('label', { class: 'btn sm', text: label, style: { cursor: 'pointer' } }, input);
   }
 
   function symbolsTab(): Node[] {
@@ -106,7 +106,7 @@ export function openSettings(options: SettingsOptions): void {
           el('strong', { text: 'ARASAAC' }),
           el('span', { class: 'tag', text: 'Standard' }),
           settings.activeProvider !== 'arasaac'
-            ? el('button', { class: 'btn btn--sm', text: 'Verwenden', attrs: { type: 'button' },
+            ? el('button', { class: 'btn sm', text: 'Verwenden', attrs: { type: 'button' },
                 on: { click: () => select('arasaac') } })
             : null,
         ),
@@ -120,7 +120,7 @@ export function openSettings(options: SettingsOptions): void {
           el('strong', { text: 'METACOM' }),
           metacom.isReady() ? el('span', { class: 'tag', text: `${metacom.symbolCount} Symbole` }) : null,
           settings.activeProvider !== 'metacom' && metacom.isReady()
-            ? el('button', { class: 'btn btn--sm', text: 'Verwenden', attrs: { type: 'button' },
+            ? el('button', { class: 'btn sm', text: 'Verwenden', attrs: { type: 'button' },
                 on: { click: () => select('metacom') } })
             : null,
         ),
@@ -136,7 +136,7 @@ export function openSettings(options: SettingsOptions): void {
 
         el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
           MetacomProvider.supportsPersistentPicker
-            ? el('button', { class: 'btn btn--sm', text: 'Symbolordner wählen',
+            ? el('button', { class: 'btn sm', text: 'Symbolordner wählen',
                 attrs: { type: 'button', disabled: busy },
                 on: { click: () => void run(() => metacom.pickDirectory(), 'METACOM-Ordner eingelesen.') } })
             : fileButton('Symbolordner wählen', null, true,
@@ -146,13 +146,13 @@ export function openSettings(options: SettingsOptions): void {
             (files) => void run(() => metacom.useZip(files[0]), 'ZIP eingelesen.')),
 
           metacom.isReady()
-            ? el('button', { class: 'btn btn--sm', text: 'Neu einlesen',
+            ? el('button', { class: 'btn sm', text: 'Neu einlesen',
                 attrs: { type: 'button', disabled: busy },
                 on: { click: () => void run(() => metacom.rebuildIndex(), 'Index neu aufgebaut.') } })
             : null,
 
           status.kind !== 'needs-setup'
-            ? el('button', { class: 'btn btn--sm btn--danger', text: 'Ordner vergessen',
+            ? el('button', { class: 'btn sm destructive', text: 'Ordner vergessen',
                 attrs: { type: 'button', disabled: busy },
                 on: { click: () => void run(async () => {
                   await metacom.forget();
@@ -187,7 +187,7 @@ export function openSettings(options: SettingsOptions): void {
           { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 2px' } },
           el('b', { text: override.token, style: { minWidth: '140px' } }),
           el('span', { class: 'small muted', text: `→ ${override.label}`, style: { flex: '1' } }),
-          el('button', { class: 'btn btn--danger btn--sm', text: 'Entfernen', attrs: { type: 'button' },
+          el('button', { class: 'btn destructive sm', text: 'Entfernen', attrs: { type: 'button' },
             on: { click: async () => { await deleteOverride(override.provider, override.token); reload(); } } }),
         )));
       });
@@ -212,7 +212,7 @@ export function openSettings(options: SettingsOptions): void {
         + 'Liste, weil sie Bedeutung tragen. Ein Wort pro Zeile.' }),
       area,
       el('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } },
-        el('button', { class: 'btn btn--primary btn--sm', text: 'Speichern', attrs: { type: 'button' },
+        el('button', { class: 'btn primary sm', text: 'Speichern', attrs: { type: 'button' },
           on: { click: () => {
             const words = [...new Set(area.value.split(/[\n,]/).map((w) => w.trim().toLowerCase()).filter(Boolean))]
               .sort((a, b) => a.localeCompare(b, 'de'));
@@ -231,7 +231,7 @@ export function openSettings(options: SettingsOptions): void {
         '<strong>Sicherung.</strong> bildhaft speichert alles im Browser. Wird der '
         + 'Browser-Speicher gelöscht, ist die Arbeit weg. Eine Sicherung enthält alle '
         + 'Sammlungen und dein Wörterbuch — nur Symbol-Verweise, keine Bilder.' }),
-      el('button', { class: 'btn btn--primary btn--sm', text: 'Alles exportieren',
+      el('button', { class: 'btn primary sm', text: 'Alles exportieren',
         attrs: { type: 'button' }, on: { click: options.onExportAll } }),
       el('p', { class: 'small faint', style: { margin: '8px 0 0' }, html:
         'Einzelne Sammlungen exportierst du über das Menü <strong>⋯</strong> neben ihrem Namen.' }),
@@ -239,7 +239,7 @@ export function openSettings(options: SettingsOptions): void {
       el('p', { class: 'small faint', style: { margin: '0 0 10px' }, text:
         'Setzt bildhaft vollständig zurück: alle Sammlungen, alle Zeilen, dein Wörterbuch '
         + 'und die zwischengespeicherten Symbole. Das lässt sich nicht rückgängig machen.' }),
-      el('button', { class: 'btn btn--danger btn--sm', text: 'Alle Daten löschen',
+      el('button', { class: 'btn destructive sm', text: 'Alle Daten löschen',
         attrs: { type: 'button' }, on: { click: () => { close(); options.onClearAll(); } } }),
     ];
   }

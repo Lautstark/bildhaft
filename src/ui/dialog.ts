@@ -21,7 +21,7 @@ export interface OpenDialog {
  * caller owns the handle and closes it.
  */
 export function openDialog(options: DialogOptions): OpenDialog {
-  const body = el('div', { class: 'dialog__body' }, ...options.body);
+  const body = el('div', { class: 'body' }, ...options.body);
 
   const close = () => {
     document.removeEventListener('keydown', onKey);
@@ -34,19 +34,19 @@ export function openDialog(options: DialogOptions): OpenDialog {
   };
 
   const panel = el('div',
-    { class: `dialog${options.wide ? ' dialog--wide' : ''}`,
+    { class: `sheet${options.wide ? ' wide' : ''}`,
       attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': options.title } },
-    el('div', { class: 'dialog__head' },
+    el('div', { class: 'head' },
       el('h2', { text: options.title }),
       el('button', {
-        class: 'btn btn--ghost btn--icon',
+        class: 'btn icon',
         text: '✕',
         attrs: { type: 'button', 'aria-label': 'Dialog schließen' },
         on: { click: close },
       }),
     ),
     body,
-    options.footer ? el('div', { class: 'dialog__foot' }, ...options.footer) : null,
+    options.footer ? el('div', { class: 'foot' }, ...options.footer) : null,
   );
 
   const overlay = el('div', { class: 'overlay',
@@ -81,7 +81,7 @@ export function confirmDialog(options: {
         el('button', { class: 'btn', text: 'Abbrechen', attrs: { type: 'button' },
           on: { click: () => finish(false) } }),
         el('button', {
-          class: options.danger ? 'btn btn--danger-solid' : 'btn btn--primary',
+          class: options.danger ? 'btn destructive filled' : 'btn primary',
           text: options.confirmLabel,
           attrs: { type: 'button' },
           on: { click: () => finish(true) },

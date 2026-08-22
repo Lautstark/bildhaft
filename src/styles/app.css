@@ -33,51 +33,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ------------------------------------------------------------ primitives */
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .13s ease, color .13s ease, opacity .13s ease;
-}
-.btn:hover:not(:disabled) { background: var(--surface-3); }
-.btn:disabled { opacity: .4; cursor: not-allowed; }
-
-.btn--primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
-
-.btn--quiet { background: transparent; color: var(--text-dim); }
-.btn--quiet:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
-
-.btn--danger { background: transparent; color: var(--danger); }
-.btn--danger:hover:not(:disabled) { background: var(--danger-soft); }
-.btn--danger-solid { background: var(--danger); color: var(--danger-ink); font-weight: 600; }
-.btn--danger-solid:hover:not(:disabled) { background: var(--danger); opacity: .9; }
-
-.btn--sm { padding: 5px 11px; font-size: 13.5px; }
-.btn--icon { padding: 7px; border-radius: var(--radius-pill); }
-
-.field {
-  width: 100%;
-  padding: 9px 13px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  transition: background .13s, border-color .13s;
-}
-.field:focus {
-  outline: none;
-  background: var(--surface);
-  border-color: var(--accent);
-}
-
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The button, the field and the focus policy come from
+   @lautstark/design/components.css now — this file only adds what is
+   bildhaft's own. .sm is density, which stays per product. */
+.btn.sm { padding: 5px 11px; font-size: 13.5px; }
 
 .muted { color: var(--text-dim); }
 .faint { color: var(--text-faint); }
@@ -439,7 +398,8 @@ kbd {
 }
 .slot-add:hover { background: var(--surface-2); color: var(--accent-strong); }
 
-.empty-state {
+/* While the database opens: the empty state's shell without its lesson. */
+.loading-state {
   padding: 40px 20px;
   text-align: center;
   color: var(--text-faint);
@@ -458,36 +418,20 @@ kbd {
   backdrop-filter: blur(3px);
 }
 
-.dialog {
+/* The sheet's look — surface, hairline, radius, head/body/foot — comes from
+   components.css. What stays here is plumbing the shared skeleton deliberately
+   leaves per product: the overlay, the scroll, and the two widths. */
+.sheet {
   display: flex;
   flex-direction: column;
-  width: min(100%, 600px);
+  width: 100%;
   max-height: min(88vh, 800px);
-  border-radius: 18px;
-  background: var(--bg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
 }
-.dialog--wide { width: min(100%, 1060px); }
+.sheet.wide { max-width: min(100%, 1060px); }
 
-.dialog__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 18px 10px;
-}
-.dialog__head h2 { flex: 1; margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.015em; }
-
-.dialog__body { padding: 6px 18px 18px; overflow-y: auto; }
-
-.dialog__foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--line);
-}
-.dialog__foot .spacer { flex: 1; }
+.sheet .head h2 { flex: 1; }
+.sheet .body { overflow-y: auto; }
+.sheet .foot .spacer { flex: 1; }
 
 /* ---------------------------------------------------------------- picker */
 
@@ -635,18 +579,13 @@ kbd {
 }
 .footer a { color: var(--text-dim); }
 
+/* The pill itself is components.css's .toast; where it sits is bildhaft's. */
 .toast {
   position: fixed;
   left: 50%;
   bottom: 24px;
   z-index: 60;
   transform: translateX(-50%);
-  padding: 10px 18px;
-  border-radius: var(--radius-pill);
-  background: var(--text);
-  color: var(--bg);
-  font-size: 13.5px;
-  box-shadow: var(--shadow);
 }
 
 .spinner {
@@ -707,15 +646,14 @@ kbd {
   /* backdrop-filter is a known source of black compositing artefacts on mobile. */
   .overlay { backdrop-filter: none; }
 
-  .dialog { max-height: 92vh; max-height: 92dvh; }
+  .sheet { max-height: 92vh; max-height: 92dvh; }
   .print-layout { grid-template-columns: 1fr; }
   .preview-frame { height: 46vh; height: 46dvh; }
   .footer { padding: 14px 16px 20px; }
 
   /* The dialog footer's summary line duplicates the fields directly above it and
      only squeezes the buttons on a narrow screen. */
-  .dialog__foot > .small { display: none; }
-  .dialog__foot { padding: 10px 14px; }
+  .sheet .foot > .small { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -724,38 +662,8 @@ kbd {
 
 /* ------------------------------------------------------------------ menu */
 
-.menu { position: relative; display: inline-flex; }
-
-.menu__pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  min-width: 190px;
-  padding: 5px;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  outline: 1px solid var(--line);
-}
-
-.menu__item {
-  padding: 8px 11px;
-  border: none;
-  border-radius: var(--radius-item);
-  background: transparent;
-  text-align: left;
-  font-size: 14px;
-  color: var(--text);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.menu__item:hover:not(:disabled) { background: var(--surface-2); }
-.menu__item:disabled { opacity: .4; cursor: not-allowed; }
-.menu__item--danger { color: var(--danger); }
-.menu__item--danger:hover:not(:disabled) { background: var(--danger-soft); }
+/* Panel, items and anchoring geometry come from components.css. */
+.menu-anchor { display: inline-flex; }
 
 /* Failed symbol: an affordance to retry, never an endless spinner. */
 .slot__blank--error {
@@ -800,12 +708,12 @@ kbd {
 .linklike:hover { color: var(--text); }
 
 /* Links inside dialogs and prose, so they are not browser-default blue. */
-.dialog__body a {
+.sheet .body a {
   color: var(--accent-strong);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
-.dialog__body a:hover { color: var(--accent); }
+.sheet .body a:hover { color: var(--accent); }
 
 /* Working, not broken: same shape as the warning, none of its alarm. */
 .banner--busy {

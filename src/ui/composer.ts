@@ -41,7 +41,7 @@ export function composer(handlers: ComposerHandlers): {
 
   const goIcon = el('span', { class: 'composer__go-icon' }, icons.arrow());
   const go = el('button', {
-    class: 'btn btn--primary composer__go',
+    class: 'btn primary composer__go',
     attrs: { type: 'button', 'aria-label': 'Übersetzen', title: 'Übersetzen' },
     on: { click: handlers.onSubmit },
   }, goIcon);
@@ -49,7 +49,7 @@ export function composer(handlers: ComposerHandlers): {
   const providerLine = el('span');
   const reuseRow = el('div', { class: 'composer__reuse' },
     el('span', { text: 'Diesen Satz hast du schon übersetzt.', style: { flex: '1' } }),
-    el('button', { class: 'btn btn--sm', text: 'Übernehmen',
+    el('button', { class: 'btn sm', text: 'Übernehmen',
       attrs: { type: 'button' }, on: { click: handlers.onReuse } }),
   );
 

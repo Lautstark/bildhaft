@@ -56,7 +56,7 @@ test('always prints the ARASAAC attribution', async ({ page }) => {
 });
 
 test('exports references only, never image data', async ({ page }) => {
-  await page.locator('.dialog__foot').getByRole('button', { name: 'Schließen' }).click();
+  await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
   await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
 
   const download = page.waitForEvent('download');

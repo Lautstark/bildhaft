@@ -50,7 +50,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       }),
     ],
     footer: [
-      el('button', { class: 'btn btn--danger', text: isNew ? 'Abbrechen' : 'Feld entfernen',
+      el('button', { class: 'btn destructive', text: isNew ? 'Abbrechen' : 'Feld entfernen',
         attrs: { type: 'button' }, on: { click: () => finish(handlers.onRemove) } }),
       el('div', { class: 'spacer' }),
       el('button', { class: 'btn', text: 'Fertig', attrs: { type: 'button' },
