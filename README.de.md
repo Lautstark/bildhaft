@@ -242,7 +242,7 @@ nur veröffentlicht, wenn sie bestehen.**
 | --- | --- |
 | `src/core/` | Zuordnungs-Pipeline und Datenmodell, frei von UI |
 | `src/db/` | IndexedDB-Schema, Repository, Export/Import |
-| `src/ui/` | React-Komponenten |
+| `src/ui/` | Oberfläche, Dialoge und die Element-Helfer dahinter |
 | `src/data/` | Erzeugte Lexikondaten |
 | `scripts/` | Lexikon-Generator und seine Wortlisten |
 
@@ -252,6 +252,8 @@ Die Symbolquellen liegen nicht in diesem Repository. Sie kommen aus
 ### Technische Rahmenbedingungen
 
 - Statisches Bundle, ausgeliefert über GitHub Pages. Kein serverseitiger Code.
+- Kein UI-Framework. Die Oberfläche entsteht in reinem TypeScript direkt im DOM
+  (`src/ui/dom.ts`) — ein Framework hat hier nur noch Elemente erzeugt.
 - SPA-Routing über die `404.html`-Kopie, weil GitHub Pages keine Rewrites kann.
 - **Kein Code, der `SharedArrayBuffer` braucht.** GitHub Pages kann die
   COOP/COEP-Header nicht setzen. Deshalb in v1 **keine** Transformer- oder

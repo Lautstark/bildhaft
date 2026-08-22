@@ -235,7 +235,7 @@ publishes if it passes.**
 | --- | --- |
 | `src/core/` | Matching pipeline and data model, free of UI |
 | `src/db/` | IndexedDB schema, repository, export/import |
-| `src/ui/` | React components |
+| `src/ui/` | Screen, dialogs and the element helpers they are built from |
 | `src/data/` | Generated lexicon data |
 | `scripts/` | Lexicon generator and its word lists |
 
@@ -245,6 +245,8 @@ Symbol sources are not in this repository. They come from
 ### Constraints
 
 - Static bundle, served from GitHub Pages. No server-side code.
+- No UI framework. The screen is built from plain TypeScript over the DOM
+  (`src/ui/dom.ts`), because a framework was only ever creating elements here.
 - SPA routing via the `404.html` copy trick, because GitHub Pages has no rewrites.
 - **No code that needs `SharedArrayBuffer`.** GitHub Pages cannot set the COOP/COEP
   headers, so v1 has no in-browser transformer or ONNX models; matching is lexical.
