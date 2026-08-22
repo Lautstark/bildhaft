@@ -19,6 +19,8 @@ import {
 import { Composer } from './ui/Composer.tsx';
 import { Confirm } from './ui/Confirm.tsx';
 import { About } from './ui/About.tsx';
+import { Impressum } from './ui/Impressum.tsx';
+import { Datenschutz } from './ui/Datenschutz.tsx';
 import { Footer } from './ui/Footer.tsx';
 import { Logo } from './ui/Logo.tsx';
 import { Menu } from './ui/Menu.tsx';
@@ -54,6 +56,8 @@ export default function App() {
   const [printIds, setPrintIds] = useState<string[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [impressumOpen, setImpressumOpen] = useState(false);
+  const [datenschutzOpen, setDatenschutzOpen] = useState(false);
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [, forceRender] = useState(0);
 
@@ -678,7 +682,12 @@ export default function App() {
             )}
           </div>
 
-          <Footer attribution={provider.attribution} onAbout={() => setAboutOpen(true)} />
+          <Footer
+            attribution={provider.attribution}
+            onAbout={() => setAboutOpen(true)}
+            onImpressum={() => setImpressumOpen(true)}
+            onDatenschutz={() => setDatenschutzOpen(true)}
+          />
         </main>
       </div>
 
@@ -763,6 +772,8 @@ export default function App() {
       )}
 
       {aboutOpen && <About onClose={() => setAboutOpen(false)} />}
+      {impressumOpen && <Impressum onClose={() => setImpressumOpen(false)} />}
+      {datenschutzOpen && <Datenschutz onClose={() => setDatenschutzOpen(false)} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
     </>
