@@ -227,3 +227,75 @@ test('symbols come back once the folder can be read again', async ({ page }) => 
   await expect(page.locator('.row .slot img')).toHaveCount(3, { timeout: 20_000 });
   await expect(page.locator('.banner')).toBeHidden();
 });
+
+test('a folder that survives a reload just works', async ({ page }) => {
+  /*
+   * The case the other tests do not cover: a real FileSystemDirectoryHandle,
+   * stored and read back after a reload, with real bytes behind it. Origin
+   * private storage supplies one without a native dialog — it is not identical
+   * to a directory the user picked, since it never needs a permission grant, but
+   * it is a genuine handle rather than a stand-in, and it exercises restore(),
+   * the persisted index and the file read end to end.
+   *
+   * Worth having because every other METACOM test here asserts a failure. If
+   * restore() or the read path breaks, those keep passing.
+   */
+  await page.evaluate(async () => {
+    const png = Uint8Array.from(
+      atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+      (c) => c.charCodeAt(0),
+    );
+    const root = await navigator.storage.getDirectory();
+    const dir = await root.getDirectoryHandle('METACOM_fake', { create: true });
+    for (const name of ['Ich.png', 'moechten.png', 'schlafen.png']) {
+      const file = await dir.getFileHandle(name, { create: true });
+      const writable = await file.createWritable();
+      await writable.write(png);
+      await writable.close();
+    }
+
+    const source = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('bildquelle');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const entries = [
+      { path: 'Ich.png', label: 'Ich', terms: ['ich'] },
+      { path: 'moechten.png', label: 'moechten', terms: ['moechten', 'möchte', 'mögen'] },
+      { path: 'schlafen.png', label: 'schlafen', terms: ['schlafen'] },
+    ];
+    await new Promise((resolve) => {
+      const tx = source.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
+      tx.objectStore('metacomIndex').put({ key: 'metacom', rootName: 'METACOM_fake', entries, ts: Date.now() });
+      tx.objectStore('metacomHandles').put({ key: 'metacomDir', handle: dir });
+      tx.oncomplete = resolve;
+    });
+
+    const app = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('bildhaft');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const settings = await new Promise<Record<string, unknown>>((resolve) => {
+      const query = app.transaction('settings').objectStore('settings').get('app');
+      query.onsuccess = () => resolve(query.result);
+    });
+    settings.activeProvider = 'metacom';
+    await new Promise((resolve) => {
+      const tx = app.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put(settings, 'app');
+      tx.oncomplete = resolve;
+    });
+  });
+
+  await page.reload();
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  await translate(page, 'Ich möchte schlafen');
+
+  const images = page.locator('.row .slot img');
+  await expect(images).toHaveCount(3);
+  for (let i = 0; i < 3; i++) {
+    await expect(images.nth(i)).toHaveAttribute('src', /^blob:/);
+  }
+  // Nothing failed, so nothing should be complaining.
+  await expect(page.locator('.banner')).toBeHidden();
+  await expect(page.locator('.slot__blank--error')).toHaveCount(0);
+});
