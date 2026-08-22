@@ -4,6 +4,15 @@ import type { Sentence } from '../core/types.ts';
 /** Past this the box scrolls instead of growing. */
 const MAX_INPUT_HEIGHT = 190;
 
+function ArrowIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12h13M12 5l7 7-7 7" />
+    </svg>
+  );
+}
+
 interface Props {
   value: string;
   onChange: (value: string) => void;
@@ -81,11 +90,13 @@ export function Composer({
         />
         <button
           type="button"
-          className="btn btn--primary"
+          className="btn btn--primary composer__go"
           onClick={onSubmit}
           disabled={busy || !value.trim()}
+          aria-label="Übersetzen"
+          title="Übersetzen"
         >
-          {busy ? <><span className="spinner" /> Suche …</> : 'Übersetzen'}
+          {busy ? <span className="spinner" /> : <ArrowIcon />}
         </button>
       </div>
 
