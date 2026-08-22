@@ -13,7 +13,10 @@ who work with a non-speaking child and often translate dozens of lines in one
 sitting — a whole picture book, say.
 
 **bildhaft runs entirely in the browser.** No server, no database, no accounts, no
-API keys, no tracking. Nothing leaves your machine.
+API keys, no tracking. Your sentences, your collections and your METACOM files
+never leave your machine. The only thing that does is a single word, sent to
+ARASAAC when it is asked for a matching pictogram. Each word is cached, so it
+goes once rather than on every lookup.
 
 > The interface is German, because that is the language of the people it is for.
 > The code, comments and documentation are English.

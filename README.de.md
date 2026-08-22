@@ -13,7 +13,11 @@ mit einem nicht sprechenden Kind arbeiten und oft dutzende Zeilen am Stück
 übersetzen — zum Beispiel ein ganzes Bilderbuch.
 
 **bildhaft läuft vollständig im Browser.** Kein Server, keine Datenbank, keine
-Konten, keine API-Schlüssel, kein Tracking. Nichts verlässt den eigenen Rechner.
+Konten, keine API-Schlüssel, kein Tracking. Sätze, Sammlungen und
+METACOM-Dateien verlassen den eigenen Rechner nie. Das Einzige, was ihn verlässt,
+ist ein einzelnes Wort: es geht an ARASAAC, wenn dort ein passendes Piktogramm
+gesucht wird. Jedes Wort wird zwischengespeichert, geht also einmal und nicht bei
+jeder Suche.
 
 > Die Oberfläche ist deutsch, weil das die Sprache der Menschen ist, für die
 > bildhaft gebaut ist. Code und Dokumentation sind englisch.
