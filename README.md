@@ -1,5 +1,7 @@
 # bildhaft
 
+[Deutsch](README.de.md) · **English**
+
 **Turn German sentences into AAC pictograms, correct them, and print them.**
 
 bildhaft is a tool for producing materials for augmentative and alternative
