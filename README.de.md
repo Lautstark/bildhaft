@@ -200,6 +200,22 @@ node scripts/build-lexicon.mjs
 Die erzeugten JSON-Dateien unter `src/data/` sind eingecheckt, damit der Build
 keinen Codegenerierungs-Schritt braucht.
 
+### Abdeckung des Lexikons messen
+
+```bash
+node scripts/coverage.mjs --verbose
+```
+
+Zeigt, welchen Anteil der bedeutungstragenden Wörter aus `scripts/corpus.de.txt`
+das Lexikon direkt kennt, und listet die übrigen auf. Der Textkorpus besteht
+bewusst aus dem, was Leute wirklich eintippen: Alltag, Therapiesätze und Zeilen
+aus Bilderbüchern. `--verbose` nennt die Lücken — so entscheidet man, was als
+Nächstes dazugehört.
+
+Die Zahl gilt für einen Korpus, mit dem der Wortschatz ausgewählt wurde; sie ist
+eine Untergrenze, keine Note. Wer eine Änderung beurteilen will, schreibt neue
+Sätze, die nicht in die Auswahl eingeflossen sind.
+
 ### Tests
 
 ```bash

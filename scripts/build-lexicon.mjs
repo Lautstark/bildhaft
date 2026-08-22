@@ -39,8 +39,26 @@ const add = addTo(others);
 const stemOf = (inf) =>
   /(?:eln|ern)$/.test(inf) ? inf.slice(0, -1) : inf.endsWith('en') ? inf.slice(0, -2) : inf.slice(0, -1);
 
-/** German inserts a linking -e- after stems that would otherwise be unpronounceable. */
-const needsE = (stem) => /[dt]$/.test(stem) || /[^aeiouäöü][mn]$/.test(stem);
+/**
+ * German inserts a linking -e- after a stem ending in d/t (arbeitest, badest),
+ * and after a nasal only when an obstruent precedes it (atmest, rechnest,
+ * öffnest, ordnest).
+ *
+ * It does NOT after a liquid or another nasal — lernst, turnst, rennst, kämmst,
+ * filmst, umarmst — nor after a lengthening h, which is silent: wohnst, föhnst.
+ * Digraphs are collapsed first so "ch" counts as the single obstruent it is,
+ * which is what separates rechnest (correct) from wohnest (not a word).
+ */
+const needsE = (stem) => {
+  if (/[dt]$/.test(stem)) return true;
+  const collapsed = stem
+    .replace(/sch/g, 'S')
+    .replace(/ch/g, 'C')
+    .replace(/ph/g, 'F')
+    .replace(/th/g, 'T')
+    .replace(/([aeiouäöü])h/g, '$1'); // lengthening h is not a consonant here
+  return /[^aeiouäöülrmn][mn]$/.test(collapsed);
+};
 
 function conjugateWeak(inf) {
   const stem = stemOf(inf);
@@ -90,8 +108,18 @@ const basewords = new Map(); // lowercase -> display form, used for compound spl
 
 for (const [singular, ...forms] of NOUNS) {
   addNoun(singular, singular);
-  for (const f of forms) addNoun(f, singular);
+  for (const form of forms) {
+    addNoun(form, singular);
+    /*
+     * Dative plural. German appends -n to a plural that does not already end in
+     * -n or -s: Kinder -> Kindern, Bäume -> Bäumen, Buntstifte -> Buntstiften.
+     * Regular enough to generate; listing it by hand would double the seed file.
+     */
+    if (!/[ns]$/i.test(form)) addNoun(form + 'n', singular);
+  }
   basewords.set(singular.toLowerCase(), singular);
+  // Plurals are base words too, so compounds like Bauchschmerzen can be split.
+  for (const form of forms) basewords.set(form.toLowerCase(), form);
 }
 
 /* ------------------------------------------------------------- adjectives */

@@ -194,6 +194,22 @@ node scripts/build-lexicon.mjs
 The generated JSON under `src/data/` is committed, so the build needs no codegen
 step.
 
+### Measuring lexicon coverage
+
+```bash
+node scripts/coverage.mjs --verbose
+```
+
+Reports what share of the content words in `scripts/corpus.de.txt` the lexicon
+knows outright, and lists the ones it does not. The corpus is deliberately made
+of the material people actually type: daily routines, therapy phrases and lines
+from picture books. `--verbose` prints the misses, which is how you decide what
+to add next.
+
+The number it prints is coverage against a corpus that was itself used to choose
+the vocabulary, so treat it as a floor, not a score. Judge a change by writing
+fresh sentences that did not inform it.
+
 ### Tests
 
 ```bash

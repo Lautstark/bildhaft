@@ -5,21 +5,26 @@
 export const WEAK_VERBS = [
   'machen','sagen','spielen','holen','legen','stellen','setzen','kaufen','zeigen','fragen',
   'lernen','wohnen','arbeiten','warten','baden','reden','öffnen','rechnen','zeichnen','atmen',
-  'kochen','backen','putzen','waschen','räumen','decken','wischen','kehren','falten','pflegen',
-  'hören','schauen','gucken','suchen','brauchen','wünschen','lieben','hassen','danken','grüßen',
-  'weinen','lachen','träumen','wecken','klopfen','drücken','ziehen','schneiden','malen','basteln',
-  'turnen','tanzen','singen','klatschen','winken','zeigen','teilen','sammeln','ordnen','packen',
-  'schenken','feiern','besuchen','erzählen','erklären','antworten','üben','wiederholen','probieren','versuchen',
-  'schmecken','riechen','fühlen','streicheln','kuscheln','umarmen','küssen','trösten','helfen','stören',
-  'ärgern','freuen','fürchten','wundern','erschrecken','beruhigen','entschuldigen','bedanken','begrüßen','verabschieden',
-  'anziehen','ausziehen','aufräumen','einkaufen','abholen','mitbringen','zumachen','aufmachen','anmachen','ausmachen',
-  'kämmen','duschen','föhnen','schminken','rasieren','wiegen','messen','zählen','malen','kleben',
-  'schaukeln','rutschen','klettern','hüpfen','rennen','wandern','reisen','parken','bremsen','starten',
-  'landen','fliegen','tauchen','schwimmen','segeln','rudern','angeln','jagen','füttern','tränken',
-  'pflanzen','gießen','ernten','säen','graben','harken','mähen','schaufeln','streuen','bauen',
-  'reparieren','bohren','sägen','hämmern','schrauben','streichen','tapezieren','fegen','lüften','heizen',
-  'telefonieren','simsen','tippen','drucken','speichern','löschen','laden','filmen','fotografieren','malen',
-  'operieren','impfen','verbinden','heilen','husten','niesen','schwitzen','frieren','bluten','zittern',
+  'kochen','backen','putzen','räumen','decken','wischen','kehren','falten','pflegen','hören',
+  'schauen','gucken','suchen','brauchen','wünschen','lieben','hassen','danken','grüßen','weinen',
+  'lachen','träumen','wecken','klopfen','drücken','malen','basteln','turnen','tanzen','klatschen',
+  'winken','teilen','sammeln','ordnen','packen','schenken','feiern','besuchen','erzählen','erklären',
+  'antworten','üben','wiederholen','probieren','versuchen','schmecken','fühlen','streicheln','kuscheln','umarmen',
+  'küssen','trösten','stören','ärgern','freuen','fürchten','wundern','erschrecken','beruhigen','entschuldigen',
+  'bedanken','begrüßen','verabschieden','anziehen','ausziehen','aufräumen','einkaufen','abholen','mitbringen','zumachen',
+  'aufmachen','anmachen','ausmachen','kämmen','duschen','föhnen','schminken','rasieren','wiegen','zählen',
+  'kleben','schaukeln','rutschen','klettern','hüpfen','rennen','wandern','reisen','parken','bremsen',
+  'starten','landen','tauchen','segeln','rudern','angeln','jagen','füttern','tränken','pflanzen',
+  'ernten','säen','graben','harken','mähen','schaufeln','streuen','bauen','reparieren','bohren',
+  'sägen','hämmern','schrauben','streichen','tapezieren','fegen','lüften','heizen','telefonieren','simsen',
+  'tippen','drucken','speichern','löschen','laden','filmen','fotografieren','operieren','impfen','verbinden',
+  'heilen','husten','niesen','schwitzen','bluten','zittern','regnen','schneien','hageln','donnern',
+  'kämpfen','rühren','schaffen','flüstern','brüllen','schimpfen','loben','erlauben','warnen','beeilen',
+  'aufpassen','zuhören','mitmachen','einpacken','auspacken','umziehen','hinsetzen','hinlegen','stolpern','schubsen',
+  'klingeln','knüllen','stapeln','sortieren','abtrocknen','abwaschen','einschenken','umrühren','schälen','grillen',
+  'rösten','kühlen','wärmen','gähnen','schnarchen','aufwachen','ausruhen','entspannen','radeln','rodeln',
+  'planschen','spritzen','melken','pflücken','verstecken','vertragen','zaubern','verwandeln','retten','bewachen',
+
 ];
 
 /** Irregular verbs: infinitive -> the forms that matter for lookup. */
@@ -98,6 +103,19 @@ export const STRONG_VERBS = {
   'stinken': ['stinke','stinkst','stinkt','stinken','stank','stanken','gestunken'],
   'schmelzen': ['schmelze','schmilzt','schmelzen','schmolz','geschmolzen'],
   'anfangen': ['fange an','fängt an','fing an','angefangen'],
+
+  'kriechen': ['krieche','kriechst','kriecht','kriechen','kroch','krochen','gekrochen'],
+  'hängen': ['hänge','hängst','hängt','hängen','hing','hingen','gehangen','hängte','gehängt','häng'],
+  'reißen': ['reiße','reißt','reißen','riss','rissen','gerissen'],
+  'messen': ['messe','misst','messt','messen','maß','maßen','gemessen','miss'],
+  'braten': ['brate','brätst','brät','braten','briet','brieten','gebraten'],
+  'frieren': ['friere','frierst','friert','frieren','fror','froren','gefroren'],
+  'versprechen': ['verspreche','versprichst','verspricht','versprechen','versprach','versprochen'],
+  'verbieten': ['verbiete','verbietest','verbietet','verbieten','verbot','verboten'],
+  'aufheben': ['hebe auf','hebst auf','hebt auf','hob auf','aufgehoben','aufheben'],
+  'aufstehen': ['stehe auf','stehst auf','steht auf','stand auf','aufgestanden','aufstehen'],
+  'einschlafen': ['schlafe ein','schläfst ein','schläft ein','schlief ein','eingeschlafen','einschlafen'],
+  'wachsen ': [],
 };
 
 /** Separable-verb prefixes. Order matters only for display, not matching. */
@@ -189,6 +207,94 @@ export const NOUNS = [
   ['Telefon','Telefone','Telefones'],['Handy','Handys'],['Computer','Computers'],
   ['Fernseher','Fernsehers'],['Radio','Radios'],['Schlüssel','Schlüssels'],['Koffer','Koffers'],
   ['Apfelsaft','Apfelsäfte'],['Orangensaft','Orangensäfte'],['Zahnpasta'],['Hausaufgabe','Hausaufgaben'],
+
+  // --- picture books and fairy tales: the material people actually translate ---
+  ['Eule','Eulen'],['Ast','Äste','Astes'],['Monster','Monsters'],['Gespenst','Gespenster'],
+  ['Prinzessin','Prinzessinnen'],['Prinz','Prinzen'],['König','Könige','Königs'],
+  ['Königin','Königinnen'],['Ritter','Ritters'],['Drache','Drachen'],['Hexe','Hexen'],
+  ['Zauberer','Zauberers'],['Fee','Feen'],['Riese','Riesen'],['Zwerg','Zwerge'],
+  ['Kessel','Kessels'],['Krone','Kronen'],['Schloss','Schlösser','Schlosses'],
+  ['Burg','Burgen'],['Höhle','Höhlen'],['Schatz','Schätze','Schatzes'],
+  ['Zauberstab','Zauberstäbe'],['Turm','Türme','Turmes'],['Schwert','Schwerter'],
+  ['Eichhörnchen'],['Reh','Rehe'],['Hirsch','Hirsche'],['Dachs','Dachse'],['Biber','Bibers'],
+  ['Storch','Störche'],['Rabe','Raben'],['Taube','Tauben'],['Möwe','Möwen'],['Wal','Wale'],
+  ['Hai','Haie'],['Krebs','Krebse'],['Muschel','Muscheln'],['Qualle','Quallen'],
+  ['Krokodil','Krokodile'],['Zebra','Zebras'],['Kamel','Kamele'],['Esel','Esels'],
+  ['Papagei','Papageien'],['Schildkröte','Schildkröten'],['Fledermaus','Fledermäuse'],
+  ['Maulwurf','Maulwürfe'],['Ameise','Ameisen'],['Wurm','Würmer','Wurmes'],
+  ['Raupe','Raupen'],['Marienkäfer','Marienkäfers'],['Nest','Nester'],['Feder','Federn'],
+  ['Fell','Felle'],['Pfote','Pfoten'],['Flügel','Flügels'],['Schwanz','Schwänze'],
+
+  // --- school ---
+  ['Schulranzen','Schulranzens'],['Schulhof','Schulhöfe'],['Buntstift','Buntstifte'],
+  ['Radiergummi','Radiergummis'],['Federmappe','Federmappen'],['Lineal','Lineale'],
+  ['Turnhalle','Turnhallen'],['Zeugnis','Zeugnisse'],['Stundenplan','Stundenpläne'],
+  ['Klassenzimmer','Klassenzimmers'],['Spitzer','Spitzers'],['Wörterbuch','Wörterbücher'],
+  ['Schulbus','Schulbusse'],['Hausaufgaben'],['Ferienbeginn'],
+
+  // --- household ---
+  ['Staubsauger','Staubsaugers'],['Wäsche'],['Mülleimer','Mülleimers'],
+  ['Schublade','Schubladen'],['Waschmaschine','Waschmaschinen'],
+  ['Geschirrspüler','Geschirrspülers'],['Besen','Besens'],['Eimer','Eimers'],
+  ['Lappen','Lappens'],['Bügeleisen','Bügeleisens'],['Müll','Mülls'],['Kissen','Kissens'],
+  ['Bettdecke','Bettdecken'],['Vorhang','Vorhänge'],['Heizung','Heizungen'],
+  ['Steckdose','Steckdosen'],['Kerze','Kerzen'],['Streichholz','Streichhölzer'],
+  ['Wäscheleine','Wäscheleinen'],['Schrankfach','Schrankfächer'],
+
+  // --- play ---
+  ['Puzzle','Puzzles'],['Kuscheltier','Kuscheltiere'],['Bauklotz','Bauklötze'],
+  ['Murmel','Murmeln'],['Schaukel','Schaukeln'],['Rutsche','Rutschen'],
+  ['Sandkasten','Sandkästen'],['Teddy','Teddys'],['Knete'],['Würfel','Würfels'],
+  ['Brettspiel','Brettspiele'],['Wippe','Wippen'],['Klettergerüst','Klettergerüste'],
+  ['Trampolin','Trampoline'],['Versteck','Verstecke'],['Luftballon','Luftballons'],
+  ['Seifenblase','Seifenblasen'],['Kreide','Kreiden'],
+
+  // --- feeling and getting along ---
+  ['Entschuldigung','Entschuldigungen'],['Versehen','Versehens'],
+  ['Glückwunsch','Glückwünsche'],['Überraschung','Überraschungen'],
+  ['Geheimnis','Geheimnisse'],['Streit','Streite'],['Freundschaft','Freundschaften'],
+  ['Besuch','Besuche'],['Gefühl','Gefühle'],['Laune','Launen'],['Mut','Mutes'],
+  ['Sorge','Sorgen'],['Trost','Trostes'],['Kuss','Küsse','Kusses'],
+  ['Umarmung','Umarmungen'],['Witz','Witze'],['Träne','Tränen'],['Langeweile'],
+
+  // --- time and weather ---
+  ['Wochenende','Wochenenden'],['Winter','Winters'],['Sommer','Sommers'],
+  ['Frühling','Frühlinge'],['Herbst','Herbstes'],['Jahreszeit','Jahreszeiten'],
+  ['Uhrzeit','Uhrzeiten'],['Feiertag','Feiertage'],['Nachmittag','Nachmittage'],
+  ['Vormittag','Vormittage'],['Sekunde','Sekunden'],['Kalender','Kalenders'],
+  ['Regenbogen','Regenbögen'],['Blitz','Blitze'],['Donner','Donners'],['Hagel','Hagels'],
+  ['Pfütze','Pfützen'],['Schneemann','Schneemänner'],['Schlitten','Schlittens'],
+  ['Januar'],['Februar'],['März'],['April'],['Mai'],['Juni'],['Juli'],['August'],
+  ['September'],['Oktober'],['November'],['Dezember'],
+
+  // --- body and health ---
+  ['Bauchweh'],['Kopfweh'],['Halsweh'],['Zahnweh'],['Schnupfen','Schnupfens'],
+  ['Wunde','Wunden'],['Verband','Verbände'],['Spritze','Spritzen'],
+  ['Zahnarzt','Zahnärzte'],['Krankenschwester','Krankenschwestern'],
+  ['Krankenwagen','Krankenwagens'],['Tablette','Tabletten'],['Thermometer','Thermometers'],
+  ['Hörgerät','Hörgeräte'],['Rollator','Rollatoren'],['Therapie','Therapien'],
+  ['Schulter','Schultern'],['Ellbogen','Ellbogens'],['Daumen','Daumens'],
+  ['Zunge','Zungen'],['Lippe','Lippen'],['Wange','Wangen'],['Stirn','Stirnen'],
+  ['Po','Pos'],['Haut','Häute'],
+
+  // --- more food ---
+  ['Butterbrot','Butterbrote'],['Pfannkuchen','Pfannkuchens'],['Waffel','Waffeln'],
+  ['Sahne'],['Quark'],['Pudding','Puddings'],['Haferflocken'],['Nuss','Nüsse'],
+  ['Rosine','Rosinen'],['Erbse','Erbsen'],['Bohne','Bohnen'],['Mais'],['Pilz','Pilze'],
+  ['Kürbis','Kürbisse'],['Himbeere','Himbeeren'],['Blaubeere','Blaubeeren'],
+  ['Brezel','Brezeln'],['Mehl'],['Teig','Teige'],['Senf'],['Öl','Öle'],
+
+  // --- out and about ---
+  ['Haltestelle','Haltestellen'],['Bahnsteig','Bahnsteige'],['Fahrkarte','Fahrkarten'],
+  ['Ampel','Ampeln'],['Zebrastreifen','Zebrastreifens'],['Gehweg','Gehwege'],
+  ['Brücke','Brücken'],['Tunnel','Tunnels'],['Parkplatz','Parkplätze'],
+  ['Tankstelle','Tankstellen'],['Feuerwehr','Feuerwehren'],['Polizei'],['Post'],
+  ['Bibliothek','Bibliotheken'],['Kino','Kinos'],['Theater','Theaters'],
+  ['Zirkus','Zirkusse'],['Bauernhof','Bauernhöfe'],['Stall','Ställe'],
+  ['Scheune','Scheunen'],['Feld','Felder','Feldes'],['Teich','Teiche'],['Bach','Bäche'],
+  ['Insel','Inseln'],['Zelt','Zelte'],['Hotel','Hotels'],['Flur','Flure'],
+  ['Balkon','Balkone'],['Garage','Garagen'],['Werkstatt','Werkstätten'],
+  ['Aufzug','Aufzüge'],['Rolltreppe','Rolltreppen'],['Runde','Runden'],
 ];
 
 /** Adjectives / adverbs. Base form is the concept key. */
@@ -203,6 +309,14 @@ export const ADJECTIVES = [
   'richtig','falsch','fertig','kaputt','ganz','halb','viel','wenig','mehr','weniger',
   'rot','blau','gelb','grün','schwarz','weiß','braun','grau','rosa','orange','lila','bunt',
   'erste','zweite','dritte','letzte','nächste','glücklich','allein','zusammen','wichtig','fremd',
+
+  'aufgeregt','enttäuscht','eifersüchtig','verlegen','gelangweilt','überrascht','erschrocken',
+  'zufrieden','unzufrieden','schläfrig','verletzt','klug','dumm','faul','fleißig','ordentlich',
+  'unordentlich','glatt','rau','spitz','rund','eckig','gerade','schief','eng','flach','steil',
+  'locker','fest','frisch','reif','roh','lauwarm','eiskalt','herzlich','freundlich',
+  'unfreundlich','höflich','gemein','ehrlich','geduldig','ungeduldig','mutig','vorsichtig',
+  'gefährlich','sicher','unwichtig','möglich','unmöglich','bereit','früh','spät','pünktlich',
+  'ähnlich','verschieden','riesig','winzig','müde','fröhlich',
 ];
 
 /** Pronouns and other function words that DO deserve a slot in AAC. */
@@ -239,6 +353,19 @@ export const KEPT_FUNCTION_WORDS = {
   'Montag': ['montag'], 'Dienstag': ['dienstag'], 'Mittwoch': ['mittwoch'],
   'Donnerstag': ['donnerstag'], 'Freitag': ['freitag'], 'Samstag': ['samstag','sonnabend'],
   'Sonntag': ['sonntag'],
+
+  'durch': ['durch'], 'seit': ['seit'], 'draußen': ['draußen'], 'drinnen': ['drinnen'],
+  'vorne': ['vorne','vorn'], 'hinten': ['hinten'], 'überall': ['überall'],
+  'weg': ['weg'], 'zurück': ['zurück'], 'weiter': ['weiter'], 'nochmal': ['nochmal','nochmals'],
+  'einmal': ['einmal'], 'zweimal': ['zweimal'], 'gleich': ['gleich'], 'sofort': ['sofort'],
+  'bald': ['bald'], 'später': ['später'], 'vorher': ['vorher'], 'nachher': ['nachher'],
+  'zuerst': ['zuerst'], 'dann': ['dann'], 'endlich': ['endlich'], 'plötzlich': ['plötzlich'],
+  'selbst': ['selbst','selber'], 'gern': ['gern','gerne'], 'weh': ['weh'],
+  'runter': ['runter','herunter'], 'rauf': ['rauf','herauf'], 'rein': ['rein','herein'],
+  'raus': ['raus','heraus'], 'Hause': ['hause'], 'meins': ['meins','deins','seins'],
+  'eins': ['eins','ein'], 'zwei': ['zwei'], 'drei': ['drei'], 'vier': ['vier'],
+  'fünf': ['fünf'], 'sechs': ['sechs'], 'sieben': ['sieben'], 'acht': ['acht'],
+  'neun': ['neun'], 'zehn': ['zehn'], 'elf': ['elf'], 'zwölf': ['zwölf'],
 };
 
 /**
@@ -307,4 +434,29 @@ export const SYNONYM_GROUPS = [
   ['helfen','unterstützen'],
   ['aufräumen','ordnen','wegräumen'],
   ['tschüss','ciao'],
+
+  ['Bauklotz','Baustein','Klotz'],
+  ['Mülleimer','Abfalleimer','Papierkorb'],
+  ['Haltestelle','Bushaltestelle','Station'],
+  ['Bauchweh','Bauchschmerzen'],
+  ['Kopfweh','Kopfschmerzen'],
+  ['Wochenende','Samstag','Sonntag'],
+  ['Entschuldigung','Verzeihung'],
+  ['Glückwunsch','Gratulation'],
+  ['Monster','Ungeheuer'],
+  ['Gespenst','Geist'],
+  ['Schloss','Burg','Palast'],
+  ['rennen','laufen','sprinten'],
+  ['brüllen','schreien','rufen'],
+  ['flüstern','wispern'],
+  ['Pfannkuchen','Eierkuchen','Crêpe'],
+  ['Brezel','Breze'],
+  ['Schulranzen','Tasche','Ranzen','Schultasche'],
+  ['Buntstift','Stift','Malstift'],
+  ['Streit','streiten','Konflikt','Ärger'],
+  ['enttäuscht','traurig'],
+  ['höflich','nett','freundlich'],
+  ['pünktlich','Zeit','Uhr','rechtzeitig'],
+  ['Kuscheltier','Teddy','Stofftier','Puppe'],
+  ['aufgeregt','nervös','Aufregung'],
 ];
