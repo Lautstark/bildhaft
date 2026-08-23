@@ -14,6 +14,33 @@ const SETTINGS_KEY = 'app';
 export const newId = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+/* ---------------------------------------------------------------- change --- */
+
+/*
+ * Every write says so here, and the standing backup listens.
+ *
+ * The alternative was calling schedule() from the twelve places in app.ts that
+ * change something, and it is the wrong shape for a reason worth stating: the
+ * thirteenth would be added a year from now by somebody who had no idea the
+ * backup existed, and nothing would fail. The library would simply stop being
+ * saved, quietly, which is this feature's whole failure mode.
+ *
+ * So the rule is one line and lives next to the writes: **a new mutator calls
+ * touched()**. test/repo-notifies.test.ts asserts it for every exported
+ * function whose name says it writes, so forgetting is a red test rather than
+ * a silent gap.
+ */
+const watchers = new Set<() => void>();
+
+export function onChanged(listener: () => void): () => void {
+  watchers.add(listener);
+  return () => watchers.delete(listener);
+}
+
+function touched(): void {
+  for (const listener of watchers) listener();
+}
+
 /* ------------------------------------------------------------- settings --- */
 
 export function defaultSettings(): AppSettings {
@@ -39,6 +66,7 @@ export async function loadSettings(): Promise<AppSettings> {
 export async function saveSettings(settings: AppSettings): Promise<void> {
   const db = await getDB();
   await db.put('settings', settings, SETTINGS_KEY);
+  touched();
 }
 
 /* ---------------------------------------------------------- collections --- */
@@ -70,12 +98,14 @@ export async function createCollection(name?: string): Promise<Collection> {
   };
   const db = await getDB();
   await db.put('collections', collection);
+  touched();
   return collection;
 }
 
 export async function putCollection(collection: Collection): Promise<void> {
   const db = await getDB();
   await db.put('collections', { ...collection, updatedAt: Date.now() });
+  touched();
 }
 
 export async function renameCollection(id: string, name: string): Promise<void> {
@@ -92,6 +122,7 @@ export async function deleteCollectionDeep(id: string): Promise<void> {
   for (const key of sentenceIds) await tx.objectStore('sentences').delete(key);
   await tx.objectStore('collections').delete(id);
   await tx.done;
+  touched();
 }
 
 /* ------------------------------------------------------------ sentences --- */
@@ -117,6 +148,7 @@ export async function putSentence(sentence: Sentence): Promise<void> {
     });
   }
   await tx.done;
+  touched();
 }
 
 export async function deleteSentence(id: string): Promise<void> {
@@ -136,6 +168,7 @@ export async function deleteSentence(id: string): Promise<void> {
     }
   }
   await tx.done;
+  touched();
 }
 
 /**
@@ -193,6 +226,7 @@ export async function clearEverything(): Promise<void> {
   await tx.done;
   // The cached symbols and the folder handle live in bildquelle's database now.
   await clearAllProviderData();
+  touched();
 }
 
 /* ------------------------------------------------------------ overrides --- */
@@ -211,11 +245,13 @@ export async function putOverride(
     label,
     updatedAt: Date.now(),
   });
+  touched();
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {
   const db = await getDB();
   await db.delete('overrides', overrideKey(provider, token));
+  touched();
 }
 
 export async function listOverrides(provider?: ProviderId): Promise<Override[]> {
@@ -250,6 +286,7 @@ export async function putOwnImage(file: File): Promise<OwnImage> {
   };
   const db = await getDB();
   await db.put('ownImages', image);
+  touched();
   return image;
 }
 
@@ -266,6 +303,7 @@ export async function listOwnImages(): Promise<OwnImage[]> {
 export async function saveOwnImage(image: OwnImage): Promise<void> {
   const db = await getDB();
   await db.put('ownImages', image);
+  touched();
 }
 
 /**
@@ -289,5 +327,6 @@ export async function pruneOwnImages(): Promise<number> {
     removed++;
   }
   await tx.done;
+  if (removed > 0) touched();
   return removed;
 }

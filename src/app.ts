@@ -9,12 +9,13 @@ import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
   loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
-  putSentence, renameCollection, saveSettings, searchSentences,
+  onChanged, putSentence, renameCollection, saveSettings, searchSentences,
 } from './db/repo.ts';
 import {
   downloadCollectionExport, downloadJson, exportCollection, exportEverything,
   importCollectionFile,
 } from './db/exportImport.ts';
+import { Sicherung } from '@lautstark/sicherung';
 import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
@@ -376,6 +377,22 @@ export function mountApp(root: HTMLElement): void {
     }
   }
 
+  /* ------------------------------------------------------------ backup --- */
+
+  /*
+   * The standing backup. `exportEverything` is what it is handed and the only
+   * thing it is ever handed — that function is the audited artefact, carrying
+   * symbol references and the user's own pictures, and never an ARASAAC or
+   * METACOM pixel. A chosen folder may well sit inside Dropbox, so what goes
+   * in it leaves the machine; test/backupFolder.test.ts holds this wiring in
+   * place, and a failure there is a licensing problem rather than a bug.
+   */
+  const backup = new Sicherung({ app: 'bildhaft', produce: exportEverything });
+
+  // Every write to the library, from anywhere, through the one notifier in
+  // repo.ts. Debounced inside Sicherung, so a burst of edits is one file.
+  onChanged(() => backup.schedule());
+
   /* -------------------------------------------------------------- boot --- */
 
   void (async () => {
@@ -396,6 +413,11 @@ export function mountApp(root: HTMLElement): void {
 
     // Only judge the symbol source once it has had its chance to come back.
     metacom.restore().catch(() => undefined).finally(() => { sourceSettled = true; render(); });
+
+    // Never prompts — there is no gesture here. A folder that needs its
+    // permission re-confirmed lands in needs-permission and says so in
+    // Einstellungen → Daten, which is where the click can happen.
+    backup.restore().catch(() => undefined);
   })();
 
   /*
@@ -871,6 +893,7 @@ export function mountApp(root: HTMLElement): void {
         downloadJson(await exportEverything(), 'sicherung');
         notify('Sicherung exportiert.');
       },
+      backup,
       onClearAll: () => void confirmClearAll(),
       onClose: () => render(),
     });

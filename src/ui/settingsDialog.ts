@@ -4,6 +4,8 @@ import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
+import type { Sicherung } from '@lautstark/sicherung';
+import { mountBackupFolder } from './backupFolder.ts';
 import { resetSymbolResolution } from './symbols.ts';
 
 export interface SettingsOptions {
@@ -15,6 +17,8 @@ export interface SettingsOptions {
   /** Library-wide actions. Per-collection ones live in the collection's own menu. */
   onExportAll: () => void;
   onClearAll: () => void;
+  /** The standing backup. Draws nothing where the browser has no folder picker. */
+  backup: Sicherung;
 }
 
 interface Panel {
@@ -54,7 +58,7 @@ export function openSettings(options: SettingsOptions): void {
     title: 'Einstellungen',
     body: [arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel, dataPanel]
       .map((p) => p.node),
-    onClose: () => { unsubscribe(); options.onClose(); },
+    onClose: () => { unsubscribe(); folder?.dispose(); options.onClose(); },
   });
 
   /*
@@ -66,8 +70,16 @@ export function openSettings(options: SettingsOptions): void {
    */
   const unsubscribe = metacom.subscribe(() => paintSources());
 
+  /*
+   * Built once and kept, not rebuilt inside fillData(). The block owns a
+   * subscription and a pair of buttons whose disabled state tracks a write in
+   * flight; rebuilding it on every repaint would drop both on the floor.
+   */
+  const folder = mountBackupFolder(options.backup, options.onNotify);
+
   function close(): void {
     unsubscribe();
+    folder?.dispose();
     dialog.close();
   }
 
@@ -377,6 +389,10 @@ export function openSettings(options: SettingsOptions): void {
         '<strong>Sicherung.</strong> bildhaft speichert alles im Browser. Wird der '
         + 'Browser-Speicher gelöscht, ist die Arbeit weg. Eine Sicherung enthält alle '
         + 'Sammlungen und dein Wörterbuch — nur Symbol-Verweise, keine Bilder.' }),
+      // The folder first, because it is the one that keeps working after
+      // somebody stops thinking about it. Null in any browser without the
+      // picker, and then the download below is the whole offer, unchanged.
+      folder?.node ?? null,
       el('button', { class: 'btn primary sm', text: 'Alles exportieren',
         attrs: { type: 'button' }, on: { click: options.onExportAll } }),
       el('p', { class: 'small faint', style: { margin: '8px 0 0' }, html:
