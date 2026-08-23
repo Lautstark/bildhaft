@@ -17,32 +17,38 @@
  */
 
 import { Sicherung, type Status } from '@lautstark/sicherung';
+import { actionsFor, ago } from '@lautstark/sicherung/ui';
 import { el, fill } from './dom.ts';
 
 /**
- * "vor 3 Minuten". Intl does the German, so this is a unit choice and nothing
- * more. Written here rather than shared: mitreden and vorlaut carry de/en
- * tables and format against their own current language, and a helper that
- * hardcoded 'de' for them would be a bug the day somebody switched to English.
+ * The one word this file has to say about language: bildhaft is German, so
+ * this is a constant and not a lookup. It is passed on every call rather than
+ * captured in a formatter, which is the package's rule — see its note on
+ * ago(). The rule costs nothing here and is what keeps mitreden correct.
  */
-const RELATIVE = new Intl.RelativeTimeFormat('de', { numeric: 'auto' });
+const LOCALE = 'de';
 
-const STEPS: [limit: number, unit: Intl.RelativeTimeFormatUnit, per: number][] = [
-  [60_000, 'second', 1000],
-  [3_600_000, 'minute', 60_000],
-  [86_400_000, 'hour', 3_600_000],
-  [Infinity, 'day', 86_400_000],
-];
+/** "vor 3 Minuten", against this page's one language. */
+const since = (at: number): string => ago(at, LOCALE);
 
-export function ago(at: number, now = Date.now()): string {
-  const gap = Math.max(0, now - at);
-  const [, unit, per] = STEPS.find(([limit]) => gap < limit)!;
-  return RELATIVE.format(-Math.round(gap / per), unit);
-}
+/**
+ * The labels, keyed by what the shared table calls each action.
+ *
+ * This is the whole of what the package left behind for the product, and
+ * deliberately so: @lautstark/sicherung/ui returns an id and never a word,
+ * because bildhaft has no t() to route one through and that is an argued
+ * position rather than a gap. See src/ui/dom.ts.
+ */
+const LABELS: Record<'choose' | 'confirm' | 'retry' | 'forget', string> = {
+  choose: 'Ordner wählen',
+  confirm: 'Zugriff bestätigen',
+  retry: 'Erneut versuchen',
+  forget: 'Ordner vergessen',
+};
 
 /** The age of the last real copy, or the admission that there has never been one. */
 const lastCopy = (at: number | null): string =>
-  at === null ? 'noch nie gesichert' : `zuletzt gesichert ${ago(at)}`;
+  at === null ? 'noch nie gesichert' : `zuletzt gesichert ${since(at)}`;
 
 /**
  * The sentence for each state.
@@ -58,7 +64,7 @@ function sentence(status: Status): string {
     case 'saving': return 'Wird gesichert …';
     case 'idle': return status.lastWrite === null
       ? `Ordner „${status.folder}“ · noch nie gesichert`
-      : `Ordner „${status.folder}“ · gesichert ${ago(status.lastWrite)}`;
+      : `Ordner „${status.folder}“ · gesichert ${since(status.lastWrite)}`;
     case 'needs-permission':
       return `Zugriff auf „${status.folder}“ muss bestätigt werden — ${lastCopy(status.lastWrite)}.`;
     case 'failed':
@@ -91,9 +97,9 @@ export function mountBackupFolder(backup: Sicherung, notify: (message: string) =
     line, actions);
 
   /** One button, described rather than built at each call site. */
-  const button = (text: string, kind: string, run: () => Promise<unknown>) =>
+  const button = (text: string, primary: boolean, run: () => Promise<unknown>) =>
     el('button', {
-      class: `btn ${kind} sm`, text, attrs: { type: 'button' },
+      class: `btn ${primary ? 'primary' : 'quiet'} sm`, text, attrs: { type: 'button' },
       on: { click: (event) => {
         // The gesture is the whole reason these are buttons: choose() and
         // confirm() open a browser prompt and are refused without one.
@@ -109,39 +115,27 @@ export function mountBackupFolder(backup: Sicherung, notify: (message: string) =
     line.setAttribute('data-state', status.kind);
     fill(line, el('span', { class: 'dot' }), el('span', { text: sentence(status) }));
 
-    const forget = button('Ordner vergessen', 'quiet', async () => {
-      await backup.forget();
-      notify('Der Ordner wird nicht mehr beschrieben.');
-    });
-
-    switch (status.kind) {
-      case 'off':
-        fill(actions, button('Ordner wählen', 'primary', () => backup.choose()));
-        break;
-      case 'needs-permission':
-        fill(actions, button('Zugriff bestätigen', 'primary', () => backup.confirm()), forget);
-        break;
-      case 'failed':
-        fill(actions, button('Erneut versuchen', 'primary', () => backup.save()), forget);
-        break;
-      case 'idle':
-        // No "save now". The folder is written on every change already, so a
-        // button offering to do it again is a control whose only honest label
-        // would be "do the thing that is already happening" — and it sat
-        // directly above „Sicherung als Datei", where two buttons both saying
-        // sichern differed by a word that named the wrong axis. „Erneut
-        // versuchen" below is not the same button: after a failure there is
-        // nothing happening to be redundant with.
-        fill(actions, forget);
-        break;
-      case 'saving':
-        // No buttons at all for the moment it is writing. Disabling them would
-        // leave two greyed controls flickering on every keystroke's debounce.
-        fill(actions);
-        break;
-      case 'unsupported':
-        break;
-    }
+    // Which buttons belong to this state is the package's answer now, not
+    // this file's. It was the same six-branch switch in all three products,
+    // which is one contract with three copies and nothing checking they
+    // agreed — the arrangement where one of them quietly stops offering a way
+    // out of `failed`. What stays here is the drawing and the words.
+    //
+    // Two of that table's decisions were argued in this margin and are worth
+    // keeping findable. `idle` offers no "save now": the folder is written on
+    // every change already, so the button's only honest label would be "do the
+    // thing that is already happening" — and it sat directly above „Sicherung
+    // als Datei", two buttons both saying sichern, differing by a word that
+    // named the wrong axis. `saving` offers nothing at all rather than
+    // disabled buttons, which would leave two greyed controls flickering on
+    // every keystroke's debounce.
+    fill(actions, ...actionsFor(backup, status).map((action) =>
+      button(LABELS[action.id], action.primary, async () => {
+        await action.run();
+        // The only one that says anything: the others are reported by the
+        // status line repainting underneath.
+        if (action.id === 'forget') notify('Der Ordner wird nicht mehr beschrieben.');
+      })));
   }
 
   paint(backup.status);
