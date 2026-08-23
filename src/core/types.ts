@@ -126,6 +126,12 @@ export interface AppSettings {
   lastCollectionId: string | null;
   /** Collapsed by default; the choice is remembered. */
   sidebarOpen: boolean;
+  /**
+   * Which of METACOM's parallel renderings to prefer — the folder name, or null
+   * for no preference. METACOM ships the same symbols several times over, and
+   * without this the one that wins is whichever the index listed first.
+   */
+  metacomRendering: string | null;
 }
 
 /* --------------------------------------------------------------- export --- */

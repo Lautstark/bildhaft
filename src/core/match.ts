@@ -198,3 +198,38 @@ export async function resolveSlotsForProvider(
     };
   }));
 }
+
+/**
+ * Re-picks each slot's symbol from the source as it now ranks things.
+ *
+ * resolveSlotsForProvider deliberately leaves a slot alone once it has a
+ * choice — it is there to fill in a provider that has never been resolved.
+ * Changing which of METACOM's parallel renderings is preferred is the opposite
+ * case: every choice is still the right symbol and the wrong copy of it, so
+ * each one has to be asked again.
+ *
+ * A slot someone picked by hand is left as it is. That choice was about this
+ * word and this picture, and a later preference about renderings is not a
+ * reason to overrule it.
+ */
+export async function refreshSlotChoices(
+  slots: Slot[],
+  provider: SymbolProvider,
+  overrides: Map<string, Override>,
+): Promise<Slot[]> {
+  return Promise.all(slots.map(async (slot) => {
+    if (slot.origin === 'manual' || !slot.concept) return slot;
+
+    const override = overrides.get(slot.concept.toLowerCase());
+    const candidates = override
+      ? [{ id: override.symbolId, label: override.label, score: 1000 }]
+      : await provider.search(slot.concept);
+    if (candidates.length === 0) return slot;
+
+    return {
+      ...slot,
+      choice: { ...slot.choice, [provider.id]: candidates[0].id },
+      candidates: { ...slot.candidates, [provider.id]: candidates.slice(0, STORED_CANDIDATES) },
+    };
+  }));
+}

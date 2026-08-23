@@ -437,3 +437,127 @@ test('a sentence still renders after the folder comes back under another name', 
       .toBeGreaterThan(0);
   }
 });
+
+/* ------------------------------------------------------ parallel renderings */
+
+/**
+ * METACOM ships the same symbols several times over — with and without a
+ * frame, with and without the word printed on the picture — as sibling folders
+ * holding identical file names. Identical names score identically, so without a
+ * preference the rendering a sentence gets is whichever the index listed first.
+ *
+ * These two PNGs differ only in size, which is how a test tells one rendering
+ * from the other without any licensed artwork existing anywhere.
+ */
+const MIT_TEXT = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+const OHNE_TEXT = 'iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAD0lEQVR4nGNg+M8ARVhYAIaXCPjDmz7KAAAAAElFTkSuQmCC';
+
+async function chooseTwoRenderings(page: Page): Promise<void> {
+  await page.evaluate(({ mit, ohne }) => {
+    const bytesOf = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const transfer = new DataTransfer();
+    for (const [rel, b64] of [
+      ['PNG_mit_Text/Personen/Ich.png', mit],
+      ['PNG_mit_Text/Verben/moechten.png', mit],
+      ['PNG_mit_Text/Essen/Apfel.png', mit],
+      ['PNG_mit_Text/Essen/essen.png', mit],
+      ['PNG_ohne_Text/Personen/Ich.png', ohne],
+      ['PNG_ohne_Text/Verben/moechten.png', ohne],
+      ['PNG_ohne_Text/Essen/Apfel.png', ohne],
+      ['PNG_ohne_Text/Essen/essen.png', ohne],
+    ] as [string, string][]) {
+      const file = new File([bytesOf(b64)], rel.split('/').pop()!, { type: 'image/png' });
+      Object.defineProperty(file, 'webkitRelativePath', { value: `METACOM_9/${rel}` });
+      transfer.items.add(file);
+    }
+    const input = [...document.querySelectorAll<HTMLInputElement>('input[type=file]')]
+      .find((i) => i.hasAttribute('webkitdirectory'))!;
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, { mit: MIT_TEXT, ohne: OHNE_TEXT });
+}
+
+/** Every symbol in the first row, by the width that identifies its rendering. */
+async function renderingWidths(page: Page): Promise<number[]> {
+  return page.locator('.row').first().locator('.slot img')
+    .evaluateAll((imgs) => imgs.map((i) => (i as HTMLImageElement).naturalWidth));
+}
+
+test('prefers one rendering, and brings existing rows with it', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseTwoRenderings(page);
+  await page.getByRole('button', { name: 'Verwenden' }).click();
+
+  await page.getByLabel('Darstellung').selectOption('PNG_ohne_Text');
+  await page.getByLabel('Dialog schließen').click();
+
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await expect.poll(() => renderingWidths(page)).toEqual([3, 3, 3, 3]);
+
+  // Switching afterwards has to move the rows that already exist, not just the
+  // next sentence — every slot holds the right symbol in the wrong rendering.
+  await openSymbolSettings(page);
+  await page.getByLabel('Darstellung').selectOption('PNG_mit_Text');
+  await page.getByLabel('Dialog schließen').click();
+  await expect.poll(() => renderingWidths(page), { timeout: 10000 }).toEqual([1, 1, 1, 1]);
+});
+
+test('applies the remembered rendering before the first symbol resolves', async ({ page }) => {
+  /*
+   * The preference is only worth anything if it survives a reload, and the
+   * moment it has to be in place is before any slot is filled — a sentence
+   * translated ahead of it would be filled from the wrong rendering and stay
+   * that way. A real handle out of origin private storage is the only way to
+   * have a folder still there after a reload, as above.
+   *
+   * The index lists the "mit Text" copy first, so that is what an unset
+   * preference produces. Asking for the other one is therefore decisive.
+   */
+  await page.evaluate(async ({ mit, ohne }) => {
+    const bytesOf = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const root = await navigator.storage.getDirectory();
+    const dir = await root.getDirectoryHandle('METACOM_renderings', { create: true });
+    for (const [folder, b64] of [['PNG_mit_Text', mit], ['PNG_ohne_Text', ohne]] as [string, string][]) {
+      const sub = await dir.getDirectoryHandle(folder, { create: true });
+      const file = await sub.getFileHandle('Apfel.png', { create: true });
+      const writable = await file.createWritable();
+      await writable.write(bytesOf(b64));
+      await writable.close();
+    }
+
+    const source = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('bildquelle');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const entries = [
+      { path: 'PNG_mit_Text/Apfel.png', label: 'Apfel', terms: ['apfel'] },
+      { path: 'PNG_ohne_Text/Apfel.png', label: 'Apfel', terms: ['apfel'] },
+    ];
+    await new Promise((resolve) => {
+      const tx = source.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
+      tx.objectStore('metacomIndex').put({ key: 'metacom', rootName: 'METACOM_renderings', entries, ts: Date.now() });
+      tx.objectStore('metacomHandles').put({ key: 'metacomDir', handle: dir });
+      tx.oncomplete = resolve;
+    });
+
+    const app = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('bildhaft');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const settings = await new Promise<Record<string, unknown>>((resolve) => {
+      const query = app.transaction('settings').objectStore('settings').get('app');
+      query.onsuccess = () => resolve(query.result);
+    });
+    settings.activeProvider = 'metacom';
+    settings.metacomRendering = 'PNG_ohne_Text';
+    await new Promise((resolve) => {
+      const tx = app.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put(settings, 'app');
+      tx.oncomplete = resolve;
+    });
+  }, { mit: MIT_TEXT, ohne: OHNE_TEXT });
+
+  await page.reload();
+  await translate(page, 'Apfel');
+  await expect.poll(() => renderingWidths(page)).toEqual([3]);
+});

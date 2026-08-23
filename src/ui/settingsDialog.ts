@@ -205,6 +205,48 @@ export function openSettings(options: SettingsOptions): void {
         ? el('p', { class: 'small faint', style: { margin: '10px 0 0' },
             text: 'Dieser Browser kann den Ordner nicht dauerhaft merken. Die Auswahl gilt bis zum Neuladen der Seite. In Chrome oder Edge ist sie einmalig.' })
         : null,
+
+      renderingChooser(),
+    );
+  }
+
+  /*
+   * Only worth showing when the folder actually holds parallel renderings.
+   * A copy pointed straight at one of them has nothing to choose between, and
+   * an empty dropdown would just be a question with one answer.
+   */
+  function renderingChooser(): HTMLElement | null {
+    const renderings = metacom.isReady() ? metacom.renderings() : [];
+    if (renderings.length < 2) return null;
+
+    const select = el('select', {
+      class: 'field',
+      attrs: { id: 'opt-rendering', 'aria-label': 'Darstellung' },
+      on: {
+        change: () => {
+          change({ ...settings, metacomRendering: select.value || null });
+          options.onNotify(select.value
+            ? `Darstellung „${select.value}“ wird bevorzugt.`
+            : 'Keine Darstellung mehr bevorzugt.');
+        },
+      },
+    },
+      el('option', { text: 'Keine Vorgabe', attrs: { value: '' } }),
+      ...renderings.map((rendering) => el('option', {
+        text: `${rendering.segment} · ${rendering.count} Symbole`,
+        attrs: { value: rendering.segment },
+      })),
+    );
+    select.value = settings.metacomRendering ?? '';
+
+    return el('div', { class: 'opt', style: { marginTop: '14px' } },
+      el('label', { text: 'Darstellung', attrs: { for: 'opt-rendering' } }),
+      select,
+      el('span', { class: 'small faint', text:
+        'METACOM enthält dieselben Symbole mehrfach — mit und ohne Rahmen, mit und '
+        + 'ohne aufgedrucktes Wort. Ohne Vorgabe entscheidet der Zufall, welche '
+        + 'Fassung ein Satz bekommt. Die Auswahl gilt für neue Sätze und ordnet '
+        + 'bestehende Zeilen nach; von Hand gewählte Symbole bleiben.' }),
     );
   }
 

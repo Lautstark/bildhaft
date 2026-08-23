@@ -20,6 +20,7 @@ export function defaultSettings(): AppSettings {
     print: { ...DEFAULT_PRINT_SETTINGS },
     lastCollectionId: null,
     sidebarOpen: false,
+    metacomRendering: null,
   };
 }
 

@@ -2,7 +2,7 @@ import type {
   AppSettings, Candidate, Collection, PrintSettings, Sentence, Slot,
 } from './core/types.ts';
 import { normalizeInput, splitLines } from './core/normalize.ts';
-import { buildSlots, resolveSlotsForProvider } from './core/match.ts';
+import { buildSlots, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
 import {
@@ -387,6 +387,9 @@ export function mountApp(root: HTMLElement): void {
     const wanted = all.find((c) => c.id === loaded.lastCollectionId) ?? all[0];
 
     settings = loaded;
+    // Before anything resolves a symbol: the preference orders search results,
+    // so a slot filled in ahead of it would be filled from the wrong rendering.
+    metacom.preferRendering(loaded.metacomRendering);
     collections = all;
     setActive(wanted.id);
     render();
@@ -420,9 +423,42 @@ export function mountApp(root: HTMLElement): void {
   /* ------------------------------------------------------- persistence --- */
 
   function persistSettings(next: AppSettings): void {
+    const renderingChanged = settings?.metacomRendering !== next.metacomRendering;
     settings = next;
     void saveSettings(next);
+    if (renderingChanged) {
+      metacom.preferRendering(next.metacomRendering);
+      void repointToRendering();
+    }
     render();
+  }
+
+  /*
+   * A new preference is about every row already on screen, not only the next
+   * sentence: each slot holds the right symbol in the wrong rendering. Asking
+   * the source again is what moves them, and re-resolving the symbols is what
+   * makes the change visible — nothing about a slot's id changes on its own.
+   */
+  async function repointToRendering(): Promise<void> {
+    const collectionId = activeId;
+    if (!collectionId || providerId() !== 'metacom') return;
+
+    busy = true;
+    render();
+    try {
+      const overrides = await overrideMap('metacom');
+      const updated = await Promise.all((await listSentences(collectionId)).map(
+        async (sentence) => ({
+          ...sentence,
+          slots: await refreshSlotChoices(sentence.slots, getProvider('metacom'), overrides),
+        })));
+      for (const sentence of updated) await putSentence(sentence);
+      sentences = updated;
+      resetSymbolResolution('metacom');
+    } finally {
+      busy = false;
+      render();
+    }
   }
 
   function setActive(id: string): void {
