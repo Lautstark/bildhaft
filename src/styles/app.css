@@ -429,11 +429,11 @@ kbd {
 }
 .sheet.wide { max-width: min(100%, 1060px); }
 
-.sheet .head h2 { flex: 1; }
+.sheet > .head h2 { flex: 1; }
 /* Cards separate themselves with outline, which draws outside the box; the
    scroll region needs its own breathing room or the rings clip at its edges. */
-.sheet .body { overflow-y: auto; padding: 2px; }
-.sheet .foot .spacer { flex: 1; }
+.sheet > .body { overflow-y: auto; padding: 2px; }
+.sheet > .foot .spacer { flex: 1; }
 
 /* ---------------------------------------------------------------- picker */
 
@@ -612,7 +612,7 @@ kbd {
 
   /* The dialog footer's summary line duplicates the fields directly above it and
      only squeezes the buttons on a narrow screen. */
-  .sheet .foot > .small { display: none; }
+  .sheet > .foot > .small { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -657,12 +657,12 @@ kbd {
 /* .linklike comes from components.css. */
 
 /* Links inside dialogs and prose, so they are not browser-default blue. */
-.sheet .body a {
+.sheet > .body a {
   color: var(--accent-strong);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
-.sheet .body a:hover { color: var(--accent); }
+.sheet > .body a:hover { color: var(--accent); }
 
 /* Working, not broken: same shape as the warning, none of its alarm. */
 .banner--busy {
