@@ -15,7 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@lautstark/bildquelle": "github:Lautstark/bildquelle#v1.4.0",
+    "@lautstark/bildquelle": "github:Lautstark/bildquelle#v1.4.1",
     "@lautstark/design": "github:Lautstark/design#v1.10.0",
     "@lautstark/sicherung": "github:Lautstark/sicherung#v1.1.0",
     "idb": "^8.0.3"
