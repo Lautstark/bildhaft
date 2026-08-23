@@ -72,6 +72,31 @@ function sentence(status: Status): string {
   }
 }
 
+/**
+ * The one line the „Daten" heading carries, so the panel says which folder it
+ * writes to without anybody opening it.
+ *
+ * Deliberately not `sentence()`: a heading has no room for an age, and the age
+ * is the whole reason the line inside the panel exists. What it must keep is
+ * the distinction that file argues for everywhere else — a folder that is
+ * being written and one that only looks like it is are not the same fact, and
+ * a heading that showed just the name for both would manufacture exactly the
+ * confidence this module is built to avoid.
+ *
+ * Exported only so that distinction can be asserted directly — see
+ * tests/unit/backup-headline.test.ts. Nothing outside this file calls it.
+ */
+export function headline(status: Status): string {
+  switch (status.kind) {
+    case 'unsupported':
+    case 'off': return '';
+    case 'idle':
+    case 'saving': return `Ordner „${status.folder}“`;
+    case 'needs-permission': return `Ordner „${status.folder}“ · Zugriff bestätigen`;
+    case 'failed': return `Ordner „${status.folder}“ · Sicherung fehlgeschlagen`;
+  }
+}
+
 export interface FolderBlock {
   node: HTMLElement;
   /** Must be called when the dialog closes, or every reopen adds a listener. */
@@ -84,8 +109,18 @@ export interface FolderBlock {
  * Returns the node rather than appending it, so the caller decides the order
  * inside its panel and this file never reaches up into one.
  */
-export function mountBackupFolder(backup: Sicherung, notify: (message: string) => void)
-: FolderBlock | null {
+export function mountBackupFolder(
+  backup: Sicherung,
+  notify: (message: string) => void,
+  /*
+   * Told the heading line on every repaint. A callback rather than a second
+   * `backup.subscribe` at the call site, so there stays one subscription with
+   * one dispose — and so the wording lives in this file with the rest of it.
+   * Never called where there is no picker, because there is then no block and
+   * no folder to name, and the heading stays as blank as it was.
+   */
+  onHeadline: (text: string) => void = () => {},
+): FolderBlock | null {
   if (!Sicherung.supported) return null;
 
   const line = el('p', { class: 'standing' });
@@ -110,6 +145,8 @@ export function mountBackupFolder(backup: Sicherung, notify: (message: string) =
     });
 
   function paint(status: Status): void {
+    onHeadline(headline(status));
+
     // data-state takes the kind verbatim — the stylesheet keys off exactly
     // these names, so there is no mapping here to disagree with it.
     line.setAttribute('data-state', status.kind);

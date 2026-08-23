@@ -77,7 +77,13 @@ export function openSettings(options: SettingsOptions): void {
    * subscription and a pair of buttons whose disabled state tracks a write in
    * flight; rebuilding it on every repaint would drop both on the floor.
    */
-  const folder = mountBackupFolder(options.backup, options.onNotify);
+  const folder = mountBackupFolder(options.backup, options.onNotify, (text) => {
+    // The heading carries the folder, the way every other panel's heading
+    // carries its own state — so „Daten" stops being the one section whose
+    // status you have to unfold it to learn. Blank where no folder is set,
+    // and blank in a browser without a picker, where there is nothing to say.
+    dataPanel.state.textContent = text;
+  });
 
   function close(): void {
     unsubscribe();
