@@ -239,8 +239,11 @@ publishes if it passes.**
 | `src/data/` | Generated lexicon data |
 | `scripts/` | Lexicon generator and its word lists |
 
-Symbol sources are not in this repository. They come from
-[bildquelle](https://github.com/Lautstark/bildquelle), pinned by commit.
+Two things live outside this repository, both pinned to an exact release tag so
+an install can never move the build on its own:
+[bildquelle](https://github.com/Lautstark/bildquelle) for the symbol sources and
+[design](https://github.com/Lautstark/design) for the tokens and components
+shared with the sibling products.
 
 ### Constraints
 

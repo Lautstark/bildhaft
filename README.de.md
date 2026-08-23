@@ -246,8 +246,11 @@ nur veröffentlicht, wenn sie bestehen.**
 | `src/data/` | Erzeugte Lexikondaten |
 | `scripts/` | Lexikon-Generator und seine Wortlisten |
 
-Die Symbolquellen liegen nicht in diesem Repository. Sie kommen aus
-[bildquelle](https://github.com/Lautstark/bildquelle), auf einen Commit gepinnt.
+Zwei Dinge liegen außerhalb dieses Repositorys, beide auf ein genaues
+Release-Tag gepinnt, damit ein Install den Build nicht von selbst verschiebt:
+[bildquelle](https://github.com/Lautstark/bildquelle) für die Symbolquellen und
+[design](https://github.com/Lautstark/design) für Tokens und Komponenten, die
+sich die Geschwisterprodukte teilen.
 
 ### Technische Rahmenbedingungen
 
