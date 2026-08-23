@@ -254,6 +254,20 @@ shared with the sibling products.
 - **No code that needs `SharedArrayBuffer`.** GitHub Pages cannot set the COOP/COEP
   headers, so v1 has no in-browser transformer or ONNX models; matching is lexical.
 - Desktop is the primary target. Folder selection on mobile is not expected to work.
+- **German-only interface, and this is a decision rather than a gap.** There is no
+  `t()`, no language files and no language switch: every string is written where it
+  is used. bildhaft's whole job is turning *German* sentences into pictograms — the
+  lemmatiser, the compound splitter, the separable-verb merge and the function-word
+  list are all German-specific, so an English interface would front a program that
+  still only understands German input, which reads as a promise the rest of the app
+  does not keep. Translating the shell is the last step of supporting a second
+  language, not the first.
+
+  Worth stating because the two sibling products went the other way — mitreden and
+  vorlaut both carry de/en tables and a live switch — so this looks like an omission
+  from the outside and has been read as one. If bildhaft ever does grow a second
+  input language, mitreden's `src/i18n/` is the shape to copy; until then, adding
+  the shell alone is not an improvement.
 
 ### Browser support for METACOM
 

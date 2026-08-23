@@ -407,27 +407,31 @@ kbd {
 
 /* ---------------------------------------------------------------- dialog */
 
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(22, 20, 17, .38);
-  backdrop-filter: blur(3px);
-}
+/* The .overlay that used to sit here is gone with the <div> it styled: the
+   sheet is a native <dialog> now, so the top layer, the centring and the inert
+   page behind it are the platform's. Its dim moves to ::backdrop unchanged —
+   the same values mitreden's backdrop carries, which is what made this a lift
+   rather than a redrawing.
 
-/* The sheet's look — surface, hairline, radius, head/body/foot — comes from
+   The sheet's look — surface, hairline, radius, head/body/foot — comes from
    components.css. What stays here is plumbing the shared skeleton deliberately
-   leaves per product: the overlay, the scroll, and the two widths. */
+   leaves per product: the backdrop weight, the scroll, and the two widths. */
+.sheet::backdrop { background: rgba(22, 20, 17, .38); backdrop-filter: blur(3px); }
 .sheet {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  /* A <dialog> is width:fit-content and max-width:calc(100% - 6px - 2em) by UA
+     rule, so it needs telling. The 48px is what .overlay's 24px padding used to
+     hold off each side; without it a sheet on a phone touches both edges. */
+  width: calc(100% - 48px);
+  max-width: 600px;
   max-height: min(88vh, 800px);
+  /* Margin, not place-items on a parent that no longer exists: auto on all four
+     sides is how a top-layer dialog centres itself. */
+  margin: auto;
+  padding: 22px;
 }
-.sheet.wide { max-width: min(100%, 1060px); }
+.sheet.wide { max-width: min(100% - 48px, 1060px); }
 
 .sheet > .head h2 { flex: 1; }
 /* Outlines draw outside the box, and this region scrolls, so it needs room for
@@ -616,7 +620,7 @@ kbd {
   .app--nav-open .scrim { display: block; }
 
   /* backdrop-filter is a known source of black compositing artefacts on mobile. */
-  .overlay { backdrop-filter: none; }
+  .sheet::backdrop { backdrop-filter: none; }
 
   .sheet { max-height: 92vh; max-height: 92dvh; }
   .print-layout { grid-template-columns: 1fr; }

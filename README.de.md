@@ -263,6 +263,22 @@ sich die Geschwisterprodukte teilen.
   ONNX-Modelle im Browser; die Zuordnung ist lexikalisch.
 - Desktop ist das primäre Ziel. Die Ordnerauswahl auf Mobilgeräten funktioniert
   erwartungsgemäß nicht.
+- **Die Oberfläche ist ausschließlich deutsch, und das ist eine Entscheidung und
+  keine Lücke.** Es gibt kein `t()`, keine Sprachdateien und keine Sprachumschaltung;
+  jeder Text steht dort, wo er verwendet wird. bildhaft übersetzt *deutsche* Sätze
+  in Piktogramme — Lemmatisierung, Komposita-Zerlegung, die Zusammenführung
+  trennbarer Verben und die Funktionswortliste sind sämtlich deutschspezifisch. Eine
+  englische Oberfläche wäre die Fassade eines Programms, das weiterhin nur Deutsch
+  versteht, und verspräche damit etwas, das der Rest der Anwendung nicht hält. Die
+  Oberfläche zu übersetzen ist der letzte Schritt einer zweiten Sprache, nicht der
+  erste.
+
+  Erwähnenswert, weil die beiden Schwesterprodukte es anders halten: mitreden und
+  vorlaut führen beide de/en-Tabellen und eine Umschaltung zur Laufzeit. Von außen
+  sieht das hier deshalb nach einem Versäumnis aus und ist auch schon so gelesen
+  worden. Sollte bildhaft je eine zweite Eingabesprache bekommen, ist mitredens
+  `src/i18n/` die Vorlage; bis dahin ist die Oberfläche allein zu übersetzen keine
+  Verbesserung.
 
 ### Browser-Unterstützung für METACOM
 

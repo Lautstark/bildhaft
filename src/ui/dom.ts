@@ -2,6 +2,14 @@
  * The whole of the "framework". Building elements is the only thing React was
  * still doing for this app once the pipeline, the storage and the providers had
  * moved out of it.
+ *
+ * Every label this file helps build is German, written where it is used, and
+ * there is deliberately no t() to route it through. bildhaft turns *German*
+ * sentences into pictograms — the lemmatiser, the compound splitter and the
+ * function-word list are all German-specific — so an English shell would front a
+ * program that still only understands German input. mitreden and vorlaut both
+ * carry de/en tables, which is why the absence here reads as an oversight from
+ * the outside; it is not one. See README.md, "Constraints", before adding one.
  */
 
 type Child = Node | string | number | null | undefined | false;
