@@ -125,3 +125,23 @@ test('shows a retry affordance instead of an endless spinner', async ({ page }) 
   await expect(page.locator('.slot__blank--error').first()).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('.slot__blank .spinner')).toHaveCount(0);
 });
+
+test('makes one row per line of a multi-line entry', async ({ page }) => {
+  const input = page.getByLabel('Satz eingeben');
+  // Shift+Enter puts a newline in the box; Enter then submits the lot.
+  await input.fill('Ich möchte einen Apfel essen\n\nDer Hund liegt unter dem Tisch');
+  await input.press('Enter');
+
+  const rows = page.locator('.row');
+  await expect(rows).toHaveCount(2);
+  // Reading order, top to bottom — these get printed as strips in this order.
+  await expect(rows.first().locator('.slot__label'))
+    .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
+  await expect(rows.last().locator('.slot__label'))
+    .toHaveText(['Hund', 'liegt', 'unter', 'Tisch']);
+
+  // And it survives a reload, which is where the ordering could silently flip.
+  await page.reload();
+  await expect(rows.first().locator('.slot__label'))
+    .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
+});

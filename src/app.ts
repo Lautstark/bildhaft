@@ -1,7 +1,7 @@
 import type {
   AppSettings, Candidate, Collection, PrintSettings, Sentence, Slot,
 } from './core/types.ts';
-import { normalizeInput } from './core/normalize.ts';
+import { normalizeInput, splitLines } from './core/normalize.ts';
 import { buildSlots, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
@@ -503,30 +503,43 @@ export function mountApp(root: HTMLElement): void {
 
   async function handleSubmit(): Promise<void> {
     const raw = draft.trim();
-    if (!raw || !settings || !activeId || busy) return;
+    const collectionId = activeId;
+    if (!raw || !settings || !collectionId || busy) return;
+
+    const lines = splitLines(raw);
+    if (lines.length === 0) return;
 
     busy = true;
     render();
     try {
-      const slots = await buildSlots(raw, {
+      const options = {
         provider: provider(),
         stopwords: new Set(settings.stopwords),
         overrides: await overrideMap(providerId()),
-      });
-
-      const now = Date.now();
-      const sentence: Sentence = {
-        id: newId(),
-        normalizedInput: normalizeInput(raw),
-        rawInput: raw,
-        slots,
-        collectionId: activeId,
-        createdAt: now,
-        updatedAt: now,
       };
 
-      await putSentence(sentence);
-      sentences = [sentence, ...sentences];
+      const now = Date.now();
+      const created: Sentence[] = [];
+
+      for (const [index, line] of lines.entries()) {
+        created.push({
+          id: newId(),
+          normalizedInput: normalizeInput(line),
+          rawInput: line,
+          slots: await buildSlots(line, options),
+          collectionId,
+          /*
+           * Descending within the batch. The list is sorted newest first, so
+           * this is what keeps the lines in the order they were typed — which
+           * is also the order they get printed in.
+           */
+          createdAt: now - index,
+          updatedAt: now,
+        });
+      }
+
+      for (const sentence of created) await putSentence(sentence);
+      sentences = [...created, ...sentences];
       draft = '';
       reuse = null;
     } catch (err) {

@@ -13,3 +13,12 @@ export function normalizeInput(raw: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/**
+ * One entry, several rows. A row is one printed strip and a strip is one
+ * sentence, so each line the user typed becomes its own row rather than being
+ * folded into a single very long strip.
+ */
+export function splitLines(raw: string): string[] {
+  return raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
