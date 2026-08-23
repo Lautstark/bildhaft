@@ -217,6 +217,10 @@ export function openSettings(options: SettingsOptions): void {
         text: `Jede Korrektur wird hier gemerkt und beim nächsten Mal automatisch verwendet — für ${provider === 'arasaac' ? 'ARASAAC' : 'METACOM'}.` }),
       list);
     fill(list, el('p', { class: 'small muted', text: 'Wird geladen …' }));
+    // The count comes from the database, so the heading would otherwise be
+    // blank for a frame — and a blank heading is this panel's whole promise
+    // broken at the moment somebody is reading it. Say what is true meanwhile.
+    if (!dictPanel.state.textContent) dictPanel.state.textContent = 'Wird geladen …';
 
     void listOverrides(provider).then((overrides: Override[]) => {
       // The heading counts what is inside, whether or not anybody opens it.
