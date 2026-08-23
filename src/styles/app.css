@@ -430,7 +430,9 @@ kbd {
 .sheet.wide { max-width: min(100%, 1060px); }
 
 .sheet .head h2 { flex: 1; }
-.sheet .body { overflow-y: auto; }
+/* Cards separate themselves with outline, which draws outside the box; the
+   scroll region needs its own breathing room or the rings clip at its edges. */
+.sheet .body { overflow-y: auto; padding: 2px; }
 .sheet .foot .spacer { flex: 1; }
 
 /* ---------------------------------------------------------------- picker */
@@ -508,7 +510,10 @@ kbd {
   transition: background .13s, color .13s;
 }
 .segmented button[aria-pressed="true"] {
-  background: var(--surface);
+  /* One plane above the track. --surface was the lifted look while the sheet
+     sat on --bg; the shared sheet is --surface itself, and --surface on
+     --surface reads as nothing selected. */
+  background: var(--surface-3);
   color: var(--text);
   font-weight: 600;
   box-shadow: var(--shadow-sm);
@@ -567,17 +572,15 @@ kbd {
 
 /* ---------------------------------------------------------------- footer */
 
+/* Type, colour and centring come from components.css; the 840px column and
+   the compact padding are bildhaft's. Kept compact because the ARASAAC
+   attribution is a licence requirement and must stay visible without costing
+   a third of the viewport. */
 .footer {
   max-width: 840px;
   margin: 0 auto;
-  /* Kept compact: the ARASAAC attribution is a licence requirement and must stay
-     visible, but it should not cost a third of the viewport. */
   padding: 14px 32px 18px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--text-faint);
 }
-.footer a { color: var(--text-dim); }
 
 /* The pill itself is components.css's .toast; where it sits is bildhaft's. */
 .toast {
@@ -690,22 +693,12 @@ kbd {
 .footer__links {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 4px 14px;
   margin: 0;
 }
 
-/* A button that has to read as a link, because it opens a dialog rather than
-   navigating — the footer should not look like it has two kinds of thing in it. */
-.linklike {
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: var(--text-dim);
-  text-decoration: underline;
-  cursor: pointer;
-}
-.linklike:hover { color: var(--text); }
+/* .linklike comes from components.css. */
 
 /* Links inside dialogs and prose, so they are not browser-default blue. */
 .sheet .body a {

@@ -143,7 +143,7 @@ export function openPrintDialog(options: PrintOptions): void {
     return el('div', { class: 'segmented', style },
       ...options_.map((option) => el('button', {
         text: option.label,
-        attrs: { type: 'button', 'aria-pressed': option.active },
+        attrs: { type: 'button', 'aria-pressed': String(option.active) },
         on: { click: option.onPick },
       })));
   }

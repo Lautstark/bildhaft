@@ -179,8 +179,9 @@ export function openSettings(options: SettingsOptions): void {
     const reload = () => {
       listOverrides(settings.activeProvider).then((overrides: Override[]) => {
         if (overrides.length === 0) {
-          fill(list, el('p', { class: 'small faint',
-            text: 'Noch keine Einträge. Klicke in einer Zeile auf ein Symbol und wähle ein besseres aus.' }));
+          fill(list, el('div', { class: 'empty' },
+            el('b', { text: 'Noch keine Einträge' }),
+            el('small', { text: 'Klicke in einer Zeile auf ein Symbol und wähle ein besseres aus.' })));
           return;
         }
         fill(list, ...overrides.map((override) => el('div',
@@ -247,7 +248,7 @@ export function openSettings(options: SettingsOptions): void {
   function paint(): void {
     fill(tabs, ...TABS.map((entry) => el('button', {
       text: entry.label,
-      attrs: { type: 'button', 'aria-pressed': tab === entry.id },
+      attrs: { type: 'button', 'aria-pressed': String(tab === entry.id) },
       on: { click: () => { tab = entry.id; paint(); } },
     })));
 
