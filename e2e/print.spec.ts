@@ -55,6 +55,34 @@ test('always prints the ARASAAC attribution', async ({ page }) => {
   await expect(page.locator('#print-root .ps-attribution')).toContainText('CC BY-NC-SA');
 });
 
+/*
+ * The rest of this file inspects the DOM in screen media, where the dialog is
+ * meant to be visible. Nothing did that in print media, and that is exactly
+ * where the regression lived: openDialog() moved the sheet to a native <dialog>
+ * on document.body, which put it outside #app-root and into the top layer, so
+ * the rule that strips the UI stopped reaching it and the browser's print
+ * preview showed the dialog instead of the page.
+ */
+test('print media shows the sheet and nothing of the UI', async ({ page }) => {
+  await page.emulateMedia({ media: 'print' });
+
+  const shown = (selector: string) => page.locator(selector).evaluate(
+    (el: HTMLElement) => getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0);
+
+  expect(await shown('#print-root')).toBe(true);
+  expect(await page.locator('#print-root .ps-card').count()).toBeGreaterThan(0);
+
+  // The two pieces of UI, one of which is not inside #app-root.
+  expect(await shown('#app-root')).toBe(false);
+  expect(await shown('dialog.sheet')).toBe(false);
+
+  // Hidden for printing only: the dialog is never closed behind the user's back,
+  // so the settings and the preview are still there when the print job returns.
+  await page.emulateMedia({ media: 'screen' });
+  await expect(page.locator('dialog.sheet')).toBeVisible();
+  await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
+});
+
 test('exports references only, never image data', async ({ page }) => {
   await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
   await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();

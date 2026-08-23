@@ -133,6 +133,18 @@
   /* Strip every trace of the UI. */
   #app-root { display: none !important; }
 
+  /*
+   * The print dialog itself is UI too, and it is the one piece #app-root does
+   * not cover: openDialog() appends a native <dialog> to document.body and
+   * shows it with showModal(), so it is a sibling of the mount point and lives
+   * in the top layer — above everything, including the sheet it is previewing.
+   * Hiding it here is what stops the browser's print preview from showing the
+   * dialog instead of the page. display:none takes a modal dialog out of the
+   * top layer along with its ::backdrop, which is the dim that would otherwise
+   * print as a grey wash over the whole sheet.
+   */
+  dialog { display: none !important; }
+
   #print-root { display: block !important; }
 
   #print-root .ps-sheet {
