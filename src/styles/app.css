@@ -491,41 +491,7 @@ kbd {
 .opt__check { display: flex; align-items: center; gap: 9px; font-size: 14px; cursor: pointer; padding: 3px 0; }
 .opt__check input { accent-color: var(--accent); width: 16px; height: 16px; }
 
-.segmented {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-}
-.segmented button {
-  flex: 1;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  font-size: 13.5px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: background .13s, color .13s;
-}
-/* Written for the settings tabs, which are folded panels now; it stays for
-   the print dialog's option rows, which can still outgrow a phone. Two
-   columns keep the segmented feel at half the height of a full stack, and
-   the track gives up the pill radius, which reads wrong on two rows. */
-@media (max-width: 560px) {
-  .segmented { flex-wrap: wrap; border-radius: var(--radius); }
-  .segmented button { flex: 1 1 45%; }
-}
-.segmented button[aria-pressed="true"] {
-  /* One plane above the track. --surface was the lifted look while the sheet
-     sat on --bg; the shared sheet is --surface itself, and --surface on
-     --surface reads as nothing selected. */
-  background: var(--surface-3);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
-}
+/* .segmented comes from components.css, grounds and phone wrap included. */
 
 .preview-frame {
   overflow: auto;
