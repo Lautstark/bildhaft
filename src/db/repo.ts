@@ -1,6 +1,8 @@
 import { clearAllProviderData } from '@lautstark/bildquelle';
 import { getDB } from './db.ts';
-import stopwordSeed from '../data/stopwords.json';
+// The seed for a user's own editable list. The list itself stays theirs and
+// stays in this database; what the package supplies is where it starts.
+import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
 import {
   DEFAULT_PRINT_SETTINGS,
   type AppSettings, type Collection, type Override, type OwnImage, type ProviderId,
@@ -17,7 +19,7 @@ export const newId = (): string =>
 export function defaultSettings(): AppSettings {
   return {
     activeProvider: 'arasaac',
-    stopwords: [...(stopwordSeed as string[])],
+    stopwords: [...GERMAN_STOPWORDS],
     print: { ...DEFAULT_PRINT_SETTINGS },
     lastCollectionId: null,
     sidebarOpen: false,

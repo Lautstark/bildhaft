@@ -1,7 +1,7 @@
 import type {
   AppSettings, Candidate, Collection, PrintSettings, Sentence, Slot,
 } from './core/types.ts';
-import { normalizeInput, splitLines } from './core/normalize.ts';
+import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { buildSlots, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
