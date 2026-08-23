@@ -60,7 +60,19 @@ async function openSymbolSettings(page: Page): Promise<void> {
   if (await reveal.isVisible().catch(() => false)) await reveal.click();
   // The banner offers an Einstellungen button too, so scope this to the sidebar.
   await page.getByRole('complementary').getByRole('button', { name: 'Einstellungen' }).click();
-  await page.getByRole('button', { name: 'Symbole' }).click();
+  // Each source is a folded panel; its controls are inside its own body, so a
+  // test that drives them has to open it exactly as a person would.
+  await metacomHeading(page).click();
+}
+
+/**
+ * The METACOM panel's heading. Scoped to the summary rather than the panel
+ * because the dictionary panel names the active provider in its body too — and
+ * because the state belongs to the heading now, which is the whole point of it:
+ * these assertions pass without opening anything.
+ */
+function metacomHeading(page: Page) {
+  return page.locator('.panel > summary').filter({ hasText: 'METACOM' });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -82,8 +94,8 @@ test('indexes a folder, ignoring anything that is not an image', async ({ page }
   await chooseFakeFolder(page);
 
   // Eight PNGs; the .txt must not be counted.
-  await expect(page.locator('.card', { hasText: 'METACOM' })).toContainText('8 Symbole');
-  await expect(page.locator('.card', { hasText: 'METACOM' })).toContainText(FOLDER);
+  await expect(metacomHeading(page)).toContainText('8 Symbole');
+  await expect(metacomHeading(page)).toContainText(FOLDER);
 });
 
 test('renders a sentence from the folder rather than from ARASAAC', async ({ page }) => {
@@ -178,7 +190,7 @@ test('says so when the folder is indexed but unreadable', async ({ page }) => {
    * adopted the cached index and reports itself ready.
    */
   await openSymbolSettings(page);
-  await expect(page.locator('.card', { hasText: 'METACOM' })).toContainText('8 Symbole');
+  await expect(metacomHeading(page)).toContainText('8 Symbole');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   // Ready by its own account, and still unable to produce a single symbol.
@@ -413,7 +425,7 @@ test('a sentence still renders after the folder comes back under another name', 
    */
   await openSymbolSettings(page);
   await chooseFakeFolder(page, 'METACOM_9_Kopie');
-  await expect(page.locator('.card', { hasText: 'METACOM' })).toContainText('METACOM_9_Kopie');
+  await expect(metacomHeading(page)).toContainText('METACOM_9_Kopie');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   const images = page.locator('.row .slot img');
