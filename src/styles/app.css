@@ -509,6 +509,14 @@ kbd {
   cursor: pointer;
   transition: background .13s, color .13s;
 }
+/* Four labels need more width than a phone has — "Mein Wörterbuch" was
+   wrapping inside its own pill. Two columns keep the segmented feel at half
+   the height of a full stack; the track gives up the pill radius, which
+   reads wrong wrapped onto two rows. */
+@media (max-width: 560px) {
+  .segmented { flex-wrap: wrap; border-radius: var(--radius); }
+  .segmented button { flex: 1 1 45%; }
+}
 .segmented button[aria-pressed="true"] {
   /* One plane above the track. --surface was the lifted look while the sheet
      sat on --bg; the shared sheet is --surface itself, and --surface on
