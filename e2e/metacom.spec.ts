@@ -75,6 +75,11 @@ function metacomHeading(page: Page) {
   return page.locator('.panel > summary').filter({ hasText: 'METACOM' });
 }
 
+/** Its counterpart, for the assertion that only one source is active at a time. */
+function arasaacHeading(page: Page) {
+  return page.locator('.panel > summary').filter({ hasText: 'ARASAAC' });
+}
+
 test.beforeEach(async ({ page }) => {
   /*
    * Hide the directory picker so the app offers the <input webkitdirectory>
@@ -89,6 +94,25 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
 });
 
+/**
+ * The step that used to sit between choosing a folder and seeing it used.
+ *
+ * Every test below chooses a folder and then expects METACOM symbols without
+ * pressing anything further, so they all depend on this; it is asserted once
+ * here so that a regression names itself instead of surfacing as six tests
+ * failing on a missing image.
+ */
+test('a chosen folder becomes the active source on its own', async ({ page }) => {
+  await openSymbolSettings(page);
+  await expect(metacomHeading(page)).not.toContainText('Aktive Quelle');
+  await expect(arasaacHeading(page)).toContainText('Aktive Quelle');
+
+  await chooseFakeFolder(page);
+
+  await expect(metacomHeading(page)).toContainText('Aktive Quelle');
+  await expect(arasaacHeading(page)).not.toContainText('Aktive Quelle');
+});
+
 test('indexes a folder, ignoring anything that is not an image', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
@@ -101,7 +125,6 @@ test('indexes a folder, ignoring anything that is not an image', async ({ page }
 test('renders a sentence from the folder rather than from ARASAAC', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
-  await page.getByRole('button', { name: 'Verwenden' }).click();
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   await translate(page, 'Ich möchte schlafen');
@@ -131,7 +154,6 @@ test('never requests a METACOM file over the network', async ({ page }) => {
 
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
-  await page.getByRole('button', { name: 'Verwenden' }).click();
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await translate(page, 'Ich möchte schlafen');
 
@@ -143,7 +165,6 @@ test('never requests a METACOM file over the network', async ({ page }) => {
 test('says so when the folder is indexed but unreadable', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
-  await page.getByRole('button', { name: 'Verwenden' }).click();
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await translate(page, 'Ich möchte schlafen');
   await expect(page.locator('.row .slot img').first()).toBeVisible();
@@ -202,7 +223,6 @@ test('says so when the folder is indexed but unreadable', async ({ page }) => {
 test('symbols come back once the folder can be read again', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
-  await page.getByRole('button', { name: 'Verwenden' }).click();
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await translate(page, 'Ich möchte schlafen');
   await expect(page.locator('.row .slot img')).toHaveCount(3);
@@ -409,7 +429,6 @@ test('a missing symbol is not reported as an unreadable folder', async ({ page }
 test('a sentence still renders after the folder comes back under another name', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
-  await page.getByRole('button', { name: 'Verwenden' }).click();
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await translate(page, 'Ich möchte schlafen');
   await expect(page.locator('.row .slot img')).toHaveCount(3);
@@ -486,7 +505,6 @@ async function renderingWidths(page: Page): Promise<number[]> {
 test('prefers one rendering, and brings existing rows with it', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseTwoRenderings(page);
-  await page.getByRole('button', { name: 'Verwenden' }).click();
 
   await page.getByLabel('Darstellung').selectOption('PNG_ohne_Text');
   await page.getByLabel('Dialog schließen').click();

@@ -96,14 +96,39 @@ export function openSettings(options: SettingsOptions): void {
     else panel.summary.removeAttribute('aria-current');
   }
 
-  async function run(task: () => Promise<void>, done: string): Promise<void> {
+  /**
+   * Runs one METACOM task and, for the three that *adopt* a folder, makes
+   * METACOM the active source on the way out.
+   *
+   * Choosing a folder and then pressing „Verwenden" was two steps for one
+   * intention: nobody points bildhaft at their own licensed collection in
+   * order to keep rendering ARASAAC. The button stays, because the case it is
+   * really about is switching back once both sources are set up.
+   *
+   * „Neu einlesen" and „Ordner vergessen" pass nothing: the first re-reads a
+   * folder that may deliberately not be the active source, and the second is
+   * the opposite move.
+   */
+  async function run(task: () => Promise<void>, done: string, adopt = false): Promise<void> {
     busy = true;
     paintSources();
     try {
       await task();
+      /*
+       * isReady() and not the mere absence of a throw: a pick that produced no
+       * usable index must not switch the whole app onto an empty source, which
+       * would blank every row and look like the data had gone.
+       */
+      const adopted = adopt && metacom.isReady() && settings.activeProvider !== 'metacom';
+      if (adopted) {
+        change({ ...settings, activeProvider: 'metacom' });
+        paintDictionary();
+      }
       resetSymbolResolution('metacom');
       options.onProviderChanged();
-      options.onNotify(done);
+      // Switching source re-renders every row, so it is said out loud rather
+      // than left for somebody to notice.
+      options.onNotify(adopted ? `${done} METACOM ist jetzt die aktive Quelle.` : done);
     } catch (err) {
       // An aborted folder picker is a normal user action, not an error.
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
@@ -190,12 +215,12 @@ export function openSettings(options: SettingsOptions): void {
         MetacomProvider.supportsPersistentPicker
           ? el('button', { class: 'btn sm', text: 'Symbolordner wählen',
               attrs: { type: 'button', disabled: busy },
-              on: { click: () => void run(() => metacom.pickDirectory(), 'METACOM-Ordner eingelesen.') } })
+              on: { click: () => void run(() => metacom.pickDirectory(), 'METACOM-Ordner eingelesen.', true) } })
           : fileButton('Symbolordner wählen', null, true,
-              (files) => void run(() => metacom.useFileList(files), 'METACOM-Ordner eingelesen.')),
+              (files) => void run(() => metacom.useFileList(files), 'METACOM-Ordner eingelesen.', true)),
 
         fileButton('ZIP einlesen', '.zip,application/zip', false,
-          (files) => void run(() => metacom.useZip(files[0]), 'ZIP eingelesen.')),
+          (files) => void run(() => metacom.useZip(files[0]), 'ZIP eingelesen.', true)),
 
         metacom.isReady()
           ? el('button', { class: 'btn sm', text: 'Neu einlesen',
