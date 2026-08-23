@@ -430,9 +430,11 @@ kbd {
 .sheet.wide { max-width: min(100%, 1060px); }
 
 .sheet > .head h2 { flex: 1; }
-/* Cards separate themselves with outline, which draws outside the box; the
-   scroll region needs its own breathing room or the rings clip at its edges. */
-.sheet > .body { overflow-y: auto; padding: 2px; }
+/* Outlines draw outside the box, and this region scrolls, so it needs room for
+   them at its edges or they clip. components.css rings focus at 2px wide with a
+   2px offset, so 4px is what a ring actually reaches — 2px left the outer half
+   of every ring cut off along all three edges. */
+.sheet > .body { overflow-y: auto; padding: 4px; }
 .sheet > .foot .spacer { flex: 1; }
 
 /* ---------------------------------------------------------------- picker */

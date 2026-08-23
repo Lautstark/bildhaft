@@ -145,3 +145,33 @@ test('makes one row per line of a multi-line entry', async ({ page }) => {
   await expect(rows.first().locator('.slot__label'))
     .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
 });
+
+test('a focused field inside a sheet is not clipped by its scroll region', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await page.locator('.row').first().locator('.slot-add').click();
+
+  const field = page.getByLabel('Symbol suchen');
+  await field.click();
+
+  /*
+   * The focus ring is drawn outside the element, and the sheet's body scrolls.
+   * Too little padding there and the ring is cut off along the scroll edge —
+   * which looks like a rendering fault rather than the missing few pixels it is.
+   */
+  const clipped = await field.evaluate((input) => {
+    const style = getComputedStyle(input);
+    const reach = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+    const ring = input.getBoundingClientRect();
+    const region = input.closest('.body')!.getBoundingClientRect();
+    return {
+      reach,
+      top: Math.round(region.top - (ring.top - reach)),
+      left: Math.round(region.left - (ring.left - reach)),
+      right: Math.round((ring.right + reach) - region.right),
+    };
+  });
+  // A ring that stopped being drawn would pass every edge check trivially.
+  expect(clipped.reach).toBeGreaterThan(0);
+  // Positive on any edge means the ring reaches past what the region will show.
+  expect(clipped).toMatchObject({ top: 0, left: 0, right: 0 });
+});
