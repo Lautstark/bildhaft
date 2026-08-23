@@ -75,7 +75,6 @@ export interface SidebarHandlers {
   onSearchChange: (value: string) => void;
   onOpenResult: (sentence: Sentence) => void;
   onOpenSettings: () => void;
-  onImport: (file: File) => void;
   onCollapse: () => void;
 }
 
@@ -99,17 +98,6 @@ export function sidebar(handlers: SidebarHandlers): {
 
   const listSection = el('div', { class: 'sidebar__section' });
 
-  const importInput = el('input', {
-    attrs: { type: 'file', accept: 'application/json,.json', hidden: true },
-    on: {
-      change: () => {
-        const file = importInput.files?.[0];
-        if (file) handlers.onImport(file);
-        importInput.value = '';
-      },
-    },
-  });
-
   const node = el('aside', { class: 'sidebar' },
     el('div', { class: 'sidebar__brand' },
       logo(),
@@ -126,8 +114,6 @@ export function sidebar(handlers: SidebarHandlers): {
       style: { marginTop: 'auto', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
       el('button', { class: 'btn quiet sm', text: 'Einstellungen',
         attrs: { type: 'button' }, on: { click: handlers.onOpenSettings } }),
-      el('label', { class: 'btn quiet sm', text: 'Importieren', style: { cursor: 'pointer' } },
-        importInput),
     ),
   );
 

@@ -83,8 +83,16 @@ test('carries own pictures through a backup and back', async ({ page }) => {
   expect(raw).toHaveLength(1);
 
   // Import the file back: it must arrive as a second collection with the picture.
-  await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
-  await page.locator('.sidebar input[type=file]').setInputFiles(path!);
+  // Reading a file lives in Einstellungen → Daten, beside the button that makes
+  // one — it used to be a „Importieren" button in the sidebar, a screen away
+  // from its own other half.
+  const show = page.getByRole('button', { name: 'Seitenleiste einblenden' });
+  if (await show.count()) await show.click();
+  await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
+  await page.locator('.panel', { hasText: 'Daten' }).locator('summary').click();
+  await page.locator('.panel', { hasText: 'Daten' }).locator('input[type=file]')
+    .setInputFiles(path!);
+  // The dialog closes itself on a read, so the list is visible again.
   await expect(page.locator('.list__item')).toHaveCount(2);
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 });

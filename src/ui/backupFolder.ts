@@ -86,8 +86,8 @@ export function mountBackupFolder(backup: Sicherung, notify: (message: string) =
   const actions = el('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } });
   const node = el('div', { style: { margin: '0 0 18px' } },
     el('p', { class: 'small faint', style: { margin: '0 0 8px' }, text:
-      'Wähle einen Ordner — zum Beispiel einen in Dropbox oder iCloud —, dann '
-      + 'schreibt bildhaft die Sicherung dort hinein, sobald sich etwas ändert.' }),
+      'Wähle einen Ordner, dann schreibt bildhaft die Sicherung dort hinein, '
+      + 'sobald sich etwas ändert.' }),
     line, actions);
 
   /** One button, described rather than built at each call site. */
@@ -125,7 +125,14 @@ export function mountBackupFolder(backup: Sicherung, notify: (message: string) =
         fill(actions, button('Erneut versuchen', 'primary', () => backup.save()), forget);
         break;
       case 'idle':
-        fill(actions, button('Jetzt sichern', '', () => backup.save()), forget);
+        // No "save now". The folder is written on every change already, so a
+        // button offering to do it again is a control whose only honest label
+        // would be "do the thing that is already happening" — and it sat
+        // directly above „Sicherung als Datei", where two buttons both saying
+        // sichern differed by a word that named the wrong axis. „Erneut
+        // versuchen" below is not the same button: after a failure there is
+        // nothing happening to be redundant with.
+        fill(actions, forget);
         break;
       case 'saving':
         // No buttons at all for the moment it is writing. Disabling them would

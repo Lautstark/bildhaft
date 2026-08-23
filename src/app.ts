@@ -96,7 +96,6 @@ export function mountApp(root: HTMLElement): void {
       render();
     },
     onOpenSettings: () => { openAppSettings(); closeNavOnMobile(); render(); },
-    onImport: (file) => void handleImport(file),
     onCollapse: () => toggleSidebar(),
   });
 
@@ -894,6 +893,7 @@ export function mountApp(root: HTMLElement): void {
         notify('Sicherung exportiert.');
       },
       backup,
+      onImport: (file) => void handleImport(file),
       onClearAll: () => void confirmClearAll(),
       onClose: () => render(),
     });

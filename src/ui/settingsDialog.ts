@@ -16,6 +16,8 @@ export interface SettingsOptions {
   onClose: () => void;
   /** Library-wide actions. Per-collection ones live in the collection's own menu. */
   onExportAll: () => void;
+  /** Reads a Sicherung, or a single collection's file — the format decides. */
+  onImport: (file: File) => void;
   onClearAll: () => void;
   /** The standing backup. Draws nothing where the browser has no folder picker. */
   backup: Sicherung;
@@ -393,10 +395,25 @@ export function openSettings(options: SettingsOptions): void {
       // somebody stops thinking about it. Null in any browser without the
       // picker, and then the download below is the whole offer, unchanged.
       folder?.node ?? null,
-      el('button', { class: 'btn primary sm', text: 'Alles exportieren',
-        attrs: { type: 'button' }, on: { click: options.onExportAll } }),
+      /*
+       * The two halves of the same subject, side by side.
+       *
+       * „Sicherung einlesen" used to be „Importieren" in the sidebar, a screen
+       * away from the button that makes the file it reads. That was history
+       * rather than intent: the sidebar button predates there being a backup
+       * format at all — it meant "bring in one Sammlung" — and quietly gained
+       * a second job when the full-backup format arrived. It still does both,
+       * because importCollectionFile routes on the file's own format.
+       */
+      el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+        el('button', { class: 'btn primary sm', text: 'Sicherung als Datei',
+          attrs: { type: 'button' }, on: { click: options.onExportAll } }),
+        fileButton('Sicherung einlesen', 'application/json,.json', false,
+          (files) => { close(); options.onImport(files[0]); })),
       el('p', { class: 'small faint', style: { margin: '8px 0 0' }, html:
-        'Einzelne Sammlungen exportierst du über das Menü <strong>⋯</strong> neben ihrem Namen.' }),
+        'Einlesen fügt hinzu und überschreibt nie — auch die Datei einer '
+        + 'einzelnen Sammlung wird hier gelesen. Einzelne Sammlungen '
+        + 'exportierst du über das Menü <strong>⋯</strong> neben ihrem Namen.' }),
       el('h3', { text: 'Alles löschen', style: { fontSize: '13px', margin: '24px 0 6px' } }),
       el('p', { class: 'small faint', style: { margin: '0 0 10px' }, text:
         'Setzt bildhaft vollständig zurück: alle Sammlungen, alle Zeilen, dein Wörterbuch '
