@@ -3,7 +3,8 @@ import { getDB } from './db.ts';
 import stopwordSeed from '../data/stopwords.json';
 import {
   DEFAULT_PRINT_SETTINGS,
-  type AppSettings, type Collection, type Override, type ProviderId, type Sentence,
+  type AppSettings, type Collection, type Override, type OwnImage, type ProviderId,
+  type Sentence,
 } from '../core/types.ts';
 
 const SETTINGS_KEY = 'app';
@@ -184,7 +185,7 @@ export async function libraryTotals(): Promise<{
  */
 export async function clearEverything(): Promise<void> {
   const db = await getDB();
-  const stores = ['collections', 'sentences', 'overrides'] as const;
+  const stores = ['collections', 'sentences', 'overrides', 'ownImages'] as const;
   const tx = db.transaction(stores, 'readwrite');
   for (const store of stores) await tx.objectStore(store).clear();
   await tx.done;
@@ -227,4 +228,64 @@ export async function listOverrides(provider?: ProviderId): Promise<Override[]> 
 export async function overrideMap(provider: ProviderId): Promise<Map<string, Override>> {
   const list = await listOverrides(provider);
   return new Map(list.map((o) => [o.token, o]));
+}
+
+/* ----------------------------------------------------------- own images --- */
+
+/**
+ * Pictures the user supplied. Stored whole, not referenced: the point of these
+ * is that they keep working when the original file is moved or deleted, which
+ * is exactly what a symbol folder cannot promise.
+ */
+export async function putOwnImage(file: File): Promise<OwnImage> {
+  const image: OwnImage = {
+    id: newId(),
+    name: file.name,
+    type: file.type || 'image/*',
+    // The bytes, detached from the file they came from.
+    blob: new Blob([await file.arrayBuffer()], { type: file.type || 'image/*' }),
+    createdAt: Date.now(),
+  };
+  const db = await getDB();
+  await db.put('ownImages', image);
+  return image;
+}
+
+export async function getOwnImage(id: string): Promise<OwnImage | undefined> {
+  const db = await getDB();
+  return db.get('ownImages', id);
+}
+
+export async function listOwnImages(): Promise<OwnImage[]> {
+  const db = await getDB();
+  return (await db.getAll('ownImages')).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function saveOwnImage(image: OwnImage): Promise<void> {
+  const db = await getDB();
+  await db.put('ownImages', image);
+}
+
+/**
+ * Drops any image no slot points at any more.
+ *
+ * Deleting one with its slot would be wrong: the same picture can sit in
+ * several rows, and in this app a row is cheap to delete by accident.
+ */
+export async function pruneOwnImages(): Promise<number> {
+  const db = await getDB();
+  const used = new Set<string>();
+  for (const sentence of await db.getAll('sentences')) {
+    for (const slot of sentence.slots) if (slot.ownImage) used.add(slot.ownImage);
+  }
+
+  const tx = db.transaction('ownImages', 'readwrite');
+  let removed = 0;
+  for (const image of await tx.store.getAll()) {
+    if (used.has(image.id)) continue;
+    await tx.store.delete(image.id);
+    removed++;
+  }
+  await tx.done;
+  return removed;
 }

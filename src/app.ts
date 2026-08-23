@@ -8,8 +8,8 @@ import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
 import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
-  loadSettings, newId, overrideMap, putOverride, putSentence, renameCollection,
-  saveSettings, searchSentences,
+  loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
+  putSentence, renameCollection, saveSettings, searchSentences,
 } from './db/repo.ts';
 import {
   downloadCollectionExport, downloadJson, exportCollection, exportEverything,
@@ -624,6 +624,8 @@ export function mountApp(root: HTMLElement): void {
     picker = { sentenceId, slotId };
     openSlotPicker(slot, providerId(), {
       onChoose: (candidate) => void handleChoose(candidate),
+      onOwnImage: (file) => void handleOwnImage(file),
+      onClearOwnImage: () => void handleClearOwnImage(),
       onRemove: () => void handleRemoveSlot(),
       onClose: () => void handleClosePicker(),
     });
@@ -665,6 +667,51 @@ export function mountApp(root: HTMLElement): void {
         if (key.trim()) await putOverride(providerId(), key, candidate.id, candidate.label);
       }
     }
+  }
+
+  /*
+   * A picture of the user's own goes in whole: the bytes are copied into
+   * bildhaft, so the file it came from is free to move or disappear. The slot
+   * keeps whatever symbol it had underneath, and removing the picture later
+   * uncovers it rather than leaving an empty field.
+   */
+  async function handleOwnImage(file: File): Promise<void> {
+    if (!picker) return;
+    const { sentenceId, slotId } = picker;
+    picker = null;
+
+    const sentence = sentences.find((s) => s.id === sentenceId);
+    const slot = sentence?.slots.find((sl) => sl.id === slotId);
+    if (!sentence || !slot) return;
+
+    try {
+      const image = await putOwnImage(file);
+      await updateSentence({
+        ...sentence,
+        slots: sentence.slots.map((sl) => (sl.id === slotId ? {
+          ...sl,
+          ownImage: image.id,
+          // A field added by hand takes its word from the file it was given.
+          sourceToken: sl.sourceToken || stemOf(file.name),
+          concept: sl.concept || stemOf(file.name).toLowerCase(),
+          origin: 'manual' as const,
+        } : sl)),
+      });
+      notify('Eigenes Bild gespeichert.');
+    } catch {
+      notify('Das Bild konnte nicht gespeichert werden.');
+    }
+  }
+
+  async function handleClearOwnImage(): Promise<void> {
+    if (!picker) return;
+    const { sentenceId, slotId } = picker;
+    picker = null;
+    await mutateSlots(sentenceId, (slots) =>
+      slots.map((sl) => (sl.id === slotId ? { ...sl, ownImage: null } : sl)));
+    // The picture itself only goes once nothing points at it any more.
+    await pruneOwnImages();
+    resetSymbolResolution();
   }
 
   async function handleRemoveSlot(): Promise<void> {
@@ -879,6 +926,11 @@ export function mountApp(root: HTMLElement): void {
     else persistSettings({ ...settings, sidebarOpen: !settings.sidebarOpen });
     render();
   }
+}
+
+/** "Bente-Sommer 2026.jpg" -> "Bente-Sommer 2026". The filename is the only label a photo has. */
+function stemOf(filename: string): string {
+  return filename.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Bild';
 }
 
 function mergeCandidate(candidates: Candidate[], candidate: Candidate): Candidate[] {

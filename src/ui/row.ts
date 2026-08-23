@@ -1,7 +1,7 @@
 import type { ProviderId, Sentence, Slot } from '../core/types.ts';
 import { el } from './dom.ts';
 import { icons } from './logo.ts';
-import { symbolView, type SymbolView } from './symbols.ts';
+import { symbolIdFor, symbolView, type SymbolView } from './symbols.ts';
 
 const ORIGIN_HINT: Record<Slot['origin'], string> = {
   override: 'Aus deinem Wörterbuch',
@@ -39,7 +39,7 @@ export function sentenceRow(
   const slots = el('div', { class: 'slots' });
 
   sentence.slots.forEach((slot, index) => {
-    const chosen = slot.choice[provider] ?? null;
+    const chosen = symbolIdFor(slot, provider);
     const candidates = slot.candidates[provider] ?? [];
     const symbolLabel = candidates.find((c) => c.id === chosen)?.label;
 
@@ -64,7 +64,7 @@ export function sentenceRow(
         role: 'button',
         tabindex: 0,
         draggable: 'true',
-        title: `${ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}\nZiehen zum Umsortieren`,
+        title: `${slot.ownImage ? 'Eigenes Bild' : ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}\nZiehen zum Umsortieren`,
       },
       on: {
         click: () => handlers.onOpenSlot(slot.id),

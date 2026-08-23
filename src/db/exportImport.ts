@@ -1,14 +1,63 @@
 import {
   BACKUP_FORMAT, BACKUP_VERSION, EXPORT_FORMAT, EXPORT_VERSION,
-  type BackupExport, type Collection, type CollectionExport, type Override, type Sentence,
+  type BackupExport, type Collection, type CollectionExport, type Override,
+  type OwnImage, type OwnImageExport, type Sentence,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
-import { listCollections, listOverrides, listSentences, newId } from './repo.ts';
+import {
+  getOwnImage, listCollections, listOverrides, listOwnImages, listSentences, newId,
+} from './repo.ts';
 
 const NOTICE =
   'bildhaft speichert Symbol-Verweise, keine Bilddateien. Diese Datei enthält keine ' +
   'Piktogramme. Sie kann unabhängig davon geteilt werden, welche Symbolsammlung ' +
   'die Empfängerin oder der Empfänger besitzt.';
+
+/*
+ * Own pictures are the exception, and the only one. They belong to the user, so
+ * a file that left them behind would be a backup that quietly loses things. No
+ * ARASAAC or METACOM pixel is ever written either way — those stay references,
+ * which is what makes a shared file safe whatever licence the recipient holds.
+ */
+const NOTICE_WITH_IMAGES = NOTICE.replace(
+  'Sie kann unabhängig davon geteilt werden',
+  'Enthalten sind nur deine eigenen Bilder. Sie kann unabhängig davon geteilt werden',
+);
+
+/** The bytes, inline. Nothing else about the file travels. */
+async function packImages(images: OwnImage[]): Promise<OwnImageExport[]> {
+  return Promise.all(images.map(async (image) => ({
+    id: image.id,
+    name: image.name,
+    type: image.type,
+    data: await toDataUrl(image.blob),
+    createdAt: image.createdAt,
+  })));
+}
+
+function toDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('Bild konnte nicht gelesen werden.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fromDataUrl(data: string): Promise<Blob> {
+  const response = await fetch(data);
+  return response.blob();
+}
+
+/** The own pictures these sentences actually point at, in the order they appear. */
+async function imagesUsedBy(sentences: Sentence[]): Promise<OwnImage[]> {
+  const ids = new Set<string>();
+  for (const sentence of sentences) {
+    for (const slot of sentence.slots) if (slot.ownImage) ids.add(slot.ownImage);
+  }
+  const found = await Promise.all([...ids].map((id) => getOwnImage(id)));
+  return found.filter((image): image is OwnImage => Boolean(image));
+}
 
 /**
  * Exports a collection as plain JSON. This is the entire backup story on a static
@@ -21,6 +70,7 @@ export async function exportCollection(
   collection: Collection, includeOverrides = true,
 ): Promise<CollectionExport> {
   const sentences = await listSentences(collection.id);
+  const images = await imagesUsedBy(sentences);
   return {
     format: EXPORT_FORMAT,
     version: EXPORT_VERSION,
@@ -28,7 +78,8 @@ export async function exportCollection(
     collection: { ...collection, sentenceIds: sentences.map((s) => s.id) },
     sentences,
     overrides: includeOverrides ? await listOverrides() : undefined,
-    notice: NOTICE,
+    ownImages: images.length > 0 ? await packImages(images) : undefined,
+    notice: images.length > 0 ? NOTICE_WITH_IMAGES : NOTICE,
   };
 }
 
@@ -36,6 +87,9 @@ export async function exportCollection(
 export async function exportEverything(): Promise<BackupExport> {
   const collections = await listCollections();
   const sentences = (await Promise.all(collections.map((c) => listSentences(c.id)))).flat();
+  // Every stored picture, not only the ones in use: this is the file that has
+  // to be able to put the library back exactly as it was.
+  const images = await listOwnImages();
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -43,7 +97,8 @@ export async function exportEverything(): Promise<BackupExport> {
     collections,
     sentences,
     overrides: await listOverrides(),
-    notice: NOTICE,
+    ownImages: images.length > 0 ? await packImages(images) : undefined,
+    notice: images.length > 0 ? NOTICE_WITH_IMAGES : NOTICE,
   };
 }
 
@@ -82,6 +137,52 @@ interface AnyExport {
   collections?: Collection[];
   sentences?: Sentence[];
   overrides?: Override[];
+  ownImages?: OwnImageExport[];
+}
+
+/**
+ * Restores the own pictures in a file under fresh ids, and reports which old id
+ * became which. Fresh ids for the same reason everything else here gets them:
+ * an import adds, and must never land on top of a picture already stored.
+ */
+async function restoreImages(packed: OwnImageExport[] | undefined): Promise<Map<string, string>> {
+  const mapping = new Map<string, string>();
+  if (!packed?.length) return mapping;
+
+  const restored: OwnImage[] = [];
+  for (const image of packed) {
+    if (!image?.id || typeof image.data !== 'string') continue;
+    // A file is user input like any other: a picture that will not decode is
+    // skipped, and the slot that wanted it falls back to its symbol.
+    const blob = await fromDataUrl(image.data).catch(() => null);
+    if (!blob) continue;
+    const id = newId();
+    mapping.set(image.id, id);
+    restored.push({
+      id,
+      name: image.name || 'Bild',
+      type: image.type || blob.type || 'image/*',
+      blob,
+      createdAt: image.createdAt ?? Date.now(),
+    });
+  }
+
+  const db = await getDB();
+  const tx = db.transaction('ownImages', 'readwrite');
+  for (const image of restored) await tx.store.put(image);
+  await tx.done;
+  return mapping;
+}
+
+/** Points a sentence's slots at the pictures as they were just restored. */
+function remapImages(sentence: Sentence, mapping: Map<string, string>): Sentence {
+  if (!sentence.slots.some((slot) => slot.ownImage)) return sentence;
+  return {
+    ...sentence,
+    slots: sentence.slots.map((slot) => (slot.ownImage
+      ? { ...slot, ownImage: mapping.get(slot.ownImage) ?? null }
+      : slot)),
+  };
 }
 
 /**
@@ -107,10 +208,12 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
 
   const now = Date.now();
   const collectionId = newId();
+  const imageIds = await restoreImages(parsed.ownImages);
 
-  const sentences: Sentence[] = parsed.sentences.map((s) => {
-    return { ...s, id: newId(), collectionId, createdAt: s.createdAt ?? now, updatedAt: now };
-  });
+  const sentences: Sentence[] = parsed.sentences.map((s) => remapImages(
+    { ...s, id: newId(), collectionId, createdAt: s.createdAt ?? now, updatedAt: now },
+    imageIds,
+  ));
 
   const collection: Collection = {
     id: collectionId,
@@ -159,17 +262,18 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
 
   const byCollection = new Map(collections.map((c) => [c.id, c]));
   const sentences: Sentence[] = [];
+  const imageIds = await restoreImages(parsed.ownImages);
 
   for (const source of parsed.sentences ?? []) {
     const target = idMap.get(source.collectionId);
     if (!target) continue; // orphaned row; drop rather than guess
-    const sentence: Sentence = {
+    const sentence: Sentence = remapImages({
       ...source,
       id: newId(),
       collectionId: target,
       createdAt: source.createdAt ?? now,
       updatedAt: now,
-    };
+    }, imageIds);
     sentences.push(sentence);
     byCollection.get(target)!.sentenceIds.push(sentence.id);
   }

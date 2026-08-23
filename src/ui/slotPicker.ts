@@ -6,6 +6,9 @@ import { symbolView, type SymbolView } from './symbols.ts';
 
 export interface PickerHandlers {
   onChoose: (candidate: Candidate) => void;
+  /** A picture of the user's own, taking the place of any symbol. */
+  onOwnImage: (file: File) => void;
+  onClearOwnImage: () => void;
   /** Removes the whole slot, not just its symbol. */
   onRemove: () => void;
   onClose: () => void;
@@ -13,7 +16,12 @@ export interface PickerHandlers {
 
 export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: PickerHandlers): void {
   const stored = slot.candidates[provider] ?? [];
-  const chosen = slot.choice[provider] ?? null;
+  /*
+   * Nothing is marked while an own picture is showing. The symbol underneath is
+   * still remembered — removing the picture uncovers it — but highlighting it
+   * would claim the slot shows something it does not.
+   */
+  const chosen = slot.ownImage ? null : slot.choice[provider] ?? null;
   const isNew = !slot.concept;
 
   let suggested: Candidate[] = stored;
@@ -30,6 +38,34 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   const status = el('p', { class: 'small muted', style: { margin: '12px 0 0' } });
   const grid = el('div', { class: 'picker__grid' });
 
+  /*
+   * A file of the user's own. bildhaft keeps the bytes rather than a path, so
+   * the wording promises what actually happens — the hint says gespeichert, and
+   * moving or deleting the original afterwards changes nothing here.
+   */
+  const upload = el('input', {
+    attrs: { type: 'file', accept: 'image/*', hidden: true },
+    on: {
+      change: () => {
+        const file = upload.files?.[0];
+        upload.value = '';
+        if (file) finish(() => handlers.onOwnImage(file));
+      },
+    },
+  });
+
+  const ownRow = el('div', { class: 'picker__own' },
+    el('label', { class: 'btn sm', text: 'Eigenes Bild wählen', style: { cursor: 'pointer' } },
+      upload),
+    slot.ownImage
+      ? el('button', { class: 'btn sm destructive', text: 'Eigenes Bild entfernen',
+          attrs: { type: 'button' }, on: { click: () => finish(handlers.onClearOwnImage) } })
+      : null,
+    el('span', { class: 'small faint', text: slot.ownImage
+      ? 'Dieses Feld zeigt dein eigenes Bild. Es liegt in bildhaft — die Originaldatei darfst du verschieben oder löschen.'
+      : 'Ein eigenes Foto statt eines Symbols. Es wird in bildhaft gespeichert, nicht nur verknüpft.' }),
+  );
+
   const search = el('input', {
     class: 'field',
     attrs: { type: 'search', 'aria-label': 'Symbol suchen',
@@ -41,6 +77,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     title: isNew ? 'Feld hinzufügen' : `Symbol für „${slot.sourceToken}“`,
     body: [
       search,
+      ownRow,
       status,
       grid,
       isNew ? el('span') : el('p', {

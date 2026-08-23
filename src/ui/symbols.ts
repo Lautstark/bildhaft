@@ -1,4 +1,5 @@
-import type { ProviderId } from '../core/types.ts';
+import type { ProviderId, Slot } from '../core/types.ts';
+import { getOwnImage } from '../db/repo.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, svg } from './dom.ts';
 
@@ -10,7 +11,24 @@ import { el, svg } from './dom.ts';
 const cache = new Map<string, string>();
 const pending = new Map<string, Promise<string | null>>();
 
-const cacheKey = (provider: ProviderId, id: string) => `${provider}:${id}`;
+/**
+ * An own image is the same picture whatever symbol source is active, so it is
+ * addressed by a prefix rather than by a provider. Every caller that already
+ * knows how to show a symbol id — rows, the picker, the print sheet — shows one
+ * of these without knowing anything new.
+ */
+const OWN_PREFIX = 'own:';
+
+export const ownImageId = (id: string): string => `${OWN_PREFIX}${id}`;
+
+/** The id to show for a slot: its own picture if it has one, else its symbol. */
+export function symbolIdFor(slot: Slot, provider: ProviderId): string | null {
+  if (slot.ownImage) return ownImageId(slot.ownImage);
+  return slot.choice[provider] ?? null;
+}
+
+const cacheKey = (provider: ProviderId, id: string) =>
+  (id.startsWith(OWN_PREFIX) ? `own:${id}` : `${provider}:${id}`);
 
 /**
  * Resolution must not be able to hang. Every caller here awaits the database,
@@ -33,6 +51,11 @@ export function peekSymbolUrl(provider: ProviderId, id: string): string | null {
  * no second try.
  */
 async function resolveUrl(provider: ProviderId, id: string): Promise<string | null> {
+  if (id.startsWith(OWN_PREFIX)) {
+    const image = await getOwnImage(id.slice(OWN_PREFIX.length));
+    return image ? URL.createObjectURL(image.blob) : null;
+  }
+
   const direct = await getProvider(provider).getImageUrl(id);
   if (direct || provider !== 'metacom') return direct;
   const path = metacom.idForName(id.replace(/\.[^.]+$/, ''));
@@ -163,7 +186,12 @@ export function symbolView(options: SymbolOptions): SymbolView {
       }
     });
     node.replaceChildren(tile);
-    if (id) onUnreadable?.(id);
+    /*
+     * Own images are not the folder's problem. Counting a missing one towards
+     * the "your METACOM folder cannot be read" warning would blame the folder
+     * for a picture that never came from it.
+     */
+    if (id && !id.startsWith(OWN_PREFIX)) onUnreadable?.(id);
   };
 
   const showImage = (url: string) => {

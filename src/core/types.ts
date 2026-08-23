@@ -47,6 +47,27 @@ export interface Slot {
   choice: Partial<Record<ProviderId, string | null>>;
   /** Cached candidate lists per provider, so the picker opens instantly. */
   candidates: Partial<Record<ProviderId, Candidate[]>>;
+
+  /**
+   * An image of the user's own, by id. Kept in this browser rather than
+   * referenced on disk, so moving or deleting the original file changes
+   * nothing — which is the whole difference between this and a symbol source.
+   *
+   * Wins over `choice` while it is set, and switching symbol source does not
+   * disturb it: a photo of a particular person is not an ARASAAC or a METACOM
+   * answer to the same word, it is the answer.
+   */
+  ownImage?: string | null;
+}
+
+/** A picture the user supplied. bildhaft holds the bytes; nothing points at a file. */
+export interface OwnImage {
+  id: string;
+  /** The file's name when it was chosen. Shown so a picture can be recognised. */
+  name: string;
+  type: string;
+  blob: Blob;
+  createdAt: number;
 }
 
 export interface Sentence {
@@ -137,11 +158,11 @@ export interface AppSettings {
 /* --------------------------------------------------------------- export --- */
 
 export const EXPORT_FORMAT = 'bildhaft.collection' as const;
-export const EXPORT_VERSION = 2 as const;
+export const EXPORT_VERSION = 3 as const;
 
 /** Whole-library backup: every collection, sentence and dictionary entry. */
 export const BACKUP_FORMAT = 'bildhaft.backup' as const;
-export const BACKUP_VERSION = 1 as const;
+export const BACKUP_VERSION = 2 as const;
 
 export interface BackupExport {
   format: typeof BACKUP_FORMAT;
@@ -150,7 +171,19 @@ export interface BackupExport {
   collections: Collection[];
   sentences: Sentence[];
   overrides: Override[];
+  /** The user's own pictures, inline. Theirs to keep, so a backup carries them. */
+  ownImages?: OwnImageExport[];
   notice: string;
+}
+
+/** An own image as it travels: the bytes as a data URL, and nothing else added. */
+export interface OwnImageExport {
+  id: string;
+  name: string;
+  type: string;
+  /** data: URL. The only image data bildhaft ever writes into a file. */
+  data: string;
+  createdAt: number;
 }
 
 export interface CollectionExport {
@@ -161,5 +194,7 @@ export interface CollectionExport {
   sentences: Sentence[];
   /** Optional: the exporter's overrides, so a colleague inherits the vocabulary. */
   overrides?: Override[];
+  /** Only those this collection actually uses. Absent when it uses none. */
+  ownImages?: OwnImageExport[];
   notice: string;
 }

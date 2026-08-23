@@ -1,6 +1,6 @@
 import type { PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
 import { el } from './dom.ts';
-import { peekSymbolUrl, resolveSymbolUrl } from './symbols.ts';
+import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
 
 export interface SheetOptions {
   sentences: Sentence[];
@@ -63,7 +63,7 @@ function cardSheet(sentences: Sentence[], settings: PrintSettings, provider: Pro
 
   for (const sentence of sentences) {
     for (const slot of sentence.slots) {
-      const id = slot.choice[provider];
+      const id = symbolIdFor(slot, provider);
       const key = id ?? `blank:${slot.sourceToken.toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -75,7 +75,7 @@ function cardSheet(sentences: Sentence[], settings: PrintSettings, provider: Pro
 }
 
 function card(slot: Slot, settings: PrintSettings, provider: ProviderId): HTMLElement {
-  const id = slot.choice[provider] ?? null;
+  const id = symbolIdFor(slot, provider);
   const label = slot.sourceToken || slot.concept;
   const box = el('div', { class: 'ps-card__img' });
 

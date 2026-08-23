@@ -439,6 +439,17 @@ kbd {
 
 /* ---------------------------------------------------------------- picker */
 
+/* The own-image controls sit between the search box and the suggestions: this
+   is an alternative to picking a symbol, not one of the symbols. */
+.picker__own {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.picker__own > .small { flex: 1 1 100%; }
+
 .picker__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
