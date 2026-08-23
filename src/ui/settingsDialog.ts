@@ -3,6 +3,7 @@ import { arasaac, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
+import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import { resetSymbolResolution } from './symbols.ts';
 
 export interface SettingsOptions {
@@ -46,11 +47,13 @@ export function openSettings(options: SettingsOptions): void {
   const metacomPanel = makePanel('METACOM');
   const dictPanel = makePanel('Mein Wörterbuch');
   const wordsPanel = makePanel('Funktionswörter');
+  const themePanel = makePanel('Erscheinungsbild');
   const dataPanel = makePanel('Daten');
 
   const dialog = openDialog({
     title: 'Einstellungen',
-    body: [arasaacPanel, metacomPanel, dictPanel, wordsPanel, dataPanel].map((p) => p.node),
+    body: [arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel, dataPanel]
+      .map((p) => p.node),
     onClose: () => { unsubscribe(); options.onClose(); },
   });
 
@@ -320,6 +323,54 @@ export function openSettings(options: SettingsOptions): void {
     );
   }
 
+  /*
+   * Hell oder dunkel, or neither. "Erscheinungsbild" and not "Darstellung":
+   * METACOM's rendering picker in this same dialog is already called that, and
+   * two controls under one name is worse for somebody hearing the dialog read
+   * out than for somebody seeing it. It is also the word macOS and iOS use for
+   * this exact choice, which is where most people will have met it. The scheme lives in localStorage rather than
+   * in AppSettings with everything else on this dialog, and that is not an
+   * oversight: AppSettings is in IndexedDB, which cannot be read before the
+   * first paint, so a scheme stored there would arrive as a flash of the wrong
+   * one. @lautstark/design/theme owns that reasoning and both siblings share it.
+   */
+  const THEME_KEY = 'bildhaft.theme';
+  const THEME_LABELS: Record<Theme, string> = {
+    system: 'Systemeinstellung',
+    light: 'Hell',
+    dark: 'Dunkel',
+  };
+
+  function fillTheme(): void {
+    const current = readTheme(THEME_KEY);
+    themePanel.state.textContent = THEME_LABELS[current];
+
+    fill(themePanel.body,
+      el('div', { class: 'opt' },
+        // role=group rather than radiogroup: .segmented marks its choice with
+        // aria-pressed, which is the vocabulary the print dialog already uses,
+        // and a radiogroup whose children are not radios reads worse than a
+        // labelled group of buttons.
+        el('div', { class: 'segmented', attrs: { role: 'group', 'aria-label': 'Erscheinungsbild' } },
+          ...THEMES.map((theme) => el('button', {
+            text: THEME_LABELS[theme],
+            attrs: { type: 'button', 'aria-pressed': String(theme === current) },
+            on: { click: () => {
+              saveTheme(THEME_KEY, theme);
+              applyTheme(theme);
+              // Repaint this panel only. The heading carries the choice, and
+              // the buttons carry which one is pressed; nothing else on the
+              // dialog depends on the scheme, because the tokens do the work.
+              fillTheme();
+            } },
+          }))),
+        el('span', { class: 'small faint', text:
+          'Ohne eigene Wahl folgt bildhaft dem Gerät — und wechselt mit, wenn das '
+          + 'Gerät abends auf dunkel umstellt. Die Wahl gilt nur in diesem Browser.' }),
+      ),
+    );
+  }
+
   function fillData(): void {
     fill(dataPanel.body,
       el('div', { class: 'notice', style: { marginBottom: '14px' }, html:
@@ -342,5 +393,6 @@ export function openSettings(options: SettingsOptions): void {
   paintSources();
   paintDictionary();
   fillWords();
+  fillTheme();
   fillData();
 }

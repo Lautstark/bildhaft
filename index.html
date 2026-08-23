@@ -9,7 +9,21 @@
       content="Deutsche Sätze in AAC-Piktogramme übersetzen, korrigieren und drucken. Läuft vollständig im Browser."
     />
     <link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%20512%20512%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M%20128%2076%20H%20384%20Q%20436%2076%20436%20128%20V%20272%20Q%20436%20324%20384%20324%20H%20314%20L%20256%20408%20L%20198%20324%20H%20128%20Q%2076%20324%2076%20272%20V%20128%20Q%2076%2076%20128%2076%20Z%22%20fill%3D%22%23FF6B35%22%2F%3E%3Ccircle%20cx%3D%22200%22%20cy%3D%22178%22%20r%3D%2222%22%20fill%3D%22%23fff%22%2F%3E%3Ccircle%20cx%3D%22312%22%20cy%3D%22178%22%20r%3D%2222%22%20fill%3D%22%23fff%22%2F%3E%3Cpath%20d%3D%22M%20190%20226%20C%20190%20288%20322%20288%20322%20226%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%2226%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E" />
-    <meta name="theme-color" content="#FF6B35" />
+    <!-- No content here: the scheme decides it, and #FF6B35 described neither of
+         them — it was the accent, so the address bar came out orange against a
+         page that is white or near-black. src/main.ts sets it from the resolved
+         --bg on load and again whenever the scheme changes. -->
+    <meta name="theme-color" />
+    <!-- Before the stylesheet, and inline rather than in the bundle: a module is
+         deferred, so a scheme read there lands after the first paint and the
+         page flashes the OS's answer before correcting itself. This is
+         bootSnippet() from @lautstark/design/theme, which is where the same
+         string in the two sibling products comes from — it is copied in rather
+         than imported because there is nothing earlier than this to import it
+         from. It touches one attribute and nothing else. -->
+    <script>
+      try{var t=localStorage.getItem("bildhaft.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}
+    </script>
   </head>
   <body>
     <div id="root"></div>
