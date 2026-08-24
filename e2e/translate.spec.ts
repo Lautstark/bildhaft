@@ -190,7 +190,9 @@ test('crosses a symbol out for a negation, and keeps it crossed', async ({ page 
   await expect(slot.locator('.negate')).toHaveCount(1);
 
   await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
-  await expect(page.locator('dialog.sheet')).toBeHidden();
+  // Gone from the DOM, not merely invisible — closing removes the sheet, and
+  // toBeHidden() would keep passing if a change ever only hid it.
+  await expect(page.locator('dialog.sheet')).toHaveCount(0);
 
   // Written through to storage, not just painted: a reload has to show it again.
   await page.reload();
