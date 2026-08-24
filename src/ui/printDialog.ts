@@ -1,7 +1,10 @@
 import type { PrintSettings, ProviderId, Sentence } from '../core/types.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
-import { applyPageSetup, clearPageSetup, METACOM_COPYRIGHT, printSheet } from './printSheet.ts';
+import {
+  applyPageSetup, clearPageSetup, METACOM_COPYRIGHT, PAGE_MARGIN_MM, paperLabel, paperSize,
+  printSheet,
+} from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 
 /** Millimetres at the CSS reference resolution of 96dpi. */
@@ -89,7 +92,7 @@ export function openPrintDialog(options: PrintOptions): void {
     const availableHeight = frame.clientHeight - PREVIEW_PADDING;
     // Fit one full A4 page, so page breaks and the overall grid are judgeable.
     // Further pages scroll rather than shrinking the whole preview.
-    const pageHeight = (settings.orientation === 'landscape' ? 210 : 297) * PX_PER_MM;
+    const pageHeight = paperSize(settings.paper, settings.orientation).height * PX_PER_MM;
     const scale = Math.min(1, availableWidth / sheet.offsetWidth, availableHeight / pageHeight);
     scaler.style.transform = `scale(${scale})`;
     sizer.style.height = `${sheet.offsetHeight * scale}px`;
@@ -114,11 +117,12 @@ export function openPrintDialog(options: PrintOptions): void {
   }
 
   function paintFooter(): void {
-    const paper = `A4 ${settings.orientation === 'landscape' ? 'quer' : 'hoch'}`;
+    const paper =
+      `${paperLabel(settings.paper)} ${settings.orientation === 'landscape' ? 'quer' : 'hoch'}`;
     const cards = settings.layout === 'sheet' && settings.sheetFit === 'grid'
       ? `Raster ${settings.gridCols} × ${settings.gridRows}`
       : `${settings.symbolSizeMm} mm Symbole`;
-    meta.textContent = `${paper} · Ränder 10 mm · ${cards}`;
+    meta.textContent = `${paper} · Ränder ${PAGE_MARGIN_MM} mm · ${cards}`;
     printButton.toggleAttribute('disabled', preparing);
     if (preparing) {
       fill(printButton, el('span', { class: 'spinner' }), ' Bereite vor …');
@@ -188,11 +192,16 @@ export function openPrintDialog(options: PrintOptions): void {
       el('div', { class: 'opt' },
         el('label', { text: 'Papier' }),
         segmented([
+          { label: 'A5', active: settings.paper === 'a5', onPick: () => set('paper', 'a5') },
+          { label: 'A4', active: settings.paper === 'a4', onPick: () => set('paper', 'a4') },
+          { label: 'A3', active: settings.paper === 'a3', onPick: () => set('paper', 'a3') },
+        ]),
+        segmented([
           { label: 'Hoch', active: settings.orientation === 'portrait',
             onPick: () => set('orientation', 'portrait') },
           { label: 'Quer', active: settings.orientation === 'landscape',
             onPick: () => set('orientation', 'landscape') },
-        ]),
+        ], { marginTop: '6px' }),
       ),
       settings.layout === 'sheet' ? el('div', { class: 'opt' },
         el('label', { text: 'Kartengröße' }),
@@ -266,7 +275,7 @@ export function openPrintDialog(options: PrintOptions): void {
       ) : null,
     );
 
-    applyPageSetup(settings.orientation);
+    applyPageSetup(settings.paper, settings.orientation);
 
     const build = () => printSheet({
       sentences: options.sentences,

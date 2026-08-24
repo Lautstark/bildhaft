@@ -13,10 +13,15 @@
   --sym: 40mm;
   --cut: 3mm;
   --label: 11pt;
+  /* Defaults for A4 portrait. printSheet() overwrites all three per sheet; they
+     are here so the rule reads on its own and never resolves to nothing. */
+  --page-w: 190mm;
+  --page-h: 277mm;
+  --page-margin: 10mm;
 
-  width: 210mm;
-  min-height: 297mm;
-  padding: 10mm;
+  width: calc(var(--page-w) + 2 * var(--page-margin));
+  min-height: calc(var(--page-h) + 2 * var(--page-margin));
+  padding: var(--page-margin);
   box-sizing: border-box;
   background: #fff;
   color: #000;
@@ -24,12 +29,6 @@
   /* Symbols are the product. Never let the browser drop their colour. */
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
-}
-
-/* Turned sideways for boards, which is the shape nearly all of them are. */
-.ps-sheet--landscape {
-  width: 297mm;
-  min-height: 210mm;
 }
 
 /*

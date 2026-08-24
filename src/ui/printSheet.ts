@@ -1,34 +1,64 @@
-import type { Orientation, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
+import type {
+  Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot,
+} from '../core/types.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
 import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
 
-/** A4, and the margin @page reserves. Millimetres, because the sheet is. */
-const A4_SHORT_MM = 210;
-const A4_LONG_MM = 297;
-const PAGE_MARGIN_MM = 10;
+/** The margin @page reserves on every side. Millimetres, because the sheet is. */
+export const PAGE_MARGIN_MM = 10;
+
+/**
+ * Paper, in millimetres, short edge first.
+ *
+ * Given as numbers rather than as the CSS keywords A4/A5/A3, because the same
+ * figures have to do two different jobs: @page needs a size to tell the printer,
+ * and the card grid needs to divide the printable area. Two sources for one
+ * paper is how a preview comes to disagree with what comes out of the printer.
+ */
+const PAPER: Record<PaperSize, { short: number; long: number; label: string }> = {
+  a5: { short: 148, long: 210, label: 'A5' },
+  a4: { short: 210, long: 297, label: 'A4' },
+  a3: { short: 297, long: 420, label: 'A3' },
+};
+
+export const paperLabel = (paper: PaperSize): string => PAPER[paper].label;
+
+/** The sheet's outside size — what the paper measures before margins. */
+export function paperSize(
+  paper: PaperSize, orientation: Orientation,
+): { width: number; height: number } {
+  const { short, long } = PAPER[paper];
+  const landscape = orientation === 'landscape';
+  return { width: landscape ? long : short, height: landscape ? short : long };
+}
 
 /** The area a page actually has for cards, once the margin is taken off. */
-export function printableArea(orientation: Orientation): { width: number; height: number } {
-  const landscape = orientation === 'landscape';
-  return {
-    width: (landscape ? A4_LONG_MM : A4_SHORT_MM) - 2 * PAGE_MARGIN_MM,
-    height: (landscape ? A4_SHORT_MM : A4_LONG_MM) - 2 * PAGE_MARGIN_MM,
-  };
+export function printableArea(
+  paper: PaperSize, orientation: Orientation,
+): { width: number; height: number } {
+  const { width, height } = paperSize(paper, orientation);
+  return { width: width - 2 * PAGE_MARGIN_MM, height: height - 2 * PAGE_MARGIN_MM };
 }
 
 /*
  * @page cannot be written from a class or read a custom property, so the one
- * rule that decides which way the paper goes has to be a stylesheet of its own.
+ * rule that decides what the paper is has to be a stylesheet of its own.
  * Kept as a single element that is rewritten rather than added to, so repeated
  * paints cannot stack up conflicting page rules.
  */
 const PAGE_STYLE_ID = 'print-page-setup';
 
-export function applyPageSetup(orientation: Orientation): void {
+export function applyPageSetup(paper: PaperSize, orientation: Orientation): void {
   const style = document.getElementById(PAGE_STYLE_ID)
     ?? document.head.appendChild(el('style', { attrs: { id: PAGE_STYLE_ID } }));
-  style.textContent = `@page { size: A4 ${orientation}; margin: ${PAGE_MARGIN_MM}mm; }`;
+  const { width, height } = paperSize(paper, orientation);
+  /*
+   * An explicit size rather than the `A4 landscape` keyword pair: the keywords
+   * only cover the standard papers, and stating the millimetres keeps this rule
+   * and printableArea() reading from the same table.
+   */
+  style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${PAGE_MARGIN_MM}mm; }`;
 }
 
 /** Puts the paper back to the stylesheet's default when the dialog goes away. */
@@ -89,18 +119,19 @@ export function printSheet(options: SheetOptions): HTMLElement {
   const { sentences, settings, provider, attribution, copyright, collectionName } = options;
 
   const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
-  const page = printableArea(settings.orientation);
+  const page = printableArea(settings.paper, settings.orientation);
 
   const sheet = el('div', {
-    class: `ps-sheet${settings.showCutLines ? ' ps-sheet--cutlines' : ''}`
-      + (settings.orientation === 'landscape' ? ' ps-sheet--landscape' : ''),
+    class: `ps-sheet${settings.showCutLines ? ' ps-sheet--cutlines' : ''}`,
     style: {
       // Every printed size derives from these, so millimetres stay millimetres.
       '--sym': `${settings.symbolSizeMm}mm`,
       '--cut': `${settings.cutMarginMm}mm`,
       '--label': `${settings.labelSizePt}pt`,
+      // The sheet sizes itself from these, so the paper is set in exactly one place.
       '--page-w': `${page.width}mm`,
       '--page-h': `${page.height}mm`,
+      '--page-margin': `${PAGE_MARGIN_MM}mm`,
       '--frame-w': `${settings.cardBorderMm}mm`,
       '--frame-color': settings.cardBorderColor,
       /*
@@ -179,7 +210,7 @@ function cardSheet(
   const cols = Math.max(1, Math.round(settings.gridCols));
   const rows = Math.max(1, Math.round(settings.gridRows));
   const perPage = cols * rows;
-  const page = printableArea(settings.orientation);
+  const page = printableArea(settings.paper, settings.orientation);
 
   /*
    * Pages are cut here rather than left to the browser. Letting a single grid

@@ -113,7 +113,39 @@ test('turns the paper sideways', async ({ page }) => {
   // @page is the only thing that turns the actual printer, and it cannot be
   // written from a class — so the rule itself is what has to be checked.
   expect(await page.evaluate(() =>
-    document.getElementById('print-page-setup')?.textContent)).toContain('A4 landscape');
+    document.getElementById('print-page-setup')?.textContent)).toContain('size: 297mm 210mm');
+});
+
+test('paper size drives the sheet, the printer rule and the grid together', async ({ page }) => {
+  const sheet = page.locator('.preview-frame .ps-sheet');
+  const rule = () => page.evaluate(() =>
+    document.getElementById('print-page-setup')?.textContent ?? '');
+
+  await page.getByRole('button', { name: 'A3', exact: true }).click();
+  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(297, 0);
+  expect(await rule()).toContain('size: 297mm 420mm');
+
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(148, 0);
+  expect(await rule()).toContain('size: 148mm 210mm');
+
+  /*
+   * The cards have to follow the paper, not just the sheet around them. Height,
+   * not width: a card's width comes from the grid's 1fr columns and so tracks
+   * the sheet whatever the paper table says, which makes it useless as evidence.
+   * The row height is the one measurement read straight off that table, so it is
+   * the one that catches a grid still dividing A4 on an A5 page.
+   */
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+  const card = page.locator('.preview-frame .ps-card').first();
+  // A5 portrait: 210mm less two 10mm margins, less the room ARASAAC's credit
+  // needs, halved.
+  await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
+    .toBeCloseTo(85.4, 0);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {

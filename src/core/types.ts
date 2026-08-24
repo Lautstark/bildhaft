@@ -119,6 +119,13 @@ export interface Override {
 export type LayoutMode = 'strip' | 'sheet';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
+/**
+ * The papers a laminator in this country actually takes. A5 for communication
+ * books and fans, A4 for most things, A3 for a board that goes on a wall.
+ * US sizes are absent because nothing else here is written for anywhere else;
+ * adding one is a row in the table in printSheet.ts and nothing more.
+ */
+export type PaperSize = 'a5' | 'a4' | 'a3';
 /** How a card sheet decides how big a card is. */
 export type SheetFit = 'size' | 'grid';
 
@@ -131,7 +138,8 @@ export interface PrintSettings {
   labelPosition: LabelPosition;
   labelSizePt: number;
   layout: LayoutMode;
-  /** A4 the long way round — the shape most communication boards are. */
+  paper: PaperSize;
+  /** The long way round — the shape most communication boards are. */
   orientation: Orientation;
   /**
    * Card sheets only. 'size' keeps symbolSizeMm and lets the cards flow; 'grid'
@@ -178,6 +186,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   labelPosition: 'below',
   labelSizePt: 11,
   layout: 'strip',
+  paper: 'a4',
   orientation: 'portrait',
   sheetFit: 'size',
   gridCols: 4,
