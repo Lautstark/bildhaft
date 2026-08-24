@@ -1,4 +1,5 @@
 import type { Collection, Sentence } from '../core/types.ts';
+import { drawCollections } from '@lautstark/design/collections';
 import { el, fill } from './dom.ts';
 import { icons, logo } from './logo.ts';
 
@@ -97,6 +98,10 @@ export function sidebar(handlers: SidebarHandlers): {
   });
 
   const listSection = el('div', { class: 'sidebar__section' });
+  /* Made once and refilled: drawCollections() empties whatever it is handed,
+     so a node rebuilt on every render would throw its listeners away each
+     time for no reason. */
+  const rowsHost = el('div', { class: 'collections' });
 
   const node = el('aside', { class: 'sidebar' },
     el('div', { class: 'sidebar__brand' },
@@ -140,21 +145,27 @@ export function sidebar(handlers: SidebarHandlers): {
       return;
     }
 
+    /* The rows are @lautstark/design/collections'. It empties the container it
+       is given, so that container is made once here and refilled rather than
+       rebuilt with the rest of the section — the heading above it and the
+       button under it are this sidebar's and are not shared, which is the
+       line the package draws. The additive flag it reports is ignored: a
+       Sammlung here is a book or a topic and a line belongs to one (§4.1). */
     fill(listSection,
       el('h2', { text: 'Sammlungen' }),
-      el('div', { class: 'list' },
-        ...state.collections.map((collection) => el('button', {
-          class: `list__item${collection.id === state.activeId ? ' list__item--active' : ''}`,
-          attrs: { type: 'button' },
-          on: { click: () => handlers.onSelect(collection.id) },
-        },
-          el('span', { class: 'list__name', text: collection.name }),
-          el('span', { class: 'list__count', text: String(state.counts[collection.id] ?? 0) }),
-        )),
-      ),
+      rowsHost,
       el('button', { class: 'btn quiet sm', text: '+ Neue Sammlung',
         style: { marginTop: '6px' }, attrs: { type: 'button' }, on: { click: handlers.onNew } }),
     );
+    drawCollections(rowsHost, {
+      rows: state.collections.map((collection) => ({
+        id: collection.id,
+        name: collection.name,
+        count: state.counts[collection.id] ?? 0,
+      })),
+      open: state.activeId ? [state.activeId] : [],
+      onPick: (id) => handlers.onSelect(id),
+    });
   }
 
   return { node, render };
