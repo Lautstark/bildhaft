@@ -16,6 +16,26 @@ import { expect, test } from '@playwright/test';
  */
 
 async function openSettings(page: import('@playwright/test').Page): Promise<void> {
+  /* Wait for the app to have rendered before asking it anything.
+   *
+   * count() is the one query in this file that does not wait, and it drives a
+   * branch — so before the first render it reads 0, which is indistinguishable
+   * from "the sidebar is already open". The helper then skips the reveal and
+   * waits five seconds for an Einstellungen button that is inside a collapsed
+   * sidebar and never appears.
+   *
+   * The render is what has to be waited for rather than the load: app.ts reads
+   * its settings out of IndexedDB and render() returns early until they arrive,
+   * so a freshly loaded page is genuinely empty. That is why this only went red
+   * on the run that builds first, under four workers, on a cold server — and
+   * why it was always green in isolation.
+   *
+   * This line is the same one most spec files here do after goto(). menu.spec.ts
+   * omits it and is safe anyway: its first act is a fill(), which waits by
+   * itself. Every action in Playwright waits; count() is the exception, and
+   * this was the only file branching on one. */
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+
   // Only if it is still away: the sidebar stays out once opened, and its
   // toggle is then called "ausblenden" — so a second call that insisted on
   // "einblenden" would wait for a button that no longer exists.
