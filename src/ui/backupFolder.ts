@@ -56,8 +56,13 @@ const lastCopy = (at: number | null): string =>
  * The two states that mean *nothing is being written* both carry the age, and
  * that is the point rather than a detail: „es funktioniert nicht" is a sentence
  * somebody can put off, and „seit elf Tagen nichts gesichert" is not.
+ *
+ * Exported for the test that holds that rule, the way `headline` below is —
+ * it is the one thing about this panel still written out in three products
+ * with nothing checking they agree. @lautstark/sicherung/ui owns the rest, and
+ * deliberately not the words. Nothing outside this file calls it.
  */
-function sentence(status: Status): string {
+export function sentence(status: Status): string {
   switch (status.kind) {
     case 'unsupported': return '';
     case 'off': return 'Noch kein Ordner gewählt.';
