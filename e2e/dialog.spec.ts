@@ -109,3 +109,20 @@ test('a press on the backdrop closes it, a press on the sheet does not',
     await page.mouse.click(8, 8);
     await expect(sheet).toHaveCount(0);
   });
+
+test('opening a panel closes the one open before it', async ({ page }) => {
+  await openSettings(page);
+  const panels = page.locator('dialog.sheet details.panel');
+  const first = panels.first();
+  const second = panels.nth(1);
+
+  await first.locator('summary').click();
+  await expect(first).toHaveJSProperty('open', true);
+
+  await second.locator('summary').click();
+  await expect(second).toHaveJSProperty('open', true);
+  // The browser does this, not us: the panels share a name, which makes them
+  // one group with radio semantics. Asserting the effect rather than the
+  // attribute, so a scripted accordion would keep this green.
+  await expect(first).toHaveJSProperty('open', false);
+});

@@ -46,7 +46,12 @@ export function openSettings(options: SettingsOptions): void {
     const state = el('span', { class: 'state' });
     const summary = el('summary', {}, el('span', { class: 'section', text: label }), state);
     const body = el('div', { class: 'body' });
-    return { node: el('details', { class: 'panel' }, summary, body), summary, state, body };
+    // name= makes the panels one exclusive group: opening one closes the rest.
+    // The platform's own accordion, radio-group semantics and no script, which
+    // is what keeps the state lines in the headings readable at a glance.
+    // @lautstark/design conventions.md §3.5.
+    const node = el('details', { class: 'panel', attrs: { name: 'settings' } }, summary, body);
+    return { node, summary, state, body };
   }
 
   const arasaacPanel = makePanel('ARASAAC');
