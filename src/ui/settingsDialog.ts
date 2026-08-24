@@ -1,5 +1,5 @@
 import type { AppSettings, Override, ProviderId } from '../core/types.ts';
-import { arasaac, metacom, MetacomProvider } from '@lautstark/bildquelle';
+import { arasaac, metacom, MetacomProvider, needsAttention } from '@lautstark/bildquelle';
 import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
@@ -197,14 +197,42 @@ export function openSettings(options: SettingsOptions): void {
     );
 
     mark(metacomPanel, active === 'metacom');
+    /* A heading carries what a section is set to, and a summary is one line.
+     * The package's message for the state that needs acting on is a whole
+     * sentence - "Zugriff auf den METACOM-Ordner muss erneut bestätigt
+     * werden" - so it went in here and truncated. The state goes here and the
+     * sentence goes in the body, beside the button it is about.
+     * @lautstark/design conventions.md §3.7. */
+    const attention = needsAttention(status);
     // Narrowed on kind, not on isReady(): only the ready variant has no message.
     metacomPanel.state.textContent = status.kind === 'ready'
       ? `${active === 'metacom' ? 'Aktive Quelle' : 'Eingerichtet'} · ${metacom.symbolCount} Symbole · ${metacom.rootName}`
-      : status.message;
+      : attention ? 'Zugriff bestätigen'
+        : status.message;
 
     fill(metacomPanel.body,
       el('div', { class: 'notice notice--accent', style: { marginBottom: '10px' },
         text: 'METACOM ist lizenzpflichtig. bildhaft liefert keine METACOM-Symbole mit und überträgt niemals METACOM-Dateien. Du wählst deinen eigenen, lizenzierten Ordner aus; alle Bilder werden ausschließlich lokal in deinem Browser gelesen und angezeigt.' }),
+
+      /*
+       * The one state that is a thing to do rather than a thing to read: no
+       * symbol resolves until somebody presses the button below. It says what
+       * is true, what the browser did, and what one press does - the middle
+       * part because without it "bestätige den Zugriff" reads as bildhaft
+       * having mislaid the folder, which it has not.
+       */
+      attention
+        ? el('div', { class: 'notice bad', style: { marginBottom: '10px' }, text:
+            status.kind === 'needs-setup'
+              ? 'Der Ordner ist gemerkt, aber dieser Browser hat den Zugriff darauf '
+                + 'zurückgesetzt — das macht er zwischen Besuchen. Ein Druck auf '
+                + '„Symbolordner wählen" bestätigt ihn wieder; neu ausgesucht werden '
+                + 'muss nichts.'
+              // The other state that needs acting on is a folder that could not
+              // be read, and the package's own words for it are the specific
+              // ones: which failure, not that there was one.
+              : status.kind === 'error' ? status.message : '' })
+        : null,
 
       /*
        * The heading states this panel's status, so the body no longer repeats
