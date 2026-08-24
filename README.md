@@ -213,6 +213,21 @@ node scripts/build-lexicon.mjs
 The generated JSON under `src/data/` is committed, so the build needs no codegen
 step.
 
+### Git hooks
+
+`npm install` points `core.hooksPath` at `.githooks/`, so the hooks there are
+live from the first install. There is one: `commit-msg` strips the
+`Co-Authored-By` trailer that agent sessions add by default, which no commit in
+this history carries. It matches the anthropic.com address rather than the name,
+so a human co-author on the same commit survives.
+
+Committing from a clone that has never been installed leaves the hook inactive.
+To wire it up without a full install:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ### Measuring lexicon coverage
 
 ```bash

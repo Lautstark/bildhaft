@@ -220,6 +220,21 @@ node scripts/build-lexicon.mjs
 Die erzeugten JSON-Dateien unter `src/data/` sind eingecheckt, damit der Build
 keinen Codegenerierungs-Schritt braucht.
 
+### Git-Hooks
+
+`npm install` setzt `core.hooksPath` auf `.githooks/`, damit die Hooks dort ab
+der ersten Installation greifen. Es gibt einen: `commit-msg` entfernt den
+`Co-Authored-By`-Trailer, den Agent-Sitzungen standardmäßig anhängen und den
+kein Commit dieser Historie trägt. Er erkennt die anthropic.com-Adresse statt
+des Namens, sodass eine menschliche Mitautorin im selben Commit erhalten bleibt.
+
+Wer aus einem nie installierten Klon committet, hat den Hook nicht aktiv. Ohne
+vollständige Installation genügt:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ### Abdeckung des Lexikons messen
 
 ```bash
