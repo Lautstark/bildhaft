@@ -175,3 +175,31 @@ test('a focused field inside a sheet is not clipped by its scroll region', async
   // Positive on any edge means the ring reaches past what the region will show.
   expect(clipped).toMatchObject({ top: 0, left: 0, right: 0 });
 });
+
+test('crosses a symbol out for a negation, and keeps it crossed', async ({ page }) => {
+  await translate(page, 'Ich möchte schlafen');
+
+  const slot = page.locator('.row').first().locator('.slot', { hasText: 'schlafen' });
+  await expect(slot.locator('.negate')).toHaveCount(0);
+
+  await slot.click();
+  await page.getByLabel('Symbol durchstreichen').check();
+  // Crossing out is not a choice of symbol, so the dialog stays open for the
+  // next thing the user wants to do to this field.
+  await expect(page.locator('dialog.sheet')).toBeVisible();
+  await expect(slot.locator('.negate')).toHaveCount(1);
+
+  await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('dialog.sheet')).toBeHidden();
+
+  // Written through to storage, not just painted: a reload has to show it again.
+  await page.reload();
+  await expect(page.locator('.row').first().locator('.slot', { hasText: 'schlafen' })
+    .locator('.negate')).toHaveCount(1);
+
+  // And it has to reach paper — the cross is the whole point of the feature.
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
+  await expect(page.locator('.preview-frame .ps-card .negate')).toHaveCount(1);
+  await expect(page.locator('#print-root .ps-card .negate')).toHaveCount(1);
+});

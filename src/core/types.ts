@@ -49,6 +49,14 @@ export interface Slot {
   candidates: Partial<Record<ProviderId, Candidate[]>>;
 
   /**
+   * METACOM's convention for "nicht": the symbol stays and gets a red cross laid
+   * over it, rather than being swapped for a different picture. A property of
+   * the slot, not of the symbol, so it survives switching symbol source and
+   * travels in an export like every other choice.
+   */
+  negated?: boolean;
+
+  /**
    * An image of the user's own, by id. Kept in this browser rather than
    * referenced on disk, so moving or deleting the original file changes
    * nothing — which is the whole difference between this and a symbol source.

@@ -1,6 +1,6 @@
 import type { ProviderId, Sentence, Slot } from '../core/types.ts';
 import { el } from './dom.ts';
-import { icons } from './logo.ts';
+import { icons, negationCross } from './logo.ts';
 import { symbolIdFor, symbolView, type SymbolView } from './symbols.ts';
 
 const ORIGIN_HINT: Record<Slot['origin'], string> = {
@@ -64,7 +64,7 @@ export function sentenceRow(
         role: 'button',
         tabindex: 0,
         draggable: 'true',
-        title: `${slot.ownImage ? 'Eigenes Bild' : ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}\nZiehen zum Umsortieren`,
+        title: `${slot.ownImage ? 'Eigenes Bild' : ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ' · durchgestrichen' : ''}\nZiehen zum Umsortieren`,
       },
       on: {
         click: () => handlers.onOpenSlot(slot.id),
@@ -105,7 +105,7 @@ export function sentenceRow(
         dragend: clearDrag,
       },
     },
-      el('span', { class: 'slot__img' }, view.node),
+      el('span', { class: 'slot__img' }, view.node, slot.negated ? negationCross() : null),
       el('span', { class: 'slot__label', text: slot.sourceToken }),
     );
 

@@ -71,11 +71,19 @@
 .ps-sheet--cutlines .ps-card { border-color: #bdbdbd; }
 
 .ps-card__img {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--sym);
   height: var(--sym);
+}
+
+/* A literal red, not the theme's --danger: the sheet is black on white in both
+   themes, and the cross has to be the same mark on paper either way. */
+.ps-card__img .negate {
+  color: #d32f2f;
+  stroke-width: 6;
 }
 .ps-card__img img {
   /* Never upscale past the source, never downscale before printing. */

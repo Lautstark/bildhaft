@@ -1,5 +1,6 @@
 import type { PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
 import { el } from './dom.ts';
+import { negationCross } from './logo.ts';
 import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
 
 export interface SheetOptions {
@@ -79,9 +80,17 @@ function card(slot: Slot, settings: PrintSettings, provider: ProviderId): HTMLEl
   const label = slot.sourceToken || slot.concept;
   const box = el('div', { class: 'ps-card__img' });
 
-  const blank = () => box.replaceChildren(el('div', { class: 'ps-card__blank' }));
+  /*
+   * The cross is re-laid every time the box's contents change, because they do
+   * change: a symbol that resolves late replaces whatever stood in for it, and
+   * a cross merely appended once would go with it.
+   */
+  const cross = slot.negated ? negationCross() : null;
+  const put = (node: Node) => box.replaceChildren(...(cross ? [node, cross] : [node]));
 
-  const show = (url: string) => box.replaceChildren(el('img', {
+  const blank = () => put(el('div', { class: 'ps-card__blank' }));
+
+  const show = (url: string) => put(el('img', {
     // alt is empty on purpose: a broken image would otherwise print its alt text
     // inside the card, duplicating the label below it.
     attrs: { src: url, alt: '' },

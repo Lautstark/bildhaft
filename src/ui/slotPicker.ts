@@ -9,6 +9,8 @@ export interface PickerHandlers {
   /** A picture of the user's own, taking the place of any symbol. */
   onOwnImage: (file: File) => void;
   onClearOwnImage: () => void;
+  /** Lays a red cross over the symbol — METACOM's "nicht". Leaves the dialog open. */
+  onNegate: (negated: boolean) => void;
   /** Removes the whole slot, not just its symbol. */
   onRemove: () => void;
   onClose: () => void;
@@ -66,6 +68,22 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       : 'Ein eigenes Foto statt eines Symbols. Es wird in bildhaft gespeichert, nicht nur verknüpft.' }),
   );
 
+  /*
+   * Negation is a property of the field, not a different symbol, so it does not
+   * settle the dialog the way picking one does: cross it out, see it, carry on.
+   * Hidden for a field that has nothing in it yet — there is nothing to cross.
+   */
+  const negateBox = el('input', {
+    attrs: { type: 'checkbox', checked: slot.negated ?? false },
+    on: { change: () => handlers.onNegate(negateBox.checked) },
+  });
+  // An empty span rather than null: the dialog's body takes nodes, not blanks.
+  const negateRow = isNew ? el('span') : el('div', { class: 'picker__negate' },
+    el('label', { class: 'opt__check' }, negateBox, 'Symbol durchstreichen'),
+    el('span', { class: 'small faint',
+      text: 'Für Verneinungen: „nicht hauen“, „keine Schuhe“. Das Symbol bleibt, es bekommt ein rotes Kreuz.' }),
+  );
+
   const search = el('input', {
     class: 'field',
     attrs: { type: 'search', 'aria-label': 'Symbol suchen',
@@ -78,6 +96,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     body: [
       search,
       ownRow,
+      negateRow,
       status,
       grid,
       isNew ? el('span') : el('p', {
