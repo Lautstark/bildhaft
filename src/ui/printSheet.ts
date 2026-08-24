@@ -36,12 +36,47 @@ export function clearPageSetup(): void {
   document.getElementById(PAGE_STYLE_ID)?.remove();
 }
 
+/**
+ * METACOM's copyright notice, in the wording its terms give.
+ *
+ * It lives here rather than in bildquelle on purpose. bildquelle reports
+ * METACOM's attribution as null, and that is correct: printing a board from a
+ * licence you own carries no attribution obligation, so nothing should be
+ * forced onto the page. This is the other case — material that leaves the house
+ * — and it is a choice the person printing makes, not a property of the source.
+ */
+export const METACOM_COPYRIGHT = 'METACOM Symbole © Annette Kitzinger';
+
+/*
+ * Vertical room set aside on a grid page for the credit block.
+ *
+ * A grid page is exactly as tall as the paper, so anything after it starts a
+ * new sheet — and a sheet carrying nothing but a copyright notice is a wasted
+ * page and an obviously wrong printout. Reserved on every page rather than only
+ * the last, because the alternative is cards of two different sizes in one deck.
+ *
+ * Sized rather than guessed: the block is its own margin and rule plus one line
+ * per credit and one for the collection. Each credit is allowed two lines,
+ * because ARASAAC's is a sentence long and wraps on a narrow page where
+ * METACOM's does not. e2e asserts the block actually fits inside this.
+ */
+/** 7.5pt of type at 1.4 line-height, in millimetres. */
+const CREDIT_LINE_MM = 3.7;
+/** The block's margin-top, padding and rule. */
+const CREDIT_CHROME_MM = 8;
+
+function creditAllowanceMm(creditCount: number): number {
+  return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 1);
+}
+
 export interface SheetOptions {
   sentences: Sentence[];
   settings: PrintSettings;
   provider: ProviderId;
   /** Mandatory for ARASAAC; printed at the foot of the output. */
   attribution: string | null;
+  /** The METACOM notice, when the user has asked for it. */
+  copyright: string | null;
   collectionName: string;
 }
 
@@ -51,8 +86,9 @@ export interface SheetOptions {
  * function, so what the preview shows is what the printer produces.
  */
 export function printSheet(options: SheetOptions): HTMLElement {
-  const { sentences, settings, provider, attribution, collectionName } = options;
+  const { sentences, settings, provider, attribution, copyright, collectionName } = options;
 
+  const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
   const page = printableArea(settings.orientation);
 
   const sheet = el('div', {
@@ -79,14 +115,20 @@ export function printSheet(options: SheetOptions): HTMLElement {
   });
 
   if (settings.layout === 'sheet') {
-    for (const node of cardSheet(sentences, settings, provider)) sheet.appendChild(node);
+    const reserve = credits.length > 0 ? creditAllowanceMm(credits.length) : 0;
+    for (const node of cardSheet(sentences, settings, provider, reserve)) sheet.appendChild(node);
   } else {
     for (const node of strips(sentences, settings, provider)) sheet.appendChild(node);
   }
 
-  if (attribution) {
+  if (credits.length > 0) {
+    const lines: (string | Node)[] = [];
+    for (const line of credits) {
+      if (lines.length > 0) lines.push(el('br'));
+      lines.push(line);
+    }
     sheet.appendChild(el('p', { class: 'ps-attribution' },
-      attribution,
+      ...lines,
       el('br'),
       `${collectionName} · erstellt mit bildhaft`,
     ));
@@ -115,7 +157,7 @@ function strips(sentences: Sentence[], settings: PrintSettings, provider: Provid
  * specified, and the only way to fill a page edge to edge on purpose.
  */
 function cardSheet(
-  sentences: Sentence[], settings: PrintSettings, provider: ProviderId,
+  sentences: Sentence[], settings: PrintSettings, provider: ProviderId, reserveMm = 0,
 ): HTMLElement[] {
   const seen = new Set<string>();
   const cards: Slot[] = [];
@@ -153,7 +195,7 @@ function cardSheet(
       class: `ps-grid${last ? '' : ' ps-grid--page'}`,
       style: {
         '--cols': String(cols),
-        '--cell-h': `${(page.height / rows).toFixed(3)}mm`,
+        '--cell-h': `${((page.height - reserveMm) / rows).toFixed(3)}mm`,
       },
     }, ...chunk.map((slot) => card(slot, settings, provider, true))));
   }

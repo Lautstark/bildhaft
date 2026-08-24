@@ -125,11 +125,16 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   const grid = page.locator('.preview-frame .ps-grid').first();
   await expect(grid).toBeVisible();
 
-  // Six cells across a 190mm x 277mm printable area: 63.3mm x 138.5mm each.
+  /*
+   * Six cells across a 190mm x 277mm printable area. Full width, so 63.3mm
+   * each. The height is short of 277/2 because ARASAAC's credit is a licence
+   * condition and always prints, and a grid page leaves it room rather than
+   * pushing it onto a sheet of its own.
+   */
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(138.5, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(128.9, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
@@ -168,4 +173,25 @@ test('a card frame is drawn inside the cut margin, not on it', async ({ page }) 
 
   // And it reaches the printable copy, not only the preview.
   await expect(page.locator('#print-root .ps-card__frame').first()).toHaveCount(1);
+});
+
+test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  // One card per page, so the last page is full and reaches the paper's edge.
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+
+  /*
+   * offsetTop/offsetHeight rather than getBoundingClientRect: the preview sits
+   * inside a transform: scale(), so rects come back in scaled pixels.
+   * ARASAAC's credit is a sentence long and is the one that wraps.
+   */
+  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
+    const last = pages[pages.length - 1];
+    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
+    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
+  });
+  expect(used).toBeLessThanOrEqual(277);
 });

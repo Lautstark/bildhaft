@@ -1,7 +1,7 @@
 import type { PrintSettings, ProviderId, Sentence } from '../core/types.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
-import { applyPageSetup, clearPageSetup, printSheet } from './printSheet.ts';
+import { applyPageSetup, clearPageSetup, METACOM_COPYRIGHT, printSheet } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 
 /** Millimetres at the CSS reference resolution of 96dpi. */
@@ -252,6 +252,18 @@ export function openPrintDialog(options: PrintOptions): void {
         check('Ein Satz pro Seite', settings.onePerPage, settings.layout === 'sheet',
           (next) => set('onePerPage', next)),
       ),
+      /*
+       * METACOM only. ARASAAC's attribution is a licence condition and prints
+       * whether anyone asks for it or not, so offering to switch it off would
+       * be offering something bildhaft will not do.
+       */
+      options.provider === 'metacom' ? el('div', { class: 'opt' },
+        check('Copyright-Hinweis drucken', settings.showCopyright, false,
+          (next) => set('showCopyright', next)),
+        el('span', { class: 'small faint',
+          text: `„${METACOM_COPYRIGHT}“ am Seitenfuß. Nötig, sobald das Material weitergegeben oder `
+            + 'veröffentlicht wird — für den eigenen Gebrauch nicht.' }),
+      ) : null,
     );
 
     applyPageSetup(settings.orientation);
@@ -261,6 +273,7 @@ export function openPrintDialog(options: PrintOptions): void {
       settings,
       provider: options.provider,
       attribution: options.attribution,
+      copyright: options.provider === 'metacom' && settings.showCopyright ? METACOM_COPYRIGHT : null,
       collectionName: options.collectionName,
     });
 

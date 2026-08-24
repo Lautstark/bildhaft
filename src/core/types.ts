@@ -157,6 +157,18 @@ export interface PrintSettings {
   cardRadiusMm: number;
   /** A CSS colour behind the symbol, or null for the paper. */
   cardBackground: string | null;
+
+  /**
+   * Print the METACOM copyright notice at the foot of the sheet.
+   *
+   * Off by default and deliberately a choice, because whether it is required
+   * depends on what happens to the paper, which only the person printing knows.
+   * Printing a board for one child is private use and needs nothing; handing
+   * material out or putting it on a wall is publication under METACOM's terms
+   * (A.6.2, A.7.2) and does. ARASAAC does not appear here: its attribution is
+   * unconditional and always prints.
+   */
+  showCopyright: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -177,6 +189,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   cardBorderColor: '#333333',
   cardRadiusMm: 2,
   cardBackground: null,
+  showCopyright: false,
 };
 
 /* ------------------------------------------------------------- settings --- */
