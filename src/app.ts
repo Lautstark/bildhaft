@@ -16,6 +16,7 @@ import {
   importCollectionFile,
 } from './db/exportImport.ts';
 import { Sicherung } from '@lautstark/sicherung';
+import { renameField } from '@lautstark/design/rename';
 import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
@@ -122,20 +123,36 @@ export function mountApp(root: HTMLElement): void {
     onReuse: () => void handleReuse(),
   });
 
+  /* Which Sammlung a pending rename is for, captured on the keystroke rather
+     than read when the write runs. Switching blurs the field and so writes
+     first, which makes the two the same in practice — but the debounce is the
+     one path where they could differ, and the id is free to capture. */
+  let renaming: string | null = null;
+
   const titleInput = el('input', {
     class: 'title-input',
     attrs: { 'aria-label': 'Name der Sammlung', placeholder: 'Name der Sammlung' },
     on: {
+      /* The live echo, and only that: the name in the sidebar row and the top
+         bar follow each keystroke. Writing it is design/rename's, on its own
+         listener — which is why that package binds with addEventListener rather
+         than taking the property, so the two can share one field. */
       input: () => {
-        const name = titleInput.value;
         if (!activeId) return;
+        renaming = activeId;
+        const name = titleInput.value;
         collections = collections.map((c) => (c.id === activeId ? { ...c, name } : c));
-        scheduleRename(activeId, name);
         render();
       },
-      blur: () => { if (activeId) void flushRename(activeId, titleInput.value); },
-      keydown: (event) => { if (event.key === 'Enter') titleInput.blur(); },
     },
+  });
+
+  /* Debounced while typing, written on blur and on Enter, and never written
+     when the value has not moved — which this copy did on every visit to the
+     field, because its blur flushed unconditionally. */
+  const titleField = renameField(titleInput, (typed) => {
+    if (!renaming) return undefined;
+    return renameCollection(renaming, typed);
   });
 
   const rowCount = el('span', { class: 'small faint', style: { whiteSpace: 'nowrap' } });
@@ -356,7 +373,13 @@ export function mountApp(root: HTMLElement): void {
 
     const collection = activeCollection();
     topBarView.setTitle(collection?.name ?? 'bildhaft');
-    if (titleInput.value !== (collection?.name ?? '')) titleInput.value = collection?.name ?? '';
+    /* Through refresh() rather than by assigning. The value comparison this
+       used to be is not the same guard: it holds only because the input handler
+       above echoes each keystroke into `collections` first, so a render caused
+       by anything else — a store refresh landing mid-word — would compare
+       against the stored name and put it back over what is being typed.
+       refresh() declines on focus and on a pending keystroke instead. */
+    titleField.refresh(collection?.name ?? '');
 
     composerView.render({
       value: draft, busy, reuse,
@@ -512,18 +535,6 @@ export function mountApp(root: HTMLElement): void {
    * The collection name auto-saves like everything else. Saving only on blur would
    * lose the name if the tab is closed or reloaded while the field still has focus.
    */
-  let renameTimer = 0;
-
-  function scheduleRename(id: string, name: string): void {
-    window.clearTimeout(renameTimer);
-    renameTimer = window.setTimeout(() => { void renameCollection(id, name); }, 400);
-  }
-
-  function flushRename(id: string, name: string): Promise<unknown> {
-    window.clearTimeout(renameTimer);
-    return renameCollection(id, name);
-  }
-
   /* ------------------------------------------------- reuse suggestion --- */
 
   let reuseTimer = 0;
