@@ -579,3 +579,56 @@ test('applies the remembered rendering before the first symbol resolves', async 
   await translate(page, 'Apfel');
   await expect.poll(() => renderingWidths(page)).toEqual([3]);
 });
+
+test('the copyright notice is offered for METACOM, and only on request', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
+
+  // Nothing is claimed on the user's behalf: printing from a licence you own
+  // carries no obligation, so the foot of the sheet stays empty until asked.
+  await expect(page.locator('#print-root .ps-attribution')).toHaveCount(0);
+
+  await page.getByLabel('Copyright-Hinweis drucken').check();
+  await expect(page.locator('#print-root .ps-attribution'))
+    .toContainText('METACOM Symbole © Annette Kitzinger');
+  // ARASAAC's credit has no business on a sheet of METACOM symbols.
+  await expect(page.locator('#print-root .ps-attribution')).not.toContainText('ARASAAC');
+});
+
+test('a credit line does not push itself onto a page of its own', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  /*
+   * One card per page, so the last page is full whatever the sentence yielded.
+   * A part-filled page is shorter than the paper and would prove nothing — only
+   * a full one reaches the edge the notice has to fit above.
+   */
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await page.getByLabel('Copyright-Hinweis drucken').check();
+
+  /*
+   * offsetTop/offsetHeight, not getBoundingClientRect: the preview is drawn
+   * inside a CSS transform: scale(), so rects come back in scaled pixels and a
+   * 277mm page measures as whatever the panel happened to shrink it to.
+   * 277mm is the printable height of a portrait A4 once @page has its margins.
+   */
+  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
+    const last = pages[pages.length - 1];
+    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
+    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
+  });
+  expect(used).toBeLessThanOrEqual(277);
+});

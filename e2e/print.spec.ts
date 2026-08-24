@@ -100,3 +100,98 @@ test('exports references only, never image data', async ({ page }) => {
   // The licensing guarantee: no pixels ever leave in a shared file.
   expect(raw).not.toMatch(/data:image|base64/);
 });
+
+test('turns the paper sideways', async ({ page }) => {
+  const sheet = page.locator('.preview-frame .ps-sheet');
+  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(210, 0);
+
+  await page.getByRole('button', { name: 'Quer' }).click();
+  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(297, 0);
+
+  // @page is the only thing that turns the actual printer, and it cannot be
+  // written from a class — so the rule itself is what has to be checked.
+  expect(await page.evaluate(() =>
+    document.getElementById('print-page-setup')?.textContent)).toContain('A4 landscape');
+});
+
+test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+
+  const grid = page.locator('.preview-frame .ps-grid').first();
+  await expect(grid).toBeVisible();
+
+  /*
+   * Six cells across a 190mm x 277mm printable area. Full width, so 63.3mm
+   * each. The height is short of 277/2 because ARASAAC's credit is a licence
+   * condition and always prints, and a grid page leaves it room rather than
+   * pushing it onto a sheet of its own.
+   */
+  const card = grid.locator('.ps-card').first();
+  await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(63.3, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(128.9, 0);
+
+  // Five distinct symbols across the two sentences fit on one page of six.
+  expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
+
+  // A page break has to be a real break, not a gap: with more cards than cells
+  // the second page starts a new sheet.
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await expect(page.locator('.preview-frame .ps-grid')).toHaveCount(2);
+  expect(await page.locator('.preview-frame .ps-grid').first()
+    .evaluate((el: HTMLElement) => getComputedStyle(el).breakAfter)).toBe('page');
+});
+
+test('a card frame is drawn inside the cut margin, not on it', async ({ page }) => {
+  // Nothing configured: no frame element at all, and the card keeps the size
+  // it has always had.
+  await expect(page.locator('.preview-frame .ps-card__frame')).toHaveCount(0);
+  const card = page.locator('.preview-frame .ps-card').first();
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetWidth))).toBeCloseTo(46, 0);
+
+  await page.getByLabel('Rahmen um jede Karte').check();
+  const frame = page.locator('.preview-frame .ps-card__frame').first();
+  await expect(frame).toHaveCount(1);
+
+  // The frame must sit strictly inside the card, or the scissors go through it.
+  const boxes = await card.evaluate((el: HTMLElement) => {
+    const outer = el.getBoundingClientRect();
+    const inner = el.querySelector('.ps-card__frame')!.getBoundingClientRect();
+    return { outer: outer.left, inner: inner.left, outerRight: outer.right, innerRight: inner.right };
+  });
+  expect(boxes.inner).toBeGreaterThan(boxes.outer);
+  expect(boxes.innerRight).toBeLessThan(boxes.outerRight);
+
+  await page.getByLabel('Hintergrundfarbe').check();
+  expect(await frame.evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor))
+    .not.toBe('rgba(0, 0, 0, 0)');
+
+  // And it reaches the printable copy, not only the preview.
+  await expect(page.locator('#print-root .ps-card__frame').first()).toHaveCount(1);
+});
+
+test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  // One card per page, so the last page is full and reaches the paper's edge.
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+
+  /*
+   * offsetTop/offsetHeight rather than getBoundingClientRect: the preview sits
+   * inside a transform: scale(), so rects come back in scaled pixels.
+   * ARASAAC's credit is a sentence long and is the one that wraps.
+   */
+  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
+    const last = pages[pages.length - 1];
+    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
+    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
+  });
+  expect(used).toBeLessThanOrEqual(277);
+});

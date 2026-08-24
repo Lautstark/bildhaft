@@ -119,6 +119,10 @@ is directly editable:
 - **Remove a slot**: same dialog.
 - **Add a slot**: the `+` at the end of the row.
 - **Reorder**: drag slots, or use `Alt` + `←` / `→`.
+- **Cross a symbol out**: same dialog. METACOM's convention for negation — "nicht
+  hauen" is the *hauen* symbol with a red cross over it, not a different picture.
+  It belongs to the slot, so it survives switching symbol source and travels in
+  an export.
 
 ### Data model
 
@@ -160,14 +164,29 @@ there is a **built-in A4 preview** showing exactly the grid that will print.
 
 The options are the ones that matter in practice:
 
-- **Symbol size in millimetres** — people match existing boards, where a MetaTalk
-  3×5 grid has a specific cell size.
+- **Layout**: *sentence strip* (one row, reading order) or *card sheet* (individual
+  cards for cutting up).
+- **Paper**: A4 portrait or landscape. Boards are nearly always landscape.
+- **Card size**, for a card sheet, either way round:
+  - *in millimetres* — people match existing boards, where a MetaTalk 3×5 grid has
+    a specific cell size;
+  - *as a grid* — say `4 × 3` and the cards divide the page exactly. This is how a
+    board is specified, and the only way to fill a page on purpose. Pages are cut
+    here rather than left to the browser, so the same board printed twice comes
+    out with the same rows on the same sheets.
 - **Cut margin** — laminating pouches need a sealed edge; cards cut flush
   delaminate.
+- **Frame and background colour** — a border with a thickness, a colour and a
+  corner radius, and a colour behind the symbol, so a printout can match the
+  material a child already has. Drawn *inside* the cut margin: the card's own edge
+  is where the scissors go. Off by default, and when off nothing is drawn at all,
+  so an unframed card is exactly the size it has always been.
 - **Label** on/off, above or below the symbol.
-- **Layout**: *sentence strip* (one row, reading order) or *card sheet* (a grid of
-  individual cards for cutting up).
 - **One sentence per page** or continuous.
+- **Copyright notice** (METACOM only) — `METACOM Symbole © Annette Kitzinger` at
+  the foot of the sheet. METACOM's terms require it on material that is handed out
+  or published (A.6.2, A.7.2) and not for private use, so it is a choice rather
+  than automatic. ARASAAC's credit is unconditional and always prints.
 
 You can print a single row or the whole collection.
 

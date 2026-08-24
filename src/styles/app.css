@@ -355,6 +355,7 @@ kbd {
 .slot--over-after { box-shadow: inset -3px 0 0 var(--accent); }
 
 .slot__img {
+  position: relative;
   display: grid;
   place-items: center;
   width: 68px;
@@ -362,6 +363,18 @@ kbd {
   pointer-events: none;
 }
 .slot__img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* The negation cross, laid over whatever box it is put in. Sized by that box
+   rather than by a length of its own, so one rule serves the 68px chip on
+   screen and a 40mm card on paper. */
+.negate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--danger);
+  pointer-events: none;
+}
 
 .slot__blank {
   display: grid;
@@ -454,6 +467,17 @@ kbd {
 }
 .picker__own > .small { flex: 1 1 100%; }
 
+/* Negation sits below the own-image row and above the suggestions: it applies
+   to whichever symbol is chosen, so it belongs with neither. */
+.picker__negate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.picker__negate > .small { flex: 1 1 100%; }
+
 .picker__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
@@ -502,10 +526,28 @@ kbd {
   color: var(--text-faint);
   text-transform: uppercase;
 }
+/* Two fields that name one thing — columns and rows of the same grid. */
+.opt--pair { flex-direction: row; gap: 12px; }
+.opt--pair > .opt { flex: 1; margin-bottom: 0; }
+.opt--pair .opt__row input[type="number"] { width: 100%; }
+
 .opt__row { display: flex; align-items: center; gap: 8px; }
 .opt__row input[type="number"] { width: 84px; }
 .opt__unit { font-size: 13px; color: var(--text-faint); }
 .opt__check { display: flex; align-items: center; gap: 9px; font-size: 14px; cursor: pointer; padding: 3px 0; }
+
+/* A colour well. The native control draws the colour itself; this only gives it
+   the same footprint as the number fields beside it. */
+.swatch {
+  width: 100%;
+  min-width: 44px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: pointer;
+}
 .opt__check input { accent-color: var(--accent); width: 16px; height: 16px; }
 
 /* .segmented comes from components.css, grounds and phone wrap included. */

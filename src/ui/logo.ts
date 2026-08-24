@@ -43,3 +43,17 @@ export const icons = {
     svg('circle', { cx: 12, cy: 12, r: 1.9 }),
     svg('circle', { cx: 19, cy: 12, r: 1.9 })),
 };
+
+/**
+ * The negation cross — METACOM's mark for "nicht". It is stretched to whatever
+ * box it is put in rather than kept square, so on a wide card it still reads as
+ * one stroke across the whole symbol. SVG, because it has to stay a line on
+ * paper at any card size.
+ */
+export function negationCross(): SVGElement {
+  return svg('svg', {
+    class: 'negate', viewBox: '0 0 100 100', preserveAspectRatio: 'none',
+    fill: 'none', stroke: 'currentColor', 'stroke-width': 7,
+    'stroke-linecap': 'round', 'aria-hidden': 'true',
+  }, svg('path', { d: 'M10 10 L90 90 M90 10 L10 90' }));
+}

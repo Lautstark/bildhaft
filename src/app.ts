@@ -648,6 +648,7 @@ export function mountApp(root: HTMLElement): void {
       onChoose: (candidate) => void handleChoose(candidate),
       onOwnImage: (file) => void handleOwnImage(file),
       onClearOwnImage: () => void handleClearOwnImage(),
+      onNegate: (negated) => void handleNegate(negated),
       onRemove: () => void handleRemoveSlot(),
       onClose: () => void handleClosePicker(),
     });
@@ -734,6 +735,18 @@ export function mountApp(root: HTMLElement): void {
     // The picture itself only goes once nothing points at it any more.
     await pruneOwnImages();
     resetSymbolResolution();
+  }
+
+  /*
+   * Unlike every other picker outcome this one leaves `picker` alone: crossing a
+   * symbol out does not settle the dialog, so the field it refers to has to
+   * still be the one the dialog is editing when the next toggle arrives.
+   */
+  async function handleNegate(negated: boolean): Promise<void> {
+    if (!picker) return;
+    const { sentenceId, slotId } = picker;
+    await mutateSlots(sentenceId, (slots) =>
+      slots.map((sl) => (sl.id === slotId ? { ...sl, negated } : sl)));
   }
 
   async function handleRemoveSlot(): Promise<void> {

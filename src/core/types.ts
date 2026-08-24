@@ -49,6 +49,14 @@ export interface Slot {
   candidates: Partial<Record<ProviderId, Candidate[]>>;
 
   /**
+   * METACOM's convention for "nicht": the symbol stays and gets a red cross laid
+   * over it, rather than being swapped for a different picture. A property of
+   * the slot, not of the symbol, so it survives switching symbol source and
+   * travels in an export like every other choice.
+   */
+  negated?: boolean;
+
+  /**
    * An image of the user's own, by id. Kept in this browser rather than
    * referenced on disk, so moving or deleting the original file changes
    * nothing — which is the whole difference between this and a symbol source.
@@ -110,6 +118,9 @@ export interface Override {
 
 export type LayoutMode = 'strip' | 'sheet';
 export type LabelPosition = 'below' | 'above';
+export type Orientation = 'portrait' | 'landscape';
+/** How a card sheet decides how big a card is. */
+export type SheetFit = 'size' | 'grid';
 
 export interface PrintSettings {
   /** Symbol edge length in millimetres. People match existing boards. */
@@ -120,9 +131,44 @@ export interface PrintSettings {
   labelPosition: LabelPosition;
   labelSizePt: number;
   layout: LayoutMode;
+  /** A4 the long way round — the shape most communication boards are. */
+  orientation: Orientation;
+  /**
+   * Card sheets only. 'size' keeps symbolSizeMm and lets the cards flow; 'grid'
+   * ignores it and fits exactly gridCols x gridRows onto every page, which is
+   * how a board is specified: "a 4x3 board", never "a 38mm board".
+   */
+  sheetFit: SheetFit;
+  gridCols: number;
+  gridRows: number;
   showCutLines: boolean;
   onePerPage: boolean;
   showSentenceText: boolean;
+
+  /*
+   * The printed frame around a card, drawn inside the cut margin so the sealed
+   * edge stays sealed. Off by default: these exist so a printout can be made to
+   * match the material a child already has, not to decorate a fresh one.
+   */
+
+  /** Millimetres. 0 means no frame at all, not a hairline one. */
+  cardBorderMm: number;
+  cardBorderColor: string;
+  cardRadiusMm: number;
+  /** A CSS colour behind the symbol, or null for the paper. */
+  cardBackground: string | null;
+
+  /**
+   * Print the METACOM copyright notice at the foot of the sheet.
+   *
+   * Off by default and deliberately a choice, because whether it is required
+   * depends on what happens to the paper, which only the person printing knows.
+   * Printing a board for one child is private use and needs nothing; handing
+   * material out or putting it on a wall is publication under METACOM's terms
+   * (A.6.2, A.7.2) and does. ARASAAC does not appear here: its attribution is
+   * unconditional and always prints.
+   */
+  showCopyright: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -132,9 +178,18 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   labelPosition: 'below',
   labelSizePt: 11,
   layout: 'strip',
+  orientation: 'portrait',
+  sheetFit: 'size',
+  gridCols: 4,
+  gridRows: 3,
   showCutLines: true,
   onePerPage: false,
   showSentenceText: true,
+  cardBorderMm: 0,
+  cardBorderColor: '#333333',
+  cardRadiusMm: 2,
+  cardBackground: null,
+  showCopyright: false,
 };
 
 /* ------------------------------------------------------------- settings --- */
