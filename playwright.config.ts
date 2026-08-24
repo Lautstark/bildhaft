@@ -1,8 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// E2E_PORT lets parallel checkouts run side by side; with reuseExistingServer,
-// a stray preview squatting on the shared port would silently serve the wrong app.
-const PORT = Number(process.env.E2E_PORT ?? 4173);
+/* A port of bildhaft's own, and E2E_PORT to move it.
+ *
+ * 4173 is vite preview's default, so it was also mitreden's - and with
+ * reuseExistingServer, whichever suite starts second finds a server already
+ * answering and quietly tests the *other product's* app. Measured, not
+ * supposed: mitreden's "opens with one Sammlung" run against a bildhaft
+ * preview times out waiting for `#rows .list__item`, which reads as a bug in
+ * mitreden's own list. The failure never mentions the port.
+ *
+ * E2E_PORT still moves it, which is what two checkouts of *this* repo need -
+ * a worktree running the suite beside another one has the same problem one
+ * level down. */
+const PORT = Number(process.env.E2E_PORT ?? 4174);
 
 /**
  * The suite runs against the real production bundle, not the dev server, so a
