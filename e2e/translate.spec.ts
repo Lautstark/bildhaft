@@ -52,7 +52,7 @@ test('remembers a correction and applies it to later sentences', async ({ page }
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
   const alternative = labelsForTerm('Apfel')[1];
   await page.locator('.picker__item', { hasText: alternative }).first().click();
-  await expect(page.locator('.dialog')).toBeHidden();
+  await expect(page.locator('dialog.sheet')).toHaveCount(0);
 
   const expectedId = String(idForTerm('Apfel') + 1);
   await expect.poll(async () => {
