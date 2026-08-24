@@ -141,3 +141,31 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   expect(await page.locator('.preview-frame .ps-grid').first()
     .evaluate((el: HTMLElement) => getComputedStyle(el).breakAfter)).toBe('page');
 });
+
+test('a card frame is drawn inside the cut margin, not on it', async ({ page }) => {
+  // Nothing configured: no frame element at all, and the card keeps the size
+  // it has always had.
+  await expect(page.locator('.preview-frame .ps-card__frame')).toHaveCount(0);
+  const card = page.locator('.preview-frame .ps-card').first();
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetWidth))).toBeCloseTo(46, 0);
+
+  await page.getByLabel('Rahmen um jede Karte').check();
+  const frame = page.locator('.preview-frame .ps-card__frame').first();
+  await expect(frame).toHaveCount(1);
+
+  // The frame must sit strictly inside the card, or the scissors go through it.
+  const boxes = await card.evaluate((el: HTMLElement) => {
+    const outer = el.getBoundingClientRect();
+    const inner = el.querySelector('.ps-card__frame')!.getBoundingClientRect();
+    return { outer: outer.left, inner: inner.left, outerRight: outer.right, innerRight: inner.right };
+  });
+  expect(boxes.inner).toBeGreaterThan(boxes.outer);
+  expect(boxes.innerRight).toBeLessThan(boxes.outerRight);
+
+  await page.getByLabel('Hintergrundfarbe').check();
+  expect(await frame.evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor))
+    .not.toBe('rgba(0, 0, 0, 0)');
+
+  // And it reaches the printable copy, not only the preview.
+  await expect(page.locator('#print-root .ps-card__frame').first()).toHaveCount(1);
+});

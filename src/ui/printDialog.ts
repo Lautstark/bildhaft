@@ -8,6 +8,9 @@ import { warmSymbols } from './symbols.ts';
 const PX_PER_MM = 96 / 25.4;
 const PREVIEW_PADDING = 28;
 
+/** What "give the cards a background" starts as before anyone picks a colour. */
+const DEFAULT_CARD_BACKGROUND = '#fff3bf';
+
 export interface PrintOptions {
   sentences: Sentence[];
   collectionName: string;
@@ -146,6 +149,19 @@ export function openPrintDialog(options: PrintOptions): void {
     return el('label', { class: 'opt__check' }, box, label);
   }
 
+  function colorOpt(id: string, label: string, value: string,
+    onInput: (next: string) => void): HTMLElement {
+    const input = el('input', {
+      class: 'swatch',
+      attrs: { id, type: 'color', value, 'aria-label': label },
+      on: { input: () => onInput(input.value) },
+    });
+    return el('div', { class: 'opt' },
+      el('label', { text: label, attrs: { for: id } }),
+      el('div', { class: 'opt__row' }, input),
+    );
+  }
+
   function segmented(options_: { label: string; active: boolean; onPick: () => void }[], style?: Partial<CSSStyleDeclaration>): HTMLElement {
     return el('div', { class: 'segmented', style },
       ...options_.map((option) => el('button', {
@@ -208,6 +224,26 @@ export function openPrintDialog(options: PrintOptions): void {
           ? numberOpt('opt-label', 'Schriftgröße', settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null,
               (next) => set('labelSizePt', next))
           : null,
+      ),
+      el('div', { class: 'opt' },
+        el('label', { text: 'Rahmen & Farbe' }),
+        check('Rahmen um jede Karte', settings.cardBorderMm > 0, false,
+          (next) => set('cardBorderMm', next ? 0.5 : 0)),
+        settings.cardBorderMm > 0 ? el('div', { class: 'opt--pair' },
+          numberOpt('opt-border', 'Dicke', settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null,
+            (next) => set('cardBorderMm', next)),
+          numberOpt('opt-radius', 'Ecken', settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null,
+            (next) => set('cardRadiusMm', next)),
+          colorOpt('opt-border-color', 'Farbe', settings.cardBorderColor,
+            (next) => set('cardBorderColor', next)),
+        ) : null,
+        check('Hintergrundfarbe', settings.cardBackground !== null, false,
+          (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null)),
+        settings.cardBackground !== null
+          ? colorOpt('opt-bg', 'Farbe', settings.cardBackground, (next) => set('cardBackground', next))
+          : null,
+        el('span', { class: 'small faint',
+          text: 'Wird innerhalb des Schneiderands gedruckt, damit die Laminierfolie noch dicht abschließt.' }),
       ),
       el('div', { class: 'opt' },
         check('Schnittlinien anzeigen', settings.showCutLines, false, (next) => set('showCutLines', next)),

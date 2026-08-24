@@ -144,6 +144,19 @@ export interface PrintSettings {
   showCutLines: boolean;
   onePerPage: boolean;
   showSentenceText: boolean;
+
+  /*
+   * The printed frame around a card, drawn inside the cut margin so the sealed
+   * edge stays sealed. Off by default: these exist so a printout can be made to
+   * match the material a child already has, not to decorate a fresh one.
+   */
+
+  /** Millimetres. 0 means no frame at all, not a hairline one. */
+  cardBorderMm: number;
+  cardBorderColor: string;
+  cardRadiusMm: number;
+  /** A CSS colour behind the symbol, or null for the paper. */
+  cardBackground: string | null;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -160,6 +173,10 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   showCutLines: true,
   onePerPage: false,
   showSentenceText: true,
+  cardBorderMm: 0,
+  cardBorderColor: '#333333',
+  cardRadiusMm: 2,
+  cardBackground: null,
 };
 
 /* ------------------------------------------------------------- settings --- */

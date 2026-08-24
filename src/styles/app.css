@@ -535,6 +535,19 @@ kbd {
 .opt__row input[type="number"] { width: 84px; }
 .opt__unit { font-size: 13px; color: var(--text-faint); }
 .opt__check { display: flex; align-items: center; gap: 9px; font-size: 14px; cursor: pointer; padding: 3px 0; }
+
+/* A colour well. The native control draws the colour itself; this only gives it
+   the same footprint as the number fields beside it. */
+.swatch {
+  width: 100%;
+  min-width: 44px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: pointer;
+}
 .opt__check input { accent-color: var(--accent); width: 16px; height: 16px; }
 
 /* .segmented comes from components.css, grounds and phone wrap included. */

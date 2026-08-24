@@ -65,6 +65,16 @@ export function printSheet(options: SheetOptions): HTMLElement {
       '--label': `${settings.labelSizePt}pt`,
       '--page-w': `${page.width}mm`,
       '--page-h': `${page.height}mm`,
+      '--frame-w': `${settings.cardBorderMm}mm`,
+      '--frame-color': settings.cardBorderColor,
+      /*
+       * Rounded corners need room, or the corner clips the symbol — the METACOM
+       * manual makes the same point. Derived rather than asked for: it is a
+       * consequence of the radius, not a separate decision.
+       */
+      '--frame-pad': `${(1 + settings.cardRadiusMm / 3).toFixed(2)}mm`,
+      '--card-radius': `${settings.cardRadiusMm}mm`,
+      '--card-bg': settings.cardBackground ?? 'transparent',
     },
   });
 
@@ -150,6 +160,11 @@ function cardSheet(
   return pages;
 }
 
+/** Whether anything is asked for that has to be drawn around the symbol. */
+function isFramed(settings: PrintSettings): boolean {
+  return settings.cardBorderMm > 0 || settings.cardBackground !== null;
+}
+
 function card(
   slot: Slot, settings: PrintSettings, provider: ProviderId, fill = false,
 ): HTMLElement {
@@ -181,9 +196,21 @@ function card(
     if (id) resolveSymbolUrl(provider, id).then((url) => { if (url) show(url); });
   }
 
-  return el('div', { class: `ps-card${settings.labelPosition === 'above' ? ' ps-card--label-above' : ''}`
-      + (fill ? ' ps-card--fill' : '') },
+  const contents = [
     box,
     settings.showLabel ? el('div', { class: 'ps-card__label', text: label }) : null,
+  ];
+
+  /*
+   * The frame is a real element rather than a border on the card, because the
+   * card's edge is the cut line: a border there would be cut through. It is
+   * also only built when something asks for it, which is what keeps an
+   * unframed card exactly the size it has always been.
+   */
+  const framed = isFramed(settings);
+
+  return el('div', { class: `ps-card${settings.labelPosition === 'above' ? ' ps-card--label-above' : ''}`
+      + (fill ? ' ps-card--fill' : '') + (framed ? ' ps-card--framed' : '') },
+    ...(framed ? [el('div', { class: 'ps-card__frame' }, ...contents)] : contents),
   );
 }
