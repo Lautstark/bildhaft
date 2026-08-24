@@ -100,3 +100,44 @@ test('exports references only, never image data', async ({ page }) => {
   // The licensing guarantee: no pixels ever leave in a shared file.
   expect(raw).not.toMatch(/data:image|base64/);
 });
+
+test('turns the paper sideways', async ({ page }) => {
+  const sheet = page.locator('.preview-frame .ps-sheet');
+  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(210, 0);
+
+  await page.getByRole('button', { name: 'Quer' }).click();
+  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(297, 0);
+
+  // @page is the only thing that turns the actual printer, and it cannot be
+  // written from a class — so the rule itself is what has to be checked.
+  expect(await page.evaluate(() =>
+    document.getElementById('print-page-setup')?.textContent)).toContain('A4 landscape');
+});
+
+test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+
+  const grid = page.locator('.preview-frame .ps-grid').first();
+  await expect(grid).toBeVisible();
+
+  // Six cells across a 190mm x 277mm printable area: 63.3mm x 138.5mm each.
+  const card = grid.locator('.ps-card').first();
+  await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
+    .toBeCloseTo(63.3, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(138.5, 0);
+
+  // Five distinct symbols across the two sentences fit on one page of six.
+  expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
+
+  // A page break has to be a real break, not a gap: with more cards than cells
+  // the second page starts a new sheet.
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await expect(page.locator('.preview-frame .ps-grid')).toHaveCount(2);
+  expect(await page.locator('.preview-frame .ps-grid').first()
+    .evaluate((el: HTMLElement) => getComputedStyle(el).breakAfter)).toBe('page');
+});

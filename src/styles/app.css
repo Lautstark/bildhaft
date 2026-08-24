@@ -526,6 +526,11 @@ kbd {
   color: var(--text-faint);
   text-transform: uppercase;
 }
+/* Two fields that name one thing — columns and rows of the same grid. */
+.opt--pair { flex-direction: row; gap: 12px; }
+.opt--pair > .opt { flex: 1; margin-bottom: 0; }
+.opt--pair .opt__row input[type="number"] { width: 100%; }
+
 .opt__row { display: flex; align-items: center; gap: 8px; }
 .opt__row input[type="number"] { width: 84px; }
 .opt__unit { font-size: 13px; color: var(--text-faint); }

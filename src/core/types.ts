@@ -118,6 +118,9 @@ export interface Override {
 
 export type LayoutMode = 'strip' | 'sheet';
 export type LabelPosition = 'below' | 'above';
+export type Orientation = 'portrait' | 'landscape';
+/** How a card sheet decides how big a card is. */
+export type SheetFit = 'size' | 'grid';
 
 export interface PrintSettings {
   /** Symbol edge length in millimetres. People match existing boards. */
@@ -128,6 +131,16 @@ export interface PrintSettings {
   labelPosition: LabelPosition;
   labelSizePt: number;
   layout: LayoutMode;
+  /** A4 the long way round — the shape most communication boards are. */
+  orientation: Orientation;
+  /**
+   * Card sheets only. 'size' keeps symbolSizeMm and lets the cards flow; 'grid'
+   * ignores it and fits exactly gridCols x gridRows onto every page, which is
+   * how a board is specified: "a 4x3 board", never "a 38mm board".
+   */
+  sheetFit: SheetFit;
+  gridCols: number;
+  gridRows: number;
   showCutLines: boolean;
   onePerPage: boolean;
   showSentenceText: boolean;
@@ -140,6 +153,10 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   labelPosition: 'below',
   labelSizePt: 11,
   layout: 'strip',
+  orientation: 'portrait',
+  sheetFit: 'size',
+  gridCols: 4,
+  gridRows: 3,
   showCutLines: true,
   onePerPage: false,
   showSentenceText: true,

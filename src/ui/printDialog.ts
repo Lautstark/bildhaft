@@ -1,11 +1,11 @@
 import type { PrintSettings, ProviderId, Sentence } from '../core/types.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
-import { printSheet } from './printSheet.ts';
+import { applyPageSetup, clearPageSetup, printSheet } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 
-/** A4 at the CSS reference resolution of 96dpi. */
-const A4_HEIGHT_PX = (297 / 25.4) * 96;
+/** Millimetres at the CSS reference resolution of 96dpi. */
+const PX_PER_MM = 96 / 25.4;
 const PREVIEW_PADDING = 28;
 
 export interface PrintOptions {
@@ -60,8 +60,10 @@ export function openPrintDialog(options: PrintOptions): void {
     if (closed) return;
     closed = true;
     observer.disconnect();
-    // The printable copy belongs to this dialog; it must not outlive it.
+    // The printable copy belongs to this dialog; it must not outlive it, and
+    // neither does the paper orientation it asked for.
     printRoot?.replaceChildren();
+    clearPageSetup();
     dialog.close();
     options.onClose();
   }
@@ -84,7 +86,8 @@ export function openPrintDialog(options: PrintOptions): void {
     const availableHeight = frame.clientHeight - PREVIEW_PADDING;
     // Fit one full A4 page, so page breaks and the overall grid are judgeable.
     // Further pages scroll rather than shrinking the whole preview.
-    const scale = Math.min(1, availableWidth / sheet.offsetWidth, availableHeight / A4_HEIGHT_PX);
+    const pageHeight = (settings.orientation === 'landscape' ? 210 : 297) * PX_PER_MM;
+    const scale = Math.min(1, availableWidth / sheet.offsetWidth, availableHeight / pageHeight);
     scaler.style.transform = `scale(${scale})`;
     sizer.style.height = `${sheet.offsetHeight * scale}px`;
   }
@@ -108,7 +111,11 @@ export function openPrintDialog(options: PrintOptions): void {
   }
 
   function paintFooter(): void {
-    meta.textContent = `A4 · Ränder 10 mm · ${settings.symbolSizeMm} mm Symbole`;
+    const paper = `A4 ${settings.orientation === 'landscape' ? 'quer' : 'hoch'}`;
+    const cards = settings.layout === 'sheet' && settings.sheetFit === 'grid'
+      ? `Raster ${settings.gridCols} × ${settings.gridRows}`
+      : `${settings.symbolSizeMm} mm Symbole`;
+    meta.textContent = `${paper} · Ränder 10 mm · ${cards}`;
     printButton.toggleAttribute('disabled', preparing);
     if (preparing) {
       fill(printButton, el('span', { class: 'spinner' }), ' Bereite vor …');
@@ -149,6 +156,8 @@ export function openPrintDialog(options: PrintOptions): void {
   }
 
   function paint(): void {
+    const gridded = settings.layout === 'sheet' && settings.sheetFit === 'grid';
+
     fill(controls,
       el('div', { class: 'opt' },
         el('label', { text: 'Layout' }),
@@ -158,9 +167,33 @@ export function openPrintDialog(options: PrintOptions): void {
         ]),
         el('span', { class: 'small faint', text: settings.layout === 'strip'
           ? 'Eine Reihe pro Satz, in Leserichtung.'
-          : 'Raster einzelner Karten zum Ausschneiden. Doppelte Symbole erscheinen nur einmal.' }),
+          : 'Einzelne Karten zum Ausschneiden. Doppelte Symbole erscheinen nur einmal.' }),
       ),
-      numberOpt('opt-size', 'Symbolgröße', settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null,
+      el('div', { class: 'opt' },
+        el('label', { text: 'Papier' }),
+        segmented([
+          { label: 'Hoch', active: settings.orientation === 'portrait',
+            onPick: () => set('orientation', 'portrait') },
+          { label: 'Quer', active: settings.orientation === 'landscape',
+            onPick: () => set('orientation', 'landscape') },
+        ]),
+      ),
+      settings.layout === 'sheet' ? el('div', { class: 'opt' },
+        el('label', { text: 'Kartengröße' }),
+        segmented([
+          { label: 'In Millimetern', active: !gridded, onPick: () => set('sheetFit', 'size') },
+          { label: 'Raster', active: gridded, onPick: () => set('sheetFit', 'grid') },
+        ]),
+        el('span', { class: 'small faint', text: gridded
+          ? 'So viele Karten pro Seite. Die Karten füllen die Seite aus.'
+          : 'Feste Symbolgröße. Es passt, was passt.' }),
+      ) : null,
+      gridded ? el('div', { class: 'opt opt--pair' },
+        numberOpt('opt-cols', 'Spalten', settings.gridCols, 1, 12, 1, 4, '', null,
+          (next) => set('gridCols', Math.round(next))),
+        numberOpt('opt-rows', 'Zeilen', settings.gridRows, 1, 12, 1, 3, '', null,
+          (next) => set('gridRows', Math.round(next))),
+      ) : numberOpt('opt-size', 'Symbolgröße', settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null,
         (next) => set('symbolSizeMm', next)),
       numberOpt('opt-cut', 'Schneiderand', settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
         'Weißer Rand pro Karte, damit die Laminierfolie dicht abschließt.',
@@ -184,6 +217,8 @@ export function openPrintDialog(options: PrintOptions): void {
           (next) => set('onePerPage', next)),
       ),
     );
+
+    applyPageSetup(settings.orientation);
 
     const build = () => printSheet({
       sentences: options.sentences,
