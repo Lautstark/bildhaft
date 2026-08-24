@@ -149,10 +149,11 @@ export function mountApp(root: HTMLElement): void {
 
   const collectionHead = el('div', { class: 'collection-head' },
     titleInput, rowCount, printAll,
-    actionMenu('Aktionen für diese Sammlung', () => [
-      { label: 'Sammlung exportieren', onSelect: () => void handleExport(), disabled: sentences.length === 0 },
-      { label: 'Sammlung löschen', onSelect: () => void confirmDeleteCollection(), danger: true },
-    ]),
+    actionMenu('Aktionen für diese Sammlung', (add) => {
+      add('Sammlung exportieren', () => void handleExport(),
+        { disabled: sentences.length === 0 });
+      add('Sammlung löschen', () => void confirmDeleteCollection(), { danger: true });
+    }),
   );
 
   const rowsHost = el('div', { class: 'rows' });
