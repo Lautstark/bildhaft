@@ -125,6 +125,10 @@ Zeile lässt sich direkt bearbeiten:
 - **Feld entfernen**: im selben Dialog.
 - **Feld hinzufügen**: das `+` am Ende der Reihe.
 - **Umsortieren**: Felder mit der Maus ziehen, oder mit `Alt` + `←` / `→`.
+- **Symbol durchstreichen**: im selben Dialog. METACOMs Konvention für die
+  Verneinung — „nicht hauen“ ist das *hauen*-Symbol mit einem roten Kreuz darüber,
+  kein anderes Bild. Es gehört zum Feld, übersteht also den Wechsel der
+  Symbolquelle und reist im Export mit.
 
 ### Datenmodell
 
@@ -166,14 +170,30 @@ A4-Vorschau**, die exakt das Raster zeigt, das gedruckt wird.
 
 Einstellbar ist, was in der Praxis zählt:
 
-- **Symbolgröße in Millimetern** — Leute gleichen bestehende Tafeln ab; ein
-  MetaTalk-3×5-Raster hat eine bestimmte Zellgröße.
+- **Layout**: *Satzstreifen* (eine Reihe, Leserichtung) oder *Kartenblatt*
+  (einzelne Karten zum Ausschneiden).
+- **Papier**: A4 hoch oder quer. Tafeln sind fast immer quer.
+- **Kartengröße**, beim Kartenblatt, auf zwei Arten:
+  - *in Millimetern* — Leute gleichen bestehende Tafeln ab; ein MetaTalk-3×5-Raster
+    hat eine bestimmte Zellgröße;
+  - *als Raster* — `4 × 3` angeben, und die Karten teilen die Seite genau auf. So
+    wird eine Tafel beschrieben, und nur so füllt sie die Seite absichtlich. Die
+    Seiten werden hier umbrochen und nicht dem Browser überlassen, damit dieselbe
+    Tafel zweimal gedruckt dieselben Reihen auf denselben Blättern ergibt.
 - **Schneiderand** — Laminierfolien brauchen eine dichte Kante; bündig geschnittene
   Karten lösen sich auf.
+- **Rahmen und Hintergrundfarbe** — ein Rahmen mit Dicke, Farbe und Eckenradius
+  sowie eine Farbe hinter dem Symbol, damit ein Ausdruck zum Material passt, das
+  ein Kind schon hat. Gezeichnet wird *innerhalb* des Schneiderands: die Kante der
+  Karte ist die Schnittkante. Standardmäßig aus, und wenn aus, wird gar nichts
+  gezeichnet — eine Karte ohne Rahmen ist exakt so groß wie eh und je.
 - **Beschriftung** an/aus, über oder unter dem Symbol.
-- **Layout**: *Satzstreifen* (eine Reihe, Leserichtung) oder *Kartenblatt* (Raster
-  einzelner Karten zum Ausschneiden).
 - **Ein Satz pro Seite** oder fortlaufend.
+- **Copyright-Hinweis** (nur METACOM) — `METACOM Symbole © Annette Kitzinger` am
+  Seitenfuß. METACOMs Nutzungsbedingungen verlangen ihn bei Weitergabe und
+  Veröffentlichung (A.6.2, A.7.2), für den eigenen Gebrauch nicht — deshalb eine
+  Wahl und nichts Automatisches. ARASAACs Nachweis ist bedingungslos und wird
+  immer gedruckt.
 
 Gedruckt wird eine einzelne Zeile oder die ganze Sammlung.
 
