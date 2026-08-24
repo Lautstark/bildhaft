@@ -150,34 +150,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .list { display: flex; flex-direction: column; gap: 1px; }
 
-.list__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  color: var(--text-dim);
-  transition: background .13s, color .13s;
-}
-.list__item:hover { background: var(--surface-2); color: var(--text); }
-.list__item--active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+/* A Sammlung's row is components.css's `.collections` now - the name, the
+   count, the accent behind the open one, and the reason that count is never
+   dimmed, which was measured here and went with it. See §5 5b.
 
-.list__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-}
-/* No opacity: at .7 over --accent-soft this fell to 2.91:1. It inherits the
-   row's colour instead, which is contrast-checked. */
-.list__count { font-size: 12px; font-variant-numeric: tabular-nums; }
+   `.list` stays: the search results below use it too, and a list of hits is a
+   different thing from a list of Sammlungen. That is the whole argument for the
+   rows not being called `.list__item` any more. */
 
 .hit {
   width: 100%;
