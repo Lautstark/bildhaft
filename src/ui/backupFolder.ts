@@ -17,7 +17,7 @@
  */
 
 import { Sicherung, type Status } from '@lautstark/sicherung';
-import { actionsFor, ago } from '@lautstark/sicherung/ui';
+import { actionsFor, ago, needsAttention } from '@lautstark/sicherung/ui';
 import { el, fill } from './dom.ts';
 
 /**
@@ -150,6 +150,12 @@ export function mountBackupFolder(
     // data-state takes the kind verbatim — the stylesheet keys off exactly
     // these names, so there is no mapping here to disagree with it.
     line.setAttribute('data-state', status.kind);
+    /* Whether this state is somebody's to act on is the package's answer, the
+     * same as the buttons below. This drew `needs-permission` in the same grey
+     * as „gesichert vor 3 Minuten" - and all three products did, which is what
+     * it looks like when each decides for itself out of one status.
+     * @lautstark/design conventions.md §3.7. */
+    line.className = needsAttention(status) ? 'standing notice bad' : 'standing';
     fill(line, el('span', { class: 'dot' }), el('span', { text: sentence(status) }));
 
     // Which buttons belong to this state is the package's answer now, not
