@@ -145,6 +145,26 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     onClose: () => { if (settled) return; teardown(); handlers.onClose(); },
   });
 
+  /*
+   * Enter is Fertig. A <dialog> with no form in it has no default action, so
+   * until now the key did nothing at all — and it is what a person reaches for
+   * after typing a caption.
+   *
+   * Two things keep their own Enter. A focused button is the browser's to
+   * activate, and the search field means "look for this now" rather than "I am
+   * done" — closing the dialog there would throw away the reason it was open.
+   */
+  dialog.dialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.isComposing) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, a')) return;
+
+    event.preventDefault();
+    if (target === search) onQuery(search.value, true);
+    else finish(handlers.onClose);
+  });
+
   function teardown(): void {
     // Before anything else: a caption typed and then settled by pressing a
     // symbol must reach the slot ahead of the pick, not after it.
@@ -231,7 +251,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       : `Für „${slot.concept}“ wurde nichts gefunden. Suche oben nach einem anderen Wort.`;
   }
 
-  function onQuery(raw: string): void {
+  function onQuery(raw: string, now = false): void {
     const term = raw.trim();
     window.clearTimeout(searchTimer);
     const mine = ++searchToken;
@@ -242,14 +262,18 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     }
 
     status.textContent = 'Suche läuft …';
-    // Debounced manual search — the escape hatch for anything the pipeline missed.
+    /*
+     * Debounced manual search — the escape hatch for anything the pipeline
+     * missed. Enter asks for it now: sitting out a debounce you have finished
+     * typing through reads as the key having done nothing.
+     */
     searchTimer = window.setTimeout(async () => {
       const found = await getProvider(provider).search(term).catch(() => []);
       if (mine !== searchToken) return;
       paint(found, found.length > 0
         ? `${found.length} Treffer für „${term}“`
         : `Keine Treffer für „${term}“`);
-    }, 260);
+    }, now ? 0 : 260);
   }
 
   paint(suggested, idleMessage());

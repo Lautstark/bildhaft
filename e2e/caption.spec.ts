@@ -94,3 +94,44 @@ test('a card sheet keeps one card per wording, not per symbol', async ({ page })
   expect(labels).toContain('Apfel');
   expect(labels).toContain('der Apfel');
 });
+
+/*
+ * Enter in the picker. It is what a person reaches for after typing a caption,
+ * and the dialog has no form of its own to give it a meaning.
+ */
+test('Enter is Fertig, and keeps what was typed', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+
+  await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await caption(page).fill('der Apfel');
+  await caption(page).press('Enter');
+
+  await expect(page.locator('dialog.sheet')).toHaveCount(0);
+  await expect(rowLabels(page).nth(2)).toHaveText('der Apfel');
+});
+
+test('Enter in the search field searches instead of closing', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+
+  await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await page.getByLabel('Symbol suchen').fill('Banane');
+  await page.getByLabel('Symbol suchen').press('Enter');
+
+  await expect(page.locator('dialog.sheet')).toHaveCount(1);
+  await expect(page.locator('.picker__item', { hasText: 'Banane' }).first()).toBeVisible();
+});
+
+test('Enter on a symbol picks it rather than closing the field unchanged', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+
+  await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  const alternative = labelsForTerm('Apfel')[1];
+  await page.locator('.picker__item', { hasText: alternative }).first().focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.locator('dialog.sheet')).toHaveCount(0);
+  await expect.poll(async () => {
+    const rows = await readSentences(page);
+    return rows[0].slots.find((s) => s.sourceToken === 'Apfel')?.chosen;
+  }).toBe(String(idForTerm('Apfel') + 1));
+});
