@@ -17,7 +17,7 @@
     "test": "node tools/installcheck.mjs && vitest run"
   },
   "dependencies": {
-    "@lautstark/bildquelle": "github:Lautstark/bildquelle#v1.5.0",
+    "@lautstark/bildquelle": "github:Lautstark/bildquelle#v1.6.1",
     "@lautstark/design": "github:Lautstark/design#v1.15.0",
     "@lautstark/sicherung": "github:Lautstark/sicherung#v1.2.0",
     "idb": "^8.0.3"
