@@ -129,10 +129,17 @@ is directly editable:
 The unit of reuse is **the sentence, not the collection.** Someone translating a
 book helps the next person with the individual line.
 
-Sentences are first-class rows keyed by `normalizedInput`. Collections are just a
+Sentences are first-class rows keyed by `normalizedInput`. Collections are a
 grouping over them with a freely chosen name (e.g. "Der Grüffelo"). That gives you,
 for free: "you have translated this line before", and a flat search across
 everything you have ever done.
+
+A collection can also record **which symbol source it is drawn in**, from the `⋯`
+beside its name. With no answer of its own it follows the default in settings,
+including when that default later moves. It is a view preference rather than a
+content one: what is stored is still references, and exporting a single
+collection deliberately leaves it behind, so the file opens in whatever symbol
+source its recipient has.
 
 Storage is **IndexedDB**, saved automatically on every change. There is no save
 button.

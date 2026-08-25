@@ -136,9 +136,16 @@ Die Einheit der Wiederverwendung ist **der Satz, nicht die Sammlung.** Wer ein B
 überträgt, hilft der nächsten Person mit der einzelnen Zeile.
 
 Sätze sind eigenständige Einträge mit `normalizedInput` als Schlüssel. Sammlungen
-sind nur eine Gruppierung darüber und tragen einen frei wählbaren Namen (etwa „Der
+sind eine Gruppierung darüber und tragen einen frei wählbaren Namen (etwa „Der
 Grüffelo“). Daraus ergibt sich kostenlos: „diesen Satz hast du schon übersetzt“ und
 eine flache Suche über alles Bisherige.
+
+Eine Sammlung kann außerdem festhalten, **womit sie gezeichnet wird** — über das
+Menü `⋯` neben ihrem Namen. Ohne eigene Wahl folgt sie der Standardquelle aus den
+Einstellungen, auch wenn die sich später ändert. Das ist eine Anzeige-Einstellung
+und keine inhaltliche: gespeichert bleiben Verweise, und eine einzeln exportierte
+Sammlung nimmt sie nicht mit, damit die Datei bei jeder Empfängerin in deren
+eigener Symbolsammlung aufgeht.
 
 Gespeichert wird in **IndexedDB**, automatisch bei jeder Änderung. Es gibt keinen
 Speichern-Knopf.
