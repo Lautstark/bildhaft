@@ -887,6 +887,19 @@ export function mountApp(root: HTMLElement): void {
     sentences = [];
     setActive(created.id);
     render();
+
+    /* Straight into the name, selected: the first keystroke replaces the date
+     * it was given. conventions.md §1.5, and the selecting is the half of it
+     * that was missing here — the name was invented and then left as a chore to
+     * delete, which is the difference between a suggestion and a default.
+     *
+     * After render(), because that is what puts the new name in the field, and
+     * it does it through refresh() like every other assignment. refresh()
+     * declines while the field has focus, and it does not have it here: the
+     * press that got us here took focus to the button in the sidebar. So the
+     * order is render, then take it. */
+    titleInput.focus();
+    titleInput.select();
   }
 
   async function handleExport(): Promise<void> {
