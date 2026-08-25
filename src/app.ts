@@ -152,6 +152,14 @@ export function mountApp(root: HTMLElement): void {
     onChange: (value) => { draft = value; scheduleReuseLookup(); render(); },
     onSubmit: () => void handleSubmit(),
     onReuse: () => void handleReuse(),
+    /* Where the source under the box is decided: this Sammlung's own sheet when
+       one is open, the settings card when none is. The line above the button
+       says which of the two it will be, so the two must agree — they read the
+       same question, one to write the caption and one to route the press. */
+    onChangeProvider: () => {
+      if (activeCollection()) openSourceSheet();
+      else openAppSettings();
+    },
   });
 
   /* Which Sammlung a pending rename is for, captured on the keystroke rather
@@ -502,6 +510,8 @@ export function mountApp(root: HTMLElement): void {
       value: draft, busy, reuse,
       providerName: provider().name,
       providerReady: provider().isReady(),
+      inCollection: Boolean(collection),
+      providerOwned: !followsDefault(),
     });
 
     rowCount.textContent = `${sentences.length} Zeile${sentences.length === 1 ? '' : 'n'}`;

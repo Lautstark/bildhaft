@@ -217,6 +217,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--text-faint);
 }
 
+/*
+ * Which source the rows are drawn from, and the way through to changing it.
+ * A row rather than a sentence, because the button belongs to the words beside
+ * it: the caption says whose answer it is naming, which is what makes one
+ * „Ändern" leading to two different places honest.
+ */
+.composer__provider { display: inline-flex; align-items: center; gap: 6px; }
+.composer__provider b { font-weight: 600; color: var(--text-dim); }
+
 .composer__reuse {
   display: flex;
   align-items: center;
