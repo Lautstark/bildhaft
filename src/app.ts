@@ -178,8 +178,14 @@ export function mountApp(root: HTMLElement): void {
     el('b', { text: 'Noch keine Sätze' }),
     el('small', { html: 'Tippe oben einen Satz und drücke <kbd>Enter</kbd>.' }));
 
+  /* The region the banners are drawn into — see the banners block below for
+     why it is a region and they are not. Mounted here, once, and never taken
+     out again; it sits where the banners used to be inserted, above the
+     composer. Empty it is a block with no content and costs no room. */
+  const bannerHost = el('div', { class: 'banners', attrs: { role: 'status' } });
+
   const inner = el('div', { class: 'main__inner' },
-    composerView.node, collectionHead, rowsHost);
+    bannerHost, composerView.node, collectionHead, rowsHost);
 
   const footerView = footer({
     onAbout: () => openAbout(() => undefined),
@@ -197,8 +203,25 @@ export function mountApp(root: HTMLElement): void {
 
   /* ----------------------------------------------------------- banners --- */
 
+  /*
+   * The banners live inside one permanent region rather than being live regions
+   * themselves, and that is the same rule the toast is under (conventions.md
+   * §3.8): a reader announces a change in something it was already watching.
+   *
+   * busyBanner used to carry role="status" itself, and the render set its text
+   * and *then* inserted the node — so it entered the accessibility tree already
+   * carrying the message and announced nothing, every time. The role read as
+   * correct in the markup and in review, which is exactly how the toast's
+   * version of this survived as long as it did.
+   *
+   * So the region is this host, mounted once below, and what changes is which
+   * banner is inside it. An addition to a live region's subtree is a change,
+   * which is what makes this work where the old arrangement could not. The
+   * banners themselves carry no role: two regions nested inside each other
+   * would announce twice.
+   */
   const busyMessage = el('span', { style: { flex: '1' } });
-  const busyBanner = el('div', { class: 'banner banner--busy', attrs: { role: 'status' } },
+  const busyBanner = el('div', { class: 'banner banner--busy' },
     el('span', { class: 'spinner' }), busyMessage);
 
   const unusableMessage = el('span', { style: { flex: '1' } });
@@ -271,8 +294,11 @@ export function mountApp(root: HTMLElement): void {
     if (signature === bannerSignature) return;
     bannerSignature = signature;
 
-    for (const node of [busyBanner, unusableBanner, blockedBanner]) node.remove();
-    for (const [, node] of wanted) inner.insertBefore(node, composerView.node);
+    // Into the region rather than into the page: the host stays, the contents
+    // change. `replaceChildren` with the wanted set keeps the signature guard
+    // above meaningful — an unchanged set returns before this line, so a
+    // spinner that is still spinning is never restarted.
+    bannerHost.replaceChildren(...wanted.map(([, node]) => node));
   }
 
   function toggleVisible(node: HTMLElement, on: boolean): void {
