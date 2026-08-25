@@ -693,22 +693,40 @@ export function mountApp(root: HTMLElement): void {
 
   /* ------------------------------------------------------- row editing --- */
 
-  /*
-   * Memory first, disk second. The picker can settle a field while an earlier
-   * edit to the same field is still being written — type a caption, then press
-   * a symbol — and with the store updated only after the write, the pick read
-   * the slot as it was before the caption and put it back.
+  /**
+   * One edit to a sentence at a time, in the order the edits were made.
+   *
+   * The picker can settle a field while an earlier edit to the same field is
+   * still being written — type a caption, then press a symbol — and a handler
+   * that read the store before the write in front of it had landed built its
+   * change on the slot as it was, putting the earlier edit back.
+   *
+   * Queueing rather than updating the store first, because "what the row shows
+   * has been written" is worth keeping: there is no undo here and no server to
+   * ask, so an edit that is visible but not yet saved is one a reload can eat.
+   * A failed write drops out of the queue and does not stall the ones behind it.
    */
-  async function updateSentence(next: Sentence): Promise<void> {
-    sentences = sentences.map((s) => (s.id === next.id ? next : s));
-    render();
-    await putSentence(next);
+  let writes: Promise<unknown> = Promise.resolve();
+
+  function queued<T>(fn: () => Promise<T>): Promise<T> {
+    const run = writes.then(fn, fn);
+    writes = run.catch(() => undefined);
+    return run;
   }
 
-  async function mutateSlots(sentenceId: string, fn: (slots: Slot[]) => Slot[]): Promise<void> {
-    const sentence = sentences.find((s) => s.id === sentenceId);
-    if (!sentence) return;
-    await updateSentence({ ...sentence, slots: fn(sentence.slots) });
+  async function updateSentence(next: Sentence): Promise<void> {
+    await putSentence(next);
+    sentences = sentences.map((s) => (s.id === next.id ? next : s));
+    render();
+  }
+
+  /** Reads the sentence inside the queue, so it sees the edit before it. */
+  function mutateSlots(sentenceId: string, fn: (slots: Slot[]) => Slot[]): Promise<void> {
+    return queued(async () => {
+      const sentence = sentences.find((s) => s.id === sentenceId);
+      if (!sentence) return;
+      await updateSentence({ ...sentence, slots: fn(sentence.slots) });
+    });
   }
 
   function openPicker(sentenceId: string, slotId: string): void {
@@ -728,40 +746,46 @@ export function mountApp(root: HTMLElement): void {
 
   async function handleChoose(candidate: Candidate): Promise<void> {
     if (!picker) return;
-    const sentence = sentences.find((s) => s.id === picker!.sentenceId);
-    const slot = sentence?.slots.find((sl) => sl.id === picker!.slotId);
-    if (!sentence || !slot) return;
-
-    const isNew = !slot.concept;
-    const nextSlot: Slot = {
-      ...slot,
-      // A slot added by hand takes its word from the chosen symbol.
-      sourceToken: isNew ? candidate.label : slot.sourceToken,
-      concept: isNew ? candidate.label.toLowerCase() : slot.concept,
-      // Either way a human chose this, so say so. Leaving the pipeline's origin
-      // in place made the tooltip claim a lemma lookup had picked the symbol.
-      origin: 'manual',
-      choice: { ...slot.choice, [providerId()]: candidate.id },
-      candidates: {
-        ...slot.candidates,
-        [providerId()]: mergeCandidate(slot.candidates[providerId()] ?? [], candidate),
-      },
-    };
-
+    // The field is settled now; which field it was has to be taken now too,
+    // because the work below waits its turn behind any edit still in flight.
+    const { sentenceId, slotId } = picker;
     picker = null;
-    await updateSentence({
-      ...sentence,
-      slots: sentence.slots.map((sl) => (sl.id === slot.id ? nextSlot : sl)),
-    });
 
-    if (!isNew) {
-      // Remember the correction under both the typed word and the resolved concept,
-      // so it fires again whether the same surface form or a variant shows up.
-      const keys = new Set([slot.sourceToken.toLowerCase(), slot.concept.toLowerCase()]);
-      for (const key of keys) {
-        if (key.trim()) await putOverride(providerId(), key, candidate.id, candidate.label);
+    await queued(async () => {
+      const sentence = sentences.find((s) => s.id === sentenceId);
+      const slot = sentence?.slots.find((sl) => sl.id === slotId);
+      if (!sentence || !slot) return;
+
+      const isNew = !slot.concept;
+      const nextSlot: Slot = {
+        ...slot,
+        // A slot added by hand takes its word from the chosen symbol.
+        sourceToken: isNew ? candidate.label : slot.sourceToken,
+        concept: isNew ? candidate.label.toLowerCase() : slot.concept,
+        // Either way a human chose this, so say so. Leaving the pipeline's origin
+        // in place made the tooltip claim a lemma lookup had picked the symbol.
+        origin: 'manual',
+        choice: { ...slot.choice, [providerId()]: candidate.id },
+        candidates: {
+          ...slot.candidates,
+          [providerId()]: mergeCandidate(slot.candidates[providerId()] ?? [], candidate),
+        },
+      };
+
+      await updateSentence({
+        ...sentence,
+        slots: sentence.slots.map((sl) => (sl.id === slot.id ? nextSlot : sl)),
+      });
+
+      if (!isNew) {
+        // Remember the correction under both the typed word and the resolved concept,
+        // so it fires again whether the same surface form or a variant shows up.
+        const keys = new Set([slot.sourceToken.toLowerCase(), slot.concept.toLowerCase()]);
+        for (const key of keys) {
+          if (key.trim()) await putOverride(providerId(), key, candidate.id, candidate.label);
+        }
       }
-    }
+    });
   }
 
   /*
@@ -775,27 +799,29 @@ export function mountApp(root: HTMLElement): void {
     const { sentenceId, slotId } = picker;
     picker = null;
 
-    const sentence = sentences.find((s) => s.id === sentenceId);
-    const slot = sentence?.slots.find((sl) => sl.id === slotId);
-    if (!sentence || !slot) return;
+    await queued(async () => {
+      const sentence = sentences.find((s) => s.id === sentenceId);
+      const slot = sentence?.slots.find((sl) => sl.id === slotId);
+      if (!sentence || !slot) return;
 
-    try {
-      const image = await putOwnImage(file);
-      await updateSentence({
-        ...sentence,
-        slots: sentence.slots.map((sl) => (sl.id === slotId ? {
-          ...sl,
-          ownImage: image.id,
-          // A field added by hand takes its word from the file it was given.
-          sourceToken: sl.sourceToken || stemOf(file.name),
-          concept: sl.concept || stemOf(file.name).toLowerCase(),
-          origin: 'manual' as const,
-        } : sl)),
-      });
-      notify('Eigenes Bild gespeichert.');
-    } catch {
-      notify('Das Bild konnte nicht gespeichert werden.');
-    }
+      try {
+        const image = await putOwnImage(file);
+        await updateSentence({
+          ...sentence,
+          slots: sentence.slots.map((sl) => (sl.id === slotId ? {
+            ...sl,
+            ownImage: image.id,
+            // A field added by hand takes its word from the file it was given.
+            sourceToken: sl.sourceToken || stemOf(file.name),
+            concept: sl.concept || stemOf(file.name).toLowerCase(),
+            origin: 'manual' as const,
+          } : sl)),
+        });
+        notify('Eigenes Bild gespeichert.');
+      } catch {
+        notify('Das Bild konnte nicht gespeichert werden.');
+      }
+    });
   }
 
   async function handleClearOwnImage(): Promise<void> {
