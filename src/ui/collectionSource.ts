@@ -78,8 +78,11 @@ export function openCollectionSource(options: CollectionSourceOptions): void {
    * nothing pretending to be a warning.
    */
   function costSays(): string {
+    /* The subject is named rather than left to a pronoun: the sentence before
+       it ends on „deine von Hand gewählten Symbole", so „sie" would attach to
+       the symbols rather than to the Sammlung this sheet is about. */
     const following = chosen === null
-      ? ' Sie folgt der Standardquelle und wandert mit, wenn du die änderst.'
+      ? ' Diese Sammlung folgt der Standardquelle — stellst du die um, ändert sie sich mit.'
       : '';
     if (rowCount === 0) return `Diese Sammlung ist noch leer.${following}`;
     return `${rowCount} Zeile${rowCount === 1 ? '' : 'n'} ${rowCount === 1 ? 'wird' : 'werden'} `
