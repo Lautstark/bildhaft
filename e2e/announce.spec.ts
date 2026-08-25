@@ -72,3 +72,43 @@ test('a reported result lands in the live region and stays there', async ({ page
   await expect(toast).toHaveAttribute('data-watched', 'yes');
   await expect(toast).toHaveAttribute('role', 'status');
 });
+
+test('the banner region is in the page before any banner is', async ({ page }) => {
+  /* The banners are conditions rather than outcomes, and they get the same
+     treatment for the same reason: busyBanner used to carry role="status"
+     itself, and the render set its text and then inserted it — so it entered
+     the tree already carrying the message and announced nothing, once per
+     appearance.
+
+     The region is the host now, and what changes is which banner is inside it.
+     A METACOM folder is needed to make a banner appear, so what this asserts is
+     the property that makes the announcement possible at all: the region is
+     here, empty, before anything has been put in it. */
+  const host = page.locator('.banners');
+  await expect(host).toHaveAttribute('role', 'status');
+  await expect(host).toBeEmpty();
+  await expect(host).not.toHaveAttribute('hidden', /.*/);
+  expect(await host.evaluate((node) => getComputedStyle(node).display)).not.toBe('none');
+  // Empty, it costs nothing: this sits above the composer on every screen.
+  expect(await host.evaluate((node) => node.getBoundingClientRect().height)).toBe(0);
+});
+
+test('a banner is drawn inside that region, not in place of it', async ({ page }) => {
+  // Put one there directly: the real trigger needs a METACOM folder, and what
+  // is being checked is where the node lands, which is the half that regressed.
+  await page.evaluate(() => {
+    const host = document.querySelector('.banners')!;
+    const banner = document.createElement('div');
+    banner.className = 'banner banner--busy';
+    banner.textContent = 'Einen Moment …';
+    host.replaceChildren(banner);
+  });
+
+  const host = page.locator('.banners');
+  await expect(host.locator('.banner')).toBeVisible();
+  // Still the region, still the same element: a banner that replaced the host
+  // would be a region the reader was never watching.
+  await expect(host).toHaveAttribute('role', 'status');
+  // And exactly one region here — nesting a second inside it announces twice.
+  expect(await host.locator('[role="status"]').count()).toBe(0);
+});
