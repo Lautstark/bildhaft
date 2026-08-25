@@ -21,7 +21,7 @@ body {
   margin: 0;
   font-family: var(--font);
   font-size: 15px;
-  line-height: 1.55;
+  line-height: var(--leading);
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -36,7 +36,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* The button, the field and the focus policy come from
    @lautstark/design/components.css now — this file only adds what is
    bildhaft's own. .sm is density, which stays per product. */
-.btn.sm { padding: 5px 11px; font-size: 13.5px; }
 
 .muted { color: var(--text-dim); }
 .faint { color: var(--text-faint); }
@@ -261,23 +260,11 @@ kbd {
   padding: 0 4px;
 }
 
-/* Click-to-edit title: looks like text until focused. */
-.title-input {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 8px;
-  margin-left: -8px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -.015em;
-  color: var(--text);
-  transition: background .13s;
-}
-.title-input:hover { background: var(--surface-2); }
-.title-input:focus { outline: none; background: var(--surface); box-shadow: 0 0 0 2px var(--accent); }
+/* The field itself is components.css's now - this product's 17px and 650 are
+   what it took as the shared value. What is left here is the two things that
+   are this page's: the negative margin that lines the text up with the rows
+   below it, and the tighter tracking the wordmark uses. */
+.title-input { margin-left: -8px; letter-spacing: -.015em; }
 
 /* ------------------------------------------------------------------ rows */
 
