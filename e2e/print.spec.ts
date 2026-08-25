@@ -39,6 +39,48 @@ test('millimetre controls change the printed geometry', async ({ page }) => {
     .toBe('25mm');
 });
 
+/*
+ * "Symbolgröße" sizes the picture; the scissors go round the cut margin outside
+ * it, so 50mm symbols leave 56mm cards. Nothing on the sheet measures the
+ * figure that was typed in, which is why the dialog has to name the one a ruler
+ * will find — and why this checks the readout against the card that is actually
+ * drawn rather than against a second copy of the same arithmetic.
+ */
+test('names the card a ruler will find, not just the symbol', async ({ page }) => {
+  const hint = page.locator('.opt', { has: page.getByLabel('Symbolgröße') }).locator('.small.faint');
+  const card = page.locator('.preview-frame .ps-card').first();
+  const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
+
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 46 × 52 mm.');
+  expect(mm((await box()).w)).toBeCloseTo(46, 0);
+  expect(mm((await box()).h)).toBeCloseTo(52, 0);
+
+  await page.getByLabel('Symbolgröße').fill('50');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 56 × 62 mm.');
+
+  // A frame grows the card, so both figures have to grow with it. Checked to
+  // the millimetre and no finer: offsetWidth is whole pixels, which is where
+  // the tenths in the readout come from being measured a better way.
+  await page.getByLabel('Rahmen um jede Karte').check();
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 60,3 × 65,8 mm.');
+  expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
+  expect(mm((await box()).h)).toBeCloseTo(65.8, 0);
+});
+
+/*
+ * The grid decides the card size instead of the other way round, and the size
+ * it lands on is the one thing the settings do not state anywhere.
+ */
+test('a grid says what size its cells came out', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+
+  const hint = page.getByText('Karte zum Ausschneiden:');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 128,9 mm.');
+});
+
 test('card sheet collapses duplicate symbols', async ({ page }) => {
   const strip = await page.locator('.preview-frame .ps-card').count();
   await page.getByRole('button', { name: 'Kartenblatt' }).click();

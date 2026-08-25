@@ -42,6 +42,15 @@ export function printableArea(
   return { width: width - 2 * PAGE_MARGIN_MM, height: height - 2 * PAGE_MARGIN_MM };
 }
 
+/**
+ * The frame's inner padding. Rounded corners need room, or the corner clips the
+ * symbol — the METACOM manual makes the same point. Derived rather than asked
+ * for: it is a consequence of the radius, not a separate decision.
+ */
+function framePadMm(settings: PrintSettings): number {
+  return +(1 + settings.cardRadiusMm / 3).toFixed(2);
+}
+
 /*
  * @page cannot be written from a class or read a custom property, so the one
  * rule that decides what the paper is has to be a stylesheet of its own.
@@ -135,12 +144,7 @@ export function printSheet(options: SheetOptions): HTMLElement {
       '--page-margin': `${PAGE_MARGIN_MM}mm`,
       '--frame-w': `${settings.cardBorderMm}mm`,
       '--frame-color': settings.cardBorderColor,
-      /*
-       * Rounded corners need room, or the corner clips the symbol — the METACOM
-       * manual makes the same point. Derived rather than asked for: it is a
-       * consequence of the radius, not a separate decision.
-       */
-      '--frame-pad': `${(1 + settings.cardRadiusMm / 3).toFixed(2)}mm`,
+      '--frame-pad': `${framePadMm(settings)}mm`,
       '--card-radius': `${settings.cardRadiusMm}mm`,
       '--card-bg': settings.cardBackground ?? 'transparent',
     },

@@ -24,6 +24,35 @@ export interface PrintOptions {
   onClose: () => void;
 }
 
+/** A millimetre as this app's users write one: a comma, and no trailing zero. */
+const mmText = (value: number): string =>
+  value.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+
+/*
+ * An element's border box, in CSS pixels.
+ *
+ * getBoundingClientRect() cannot be used: the preview sits under a scale()
+ * transform and would report what is on screen rather than what is on paper.
+ * offsetWidth is untransformed but rounded to whole pixels, which is a tenth of
+ * a millimetre of error in a readout whose whole subject is millimetres. The
+ * computed style is neither — but it reports whichever box box-sizing put the
+ * element in, so the padding and the border are added back only when they are
+ * not already counted.
+ */
+function borderBox(node: HTMLElement): { width: number; height: number } {
+  const style = getComputedStyle(node);
+  const sum = (...parts: string[]) => parts.reduce((total, part) => total + parseFloat(part), 0);
+  if (style.boxSizing === 'border-box') {
+    return { width: parseFloat(style.width), height: parseFloat(style.height) };
+  }
+  return {
+    width: sum(style.width, style.paddingLeft, style.paddingRight,
+      style.borderLeftWidth, style.borderRightWidth),
+    height: sum(style.height, style.paddingTop, style.paddingBottom,
+      style.borderTopWidth, style.borderBottomWidth),
+  };
+}
+
 function clamp(value: number, min: number, max: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
@@ -42,6 +71,16 @@ export function openPrintDialog(options: PrintOptions): void {
 
   const controls = el('div');
   const meta = el('span', { class: 'small faint' });
+  /*
+   * What the scissors will leave, said where the size is set.
+   *
+   * "Symbolgröße" is the picture; the cut margin and any frame sit outside it,
+   * so 50mm symbols come off the printer as 56mm cards — and a card is what an
+   * existing communication board is specified in. Kept as one element across
+   * repaints because it is filled in after the sheet is laid out, not while the
+   * controls are being built.
+   */
+  const cardSize = el('span', { class: 'small faint' });
   const printButton = el('button', { class: 'btn primary', attrs: { type: 'button' },
     on: { click: () => void run() } });
 
@@ -116,6 +155,25 @@ export function openPrintDialog(options: PrintOptions): void {
     window.print();
   }
 
+  /*
+   * Measured off the preview rather than worked out from the settings. The
+   * height cannot be worked out: a word that wraps to a second line makes its
+   * card taller, and that taller card is the one the deck has to be cut to — so
+   * the largest card is what gets reported, not the first.
+   */
+  function paintCardSize(): void {
+    const cards = sheetHolder.querySelectorAll<HTMLElement>('.ps-card');
+    let width = 0;
+    let height = 0;
+    for (const node of cards) {
+      const box = borderBox(node);
+      width = Math.max(width, box.width);
+      height = Math.max(height, box.height);
+    }
+    cardSize.textContent = cards.length === 0 ? '' : 'Karte zum Ausschneiden: '
+      + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
+  }
+
   function paintFooter(): void {
     const paper =
       `${paperLabel(settings.paper)} ${settings.orientation === 'landscape' ? 'quer' : 'hoch'}`;
@@ -133,7 +191,7 @@ export function openPrintDialog(options: PrintOptions): void {
 
   function numberOpt(
     id: string, label: string, value: number, min: number, max: number, step: number,
-    fallback: number, unit: string, hint: string | null, onInput: (next: number) => void,
+    fallback: number, unit: string, hint: string | Node | null, onInput: (next: number) => void,
   ): HTMLElement {
     const input = el('input', {
       class: 'field',
@@ -143,7 +201,7 @@ export function openPrintDialog(options: PrintOptions): void {
     return el('div', { class: 'opt' },
       el('label', { text: label, attrs: { for: id } }),
       el('div', { class: 'opt__row' }, input, el('span', { class: 'opt__unit', text: unit })),
-      hint ? el('span', { class: 'small faint', text: hint }) : null,
+      typeof hint === 'string' ? el('span', { class: 'small faint', text: hint }) : hint,
     );
   }
 
@@ -213,13 +271,16 @@ export function openPrintDialog(options: PrintOptions): void {
           ? 'So viele Karten pro Seite. Die Karten füllen die Seite aus.'
           : 'Feste Symbolgröße. Es passt, was passt.' }),
       ) : null,
-      gridded ? el('div', { class: 'opt opt--pair' },
-        numberOpt('opt-cols', 'Spalten', settings.gridCols, 1, 12, 1, 4, '', null,
-          (next) => set('gridCols', Math.round(next))),
-        numberOpt('opt-rows', 'Zeilen', settings.gridRows, 1, 12, 1, 3, '', null,
-          (next) => set('gridRows', Math.round(next))),
-      ) : numberOpt('opt-size', 'Symbolgröße', settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null,
-        (next) => set('symbolSizeMm', next)),
+      gridded ? el('div', { class: 'opt' },
+        el('div', { class: 'opt--pair' },
+          numberOpt('opt-cols', 'Spalten', settings.gridCols, 1, 12, 1, 4, '', null,
+            (next) => set('gridCols', Math.round(next))),
+          numberOpt('opt-rows', 'Zeilen', settings.gridRows, 1, 12, 1, 3, '', null,
+            (next) => set('gridRows', Math.round(next))),
+        ),
+        cardSize,
+      ) : numberOpt('opt-size', 'Symbolgröße', settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
+        cardSize, (next) => set('symbolSizeMm', next)),
       numberOpt('opt-cut', 'Schneiderand', settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
         'Weißer Rand pro Karte, damit die Laminierfolie dicht abschließt.',
         (next) => set('cutMarginMm', next)),
@@ -293,6 +354,7 @@ export function openPrintDialog(options: PrintOptions): void {
     printRoot?.replaceChildren(build());
 
     paintFooter();
+    paintCardSize();
     requestAnimationFrame(rescale);
   }
 
