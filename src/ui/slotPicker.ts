@@ -42,7 +42,6 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
 
   /*
    * A file of the user's own. bildhaft keeps the bytes rather than a path, so
-   * the wording promises what actually happens — the hint says gespeichert, and
    * moving or deleting the original afterwards changes nothing here.
    */
   const upload = el('input', {
@@ -63,9 +62,6 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       ? el('button', { class: 'btn sm destructive', text: 'Eigenes Bild entfernen',
           attrs: { type: 'button' }, on: { click: () => finish(handlers.onClearOwnImage) } })
       : null,
-    el('span', { class: 'small faint', text: slot.ownImage
-      ? 'Dieses Feld zeigt dein eigenes Bild. Es liegt in bildhaft — die Originaldatei darfst du verschieben oder löschen.'
-      : 'Ein eigenes Foto statt eines Symbols. Es wird in bildhaft gespeichert, nicht nur verknüpft.' }),
   );
 
   /*
@@ -80,8 +76,6 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   // An empty span rather than null: the dialog's body takes nodes, not blanks.
   const negateRow = isNew ? el('span') : el('div', { class: 'picker__negate' },
     el('label', { class: 'opt__check' }, negateBox, 'Symbol durchstreichen'),
-    el('span', { class: 'small faint',
-      text: 'Für Verneinungen: „nicht hauen“, „keine Schuhe“. Das Symbol bleibt, es bekommt ein rotes Kreuz.' }),
   );
 
   const search = el('input', {
