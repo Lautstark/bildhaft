@@ -1,4 +1,5 @@
 import type { ProviderId, Sentence, Slot } from '../core/types.ts';
+import { slotCaption } from '../core/types.ts';
 import { el } from './dom.ts';
 import { icons, negationCross } from './logo.ts';
 import { symbolIdFor, symbolView, type SymbolView } from './symbols.ts';
@@ -64,7 +65,9 @@ export function sentenceRow(
         role: 'button',
         tabindex: 0,
         draggable: 'true',
-        title: `${slot.ownImage ? 'Eigenes Bild' : ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ' · durchgestrichen' : ''}\nZiehen zum Umsortieren`,
+        /* A rewritten caption is named in full here, because the tile clips it
+           to one line and the paper does not. */
+        title: `${slot.ownImage ? 'Eigenes Bild' : ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ' · durchgestrichen' : ''}${slot.label?.trim() ? `\nText: „${slot.label.trim()}“` : ''}\nZiehen zum Umsortieren`,
       },
       on: {
         click: () => handlers.onOpenSlot(slot.id),
@@ -106,7 +109,7 @@ export function sentenceRow(
       },
     },
       el('span', { class: 'slot__img' }, view.node, slot.negated ? negationCross() : null),
-      el('span', { class: 'slot__label', text: slot.sourceToken }),
+      el('span', { class: 'slot__label', text: slotCaption(slot) }),
     );
 
     slots.appendChild(node);

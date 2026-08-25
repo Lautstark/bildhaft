@@ -693,10 +693,16 @@ export function mountApp(root: HTMLElement): void {
 
   /* ------------------------------------------------------- row editing --- */
 
+  /*
+   * Memory first, disk second. The picker can settle a field while an earlier
+   * edit to the same field is still being written — type a caption, then press
+   * a symbol — and with the store updated only after the write, the pick read
+   * the slot as it was before the caption and put it back.
+   */
   async function updateSentence(next: Sentence): Promise<void> {
-    await putSentence(next);
     sentences = sentences.map((s) => (s.id === next.id ? next : s));
     render();
+    await putSentence(next);
   }
 
   async function mutateSlots(sentenceId: string, fn: (slots: Slot[]) => Slot[]): Promise<void> {
@@ -714,6 +720,7 @@ export function mountApp(root: HTMLElement): void {
       onOwnImage: (file) => void handleOwnImage(file),
       onClearOwnImage: () => void handleClearOwnImage(),
       onNegate: (negated) => void handleNegate(negated),
+      onLabel: (label) => void handleLabel(label),
       onRemove: () => void handleRemoveSlot(),
       onClose: () => void handleClosePicker(),
     });
@@ -812,6 +819,22 @@ export function mountApp(root: HTMLElement): void {
     const { sentenceId, slotId } = picker;
     await mutateSlots(sentenceId, (slots) =>
       slots.map((sl) => (sl.id === slotId ? { ...sl, negated } : sl)));
+  }
+
+  /*
+   * Like negation, a rewording leaves the dialog open, so `picker` stays put:
+   * the field being edited has to still be the one the next keystroke means.
+   *
+   * An empty field is stored as null rather than as '', because "" and "no
+   * wording of its own" are the same state and only one of them should be
+   * capable of being written to disk.
+   */
+  async function handleLabel(label: string): Promise<void> {
+    if (!picker) return;
+    const { sentenceId, slotId } = picker;
+    const next = label.trim() || null;
+    await mutateSlots(sentenceId, (slots) =>
+      slots.map((sl) => (sl.id === slotId ? { ...sl, label: next } : sl)));
   }
 
   async function handleRemoveSlot(): Promise<void> {

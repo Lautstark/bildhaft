@@ -33,7 +33,7 @@ export type SlotOrigin =
 
 export interface Slot {
   id: string;
-  /** The word(s) this slot came from, shown under the symbol. */
+  /** The word(s) this slot came from. Shown under the symbol unless `label` is set. */
   sourceToken: string;
   /** The portable concept key. This, not the image, is what travels. */
   concept: string;
@@ -47,6 +47,17 @@ export interface Slot {
   choice: Partial<Record<ProviderId, string | null>>;
   /** Cached candidate lists per provider, so the picker opens instantly. */
   candidates: Partial<Record<ProviderId, Candidate[]>>;
+
+  /**
+   * What is printed and shown under the symbol, when the word the sentence used
+   * is not the word that should be read. Absent or empty means the source word,
+   * which is what every slot had before this existed.
+   *
+   * Deliberately not a rewrite of `sourceToken`: that word is the key a
+   * correction is remembered under and the one the pipeline matched on, so
+   * renaming it in place would silently repoint what the app has learned.
+   */
+  label?: string | null;
 
   /**
    * METACOM's convention for "nicht": the symbol stays and gets a red cross laid
@@ -66,6 +77,14 @@ export interface Slot {
    * answer to the same word, it is the answer.
    */
   ownImage?: string | null;
+}
+
+/**
+ * The words under a slot's symbol, on screen and on paper. One expression, used
+ * by both, because a caption the preview disagrees with is a wasted sheet.
+ */
+export function slotCaption(slot: Slot): string {
+  return slot.label?.trim() || slot.sourceToken || slot.concept;
 }
 
 /** A picture the user supplied. bildhaft holds the bytes; nothing points at a file. */

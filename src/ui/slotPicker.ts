@@ -11,6 +11,12 @@ export interface PickerHandlers {
   onClearOwnImage: () => void;
   /** Lays a red cross over the symbol — METACOM's "nicht". Leaves the dialog open. */
   onNegate: (negated: boolean) => void;
+  /**
+   * The words under the symbol. Empty means the word the sentence used.
+   * Leaves the dialog open: the wording is a property of the field, and a
+   * person setting one is usually still looking for the right picture.
+   */
+  onLabel: (label: string) => void;
   /** Removes the whole slot, not just its symbol. */
   onRemove: () => void;
   onClose: () => void;
@@ -34,6 +40,9 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
    */
   let settled = false;
   let views: SymbolView[] = [];
+  let labelTimer: number | undefined;
+  /** The caption typed but not yet written through, or null for nothing pending. */
+  let pending: string | null = null;
   let searchTimer: number | undefined;
   let searchToken = 0;
 
@@ -78,6 +87,32 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     el('label', { class: 'opt__check' }, negateBox, 'Symbol durchstreichen'),
   );
 
+  /*
+   * The words that get printed. A field of its own rather than a rewrite of the
+   * source word, so a correction stays remembered under the word that was typed.
+   * The placeholder is what would print without it, which is what makes an empty
+   * field readable as "unchanged" — and clearing it is therefore the reset.
+   */
+  const captionInput = el('input', {
+    class: 'field',
+    attrs: {
+      type: 'text',
+      placeholder: slot.sourceToken || slot.concept,
+      maxlength: 60,
+    },
+    on: {
+      input: () => queueLabel(),
+      // Blur and Enter both land here; the debounce is only for typing.
+      change: () => flushLabel(),
+    },
+  });
+  captionInput.value = slot.label ?? '';
+
+  const captionRow = isNew ? el('span') : el('label', { class: 'picker__caption' },
+    el('span', { class: 'small muted', text: 'Text unter dem Symbol' }),
+    captionInput,
+  );
+
   const search = el('input', {
     class: 'field',
     attrs: { type: 'search', 'aria-label': 'Symbol suchen',
@@ -90,6 +125,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     body: [
       search,
       ownRow,
+      captionRow,
       negateRow,
       status,
       grid,
@@ -110,6 +146,10 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   });
 
   function teardown(): void {
+    // Before anything else: a caption typed and then settled by pressing a
+    // symbol must reach the slot ahead of the pick, not after it.
+    flushLabel();
+    window.clearTimeout(labelTimer);
     window.clearTimeout(searchTimer);
     for (const view of views) view.destroy();
     views = [];
@@ -121,6 +161,25 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     teardown();
     dialog.close();
     outcome();
+  }
+
+  /*
+   * Typing writes through, so the caption under the symbol in the row behind the
+   * dialog updates as it is typed. Debounced because every write is a database
+   * write and a repaint of every row.
+   */
+  function queueLabel(): void {
+    pending = captionInput.value;
+    window.clearTimeout(labelTimer);
+    labelTimer = window.setTimeout(flushLabel, 260);
+  }
+
+  function flushLabel(): void {
+    window.clearTimeout(labelTimer);
+    if (pending === null) return;
+    const value = pending;
+    pending = null;
+    handlers.onLabel(value);
   }
 
   function paint(candidates: Candidate[], message: string): void {

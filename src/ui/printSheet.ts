@@ -1,6 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot,
 } from '../core/types.ts';
+import { slotCaption } from '../core/types.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
 import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
@@ -195,8 +196,14 @@ function cardSheet(
 
   for (const sentence of sentences) {
     for (const slot of sentence.slots) {
+      /*
+       * A card is a symbol *and* the word under it, so both decide whether two
+       * uses are the same card. Keying on the symbol alone printed one card for
+       * a symbol whose caption had been rewritten in one sentence and not the
+       * other, and silently dropped whichever wording came second.
+       */
       const id = symbolIdFor(slot, provider);
-      const key = id ?? `blank:${slot.sourceToken.toLowerCase()}`;
+      const key = `${id ?? 'blank'}|${slotCaption(slot).toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       cards.push(slot);
@@ -242,7 +249,7 @@ function card(
   slot: Slot, settings: PrintSettings, provider: ProviderId, fill = false,
 ): HTMLElement {
   const id = symbolIdFor(slot, provider);
-  const label = slot.sourceToken || slot.concept;
+  const label = slotCaption(slot);
   const box = el('div', { class: 'ps-card__img' });
 
   /*

@@ -432,6 +432,14 @@ kbd {
   margin-top: 10px;
 }
 
+/* The caption sits with the other things that are true of the field whatever
+   symbol ends up in it, not with the search that finds one. */
+.picker__caption {
+  display: block;
+  margin-top: 10px;
+}
+.picker__caption > span { display: block; margin-bottom: 4px; }
+
 /* Negation sits below the own-image row and above the suggestions: it applies
    to whichever symbol is chosen, so it belongs with neither. */
 .picker__negate {
