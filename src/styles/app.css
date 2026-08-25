@@ -585,6 +585,19 @@ kbd {
   transform: translateX(-50%);
 }
 
+/* The toast is a live region and is never removed from the page — see notify()
+   in app.ts — so it has to be invisible while it has nothing to say. Not
+   [hidden] and not display:none: both take it out of the accessibility tree,
+   which is precisely the arrangement that made every message here silent.
+   Stripped of its fill and padding an empty inline-block draws nothing and
+   measures 0x0, and it is out of flow besides.
+
+   This belongs in components.css beside the .toast it is undoing — the same
+   file already carries `.toast[hidden] { display: none }`, which is the same
+   trap one step further along. It is here rather than there because moving it
+   is a design release, and it is bildhaft that is silent today. */
+.toast:empty { background: none; box-shadow: none; padding: 0; }
+
 .spinner {
   display: inline-block;
   width: 13px;

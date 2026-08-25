@@ -281,14 +281,37 @@ export function mountApp(root: HTMLElement): void {
 
   /* ------------------------------------------------------------- toast --- */
 
+  /*
+   * The toast is a live region, and a live region has to be in the
+   * accessibility tree *before* the text lands. A reader announces a change in
+   * something it was already watching; it has no reason to look at an element
+   * that arrives already carrying its message.
+   *
+   * This used to set the text, append the node, and remove it again 3.2
+   * seconds later — so it re-entered the tree carrying each message and left
+   * again between them, which is the one arrangement under which a live region
+   * announces nothing at all. Every acknowledgement this page makes was silent:
+   * a saved image, an exported Sammlung, a failed import, "Alle Daten
+   * gelöscht". The words were on screen and correct the whole time, which is
+   * why nothing ever looked wrong.
+   *
+   * So the node is mounted once, with the app, and never taken out again — see
+   * render(), which is the only place root's children are set. What the timer
+   * clears is the *text*. Empty it paints nothing (`.toast:empty` in app.css)
+   * and it is position:fixed besides, so it costs no room either.
+   *
+   * mitreden and vorlaut each met this and each hold it with a spec of their
+   * own; conventions.md §3.8 is the rule, and e2e/announce.spec.ts is this
+   * product's copy of it.
+   */
   const toast = el('div', { class: 'toast', attrs: { role: 'status' } });
   let toastTimer = 0;
 
   function notify(message: string): void {
     toast.textContent = message;
-    if (!toast.isConnected) root.appendChild(toast);
     window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => toast.remove(), 3200);
+    // Cleared rather than removed, which is the whole of the fix above.
+    toastTimer = window.setTimeout(() => { toast.textContent = ''; }, 3200);
   }
 
   /* -------------------------------------------------------------- rows --- */
@@ -355,7 +378,12 @@ export function mountApp(root: HTMLElement): void {
 
   function render(): void {
     if (!settings) return;
-    if (!appRoot.isConnected) fill(root, appRoot, printRoot);
+    // The toast goes in here, with the app, and stays for the life of the page:
+    // this is the only call that sets root's children, and it runs once. It is
+    // a sibling of appRoot rather than a child because appRoot's own children
+    // are replaced on every render (see place() below), and a live region that
+    // is swapped out between messages is the bug notify() documents.
+    if (!appRoot.isConnected) fill(root, appRoot, printRoot, toast);
 
     const sidebarOpen = isMobile ? mobileNavOpen : settings.sidebarOpen;
     toggleClass(appRoot, 'app--collapsed', !sidebarOpen);
