@@ -1,94 +1,23 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
+import {
+  arasaacHeading, chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings,
+  withoutDirectoryPicker,
+} from './metacom-folder.ts';
 import { translate } from './helpers.ts';
 
 /**
  * METACOM with a fake symbol folder.
  *
- * The point is not the licensed artwork — it is that bildhaft must never ship or
- * fetch any — but the machinery around it: filenames become an index, the index
- * answers lookups, and the images are read from the user's own disk. A handful
- * of invented PNGs named the way METACOM names its files exercises all of it.
- *
- * The directory picker cannot be driven from a test because it opens a native
- * dialog, so this uses the `<input webkitdirectory>` path, which is the same
- * indexing and reading code with a different source.
+ * The folder, the indexing and the way into the settings panels are
+ * metacom-folder.ts' — a second spec needs them, because telling one Sammlung's
+ * symbol source from another's takes two sources that draw different pictures.
+ * What is left here is what METACOM itself has to do: index a folder, read from
+ * it, survive a reload, and say so when it cannot.
  */
-
-/** A 1x1 PNG. Enough for naturalWidth > 0. */
-const PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-
-/** Named the way METACOM does: word, underscores, trailing variant numbers. */
-const FOLDER = 'METACOM_9_Desktop';
-const FILES = [
-  'Essen/Apfel.png',
-  'Essen/Apfel-02.png',
-  'Essen/essen.png',
-  'Personen/Ich.png',
-  'Verben/moechten.png',
-  'Verben/schlafen.png',
-  'Tiere/Hund.png',
-  'Moebel/Tisch.png',
-  'Liesmich.txt', // not an image; must be ignored by the index
-];
-
-async function chooseFakeFolder(page: Page, folder: string = FOLDER): Promise<void> {
-  await page.evaluate(
-    ({ folder, files, b64 }) => {
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      const transfer = new DataTransfer();
-      for (const rel of files) {
-        const file = new File([bytes], rel.split('/').pop()!, { type: 'image/png' });
-        // The browser sets this on a real directory pick; the provider reads it
-        // to learn the path, so a fake pick has to provide it too.
-        Object.defineProperty(file, 'webkitRelativePath', { value: `${folder}/${rel}` });
-        transfer.items.add(file);
-      }
-      const input = [...document.querySelectorAll<HTMLInputElement>('input[type=file]')]
-        .find((i) => i.hasAttribute('webkitdirectory'))!;
-      input.files = transfer.files;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    },
-    { folder, files: FILES, b64: PNG_BASE64 },
-  );
-}
-
-async function openSymbolSettings(page: Page): Promise<void> {
-  // The sidebar starts collapsed, so its Einstellungen button is hidden.
-  const reveal = page.getByRole('button', { name: 'Seitenleiste einblenden' });
-  if (await reveal.isVisible().catch(() => false)) await reveal.click();
-  // The banner offers an Einstellungen button too, so scope this to the sidebar.
-  await page.getByRole('complementary').getByRole('button', { name: 'Einstellungen' }).click();
-  // Each source is a folded panel; its controls are inside its own body, so a
-  // test that drives them has to open it exactly as a person would.
-  await metacomHeading(page).click();
-}
-
-/**
- * The METACOM panel's heading. Scoped to the summary rather than the panel
- * because the dictionary panel names the active provider in its body too — and
- * because the state belongs to the heading now, which is the whole point of it:
- * these assertions pass without opening anything.
- */
-function metacomHeading(page: Page) {
-  return page.locator('.panel > summary').filter({ hasText: 'METACOM' });
-}
-
-/** Its counterpart, for the assertion that only one source is active at a time. */
-function arasaacHeading(page: Page) {
-  return page.locator('.panel > summary').filter({ hasText: 'ARASAAC' });
-}
 
 test.beforeEach(async ({ page }) => {
-  /*
-   * Hide the directory picker so the app offers the <input webkitdirectory>
-   * fallback instead. That is the real Firefox and Safari path, and it is the
-   * only one a test can drive: showDirectoryPicker opens a native dialog.
-   */
-  await page.addInitScript(() => {
-    delete (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker;
-  });
+  await withoutDirectoryPicker(page);
   await mockArasaac(page);
   await page.goto('/');
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();

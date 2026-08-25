@@ -481,6 +481,42 @@ kbd {
   color: var(--text-dim);
 }
 
+/* --------------------------------------------------- symbol source list */
+
+/*
+ * The list a Sammlung's symbol source is chosen from. A column of rows rather
+ * than the picker's grid of tiles: there is no picture to compare, and what
+ * decides between two sources is the line of facts under the name.
+ */
+
+.sources { display: flex; flex-direction: column; gap: 6px; }
+
+.source {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background .13s, box-shadow .13s;
+}
+
+.source:hover:not([disabled]) { background: var(--surface-3); }
+.source--live { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* Shown and not offered — see sourcePicker(). Dimmed rather than hidden,
+   because "METACOM is not set up here" is the answer somebody came for. */
+.source[disabled] { cursor: default; opacity: .62; }
+
+.source__name { font-weight: 600; }
+.source__facts { font-size: 12.5px; color: var(--text-dim); }
+.source__hint { font-size: 12.5px; color: var(--text-faint); }
+
 /* ----------------------------------------------------------- print panel */
 
 .print-layout {

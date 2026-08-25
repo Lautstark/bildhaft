@@ -19,8 +19,11 @@ export function footer(handlers: FooterHandlers): {
     el('button', { class: 'linklike', text, attrs: { type: 'button' }, on: { click: onClick } });
 
   // Attribution is required by the ARASAAC licence — compact, but never hidden.
-  // It follows the active source, so it is written rather than built in.
-  const credit = el('p', { style: { margin: '0 0 4px' } });
+  // It follows the source in force, so it is written rather than built in — and
+  // that is now the open Sammlung's source rather than one setting for the whole
+  // program, which makes this line the page's plainest statement of which source
+  // drew what is on it. Classed so a test can ask that question of it.
+  const credit = el('p', { class: 'footer__credit', style: { margin: '0 0 4px' } });
 
   const node = el('footer', { class: 'footer' },
     credit,

@@ -9,7 +9,8 @@ import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
   loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
-  onChanged, putSentence, renameCollection, saveSettings, searchSentences,
+  onChanged, putSentence, renameCollection, saveCollectionProvider, saveSettings,
+  searchSentences,
 } from './db/repo.ts';
 import {
   downloadCollectionExport, downloadJson, exportCollection, exportEverything,
@@ -24,6 +25,7 @@ import { confirmDialog } from './ui/dialog.ts';
 import { icons, logo } from './ui/logo.ts';
 import { actionMenu } from './ui/menu.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
+import { openCollectionSource } from './ui/collectionSource.ts';
 import { openPrintDialog } from './ui/printDialog.ts';
 import { openSettings } from './ui/settingsDialog.ts';
 import { openSlotPicker } from './ui/slotPicker.ts';
@@ -195,9 +197,14 @@ export function mountApp(root: HTMLElement): void {
 
   const collectionHead = el('div', { class: 'collection-head' },
     titleInput, rowCount, printAll,
+    /* §3.6's order: the export first, what this Sammlung is set to under it,
+       the delete last. The middle item is not an act on the Sammlung and that
+       is the point — the menu holds what a Sammlung *is* as well as what can be
+       done to it, because both are answered by which Sammlung it sits beside. */
     actionMenu('Aktionen für diese Sammlung', (add) => {
       add('Sammlung exportieren', () => void handleExport(),
         { disabled: sentences.length === 0 });
+      add('Symbolquelle …', () => openSourceSheet());
       add('Sammlung löschen', () => void confirmDeleteCollection(), { danger: true });
     }),
   );
@@ -1086,6 +1093,45 @@ export function mountApp(root: HTMLElement): void {
       onClose: () => undefined,
     });
   }
+
+  /**
+   * The Sammlung's own sheet. Nothing is confirmed and nothing is saved on the
+   * way out: each press is written through, the rows behind are re-resolved
+   * against the new source, and the page says what just happened to them.
+   */
+  function openSourceSheet(): void {
+    const collection = activeCollection();
+    if (!collection || !settings) return;
+    openCollectionSource({
+      collection,
+      rowCount: sentences.length,
+      fallback: settings.activeProvider,
+      onPick: (choice) => handlePickSource(collection.id, choice),
+    });
+  }
+
+  async function handlePickSource(id: string, choice: ProviderId | null): Promise<void> {
+    await saveCollectionProvider(id, choice);
+    /* Read back rather than patched in place: `provider` is absent for "follow
+       the default", and an object carrying `provider: undefined` is a different
+       thing from one without the key when it is written out again. */
+    await refreshCollections();
+    if (activeId !== id) { render(); return; }
+
+    render();
+    // The same re-resolution a change of default runs, for the same reason: a
+    // slot that has never been resolved against this source has no symbol under
+    // it, and would draw as an empty field rather than as a picture.
+    await syncProvider();
+
+    const named = getProvider(providerId()).name;
+    notify(choice === null
+      ? `„${collectionName(id)}“ folgt wieder der Standardquelle: ${named}. Alle Zeilen werden neu gezeichnet.`
+      : `„${collectionName(id)}“ wird jetzt mit ${named} gezeichnet. Alle Zeilen werden neu gezeichnet.`);
+  }
+
+  const collectionName = (id: string) =>
+    collections.find((c) => c.id === id)?.name ?? 'Sammlung';
 
   function openAppSettings(): void {
     if (!settings) return;
