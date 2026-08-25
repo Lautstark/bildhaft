@@ -1093,6 +1093,7 @@ export function mountApp(root: HTMLElement): void {
       settings,
       onChange: persistSettings,
       onProviderChanged: () => { void syncProvider(); render(); },
+      openCollectionProvider: () => activeCollection()?.provider ?? null,
       onNotify: notify,
       onExportAll: async () => {
         downloadJson(await exportEverything(), 'sicherung');

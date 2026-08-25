@@ -101,16 +101,24 @@ test.beforeEach(async ({ page }) => {
  * pressing anything further, so they all depend on this; it is asserted once
  * here so that a regression names itself instead of surfacing as six tests
  * failing on a missing image.
+ *
+ * What adopting *means* moved once the source became a property of the
+ * Sammlung: it sets the default rather than switching the whole app, and the
+ * headings say „Standardquelle" rather than „Aktive Quelle". The Sammlungen
+ * that follow the default still move — which is every one of them until
+ * somebody says otherwise, and is why the rest of this file is unchanged.
  */
-test('a chosen folder becomes the active source on its own', async ({ page }) => {
+test('a chosen folder becomes the default source on its own', async ({ page }) => {
   await openSymbolSettings(page);
-  await expect(metacomHeading(page)).not.toContainText('Aktive Quelle');
-  await expect(arasaacHeading(page)).toContainText('Aktive Quelle');
+  await expect(metacomHeading(page)).not.toContainText('Standardquelle');
+  await expect(arasaacHeading(page)).toContainText('Standardquelle');
 
   await chooseFakeFolder(page);
 
-  await expect(metacomHeading(page)).toContainText('Aktive Quelle');
-  await expect(arasaacHeading(page)).not.toContainText('Aktive Quelle');
+  await expect(metacomHeading(page)).toContainText('Standardquelle');
+  await expect(arasaacHeading(page)).not.toContainText('Standardquelle');
+  // Said out loud, because the rows behind the dialog have just been redrawn.
+  await expect(page.locator('.toast')).toContainText('Alle Zeilen werden neu gezeichnet');
 });
 
 test('indexes a folder, ignoring anything that is not an image', async ({ page }) => {

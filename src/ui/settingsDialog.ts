@@ -1,5 +1,6 @@
 import type { AppSettings, Override, ProviderId } from '../core/types.ts';
 import { arasaac, metacom, MetacomProvider, needsAttention } from '@lautstark/bildquelle';
+import { sourceFacts } from './symbolSources.ts';
 import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
@@ -12,6 +13,16 @@ export interface SettingsOptions {
   settings: AppSettings;
   onChange: (settings: AppSettings) => void;
   onProviderChanged: () => void;
+  /**
+   * What the open Sammlung is set to, or null when it follows the default.
+   *
+   * Asked rather than assumed, because it decides whether changing the default
+   * changes anything on screen. „METACOM ist jetzt die Standardquelle" is true
+   * either way; „alle Zeilen werden neu gezeichnet" is true only for a Sammlung
+   * that follows it, and saying it to somebody whose Sammlung has answered for
+   * itself would describe a redraw that never happens.
+   */
+  openCollectionProvider: () => ProviderId | null;
   onNotify: (message: string) => void;
   onClose: () => void;
   /** Library-wide actions. Per-collection ones live in the collection's own menu. */
@@ -101,24 +112,53 @@ export function openSettings(options: SettingsOptions): void {
     options.onChange(next);
   }
 
-  /** The accent tint marks the current source; aria-current says so out loud. */
+  /** The accent tint marks the default source; aria-current says so out loud. */
   function mark(panel: Panel, current: boolean): void {
     if (current) panel.summary.setAttribute('aria-current', 'true');
     else panel.summary.removeAttribute('aria-current');
   }
 
   /**
-   * Runs one METACOM task and, for the three that *adopt* a folder, makes
-   * METACOM the active source on the way out.
+   * What changing the default does to what is on screen, in the same sentence
+   * that says the default changed.
    *
-   * Choosing a folder and then pressing „Verwenden" was two steps for one
+   * bildhaft has always said this out loud when adopting a folder, because
+   * switching source re-renders every row and a page that redraws itself
+   * without a word is a page that lost your work as far as anyone can tell.
+   * The property survives the move; what changed is that it is now conditional,
+   * because a Sammlung with a source of its own does not follow the default and
+   * does not redraw.
+   */
+  function defaultMoved(name: string): string {
+    return options.openCollectionProvider()
+      ? `${name} ist jetzt die Standardquelle. Diese Sammlung hat eine eigene Quelle und bleibt, wie sie ist.`
+      : `${name} ist jetzt die Standardquelle. Alle Zeilen werden neu gezeichnet.`;
+  }
+
+  /**
+   * Runs one METACOM task and, for the three that *adopt* a folder, makes
+   * METACOM the default on the way out.
+   *
+   * Choosing a folder and then pressing a second button was two steps for one
    * intention: nobody points bildhaft at their own licensed collection in
    * order to keep rendering ARASAAC. The button stays, because the case it is
    * really about is switching back once both sources are set up.
    *
+   * **What adopting means changed with the setting.** It used to switch the
+   * whole app; it now moves the *default*, and reaches into no Sammlung that
+   * has answered for itself. That is the right reading of one intention rather
+   * than a weaker one: pointing bildhaft at a licensed folder says what to draw
+   * with from here on, and a Sammlung somebody deliberately set to ARASAAC —
+   * the one they hand to a colleague, the one for a child whose device has no
+   * METACOM — is not covered by that intention. §3.10's own words for it are
+   * that the app's settings apply forward and never reach back. The Sammlungen
+   * that do follow the default are exactly the ones that never expressed a
+   * view, and they move, which is the whole of what somebody adopting a folder
+   * wanted.
+   *
    * „Neu einlesen" and „Ordner vergessen" pass nothing: the first re-reads a
-   * folder that may deliberately not be the active source, and the second is
-   * the opposite move.
+   * folder that may deliberately not be the default, and the second is the
+   * opposite move.
    */
   async function run(task: () => Promise<void>, done: string, adopt = false): Promise<void> {
     busy = true;
@@ -137,9 +177,7 @@ export function openSettings(options: SettingsOptions): void {
       }
       resetSymbolResolution('metacom');
       options.onProviderChanged();
-      // Switching source re-renders every row, so it is said out loud rather
-      // than left for somebody to notice.
-      options.onNotify(adopted ? `${done} METACOM ist jetzt die aktive Quelle.` : done);
+      options.onNotify(adopted ? `${done} ${defaultMoved('METACOM')}` : done);
     } catch (err) {
       // An aborted folder picker is a normal user action, not an error.
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
@@ -171,49 +209,78 @@ export function openSettings(options: SettingsOptions): void {
     return el('label', { class: 'btn sm', text: label, style: { cursor: 'pointer' } }, input);
   }
 
-  /** "Verwenden" lives in the body: a button inside a summary would toggle it. */
+  /**
+   * The button that makes a source the default. It lives in the body: a button
+   * inside a summary would toggle the panel.
+   *
+   * It used to say „Verwenden" and switch the whole app silently — which was
+   * already the odd one out, since adopting a folder next to it said what it
+   * had done. Now that it moves a default rather than the page, both what it
+   * says and what happens afterwards go through the same sentence.
+   */
   function useButton(id: ProviderId): HTMLElement {
-    return el('button', { class: 'btn sm', text: 'Verwenden', attrs: { type: 'button' },
+    return el('button', { class: 'btn sm', text: 'Als Standard verwenden', attrs: { type: 'button' },
       on: {
         click: () => {
           change({ ...settings, activeProvider: id });
           options.onProviderChanged();
           paintSources();
           paintDictionary();
+          options.onNotify(defaultMoved(sourceFacts(id).label));
         },
       } });
   }
 
+  /**
+   * The sentence that stops „Standardquelle" from being a word with no
+   * referent. It is under the button rather than at the top of the dialog,
+   * because it is what the button does that needs explaining.
+   */
+  function defaultNote(): HTMLElement {
+    return el('p', { class: 'small faint', style: { margin: '10px 0 0' }, html:
+      'Die Standardquelle gilt für jede Sammlung, die keine eigene gewählt hat — '
+      + 'und wandert mit, wenn du sie hier umstellst. Eine einzelne Sammlung stellst '
+      + 'du über das Menü <strong>⋯</strong> neben ihrem Namen um.' });
+  }
+
   function paintSources(): void {
-    const active = settings.activeProvider;
+    /* The default, which is what this card sets — not what the page is drawing
+       in. Those are the same answer only while the open Sammlung has none of
+       its own, which is why the word here is „Standardquelle" and not
+       „Aktive Quelle": a heading that claimed to name what is on screen would
+       be right by luck. */
+    const fallback = settings.activeProvider;
     const status = metacom.status();
 
-    mark(arasaacPanel, active === 'arasaac');
+    mark(arasaacPanel, fallback === 'arasaac');
     arasaacPanel.state.textContent =
-      `${active === 'arasaac' ? 'Aktive Quelle' : 'Standard'} · rund 13.000 Piktogramme`;
+      `${fallback === 'arasaac' ? 'Standardquelle' : 'Immer verfügbar'} · ${sourceFacts('arasaac').facts}`;
 
     fill(arasaacPanel.body,
       el('p', { class: 'small muted', style: { margin: '0' },
         text: 'Rund 13.000 Piktogramme mit deutschen Bezeichnungen, direkt aus dem öffentlichen ARASAAC-Verzeichnis. Keine Einrichtung nötig. Ergebnisse und Bilder werden lokal zwischengespeichert.' }),
       el('p', { class: 'small faint', style: { margin: '6px 0 0' }, text: arasaac.attribution ?? '' }),
-      active !== 'arasaac'
-        ? el('div', { style: { marginTop: '10px' } }, useButton('arasaac'))
+      fallback !== 'arasaac'
+        ? el('div', { style: { marginTop: '10px' } }, useButton('arasaac'), defaultNote())
         : null,
     );
 
-    mark(metacomPanel, active === 'metacom');
+    mark(metacomPanel, fallback === 'metacom');
     /* A heading carries what a section is set to, and a summary is one line.
      * The package's message for the state that needs acting on is a whole
      * sentence - "Zugriff auf den METACOM-Ordner muss erneut bestätigt
      * werden" - so it went in here and truncated. The state goes here and the
      * sentence goes in the body, beside the button it is about.
-     * @lautstark/design conventions.md §3.7. */
+     * @lautstark/design conventions.md §3.7.
+     *
+     * The facts after the role word are symbolSources.ts', so that the folder
+     * count and the root name this heading states are the same ones a
+     * Sammlung's own sheet states. */
     const attention = needsAttention(status);
-    // Narrowed on kind, not on isReady(): only the ready variant has no message.
+    const metacomFacts = sourceFacts('metacom');
     metacomPanel.state.textContent = status.kind === 'ready'
-      ? `${active === 'metacom' ? 'Aktive Quelle' : 'Eingerichtet'} · ${metacom.symbolCount} Symbole · ${metacom.rootName}`
-      : attention ? 'Zugriff bestätigen'
-        : status.message;
+      ? `${fallback === 'metacom' ? 'Standardquelle' : 'Eingerichtet'} · ${metacomFacts.facts}`
+      : metacomFacts.facts;
 
     fill(metacomPanel.body,
       el('div', { class: 'notice notice--accent', style: { marginBottom: '10px' },
@@ -267,7 +334,7 @@ export function openSettings(options: SettingsOptions): void {
               on: { click: () => void run(() => metacom.rebuildIndex(), 'Index neu aufgebaut.') } })
           : null,
 
-        active !== 'metacom' && metacom.isReady() ? useButton('metacom') : null,
+        fallback !== 'metacom' && metacom.isReady() ? useButton('metacom') : null,
 
         status.kind !== 'needs-setup'
           ? el('button', { class: 'btn sm destructive', text: 'Ordner vergessen',
@@ -278,7 +345,7 @@ export function openSettings(options: SettingsOptions): void {
                   change({ ...settings, activeProvider: 'arasaac' });
                 }
                 paintDictionary();
-              }, 'METACOM-Ordner entfernt.') } })
+              }, forgottenSays()) } })
           : null,
       ),
 
@@ -287,8 +354,31 @@ export function openSettings(options: SettingsOptions): void {
             text: 'Dieser Browser kann den Ordner nicht dauerhaft merken. Die Auswahl gilt bis zum Neuladen der Seite. In Chrome oder Edge ist sie einmalig.' })
         : null,
 
+      fallback !== 'metacom' && metacom.isReady() ? defaultNote() : null,
+
       renderingChooser(),
     );
+  }
+
+  /**
+   * What „Ordner vergessen" leaves behind, said before it is pressed rather
+   * than discovered afterwards.
+   *
+   * Forgetting the folder resets the *default* when the default was METACOM.
+   * It deliberately does not reach into Sammlungen that chose METACOM for
+   * themselves — that is somebody's answer, and the folder may well come back.
+   * What it must not do is leave such a Sammlung looking broken with no
+   * explanation, so where the open one is in that position the sentence says
+   * so; the banner above the composer says the same thing on the page itself.
+   */
+  function forgottenSays(): string {
+    const own = options.openCollectionProvider();
+    if (own === 'metacom') {
+      return 'METACOM-Ordner entfernt. Diese Sammlung ist auf METACOM eingestellt und kann bis auf Weiteres keine Symbole zeigen.';
+    }
+    return settings.activeProvider === 'metacom'
+      ? 'METACOM-Ordner entfernt. ARASAAC ist wieder die Standardquelle.'
+      : 'METACOM-Ordner entfernt.';
   }
 
   /*
@@ -332,7 +422,12 @@ export function openSettings(options: SettingsOptions): void {
   }
 
   function paintDictionary(): void {
-    const provider = settings.activeProvider;
+    /* The source the page is drawing in, which is what a correction made now
+       gets filed under — not the default, which the open Sammlung may not be
+       following. `provider:token` is the override key, so a panel showing the
+       default's entries beside a page rendering something else would be a list
+       of corrections that are not the ones in force. */
+    const provider = options.openCollectionProvider() ?? settings.activeProvider;
     const list = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } });
 
     fill(dictPanel.body,
