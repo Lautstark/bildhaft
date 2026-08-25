@@ -20,6 +20,7 @@ const MUTATORS = [
   'createCollection',
   'putCollection',
   'renameCollection',
+  'saveCollectionProvider',
   'deleteCollectionDeep',
   'putSentence',
   'deleteSentence',
@@ -66,6 +67,11 @@ describe('the change notifier', () => {
       const made = await repo.createCollection('Test');
       heard = 0;
       return repo.renameCollection(made.id, 'Neu');
+    },
+    saveCollectionProvider: async () => {
+      const made = await repo.createCollection('Test');
+      heard = 0;
+      return repo.saveCollectionProvider(made.id, 'metacom');
     },
     deleteCollectionDeep: async () => {
       const made = await repo.createCollection('Test');

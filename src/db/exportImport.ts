@@ -49,6 +49,33 @@ async function fromDataUrl(data: string): Promise<Blob> {
   return response.blob();
 }
 
+/**
+ * The collection as it travels to somebody else: everything about it except
+ * which symbol source *this* browser draws it in.
+ *
+ * The notice above promises the file „kann unabhängig davon geteilt werden,
+ * welche Symbolsammlung die Empfängerin oder der Empfänger besitzt", and that
+ * promise is kept by the model rather than by hope — slots hold concept keys
+ * and a choice per provider, so the same rows resolve in whichever source the
+ * reader has. A `provider` written into the file would be the one field that
+ * broke it: a collection arriving set to METACOM at somebody without a licence
+ * would open on a source they cannot read. It is a preference about a view, and
+ * the view is the recipient's.
+ *
+ * `importCollectionFile` below builds its collection field by field and would
+ * drop it anyway. This is the other half, and the half that matters: what
+ * leaves the machine is what the notice is about.
+ *
+ * A backup is the opposite case and keeps it — `exportEverything` passes
+ * collections through untouched, because that file exists to put this library
+ * back exactly as it was, on this machine, where the folder it names is real.
+ */
+function portable(collection: Collection): Collection {
+  const copy = { ...collection };
+  delete copy.provider;
+  return copy;
+}
+
 /** The own pictures these sentences actually point at, in the order they appear. */
 async function imagesUsedBy(sentences: Sentence[]): Promise<OwnImage[]> {
   const ids = new Set<string>();
@@ -75,7 +102,7 @@ export async function exportCollection(
     format: EXPORT_FORMAT,
     version: EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
-    collection: { ...collection, sentenceIds: sentences.map((s) => s.id) },
+    collection: { ...portable(collection), sentenceIds: sentences.map((s) => s.id) },
     sentences,
     overrides: includeOverrides ? await listOverrides() : undefined,
     ownImages: images.length > 0 ? await packImages(images) : undefined,

@@ -1,5 +1,5 @@
 import type {
-  AppSettings, Candidate, Collection, PrintSettings, Sentence, Slot,
+  AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { buildSlots, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
@@ -78,9 +78,38 @@ export function mountApp(root: HTMLElement): void {
    */
   let sourceSettled = false;
 
-  const providerId = () => settings?.activeProvider ?? 'arasaac';
-  const provider = () => getProvider(providerId());
+  /**
+   * The source the rows on screen were last resolved against, so that a change
+   * of source can be told from a redraw. Boot sets it to what the first paint
+   * actually draws with; syncProvider() below is the only other writer.
+   */
+  let previousProvider: ProviderId = 'arasaac';
+
   const activeCollection = () => collections.find((c) => c.id === activeId) ?? null;
+
+  /**
+   * The symbol source the page is drawing in: the open collection's own answer,
+   * or the default it follows when it has none.
+   *
+   * One function, because everything that shows a symbol already asked this one
+   * — the rows, the picker, the print sheet, the banners, the pipeline that
+   * fills a new sentence's slots. Moving the answer onto the collection is
+   * therefore this line and nothing else, which is what keeps the page from
+   * naming one source and rendering another.
+   *
+   * bildhaft opens exactly one collection at a time — `activeId` is one id, the
+   * sidebar is handed `open: [activeId]`, and boot makes one when the library is
+   * empty — so there is no case where "the collection you are in" is ambiguous.
+   * That is why there is no `nextCollection()` here as there is in mitreden,
+   * where two Sammlungen can be open at once and the answer has to be *none*.
+   * The `?? settings` arm still earns its place: it is what a collection with no
+   * answer of its own reads, which is most of them.
+   */
+  const providerId = (): ProviderId =>
+    activeCollection()?.provider ?? settings?.activeProvider ?? 'arasaac';
+  const provider = () => getProvider(providerId());
+  /** True while the open collection is following the default rather than answering. */
+  const followsDefault = () => !activeCollection()?.provider;
 
   /* ------------------------------------------------------------ chrome --- */
 
@@ -280,8 +309,8 @@ export function mountApp(root: HTMLElement): void {
 
     busyMessage.textContent = status.kind === 'loading' ? status.message : 'Einen Moment …';
     unusableMessage.textContent = providerId() === 'metacom'
-      ? 'bildhaft kann deinen METACOM-Ordner gerade nicht lesen. Bestätige den Zugriff einmal — wähle dabei „Bei jedem Besuch zulassen“, dann fragt der Browser künftig nicht mehr. Deine Sätze bleiben ohnehin erhalten.'
-      : 'Die aktive Symbolquelle ist gerade nicht verfügbar.';
+      ? metacomWanted(status.kind === 'needs-setup' && status.code === 'no-folder')
+      : 'Die Symbolquelle dieser Sammlung ist gerade nicht verfügbar.';
     toggleVisible(regrant, providerId() === 'metacom');
 
     const wanted: [string, HTMLElement][] = [];
@@ -299,6 +328,33 @@ export function mountApp(root: HTMLElement): void {
     // above meaningful — an unchanged set returns before this line, so a
     // spinner that is still spinning is never restarted.
     bannerHost.replaceChildren(...wanted.map(([, node]) => node));
+  }
+
+  /**
+   * The sentence for "METACOM is what this page is drawing in, and it cannot
+   * draw". Which of the two it is matters, and so does who asked.
+   *
+   * bildhaft never quietly renders one source when another was asked for — the
+   * page says the source is unavailable and shows nothing rather than filling
+   * the rows with ARASAAC pictures under a collection that asked for METACOM.
+   * A silent fall-back is the failure vorlaut met from the other side, where a
+   * package baked pictures nobody had chosen.
+   *
+   * `noFolder` is the state that only became reachable when the source moved
+   * onto the collection: restoring a backup onto a machine that has no METACOM
+   * folder brings collections that ask for one. Confirming access is no use
+   * there — nothing has been mislaid — so it says what is actually missing and
+   * where the way out is.
+   */
+  function metacomWanted(noFolder: boolean): string {
+    const own = !followsDefault();
+    if (noFolder) {
+      return (own
+        ? 'Diese Sammlung ist auf METACOM eingestellt, aber in diesem Browser ist kein METACOM-Ordner eingerichtet. '
+        : 'Als Standard ist METACOM eingestellt, aber in diesem Browser ist kein METACOM-Ordner eingerichtet. ')
+        + 'Richte ihn in den Einstellungen ein — oder stelle die Sammlung über das Menü ⋯ neben ihrem Namen auf eine andere Quelle um. Deine Sätze bleiben ohnehin erhalten.';
+    }
+    return 'bildhaft kann deinen METACOM-Ordner gerade nicht lesen. Bestätige den Zugriff einmal — wähle dabei „Bei jedem Besuch zulassen“, dann fragt der Browser künftig nicht mehr. Deine Sätze bleiben ohnehin erhalten.';
   }
 
   function toggleVisible(node: HTMLElement, on: boolean): void {
@@ -485,6 +541,11 @@ export function mountApp(root: HTMLElement): void {
     // so a slot filled in ahead of it would be filled from the wrong rendering.
     metacom.preferRendering(loaded.metacomRendering);
     collections = all;
+    /* What the first paint draws with, recorded before setActive() can compare
+       against it. Without this the initial guess is 'arasaac' and every load of
+       a library whose source is METACOM would re-resolve and rewrite every
+       sentence in the open collection — work that changes nothing. */
+    previousProvider = wanted.provider ?? loaded.activeProvider;
     setActive(wanted.id);
     render();
 
@@ -571,6 +632,12 @@ export function mountApp(root: HTMLElement): void {
       sentences = loaded;
       unreadable = 0;
       render();
+      /* Opening a collection can change the source, because the collection is
+         where the answer lives now. Its rows may never have been resolved
+         against that source, and an unresolved slot draws as an empty field
+         rather than as a symbol. syncProvider() returns at once when the source
+         has not moved, which is the ordinary case. */
+      void syncProvider();
     });
   }
 
@@ -903,8 +970,6 @@ export function mountApp(root: HTMLElement): void {
   }
 
   /* --------------------------------------------------- provider change --- */
-
-  let previousProvider = providerId();
 
   async function syncProvider(): Promise<void> {
     if (previousProvider === providerId()) return;

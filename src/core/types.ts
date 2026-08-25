@@ -115,6 +115,37 @@ export interface Collection {
   /** e.g. "Der Grüffelo" */
   name: string;
   sentenceIds: string[];
+
+  /**
+   * Which symbol source this collection is drawn in — or absent, meaning
+   * "whatever the setting says", now and whenever the setting moves.
+   *
+   * Absent is a real state and not a missing value. It is what a collection
+   * that has never been asked holds, and it is what one holds again after
+   * choosing „Standard folgen" in its sheet; nothing backfills it, at creation
+   * or on load, because a collection that has never been told is exactly the
+   * one that should follow the setting when the setting moves. That is the
+   * difference from mitreden, where `createCollection` copies the default
+   * voice in at creation — a voice is baked into a recording, so it has to be
+   * fixed at the moment the Sammlung is made. Nothing is baked here.
+   *
+   * It is safe to hold this on a collection for the reason conventions.md
+   * §3.10 gave for exempting it in the first place: a slot stores a concept
+   * key and a choice *per provider*, overrides are keyed `${provider}:${token}`
+   * and the picture is resolved at render time. So this is a stored *view*
+   * preference. Switching it disturbs nothing that was made, and switching
+   * back finds every manual correction still there.
+   *
+   * Which is also why it does not travel in a single-collection export — see
+   * `portable()` in db/exportImport.ts. The notice on that file promises it
+   * „kann unabhängig davon geteilt werden, welche Symbolsammlung die
+   * Empfängerin oder der Empfänger besitzt", and a file that named METACOM as
+   * this collection's answer would arrive at somebody without a licence
+   * pointing at a source they cannot read. A backup is the other case and does
+   * carry it: that file goes back into the library it came from.
+   */
+  provider?: ProviderId;
+
   createdAt: number;
   updatedAt: number;
 }
@@ -223,6 +254,15 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
 /* ------------------------------------------------------------- settings --- */
 
 export interface AppSettings {
+  /**
+   * The symbol source a collection uses when it has none of its own — which is
+   * every collection until somebody says otherwise, and every new one after.
+   *
+   * It stopped being "the source the page renders with" when the source moved
+   * onto the collection. The name is kept because renaming a stored field would
+   * be a migration for nothing; what it means is stated here, in the words on
+   * the settings card, and in the line under the composer.
+   */
   activeProvider: ProviderId;
   /** User-editable function-word list, stored as data. */
   stopwords: string[];

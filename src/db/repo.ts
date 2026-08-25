@@ -114,6 +114,25 @@ export async function renameCollection(id: string, name: string): Promise<void> 
   await putCollection({ ...collection, name: name.trim() || collection.name });
 }
 
+/**
+ * Which symbol source this collection is drawn in — or `null` for "follow the
+ * default", which removes the field rather than storing an answer.
+ *
+ * Removing it matters: an absent `provider` is what makes a collection go on
+ * following the setting when the setting moves, so writing the default's
+ * current value in would look identical today and diverge tomorrow.
+ */
+export async function saveCollectionProvider(
+  id: string, provider: ProviderId | null,
+): Promise<void> {
+  const collection = await getCollection(id);
+  if (!collection) return;
+  const next = { ...collection };
+  if (provider) next.provider = provider;
+  else delete next.provider;
+  await putCollection(next);
+}
+
 /** Deletes a collection AND its sentences. Only ever called behind a named confirm. */
 export async function deleteCollectionDeep(id: string): Promise<void> {
   const db = await getDB();
