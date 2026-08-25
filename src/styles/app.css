@@ -466,6 +466,72 @@ kbd {
   margin-top: 12px;
 }
 
+/* ------------------------------------------------------- the square crop
+
+   Cutting a picture of the user's own down to the square every box that shows
+   a symbol actually is — the 68px chip, the 82px tile, and 40mm on paper. The
+   behaviour is in ui/crop.ts; this is only where the parts sit.
+
+   The picker's own parts are hidden while it is up, and each of them needs a
+   rule saying so: [hidden] is the user agent's and loses to any author
+   `display`, which .picker__own, .picker__negate and .picker__grid all set.
+   The same trap the .toast note further down this file is about. */
+.picker__own[hidden],
+.picker__negate[hidden],
+.picker__grid[hidden],
+.picker__caption[hidden] { display: none; }
+
+.picker__crop { margin-top: 12px; }
+
+/* Square, because what is being chosen is. Capped rather than full width: this
+   dialog is wide enough for four symbol tiles, and a crop box that wide would
+   put the slider under it a long way from the picture it moves. */
+.crop {
+  position: relative;
+  width: min(260px, 100%);
+  aspect-ratio: 1;
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: grab;
+  /* Or the browser scrolls the dialog instead of moving the picture, the first
+     time somebody drags with a finger. */
+  touch-action: none;
+}
+.crop:active { cursor: grabbing; }
+.crop:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Placed from crop.ts in percentages of the box, so width, left and top are the
+   three properties left out here. max-width, because that width is deliberately
+   larger than the box — the overflow is what the frame is cutting off. */
+.crop__img {
+  position: absolute;
+  height: auto;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* The square that will be kept. The inset is FRAME in crop.ts and the two have
+   to agree: that constant is what maps a source pixel onto this box.
+
+   One enormous spread rather than four rectangles round the frame, trimmed by
+   the box's own overflow. Its point is that what is being cut off stays
+   visible. White in both themes, like the picture under it — this line is drawn
+   against a photograph rather than against the page. */
+.crop__frame {
+  position: absolute;
+  inset: 8%;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.45);
+  outline: 1px solid rgb(255 255 255 / 0.9);
+}
+
+.crop__row { margin-top: 10px; }
+.crop__zoom { width: 100%; accent-color: var(--accent); }
+
 .picker__item {
   display: flex;
   flex-direction: column;

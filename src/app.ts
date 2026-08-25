@@ -819,7 +819,7 @@ export function mountApp(root: HTMLElement): void {
     picker = { sentenceId, slotId };
     openSlotPicker(slot, providerId(), {
       onChoose: (candidate) => void handleChoose(candidate),
-      onOwnImage: (file) => void handleOwnImage(file),
+      onOwnImage: (picture, name) => void handleOwnImage(picture, name),
       onClearOwnImage: () => void handleClearOwnImage(),
       onNegate: (negated) => void handleNegate(negated),
       onLabel: (label) => void handleLabel(label),
@@ -878,7 +878,7 @@ export function mountApp(root: HTMLElement): void {
    * keeps whatever symbol it had underneath, and removing the picture later
    * uncovers it rather than leaving an empty field.
    */
-  async function handleOwnImage(file: File): Promise<void> {
+  async function handleOwnImage(picture: Blob, name: string): Promise<void> {
     if (!picker) return;
     const { sentenceId, slotId } = picker;
     picker = null;
@@ -889,15 +889,15 @@ export function mountApp(root: HTMLElement): void {
       if (!sentence || !slot) return;
 
       try {
-        const image = await putOwnImage(file);
+        const image = await putOwnImage(picture, name);
         await updateSentence({
           ...sentence,
           slots: sentence.slots.map((sl) => (sl.id === slotId ? {
             ...sl,
             ownImage: image.id,
             // A field added by hand takes its word from the file it was given.
-            sourceToken: sl.sourceToken || stemOf(file.name),
-            concept: sl.concept || stemOf(file.name).toLowerCase(),
+            sourceToken: sl.sourceToken || stemOf(name),
+            concept: sl.concept || stemOf(name).toLowerCase(),
             origin: 'manual' as const,
           } : sl)),
         });

@@ -2,12 +2,21 @@ import type { Candidate, ProviderId, Slot } from '../core/types.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
+import { cropName, cropSquare } from './crop.ts';
+import type { Cropper } from './crop.ts';
 import { symbolView, type SymbolView } from './symbols.ts';
 
 export interface PickerHandlers {
   onChoose: (candidate: Candidate) => void;
-  /** A picture of the user's own, taking the place of any symbol. */
-  onOwnImage: (file: File) => void;
+  /**
+   * A picture of the user's own, taking the place of any symbol.
+   *
+   * A Blob and a name rather than the File they used to arrive in, because what
+   * is kept is no longer always what was chosen: a picture that went through the
+   * square is one bildhaft drew. The name still comes from the file, so the
+   * library stays readable.
+   */
+  onOwnImage: (picture: Blob, name: string) => void;
   onClearOwnImage: () => void;
   /** Lays a red cross over the symbol — METACOM's "nicht". Leaves the dialog open. */
   onNegate: (negated: boolean) => void;
@@ -59,7 +68,22 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       change: () => {
         const file = upload.files?.[0];
         upload.value = '';
-        if (file) finish(() => handlers.onOwnImage(file));
+        if (!file) return;
+        /*
+         * The dialog used to settle here, on the file alone. It stays open for
+         * the square instead — see beginCrop below — and settles on the press
+         * that keeps one.
+         *
+         * No crop offered is not a failure and gets no sentence: the picture was
+         * already square, or the browser could not read a size off it, and both
+         * mean the file goes exactly as it did before this step existed.
+         */
+        void cropSquare(file).then(
+          (cutter) => {
+            if (cutter) beginCrop(cutter, file.name);
+            else finish(() => handlers.onOwnImage(file, file.name));
+          },
+          () => finish(() => handlers.onOwnImage(file, file.name)));
       },
     },
   });
@@ -120,6 +144,27 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     on: { input: () => onQuery(search.value) },
   });
 
+  const memoryNote = isNew ? el('span') : el('p', {
+    class: 'small faint',
+    style: { marginTop: '14px', marginBottom: '0' },
+    text: `Deine Auswahl wird für „${slot.sourceToken}“ gemerkt und beim nächsten Mal automatisch verwendet.`,
+  });
+
+  /*
+   * The square, on screen only between choosing a file and keeping it. Built
+   * empty and hidden rather than inserted into a dialog somebody is already
+   * looking at, and everything else goes away while it is up: a live grid of
+   * symbols under an open crop is a press that throws the crop away without
+   * saying so.
+   */
+  let cropper: Cropper | null = null;
+  /* What Enter means while a square is being chosen. Held here rather than only
+   * on the button, because the dialog's own Enter handler is the thing that
+   * would otherwise close over an unkept crop - see it below. */
+  let keepSquare: (() => void) | null = null;
+  const cropSlot = el('div', { class: 'picker__crop', attrs: { hidden: true } });
+  const asideWhileCropping = [search, ownRow, captionRow, negateRow, status, grid, memoryNote];
+
   const dialog = openDialog({
     title: isNew ? 'Feld hinzufügen' : `Symbol für „${slot.sourceToken}“`,
     body: [
@@ -127,20 +172,25 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       ownRow,
       captionRow,
       negateRow,
+      cropSlot,
       status,
       grid,
-      isNew ? el('span') : el('p', {
-        class: 'small faint',
-        style: { marginTop: '14px', marginBottom: '0' },
-        text: `Deine Auswahl wird für „${slot.sourceToken}“ gemerkt und beim nächsten Mal automatisch verwendet.`,
-      }),
+      memoryNote,
     ],
     footer: [
       el('button', { class: 'btn destructive', text: isNew ? 'Abbrechen' : 'Feld entfernen',
         attrs: { type: 'button' }, on: { click: () => finish(handlers.onRemove) } }),
       el('div', { class: 'spacer' }),
+      /*
+       * Fertig means the square while one is being chosen. It used to close
+       * over an open crop and settle the field on whatever it had before —
+       * defensible, in that nothing had been written and no way out of this
+       * dialog had ever cost anything, and from where somebody is sitting it
+       * was a picture chosen, a picture adjusted, and then nothing at all.
+       * The ✕ and a press outside still cost nothing; those say "never mind".
+       */
       el('button', { class: 'btn', text: 'Fertig', attrs: { type: 'button' },
-        on: { click: () => finish(handlers.onClose) } }),
+        on: { click: () => keepSquare ? keepSquare() : finish(handlers.onClose) } }),
     ],
     onClose: () => { if (settled) return; teardown(); handlers.onClose(); },
   });
@@ -161,6 +211,11 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     if (target?.closest('button, a')) return;
 
     event.preventDefault();
+    // While a square is being chosen, Fertig is that square. Without this the
+    // dialog's Enter settled the field on whatever it had before, which from
+    // where somebody is sitting is the crop being thrown away by the key that
+    // everywhere else in this dialog means "yes".
+    if (keepSquare) { keepSquare(); return; }
     if (target === search) onQuery(search.value, true);
     else finish(handlers.onClose);
   });
@@ -169,10 +224,79 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     // Before anything else: a caption typed and then settled by pressing a
     // symbol must reach the slot ahead of the pick, not after it.
     flushLabel();
+    // Whatever a crop was loaded from, let go of — including on the ways out
+    // that keep the square, which have already cut it by the time this runs.
+    cropper?.close();
+    cropper = null;
+    keepSquare = null;
     window.clearTimeout(labelTimer);
     window.clearTimeout(searchTimer);
     for (const view of views) view.destroy();
     views = [];
+  }
+
+  /**
+   * Going into the square, and coming back out of it.
+   *
+   * Nothing is written by either. The database is not touched until the press
+   * that keeps a square, so cancelling costs exactly what closing this dialog
+   * has always cost — which is nothing.
+   */
+  function beginCrop(cutter: Cropper, name: string): void {
+    cropper = cutter;
+
+    keepSquare = () => {
+      void cutter.cut().then(
+        (square) => finish(() => handlers.onOwnImage(square, cropName(name, square.type))),
+        () => {
+          endCrop();
+          status.textContent = 'Das Bild konnte nicht zugeschnitten werden.';
+        });
+    };
+
+    /*
+     * One button, not two. The other one took the square, and the footer
+     * already carries a button that means yes — two controls confirming the
+     * same thing an inch apart is not a choice, it is a question about which
+     * of them is the real one. The sentence above names the one that is.
+     *
+     * Not called simply "Abbrechen": on a field being added the footer's own
+     * destructive button already says that, and two of them would be two
+     * different retreats wearing one word.
+     *
+     * It stays, though, and not for symmetry: without it the only way out of
+     * an open crop that does not keep the square is the ✕, which takes the
+     * whole dialog and the caption typed into it.
+     */
+    const drop = el('button', {
+      class: 'btn sm', text: 'Zuschneiden abbrechen', attrs: { type: 'button' },
+      on: { click: () => endCrop() },
+    });
+
+    fill(cropSlot,
+      cutter.box,
+      cutter.zoom,
+      el('p', { class: 'small muted', style: { margin: '8px 0 0' },
+        text: 'Bild verschieben, mit dem Regler näher heran. „Fertig“ übernimmt den Ausschnitt.' }),
+      el('div', { class: 'picker__own' }, drop),
+    );
+    cropSlot.hidden = false;
+    for (const node of asideWhileCropping) node.hidden = true;
+    cutter.box.focus();
+  }
+
+  function endCrop(): void {
+    cropper?.close();
+    cropper = null;
+    keepSquare = null;
+    cropSlot.hidden = true;
+    fill(cropSlot);
+    for (const node of asideWhileCropping) node.hidden = false;
+    // The press that would have moved focus has just gone from under it. Not
+    // back to what opened the crop — that control is a <label> around a hidden
+    // input and takes no focus — but to the search field, which is where
+    // somebody who has just dropped a picture is going next.
+    search.focus();
   }
 
   /** Closes the dialog and then runs the outcome the pressed button stands for. */

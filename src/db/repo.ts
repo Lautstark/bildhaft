@@ -294,13 +294,20 @@ export async function overrideMap(provider: ProviderId): Promise<Map<string, Ove
  * is that they keep working when the original file is moved or deleted, which
  * is exactly what a symbol folder cannot promise.
  */
-export async function putOwnImage(file: File): Promise<OwnImage> {
+/**
+ * A picture of the user's own, kept.
+ *
+ * The name arrives beside the bytes rather than on them, because what is stored
+ * is no longer always the file that was chosen: a picture cut to a square is a
+ * Blob the page drew and has no name of its own. See ui/crop.ts.
+ */
+export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage> {
   const image: OwnImage = {
     id: newId(),
-    name: file.name,
-    type: file.type || 'image/*',
+    name,
+    type: picture.type || 'image/*',
     // The bytes, detached from the file they came from.
-    blob: new Blob([await file.arrayBuffer()], { type: file.type || 'image/*' }),
+    blob: new Blob([await picture.arrayBuffer()], { type: picture.type || 'image/*' }),
     createdAt: Date.now(),
   };
   const db = await getDB();
