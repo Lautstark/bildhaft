@@ -278,8 +278,7 @@ publishes if it passes.**
 | `src/core/` | Matching pipeline and data model, free of UI |
 | `src/db/` | IndexedDB schema, repository, export/import |
 | `src/ui/` | Screen, dialogs and the element helpers they are built from |
-| `src/data/` | Generated lexicon data |
-| `scripts/` | Lexicon generator and its word lists |
+| `src/i18n/` | The two text tables and the language the page is in |
 
 Two things live outside this repository, both pinned to an exact release tag so
 an install can never move the build on its own:
@@ -296,20 +295,23 @@ shared with the sibling products.
 - **No code that needs `SharedArrayBuffer`.** GitHub Pages cannot set the COOP/COEP
   headers, so v1 has no in-browser transformer or ONNX models; matching is lexical.
 - Desktop is the primary target. Folder selection on mobile is not expected to work.
-- **German-only interface, and this is a decision rather than a gap.** There is no
-  `t()`, no language files and no language switch: every string is written where it
-  is used. bildhaft's whole job is turning *German* sentences into pictograms — the
-  lemmatiser, the compound splitter, the separable-verb merge and the function-word
-  list are all German-specific, so an English interface would front a program that
-  still only understands German input, which reads as a promise the rest of the app
-  does not keep. Translating the shell is the last step of supporting a second
-  language, not the first.
+- **German and English, and the German half is the one that is finished.** The
+  interface reads out of `src/i18n/`, the pipeline follows the same choice, and
+  ARASAAC is asked in the language on screen. Switching reloads the page rather
+  than re-rendering it — bildhaft has no re-render path for the shell and
+  nothing in flight worth keeping, unlike vorlaut, which needed one.
 
-  Worth stating because the two sibling products went the other way — mitreden and
-  vorlaut both carry de/en tables and a live switch — so this looks like an omission
-  from the outside and has been read as one. If bildhaft ever does grow a second
-  input language, mitreden's `src/i18n/` is the shape to copy; until then, adding
-  the shell alone is not an improvement.
+  This was a deliberate *no* until 2026-08-25, and the reason it changed is
+  worth keeping: the objection was that an English interface would front a
+  matcher that only understood German, which is a promise the rest of the app
+  could not keep. bildquelle grew an English pipeline, and it was measured
+  before this was built — `scripts/coverage.mjs` over there runs both languages
+  over the same 67 sentences and puts English within a couple of points of
+  German. The objection stopped being true; it was not argued away.
+
+  What is still German-only: **METACOM**. Its ids are the filenames in
+  somebody's own licensed folder, and those are German, so an English page says
+  so where METACOM is chosen rather than letting it look broken.
 
 ### Browser support for METACOM
 

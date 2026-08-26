@@ -3,6 +3,8 @@ import { getDB } from './db.ts';
 // The seed for a user's own editable list. The list itself stays theirs and
 // stays in this database; what the package supplies is where it starts.
 import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
+import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
+import { LANG } from '../i18n/index.ts';
 import {
   DEFAULT_PRINT_SETTINGS,
   type AppSettings, type Collection, type Override, type OwnImage, type ProviderId,
@@ -46,7 +48,7 @@ function touched(): void {
 export function defaultSettings(): AppSettings {
   return {
     activeProvider: 'arasaac',
-    stopwords: [...GERMAN_STOPWORDS],
+    stopwords: { de: [...GERMAN_STOPWORDS], en: [...ENGLISH_STOPWORDS] },
     print: { ...DEFAULT_PRINT_SETTINGS },
     lastCollectionId: null,
     sidebarOpen: false,
@@ -58,9 +60,20 @@ export async function loadSettings(): Promise<AppSettings> {
   const db = await getDB();
   const stored = await db.get('settings', SETTINGS_KEY);
   // Merge so settings added in later versions get their defaults.
-  return stored
-    ? { ...defaultSettings(), ...stored, print: { ...DEFAULT_PRINT_SETTINGS, ...stored.print } }
-    : defaultSettings();
+  if (!stored) return defaultSettings();
+  const base = defaultSettings();
+  /* The list used to be one array, from when there was one language, and every
+   * settings record written before that holds one. It was German by
+   * definition, so it becomes the German list and English starts from its own
+   * defaults. Read rather than rewritten: nothing here saves until the person
+   * changes something. */
+  const stopwords = Array.isArray(stored.stopwords)
+    ? { ...base.stopwords, de: stored.stopwords as string[] }
+    : { ...base.stopwords, ...stored.stopwords };
+  return {
+    ...base, ...stored, stopwords,
+    print: { ...DEFAULT_PRINT_SETTINGS, ...stored.print },
+  };
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
@@ -250,7 +263,20 @@ export async function clearEverything(): Promise<void> {
 
 /* ------------------------------------------------------------ overrides --- */
 
-const overrideKey = (provider: ProviderId, token: string) => `${provider}:${token.toLowerCase()}`;
+/*
+ * The language leads, because the word does not carry it. An entry written
+ * before there was a second language has no language in its key and none in
+ * its row; `mine` below is what reads those as German.
+ */
+const overrideKey = (provider: ProviderId, token: string) =>
+  `${LANG}:${provider}:${token.toLowerCase()}`;
+
+/** The key those rows were written under, kept only so they can still be found. */
+const legacyKey = (provider: ProviderId, token: string) =>
+  `${provider}:${token.toLowerCase()}`;
+
+/** Whether an entry belongs to the language this page is in. */
+const mine = (override: Override) => (override.lang ?? 'de') === LANG;
 
 export async function putOverride(
   provider: ProviderId, token: string, symbolId: string, label: string,
@@ -258,6 +284,7 @@ export async function putOverride(
   const db = await getDB();
   await db.put('overrides', {
     key: overrideKey(provider, token),
+    lang: LANG,
     provider,
     token: token.toLowerCase(),
     symbolId,
@@ -270,18 +297,32 @@ export async function putOverride(
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {
   const db = await getDB();
   await db.delete('overrides', overrideKey(provider, token));
+  // A German page also clears the entry as it was keyed before there was a
+  // language to key it by. Deleting a key that is not there is not an error.
+  if (LANG === 'de') await db.delete('overrides', legacyKey(provider, token));
   touched();
 }
 
+/** Every entry in *this* language. What the dictionary panel lists. */
 export async function listOverrides(provider?: ProviderId): Promise<Override[]> {
+  return (await listAllOverrides(provider)).filter(mine);
+}
+
+/**
+ * Every entry in every language, for a backup.
+ *
+ * An export is the whole of what somebody has, and dropping the half they were
+ * not looking at when they pressed the button would be a quiet way to lose it.
+ */
+export async function listAllOverrides(provider?: ProviderId): Promise<Override[]> {
   const db = await getDB();
   const all = provider
     ? await db.getAllFromIndex('overrides', 'byProvider', provider)
     : await db.getAll('overrides');
-  return all.sort((a, b) => a.token.localeCompare(b.token, 'de'));
+  return all.sort((a, b) => a.token.localeCompare(b.token, LANG));
 }
 
-/** Loads the whole override table into a map — small, and consulted per token. */
+/** Loads this language's override table into a map — small, and consulted per token. */
 export async function overrideMap(provider: ProviderId): Promise<Map<string, Override>> {
   const list = await listOverrides(provider);
   return new Map(list.map((o) => [o.token, o]));

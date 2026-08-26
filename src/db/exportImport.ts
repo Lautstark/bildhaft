@@ -4,14 +4,12 @@ import {
   type OwnImage, type OwnImageExport, type Sentence,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
+import { t } from '../i18n/index.ts';
 import {
-  getOwnImage, listCollections, listOverrides, listOwnImages, listSentences, newId,
+  getOwnImage, listCollections, listAllOverrides, listOwnImages, listSentences, newId,
 } from './repo.ts';
 
-const NOTICE =
-  'bildhaft speichert Symbol-Verweise, keine Bilddateien. Diese Datei enthält keine ' +
-  'Piktogramme. Sie kann unabhängig davon geteilt werden, welche Symbolsammlung ' +
-  'die Empfängerin oder der Empfänger besitzt.';
+const NOTICE = t('export.notice');
 
 /*
  * Own pictures are the exception, and the only one. They belong to the user, so
@@ -19,10 +17,7 @@ const NOTICE =
  * ARASAAC or METACOM pixel is ever written either way — those stay references,
  * which is what makes a shared file safe whatever licence the recipient holds.
  */
-const NOTICE_WITH_IMAGES = NOTICE.replace(
-  'Sie kann unabhängig davon geteilt werden',
-  'Enthalten sind nur deine eigenen Bilder. Sie kann unabhängig davon geteilt werden',
-);
+const NOTICE_WITH_IMAGES = `${t('export.notice_images')} ${NOTICE}`;
 
 /** The bytes, inline. Nothing else about the file travels. */
 async function packImages(images: OwnImage[]): Promise<OwnImageExport[]> {
@@ -104,7 +99,7 @@ export async function exportCollection(
     exportedAt: new Date().toISOString(),
     collection: { ...portable(collection), sentenceIds: sentences.map((s) => s.id) },
     sentences,
-    overrides: includeOverrides ? await listOverrides() : undefined,
+    overrides: includeOverrides ? await listAllOverrides() : undefined,
     ownImages: images.length > 0 ? await packImages(images) : undefined,
     notice: images.length > 0 ? NOTICE_WITH_IMAGES : NOTICE,
   };
@@ -123,7 +118,7 @@ export async function exportEverything(): Promise<BackupExport> {
     exportedAt: new Date().toISOString(),
     collections,
     sentences,
-    overrides: await listOverrides(),
+    overrides: await listAllOverrides(),
     ownImages: images.length > 0 ? await packImages(images) : undefined,
     notice: images.length > 0 ? NOTICE_WITH_IMAGES : NOTICE,
   };
@@ -230,7 +225,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
 
   const source = parsed.collection;
   if (!source || !Array.isArray(parsed.sentences)) {
-    throw new Error('Die Datei ist unvollständig.');
+    throw new Error(t('export.file_incomplete'));
   }
 
   const now = Date.now();
@@ -273,7 +268,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
 /** Restores a full backup. Like a single import, it only ever adds. */
 async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   const sourceCollections = parsed.collections ?? [];
-  if (sourceCollections.length === 0) throw new Error('Die Sicherung enthält keine Sammlungen.');
+  if (sourceCollections.length === 0) throw new Error(t('export.backup_empty'));
 
   const now = Date.now();
   // Fresh ids throughout, so restoring a backup never collides with existing work.

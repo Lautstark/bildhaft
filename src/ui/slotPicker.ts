@@ -5,6 +5,7 @@ import { openDialog } from './dialog.ts';
 import { cropName, cropSquare } from './crop.ts';
 import type { Cropper } from './crop.ts';
 import { symbolView, type SymbolView } from './symbols.ts';
+import { t } from '../i18n/index.ts';
 
 export interface PickerHandlers {
   onChoose: (candidate: Candidate) => void;
@@ -89,10 +90,10 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   });
 
   const ownRow = el('div', { class: 'picker__own' },
-    el('label', { class: 'btn sm', text: 'Eigenes Bild wählen', style: { cursor: 'pointer' } },
+    el('label', { class: 'btn sm', text: t('ui.own_picture_choose'), style: { cursor: 'pointer' } },
       upload),
     slot.ownImage
-      ? el('button', { class: 'btn sm destructive', text: 'Eigenes Bild entfernen',
+      ? el('button', { class: 'btn sm destructive', text: t('ui.own_picture_remove'),
           attrs: { type: 'button' }, on: { click: () => finish(handlers.onClearOwnImage) } })
       : null,
   );
@@ -108,7 +109,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   });
   // An empty span rather than null: the dialog's body takes nodes, not blanks.
   const negateRow = isNew ? el('span') : el('div', { class: 'picker__negate' },
-    el('label', { class: 'opt__check' }, negateBox, 'Symbol durchstreichen'),
+    el('label', { class: 'opt__check' }, negateBox, t('ui.cross_out')),
   );
 
   /*
@@ -133,14 +134,14 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   captionInput.value = slot.label ?? '';
 
   const captionRow = isNew ? el('span') : el('label', { class: 'picker__caption' },
-    el('span', { class: 'small muted', text: 'Text unter dem Symbol' }),
+    el('span', { class: 'small muted', text: t('ui.text_under') }),
     captionInput,
   );
 
   const search = el('input', {
     class: 'field',
-    attrs: { type: 'search', 'aria-label': 'Symbol suchen',
-      placeholder: isNew ? 'Wort suchen …' : 'Anderes Wort suchen …' },
+    attrs: { type: 'search', 'aria-label': t('ui.search_symbol'),
+      placeholder: isNew ? t('ui.search_word') : t('ui.search_other_word') },
     on: { input: () => onQuery(search.value) },
   });
 
@@ -166,7 +167,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   const asideWhileCropping = [search, ownRow, captionRow, negateRow, status, grid, memoryNote];
 
   const dialog = openDialog({
-    title: isNew ? 'Feld hinzufügen' : `Symbol für „${slot.sourceToken}“`,
+    title: isNew ? t('ui.add_slot') : `Symbol für „${slot.sourceToken}“`,
     body: [
       search,
       ownRow,
@@ -178,7 +179,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       memoryNote,
     ],
     footer: [
-      el('button', { class: 'btn destructive', text: isNew ? 'Abbrechen' : 'Feld entfernen',
+      el('button', { class: 'btn destructive', text: isNew ? t('ui.cancel') : t('ui.remove_slot'),
         attrs: { type: 'button' }, on: { click: () => finish(handlers.onRemove) } }),
       el('div', { class: 'spacer' }),
       /*
@@ -189,7 +190,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
        * was a picture chosen, a picture adjusted, and then nothing at all.
        * The ✕ and a press outside still cost nothing; those say "never mind".
        */
-      el('button', { class: 'btn', text: 'Fertig', attrs: { type: 'button' },
+      el('button', { class: 'btn', text: t('ui.done'), attrs: { type: 'button' },
         on: { click: () => keepSquare ? keepSquare() : finish(handlers.onClose) } }),
     ],
     onClose: () => { if (settled) return; teardown(); handlers.onClose(); },
@@ -250,7 +251,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
         (square) => finish(() => handlers.onOwnImage(square, cropName(name, square.type))),
         () => {
           endCrop();
-          status.textContent = 'Das Bild konnte nicht zugeschnitten werden.';
+          status.textContent = t('ui.crop_failed');
         });
     };
 
@@ -267,7 +268,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       cutter.box,
       cutter.zoom,
       el('p', { class: 'small muted', style: { margin: '8px 0 0' },
-        text: 'Bild verschieben, mit dem Regler näher heran. „Fertig“ übernimmt den Ausschnitt.' }),
+        text: t('ui.crop_hint') }),
     );
     cropSlot.hidden = false;
     for (const node of asideWhileCropping) node.hidden = true;
@@ -360,7 +361,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   }
 
   function idleMessage(): string {
-    if (isNew) return 'Suche nach einem Wort, um das Feld zu füllen.';
+    if (isNew) return t('ui.search_to_fill');
     return suggested.length > 0
       ? `Vorschläge für „${slot.concept}“`
       : `Für „${slot.concept}“ wurde nichts gefunden. Suche oben nach einem anderen Wort.`;
@@ -376,7 +377,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
       return;
     }
 
-    status.textContent = 'Suche läuft …';
+    status.textContent = t('ui.searching');
     /*
      * Debounced manual search — the escape hatch for anything the pipeline
      * missed. Enter asks for it now: sitting out a debounce you have finished

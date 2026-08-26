@@ -15,6 +15,7 @@
 import type { Sentence } from '../core/types.ts';
 import { el } from './dom.ts';
 import { icons } from './logo.ts';
+import { t } from '../i18n/index.ts';
 
 /** Past this the box scrolls instead of growing. */
 const MAX_INPUT_HEIGHT = 190;
@@ -50,8 +51,8 @@ export function composer(handlers: ComposerHandlers): {
 } {
   const input = el('textarea', {
     class: 'composer__input',
-    attrs: { rows: 1, placeholder: 'Satz eingeben, z. B. „Ich möchte einen Apfel essen“',
-      'aria-label': 'Satz eingeben', spellcheck: 'true', lang: 'de' },
+    attrs: { rows: 1, placeholder: t('ui.composer_placeholder'),
+      'aria-label': t('ui.composer_label'), spellcheck: 'true', lang: 'de' },
     on: {
       input: () => { handlers.onChange(input.value); grow(); },
       keydown: (event) => {
@@ -66,7 +67,7 @@ export function composer(handlers: ComposerHandlers): {
   const goIcon = el('span', { class: 'composer__go-icon' }, icons.arrow());
   const go = el('button', {
     class: 'btn primary composer__go',
-    attrs: { type: 'button', 'aria-label': 'Übersetzen', title: 'Übersetzen' },
+    attrs: { type: 'button', 'aria-label': t('ui.translate'), title: t('ui.translate') },
     on: { click: handlers.onSubmit },
   }, goIcon);
 
@@ -74,15 +75,15 @@ export function composer(handlers: ComposerHandlers): {
   const providerName = el('b', { style: { fontWeight: '600' } });
   const providerChange = el('button', {
     class: 'btn quiet sm',
-    text: 'Ändern',
+    text: t('ui.change'),
     attrs: { type: 'button' },
     on: { click: handlers.onChangeProvider },
   });
   const providerLine = el('span', { class: 'composer__provider' },
     providerWhat, providerName, providerChange);
   const reuseRow = el('div', { class: 'composer__reuse' },
-    el('span', { text: 'Diesen Satz hast du schon übersetzt.', style: { flex: '1' } }),
-    el('button', { class: 'btn sm', text: 'Übernehmen',
+    el('span', { text: t('ui.already_translated'), style: { flex: '1' } }),
+    el('button', { class: 'btn sm', text: t('ui.reuse'),
       attrs: { type: 'button' }, on: { click: handlers.onReuse } }),
   );
 
@@ -152,15 +153,15 @@ export function composer(handlers: ComposerHandlers): {
    */
   function drawProvider(state: ComposerState): void {
     const own = state.inCollection && state.providerOwned;
-    providerWhat.textContent = own ? 'Symbole dieser Sammlung: ' : 'Symbole (Standard): ';
+    providerWhat.textContent = own ? t('ui.symbols_of_collection') : t('ui.symbols_default');
     providerName.textContent =
       `${state.providerName}${state.providerReady ? '' : ' (nicht bereit)'}`;
     /* The button says nothing but „Ändern" and has room for nothing more, so
        what it leads to is in the name a reader hears rather than only in the
        caption a reader sees. */
     const what = state.inCollection
-      ? 'Symbolquelle dieser Sammlung ändern'
-      : 'Standard-Symbolquelle ändern';
+      ? t('ui.change_collection_source')
+      : t('ui.change_default_source');
     providerChange.title = what;
     providerChange.setAttribute('aria-label', what);
   }

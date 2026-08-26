@@ -3,17 +3,16 @@ import { slotCaption } from '../core/types.ts';
 import { el } from './dom.ts';
 import { icons, negationCross } from './logo.ts';
 import { symbolIdFor, symbolView, type SymbolView } from './symbols.ts';
+import { t } from '../i18n/index.ts';
 
-const ORIGIN_HINT: Record<Slot['origin'], string> = {
-  override: 'Aus deinem Wörterbuch',
-  lemma: 'Grundform nachgeschlagen',
-  separable: 'Trennbares Verb zusammengesetzt',
-  compound: 'Zusammengesetztes Wort geteilt',
-  synonym: 'Über ein Synonym gefunden',
-  raw: 'Direkt gefunden',
-  manual: 'Von Hand gewählt',
-  unmatched: 'Kein Symbol gefunden',
-};
+/* Why this symbol and not another one - the sentence under a slot.
+ *
+ * Every rung both pipelines have, which is more than either language uses:
+ * `separable`, `compound` and `synonym` only ever come back from German, and
+ * `phrasal` only from English. Keeping the ones that cannot happen costs a
+ * table entry and means a slot restored from a collection built in the other
+ * language still explains itself. */
+const originHint = (origin: Slot['origin']): string => t(`ui.origin_${origin}`);
 
 export interface RowHandlers {
   onOpenSlot: (slotId: string) => void;
@@ -67,7 +66,7 @@ export function sentenceRow(
         draggable: 'true',
         /* A rewritten caption is named in full here, because the tile clips it
            to one line and the paper does not. */
-        title: `${slot.ownImage ? 'Eigenes Bild' : ORIGIN_HINT[slot.origin]}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ' · durchgestrichen' : ''}${slot.label?.trim() ? `\nText: „${slot.label.trim()}“` : ''}\nZiehen zum Umsortieren`,
+        title: `${slot.ownImage ? t('ui.own_picture') : originHint(slot.origin)}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ` · ${t('ui.crossed_out')}` : ''}${slot.label?.trim() ? `\n${t('ui.text_label')}: „${slot.label.trim()}“` : ''}\n${t('ui.drag_to_reorder')}`,
       },
       on: {
         click: () => handlers.onOpenSlot(slot.id),
@@ -117,7 +116,7 @@ export function sentenceRow(
 
   slots.appendChild(el('button', {
     class: 'slot-add', text: '+',
-    attrs: { type: 'button', title: 'Feld hinzufügen' },
+    attrs: { type: 'button', title: t('ui.add_slot') },
     on: { click: handlers.onAddSlot },
   }));
 
@@ -126,10 +125,10 @@ export function sentenceRow(
       el('div', { class: 'row__text', text: sentence.rawInput }),
       el('div', { class: 'row__actions' },
         el('button', { class: 'btn quiet icon',
-          attrs: { type: 'button', title: 'Diese Zeile drucken' },
+          attrs: { type: 'button', title: t('ui.print_row') },
           on: { click: handlers.onPrint } }, icons.printer()),
         el('button', { class: 'btn destructive icon',
-          attrs: { type: 'button', title: 'Diese Zeile löschen' },
+          attrs: { type: 'button', title: t('ui.delete_row') },
           on: { click: handlers.onDelete } }, icons.trash()),
       ),
     ),

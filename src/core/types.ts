@@ -18,15 +18,17 @@
  * its model from one place.
  */
 import type { Candidate, ProviderId } from '@lautstark/bildquelle';
+import type { LanguageCode } from '../i18n/index.ts';
 export type { Candidate, ProviderId };
 
 /** How a slot's concept was arrived at — surfaced as a tooltip, nothing more. */
 export type SlotOrigin =
   | 'override' // personal override dictionary
   | 'lemma' // direct lemma lookup
-  | 'separable' // particle reattached, e.g. "räum … auf" -> aufräumen
-  | 'compound' // part of a split compound, e.g. Apfelsaft -> Apfel + Saft
-  | 'synonym' // resolved via the synonym table
+  | 'separable' // German: particle reattached, e.g. "räum … auf" -> aufräumen
+  | 'compound' // German: part of a split compound, e.g. Apfelsaft -> Apfel + Saft
+  | 'synonym' // German: resolved via the synonym table
+  | 'phrasal' // English: verb and particle read as one, e.g. "clean up"
   | 'raw' // matched on the surface form
   | 'manual' // chosen by hand from the picker, whether added or corrected
   | 'unmatched'; // nothing found; user must pick manually
@@ -155,8 +157,21 @@ export interface Collection {
  * Keyed per provider because a correction is a choice of image, not of concept.
  */
 export interface Override {
-  /** `${providerId}:${normalizedToken}` */
+  /** `${language}:${providerId}:${normalizedToken}` */
   key: string;
+  /**
+   * Which language the word was written in.
+   *
+   * Optional, and absent means German - every entry made before bildhaft had a
+   * second language is one. There is no migration rewriting them, on purpose:
+   * db.ts does not do those, and this is a change to what a row says rather
+   * than to the shape of the store holding it.
+   *
+   * It has to be here because the word alone does not say. "Gift" is a present
+   * in English and poison in German, and a dictionary entry pinning it to a
+   * syringe would have answered an English sentence about a birthday.
+   */
+  lang?: LanguageCode;
   provider: ProviderId;
   token: string;
   symbolId: string;
@@ -264,8 +279,15 @@ export interface AppSettings {
    * the settings card, and in the line under the composer.
    */
   activeProvider: ProviderId;
-  /** User-editable function-word list, stored as data. */
-  stopwords: string[];
+  /**
+   * User-editable function-word lists, stored as data, one per language.
+   *
+   * Per language because the list is language: a German page dropping "the"
+   * and an English one dropping "der" would each be keeping noise and losing
+   * words. Held as a record rather than replaced on a switch, so that somebody
+   * who has pruned one list still has it after looking at the other.
+   */
+  stopwords: Record<LanguageCode, string[]>;
   print: PrintSettings;
   lastCollectionId: string | null;
   /** Collapsed by default; the choice is remembered. */

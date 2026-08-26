@@ -306,22 +306,25 @@ sich die Geschwisterprodukte teilen.
   ONNX-Modelle im Browser; die Zuordnung ist lexikalisch.
 - Desktop ist das primäre Ziel. Die Ordnerauswahl auf Mobilgeräten funktioniert
   erwartungsgemäß nicht.
-- **Die Oberfläche ist ausschließlich deutsch, und das ist eine Entscheidung und
-  keine Lücke.** Es gibt kein `t()`, keine Sprachdateien und keine Sprachumschaltung;
-  jeder Text steht dort, wo er verwendet wird. bildhaft übersetzt *deutsche* Sätze
-  in Piktogramme — Lemmatisierung, Komposita-Zerlegung, die Zusammenführung
-  trennbarer Verben und die Funktionswortliste sind sämtlich deutschspezifisch. Eine
-  englische Oberfläche wäre die Fassade eines Programms, das weiterhin nur Deutsch
-  versteht, und verspräche damit etwas, das der Rest der Anwendung nicht hält. Die
-  Oberfläche zu übersetzen ist der letzte Schritt einer zweiten Sprache, nicht der
-  erste.
+- **Deutsch und Englisch, wobei die deutsche Hälfte die fertige ist.** Die
+  Oberfläche liest aus `src/i18n/`, die Verarbeitungskette folgt derselben Wahl,
+  und ARASAAC wird in der Sprache gefragt, die auf dem Bildschirm steht. Beim
+  Umschalten lädt die Seite neu, statt neu zu zeichnen: bildhaft hat für die
+  Hülle keinen Neuzeichnen-Pfad und nichts Ungespeichertes in der Schwebe —
+  anders als vorlaut, das genau deshalb einen brauchte.
 
-  Erwähnenswert, weil die beiden Schwesterprodukte es anders halten: mitreden und
-  vorlaut führen beide de/en-Tabellen und eine Umschaltung zur Laufzeit. Von außen
-  sieht das hier deshalb nach einem Versäumnis aus und ist auch schon so gelesen
-  worden. Sollte bildhaft je eine zweite Eingabesprache bekommen, ist mitredens
-  `src/i18n/` die Vorlage; bis dahin ist die Oberfläche allein zu übersetzen keine
-  Verbesserung.
+  Bis zum 25.08.2026 war das ein bewusstes Nein, und der Grund für die Änderung
+  gehört dazu: Der Einwand lautete, eine englische Oberfläche wäre die Fassade
+  eines Programms, das nur Deutsch versteht — ein Versprechen, das der Rest der
+  Anwendung nicht hält. bildquelle hat inzwischen eine englische
+  Verarbeitungskette, und sie wurde gemessen, bevor das hier gebaut wurde:
+  `scripts/coverage.mjs` dort lässt beide Sprachen über dieselben 67 Sätze
+  laufen; Englisch liegt wenige Punkte neben Deutsch. Der Einwand hat sich
+  erledigt, er wurde nicht wegdiskutiert.
+
+  Weiterhin nur deutsch: **METACOM.** Die Kennungen sind die Dateinamen im
+  eigenen lizenzierten Ordner, und die sind deutsch — deshalb sagt die englische
+  Seite das dort, wo METACOM gewählt wird, statt es kaputt aussehen zu lassen.
 
 ### Browser-Unterstützung für METACOM
 

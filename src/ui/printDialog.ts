@@ -6,6 +6,7 @@ import {
   printSheet,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
+import { t } from '../i18n/index.ts';
 
 /** Millimetres at the CSS reference resolution of 96dpi. */
 const PX_PER_MM = 96 / 25.4;
@@ -86,14 +87,14 @@ export function openPrintDialog(options: PrintOptions): void {
 
   const dialog = openDialog({
     title: options.sentences.length === 1
-      ? 'Zeile drucken'
+      ? t('ui.print_row_title')
       : `Sammlung drucken (${options.sentences.length} Zeilen)`,
     wide: true,
     body: [el('div', { class: 'print-layout' }, controls, frame)],
     footer: [
       meta,
       el('div', { class: 'spacer' }),
-      el('button', { class: 'btn', text: 'Schließen', attrs: { type: 'button' },
+      el('button', { class: 'btn', text: t('ui.close'), attrs: { type: 'button' },
         on: { click: () => close() } }),
       printButton,
     ],
@@ -170,7 +171,7 @@ export function openPrintDialog(options: PrintOptions): void {
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
     }
-    cardSize.textContent = cards.length === 0 ? '' : 'Karte zum Ausschneiden: '
+    cardSize.textContent = cards.length === 0 ? '' : t('ui.card_to_cut')
       + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
   }
 
@@ -183,9 +184,9 @@ export function openPrintDialog(options: PrintOptions): void {
     meta.textContent = `${paper} · Ränder ${PAGE_MARGIN_MM} mm · ${cards}`;
     printButton.toggleAttribute('disabled', preparing);
     if (preparing) {
-      fill(printButton, el('span', { class: 'spinner' }), ' Bereite vor …');
+      fill(printButton, el('span', { class: 'spinner' }), ` ${t('ui.preparing')}`);
     } else {
-      printButton.textContent = 'Drucken';
+      printButton.textContent = t('ui.print');
     }
   }
 
@@ -238,88 +239,88 @@ export function openPrintDialog(options: PrintOptions): void {
 
     fill(controls,
       el('div', { class: 'opt' },
-        el('label', { text: 'Layout' }),
+        el('label', { text: t('ui.layout') }),
         segmented([
-          { label: 'Satzstreifen', active: settings.layout === 'strip', onPick: () => set('layout', 'strip') },
-          { label: 'Kartenblatt', active: settings.layout === 'sheet', onPick: () => set('layout', 'sheet') },
+          { label: t('ui.layout_strip'), active: settings.layout === 'strip', onPick: () => set('layout', 'strip') },
+          { label: t('ui.layout_sheet'), active: settings.layout === 'sheet', onPick: () => set('layout', 'sheet') },
         ]),
         el('span', { class: 'small faint', text: settings.layout === 'strip'
-          ? 'Eine Reihe pro Satz, in Leserichtung.'
-          : 'Einzelne Karten zum Ausschneiden. Doppelte Symbole erscheinen nur einmal.' }),
+          ? t('ui.layout_strip_note')
+          : t('ui.layout_sheet_note') }),
       ),
       el('div', { class: 'opt' },
-        el('label', { text: 'Papier' }),
+        el('label', { text: t('ui.paper') }),
         segmented([
           { label: 'A5', active: settings.paper === 'a5', onPick: () => set('paper', 'a5') },
           { label: 'A4', active: settings.paper === 'a4', onPick: () => set('paper', 'a4') },
           { label: 'A3', active: settings.paper === 'a3', onPick: () => set('paper', 'a3') },
         ]),
         segmented([
-          { label: 'Hoch', active: settings.orientation === 'portrait',
+          { label: t('ui.portrait'), active: settings.orientation === 'portrait',
             onPick: () => set('orientation', 'portrait') },
-          { label: 'Quer', active: settings.orientation === 'landscape',
+          { label: t('ui.landscape'), active: settings.orientation === 'landscape',
             onPick: () => set('orientation', 'landscape') },
         ], { marginTop: '6px' }),
       ),
       settings.layout === 'sheet' ? el('div', { class: 'opt' },
-        el('label', { text: 'Kartengröße' }),
+        el('label', { text: t('ui.card_size') }),
         segmented([
-          { label: 'In Millimetern', active: !gridded, onPick: () => set('sheetFit', 'size') },
-          { label: 'Raster', active: gridded, onPick: () => set('sheetFit', 'grid') },
+          { label: t('ui.in_millimetres'), active: !gridded, onPick: () => set('sheetFit', 'size') },
+          { label: t('ui.grid'), active: gridded, onPick: () => set('sheetFit', 'grid') },
         ]),
         el('span', { class: 'small faint', text: gridded
-          ? 'So viele Karten pro Seite. Die Karten füllen die Seite aus.'
-          : 'Feste Symbolgröße. Es passt, was passt.' }),
+          ? t('ui.grid_note')
+          : t('ui.fixed_note') }),
       ) : null,
       gridded ? el('div', { class: 'opt' },
         el('div', { class: 'opt--pair' },
-          numberOpt('opt-cols', 'Spalten', settings.gridCols, 1, 12, 1, 4, '', null,
+          numberOpt('opt-cols', t('ui.columns'), settings.gridCols, 1, 12, 1, 4, '', null,
             (next) => set('gridCols', Math.round(next))),
-          numberOpt('opt-rows', 'Zeilen', settings.gridRows, 1, 12, 1, 3, '', null,
+          numberOpt('opt-rows', t('ui.rows'), settings.gridRows, 1, 12, 1, 3, '', null,
             (next) => set('gridRows', Math.round(next))),
         ),
         cardSize,
-      ) : numberOpt('opt-size', 'Symbolgröße', settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
+      ) : numberOpt('opt-size', t('ui.symbol_size'), settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
         cardSize, (next) => set('symbolSizeMm', next)),
-      numberOpt('opt-cut', 'Schneiderand', settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
-        'Weißer Rand pro Karte, damit die Laminierfolie dicht abschließt.',
+      numberOpt('opt-cut', t('ui.cut_margin'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
+        t('ui.cut_margin_note'),
         (next) => set('cutMarginMm', next)),
       el('div', { class: 'opt' },
-        check('Wort unter dem Symbol', settings.showLabel, false, (next) => set('showLabel', next)),
+        check(t('ui.word_under'), settings.showLabel, false, (next) => set('showLabel', next)),
         settings.showLabel ? segmented([
           { label: 'unten', active: settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
           { label: 'oben', active: settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
         ], { marginTop: '6px' }) : null,
         settings.showLabel
-          ? numberOpt('opt-label', 'Schriftgröße', settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null,
+          ? numberOpt('opt-label', t('ui.font_size'), settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null,
               (next) => set('labelSizePt', next))
           : null,
       ),
       el('div', { class: 'opt' },
-        el('label', { text: 'Rahmen & Farbe' }),
-        check('Rahmen um jede Karte', settings.cardBorderMm > 0, false,
+        el('label', { text: t('ui.frame_colour') }),
+        check(t('ui.frame_each'), settings.cardBorderMm > 0, false,
           (next) => set('cardBorderMm', next ? 0.5 : 0)),
         settings.cardBorderMm > 0 ? el('div', { class: 'opt--pair' },
-          numberOpt('opt-border', 'Dicke', settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null,
+          numberOpt('opt-border', t('ui.thickness'), settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null,
             (next) => set('cardBorderMm', next)),
-          numberOpt('opt-radius', 'Ecken', settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null,
+          numberOpt('opt-radius', t('ui.corners'), settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null,
             (next) => set('cardRadiusMm', next)),
-          colorOpt('opt-border-color', 'Farbe', settings.cardBorderColor,
+          colorOpt('opt-border-color', t('ui.colour'), settings.cardBorderColor,
             (next) => set('cardBorderColor', next)),
         ) : null,
-        check('Hintergrundfarbe', settings.cardBackground !== null, false,
+        check(t('ui.background_colour'), settings.cardBackground !== null, false,
           (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null)),
         settings.cardBackground !== null
-          ? colorOpt('opt-bg', 'Farbe', settings.cardBackground, (next) => set('cardBackground', next))
+          ? colorOpt('opt-bg', t('ui.colour'), settings.cardBackground, (next) => set('cardBackground', next))
           : null,
         el('span', { class: 'small faint',
-          text: 'Wird innerhalb des Schneiderands gedruckt, damit die Laminierfolie noch dicht abschließt.' }),
+          text: t('ui.background_note') }),
       ),
       el('div', { class: 'opt' },
-        check('Schnittlinien anzeigen', settings.showCutLines, false, (next) => set('showCutLines', next)),
-        check('Satztext über der Reihe', settings.showSentenceText, settings.layout === 'sheet',
+        check(t('ui.cut_lines'), settings.showCutLines, false, (next) => set('showCutLines', next)),
+        check(t('ui.sentence_above'), settings.showSentenceText, settings.layout === 'sheet',
           (next) => set('showSentenceText', next)),
-        check('Ein Satz pro Seite', settings.onePerPage, settings.layout === 'sheet',
+        check(t('ui.one_per_page'), settings.onePerPage, settings.layout === 'sheet',
           (next) => set('onePerPage', next)),
       ),
       /*
@@ -328,11 +329,10 @@ export function openPrintDialog(options: PrintOptions): void {
        * be offering something bildhaft will not do.
        */
       options.provider === 'metacom' ? el('div', { class: 'opt' },
-        check('Copyright-Hinweis drucken', settings.showCopyright, false,
+        check(t('ui.print_copyright'), settings.showCopyright, false,
           (next) => set('showCopyright', next)),
         el('span', { class: 'small faint',
-          text: `„${METACOM_COPYRIGHT}“ am Seitenfuß. Nötig, sobald das Material weitergegeben oder `
-            + 'veröffentlicht wird — für den eigenen Gebrauch nicht.' }),
+          text: t('ui.copyright_note', { notice: METACOM_COPYRIGHT }) }),
       ) : null,
     );
 

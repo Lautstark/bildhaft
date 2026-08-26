@@ -36,7 +36,7 @@ const MUTATORS = [
 const READS = [
   'defaultSettings', 'loadSettings', 'listCollections', 'getCollection',
   'defaultCollectionName', 'listSentences', 'findByNormalized', 'searchSentences',
-  'countSentences', 'libraryTotals', 'listOverrides', 'overrideMap',
+  'countSentences', 'libraryTotals', 'listOverrides', 'listAllOverrides', 'overrideMap',
   'getOwnImage', 'listOwnImages', 'newId', 'onChanged',
 ];
 
