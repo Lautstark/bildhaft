@@ -218,15 +218,11 @@ npm run dev
 npm run build
 ```
 
-Das Lexikon wird aus kompakten Wortlisten erzeugt. Nach Änderungen an
-`scripts/lexicon-seeds.mjs`:
-
-```bash
-node scripts/build-lexicon.mjs
-```
-
-Die erzeugten JSON-Dateien unter `src/data/` sind eingecheckt, damit der Build
-keinen Codegenerierungs-Schritt braucht.
+Der Build braucht keinen Codegenerierungs-Schritt. Das deutsche Lexikon, gegen
+das diese App zuordnet, wird zwar erzeugt — aber in
+[bildquelle](https://github.com/Lautstark/bildquelle), wo auch die Pipeline
+liegt, die es liest: dort `scripts/build-lexicon.mjs`, aus den Wortlisten
+daneben. bildhaft installiert das Ergebnis auf einem festen Tag.
 
 ### Git-Hooks
 
@@ -242,22 +238,6 @@ vollständige Installation genügt:
 ```bash
 git config core.hooksPath .githooks
 ```
-
-### Abdeckung des Lexikons messen
-
-```bash
-node scripts/coverage.mjs --verbose
-```
-
-Zeigt, welchen Anteil der bedeutungstragenden Wörter aus `scripts/corpus.de.txt`
-das Lexikon direkt kennt, und listet die übrigen auf. Der Textkorpus besteht
-bewusst aus dem, was Leute wirklich eintippen: Alltag, Therapiesätze und Zeilen
-aus Bilderbüchern. `--verbose` nennt die Lücken — so entscheidet man, was als
-Nächstes dazugehört.
-
-Die Zahl gilt für einen Korpus, mit dem der Wortschatz ausgewählt wurde; sie ist
-eine Untergrenze, keine Note. Wer eine Änderung beurteilen will, schreibt neue
-Sätze, die nicht in die Auswahl eingeflossen sind.
 
 ### Tests
 
@@ -286,8 +266,7 @@ nur veröffentlicht, wenn sie bestehen.**
 | `src/core/` | Zuordnungs-Pipeline und Datenmodell, frei von UI |
 | `src/db/` | IndexedDB-Schema, Repository, Export/Import |
 | `src/ui/` | Oberfläche, Dialoge und die Element-Helfer dahinter |
-| `src/data/` | Erzeugte Lexikondaten |
-| `scripts/` | Lexikon-Generator und seine Wortlisten |
+| `src/i18n/` | Die beiden Texttabellen und die Sprache der Seite |
 
 Zwei Dinge liegen außerhalb dieses Repositorys, beide auf ein genaues
 Release-Tag gepinnt, damit ein Install den Build nicht von selbst verschiebt:
