@@ -211,15 +211,11 @@ npm run dev
 npm run build
 ```
 
-The lexicon is generated from compact word lists. After editing
-`scripts/lexicon-seeds.mjs`:
-
-```bash
-node scripts/build-lexicon.mjs
-```
-
-The generated JSON under `src/data/` is committed, so the build needs no codegen
-step.
+The build needs no codegen step. The German lexicon this app matches against is
+generated, but it is generated in
+[bildquelle](https://github.com/Lautstark/bildquelle), which is where the
+pipeline that reads it lives — `scripts/build-lexicon.mjs` over there, from the
+word lists beside it. bildhaft installs the result at a pinned tag.
 
 ### Git hooks
 
@@ -235,22 +231,6 @@ To wire it up without a full install:
 ```bash
 git config core.hooksPath .githooks
 ```
-
-### Measuring lexicon coverage
-
-```bash
-node scripts/coverage.mjs --verbose
-```
-
-Reports what share of the content words in `scripts/corpus.de.txt` the lexicon
-knows outright, and lists the ones it does not. The corpus is deliberately made
-of the material people actually type: daily routines, therapy phrases and lines
-from picture books. `--verbose` prints the misses, which is how you decide what
-to add next.
-
-The number it prints is coverage against a corpus that was itself used to choose
-the vocabulary, so treat it as a floor, not a score. Judge a change by writing
-fresh sentences that did not inform it.
 
 ### Tests
 
