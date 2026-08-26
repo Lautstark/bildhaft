@@ -33,11 +33,13 @@ async function attach(page: Page, data: string, name = 'Bente.png'): Promise<voi
 }
 
 const crop = (page: Page) => page.locator('.crop');
-const dropCrop = (page: Page) => page.getByRole('button', { name: 'Zuschneiden abbrechen' });
 
-/* Keeping the square is the footer's Fertig and nothing else — the crop has no
- * confirming button of its own, because the dialog already had one. */
+/* The crop adds no buttons of its own. Keeping the square is the footer's
+ * Fertig, dropping it is the ✕ — both of which the dialog already had, and
+ * both of which mean here what they mean everywhere else in it. */
 const keepCrop = (page: Page) => page.getByRole('button', { name: 'Fertig' }).click();
+const dropCrop = (page: Page) =>
+  page.getByRole('button', { name: 'Dialog schließen' }).click();
 
 /** The picture the third slot of the first row is drawing. */
 const kept = (page: Page) => page.locator('.row').first().locator('.slot').nth(2).locator('img');
@@ -93,16 +95,18 @@ test('a square picture is kept as it is, with nothing to answer', async ({ page 
   await expect(kept(page)).toHaveJSProperty('naturalWidth', 3);
 });
 
-test('a wide picture opens its square, and cancelling costs nothing', async ({ page }) => {
+test('a wide picture takes the dialog over while its square is chosen',
+  async ({ page }) => {
   /*
-   * Nothing is written until the press that keeps a square, so a cancel leaves
-   * the field exactly as it was found — here, still showing the ARASAAC symbol
-   * the sentence resolved to.
+   * The dialog staying open at all is the change: it used to settle on the file
+   * alone. Everything else in it going away for the duration is asserted with
+   * that, because a live grid of symbols under an open crop is a press that
+   * throws the crop away without saying so.
    *
-   * The dialog staying open is the change: it used to settle on the file alone.
-   * The rest of it going away for the duration is asserted with it, because a
-   * live grid of symbols under an open crop is a press that throws the crop
-   * away without saying so.
+   * The crop adding no button of its own is the point rather than an accident
+   * of the markup. It had a confirming one and then a cancelling one, and both
+   * went the same way: the footer already says Fertig and the corner already
+   * says ✕.
    */
   await openPicker(page);
   await attach(page, WIDE);
@@ -110,28 +114,20 @@ test('a wide picture opens its square, and cancelling costs nothing', async ({ p
   await expect(crop(page)).toBeVisible();
   await expect(page.locator('.picker__grid')).toBeHidden();
   await expect(page.getByLabel('Symbol suchen')).toBeHidden();
-
-  await dropCrop(page).click();
-
-  await expect(crop(page)).toHaveCount(0);
-  await expect(page.locator('.picker__grid')).toBeVisible();
-  await expect(page.getByLabel('Symbol suchen')).toBeVisible();
-
-  await keepCrop(page);
-  // 1 is the ARASAAC mock, so the slot never took a picture of its own.
-  await expect(kept(page)).toHaveJSProperty('naturalWidth', 1);
+  await expect(page.locator('.picker__crop button')).toHaveCount(0);
 });
 
 test('the ✕ drops the square, because that is what ✕ means', async ({ page }) => {
-  /* The other side of Fertig, and the line this dialog has always drawn: a
-   * press that settles it keeps what is in it, a dismissal says nothing
-   * happened. Nothing has been written by the time this runs, so the field is
-   * left showing the symbol the sentence resolved to. */
+  /* The other side of Fertig, the line this dialog has always drawn, and — now
+   * that the crop has no button of its own — the only way out that does not
+   * keep the square. A press that settles the dialog keeps what is in it, a
+   * dismissal says nothing happened. Nothing has been written by the time this
+   * runs, so the field is left showing the symbol the sentence resolved to. */
   await openPicker(page);
   await attach(page, WIDE);
   await expect(crop(page)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await dropCrop(page);
   // Asserted, or the rest of this test passes just as well on a click that hit
   // nothing: the field shows the ARASAAC mock either way.
   await expect(page.locator('dialog[open]')).toHaveCount(0);

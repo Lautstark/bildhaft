@@ -255,36 +255,27 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     };
 
     /*
-     * One button, not two. The other one took the square, and the footer
-     * already carries a button that means yes — two controls confirming the
-     * same thing an inch apart is not a choice, it is a question about which
-     * of them is the real one. The sentence above names the one that is.
-     *
-     * Not called simply "Abbrechen": on a field being added the footer's own
-     * destructive button already says that, and two of them would be two
-     * different retreats wearing one word.
-     *
-     * It stays, though, and not for symmetry: without it the only way out of
-     * an open crop that does not keep the square is the ✕, which takes the
-     * whole dialog and the caption typed into it.
+     * No buttons of its own, and it had two. Both went the same way and for the
+     * same reason: this dialog already has a footer, the footer already says
+     * what it does, and a control repeating that an inch higher is a question
+     * about which of them is the real one rather than a choice. Fertig keeps
+     * the square — so does Enter — and the ✕ drops it, which is what all three
+     * mean everywhere else here. The sentence below says the first half; what
+     * a ✕ means has never needed saying.
      */
-    const drop = el('button', {
-      class: 'btn sm', text: 'Zuschneiden abbrechen', attrs: { type: 'button' },
-      on: { click: () => endCrop() },
-    });
-
     fill(cropSlot,
       cutter.box,
       cutter.zoom,
       el('p', { class: 'small muted', style: { margin: '8px 0 0' },
         text: 'Bild verschieben, mit dem Regler näher heran. „Fertig“ übernimmt den Ausschnitt.' }),
-      el('div', { class: 'picker__own' }, drop),
     );
     cropSlot.hidden = false;
     for (const node of asideWhileCropping) node.hidden = true;
     cutter.box.focus();
   }
 
+  /** Back to the suggestions, keeping nothing. The one caller left is a cut
+   *  that failed: every deliberate way out of a crop is the dialog's own. */
   function endCrop(): void {
     cropper?.close();
     cropper = null;
