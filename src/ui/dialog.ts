@@ -17,9 +17,10 @@
 
 import { confirmDialog as ask, openDialog as open } from '@lautstark/design/dialog';
 import type { DialogOptions, OpenDialog } from '@lautstark/design/dialog';
+import { t } from '../i18n/index.ts';
 
 /** The corner cross, in this app's language. Never the same as a footer's. */
-const CLOSE = 'Dialog schließen';
+const CLOSE = t('ui.close_dialog');
 
 export type { OpenDialog };
 
@@ -31,5 +32,5 @@ export function openDialog(options: Omit<DialogOptions, 'closeLabel'>): OpenDial
 export function confirmDialog(options: {
   title: string; body: string; confirmLabel: string; danger?: boolean;
 }): Promise<boolean> {
-  return ask({ ...options, cancelLabel: 'Abbrechen', closeLabel: CLOSE });
+  return ask({ ...options, cancelLabel: t('ui.cancel'), closeLabel: CLOSE });
 }

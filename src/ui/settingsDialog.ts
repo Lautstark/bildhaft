@@ -8,6 +8,7 @@ import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark
 import type { Sicherung } from '@lautstark/sicherung';
 import { mountBackupFolder } from './backupFolder.ts';
 import { resetSymbolResolution } from './symbols.ts';
+import { LANG, LANGUAGES, LANGUAGE_NAMES, chooseLanguage, t } from '../i18n/index.ts';
 
 export interface SettingsOptions {
   settings: AppSettings;
@@ -67,14 +68,15 @@ export function openSettings(options: SettingsOptions): void {
 
   const arasaacPanel = makePanel('ARASAAC');
   const metacomPanel = makePanel('METACOM');
-  const dictPanel = makePanel('Mein Wörterbuch');
-  const wordsPanel = makePanel('Funktionswörter');
-  const themePanel = makePanel('Erscheinungsbild');
-  const dataPanel = makePanel('Daten');
+  const dictPanel = makePanel(t('ui.set_dictionary'));
+  const wordsPanel = makePanel(t('ui.set_function_words'));
+  const langPanel = makePanel(t('ui.set_language'));
+  const themePanel = makePanel(t('ui.set_appearance'));
+  const dataPanel = makePanel(t('ui.set_data'));
 
   const dialog = openDialog({
-    title: 'Einstellungen',
-    body: [arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel, dataPanel]
+    title: t('ui.settings'),
+    body: [arasaacPanel, metacomPanel, dictPanel, wordsPanel, langPanel, themePanel, dataPanel]
       .map((p) => p.node),
     onClose: () => { unsubscribe(); folder?.dispose(); options.onClose(); },
   });
@@ -131,8 +133,8 @@ export function openSettings(options: SettingsOptions): void {
    */
   function defaultMoved(name: string): string {
     return options.openCollectionProvider()
-      ? `${name} ist jetzt die Standardquelle. Diese Sammlung hat eine eigene Quelle und bleibt, wie sie ist.`
-      : `${name} ist jetzt die Standardquelle. Alle Zeilen werden neu gezeichnet.`;
+      ? t('ui.default_moved_kept', { name })
+      : t('ui.default_moved_redrawn', { name });
   }
 
   /**
@@ -181,7 +183,7 @@ export function openSettings(options: SettingsOptions): void {
     } catch (err) {
       // An aborted folder picker is a normal user action, not an error.
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
-        options.onNotify(err instanceof Error ? err.message : 'Das hat nicht geklappt.');
+        options.onNotify(err instanceof Error ? err.message : t('ui.didnt_work'));
       }
     } finally {
       busy = false;
@@ -219,7 +221,7 @@ export function openSettings(options: SettingsOptions): void {
    * says and what happens afterwards go through the same sentence.
    */
   function useButton(id: ProviderId): HTMLElement {
-    return el('button', { class: 'btn sm', text: 'Als Standard verwenden', attrs: { type: 'button' },
+    return el('button', { class: 'btn sm', text: t('ui.use_as_default'), attrs: { type: 'button' },
       on: {
         click: () => {
           change({ ...settings, activeProvider: id });
@@ -238,9 +240,7 @@ export function openSettings(options: SettingsOptions): void {
    */
   function defaultNote(): HTMLElement {
     return el('p', { class: 'small faint', style: { margin: '10px 0 0' }, html:
-      'Die Standardquelle gilt für jede Sammlung, die keine eigene gewählt hat — '
-      + 'und wandert mit, wenn du sie hier umstellst. Eine einzelne Sammlung stellst '
-      + 'du über das Menü <strong>⋯</strong> neben ihrem Namen um.' });
+      t('ui.default_note') });
   }
 
   function paintSources(): void {
@@ -254,11 +254,11 @@ export function openSettings(options: SettingsOptions): void {
 
     mark(arasaacPanel, fallback === 'arasaac');
     arasaacPanel.state.textContent =
-      `${fallback === 'arasaac' ? 'Standardquelle' : 'Immer verfügbar'} · ${sourceFacts('arasaac').facts}`;
+      `${fallback === 'arasaac' ? t('ui.default_source') : t('ui.always_available')} · ${sourceFacts('arasaac').facts}`;
 
     fill(arasaacPanel.body,
       el('p', { class: 'small muted', style: { margin: '0' },
-        text: 'Rund 13.000 Piktogramme mit deutschen Bezeichnungen, direkt aus dem öffentlichen ARASAAC-Verzeichnis. Keine Einrichtung nötig. Ergebnisse und Bilder werden lokal zwischengespeichert.' }),
+        text: t('ui.arasaac_about') }),
       el('p', { class: 'small faint', style: { margin: '6px 0 0' }, text: arasaac.attribution ?? '' }),
       fallback !== 'arasaac'
         ? el('div', { style: { marginTop: '10px' } }, useButton('arasaac'), defaultNote())
@@ -284,7 +284,15 @@ export function openSettings(options: SettingsOptions): void {
 
     fill(metacomPanel.body,
       el('div', { class: 'notice notice--accent', style: { marginBottom: '10px' },
-        text: 'METACOM ist lizenzpflichtig. bildhaft liefert keine METACOM-Symbole mit und überträgt niemals METACOM-Dateien. Du wählst deinen eigenen, lizenzierten Ordner aus; alle Bilder werden ausschließlich lokal in deinem Browser gelesen und angezeigt.' }),
+        text: t('ui.metacom_licence') }),
+      /* METACOM's ids are the filenames in somebody's own licensed folder, and
+         those are German. Saying so on the English page is not a disclaimer:
+         it is the difference between a source that looks broken and one that
+         was never going to answer the words being typed at it. */
+      LANG === 'en'
+        ? el('p', { class: 'small faint', style: { margin: '6px 0 0' },
+            text: t('ui.metacom_german_only') })
+        : null,
 
       /*
        * The one state that is a thing to do rather than a thing to read: no
@@ -296,10 +304,7 @@ export function openSettings(options: SettingsOptions): void {
       attention
         ? el('div', { class: 'notice bad', style: { marginBottom: '10px' }, text:
             status.kind === 'needs-setup'
-              ? 'Der Ordner ist gemerkt, aber dieser Browser hat den Zugriff darauf '
-                + 'zurückgesetzt — das macht er zwischen Besuchen. Ein Druck auf '
-                + '„Symbolordner wählen" bestätigt ihn wieder; neu ausgesucht werden '
-                + 'muss nichts.'
+              ? t('ui.metacom_permission_lost')
               // The other state that needs acting on is a folder that could not
               // be read, and the package's own words for it are the specific
               // ones: which failure, not that there was one.
@@ -319,25 +324,25 @@ export function openSettings(options: SettingsOptions): void {
 
       el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
         MetacomProvider.supportsPersistentPicker
-          ? el('button', { class: 'btn sm', text: 'Symbolordner wählen',
+          ? el('button', { class: 'btn sm', text: t('ui.choose_folder'),
               attrs: { type: 'button', disabled: busy },
-              on: { click: () => void run(() => metacom.pickDirectory(), 'METACOM-Ordner eingelesen.', true) } })
-          : fileButton('Symbolordner wählen', null, true,
-              (files) => void run(() => metacom.useFileList(files), 'METACOM-Ordner eingelesen.', true)),
+              on: { click: () => void run(() => metacom.pickDirectory(), t('ui.metacom_read'), true) } })
+          : fileButton(t('ui.choose_folder'), null, true,
+              (files) => void run(() => metacom.useFileList(files), t('ui.metacom_read'), true)),
 
-        fileButton('ZIP einlesen', '.zip,application/zip', false,
-          (files) => void run(() => metacom.useZip(files[0]), 'ZIP eingelesen.', true)),
+        fileButton(t('ui.read_zip'), '.zip,application/zip', false,
+          (files) => void run(() => metacom.useZip(files[0]), t('ui.zip_read'), true)),
 
         metacom.isReady()
-          ? el('button', { class: 'btn sm', text: 'Neu einlesen',
+          ? el('button', { class: 'btn sm', text: t('ui.reindex'),
               attrs: { type: 'button', disabled: busy },
-              on: { click: () => void run(() => metacom.rebuildIndex(), 'Index neu aufgebaut.') } })
+              on: { click: () => void run(() => metacom.rebuildIndex(), t('ui.index_rebuilt')) } })
           : null,
 
         fallback !== 'metacom' && metacom.isReady() ? useButton('metacom') : null,
 
         status.kind !== 'needs-setup'
-          ? el('button', { class: 'btn sm destructive', text: 'Ordner vergessen',
+          ? el('button', { class: 'btn sm destructive', text: t('ui.forget_folder'),
               attrs: { type: 'button', disabled: busy },
               on: { click: () => void run(async () => {
                 await metacom.forget();
@@ -351,7 +356,7 @@ export function openSettings(options: SettingsOptions): void {
 
       !MetacomProvider.supportsPersistentPicker
         ? el('p', { class: 'small faint', style: { margin: '10px 0 0' },
-            text: 'Dieser Browser kann den Ordner nicht dauerhaft merken. Die Auswahl gilt bis zum Neuladen der Seite. In Chrome oder Edge ist sie einmalig.' })
+            text: t('ui.folder_not_remembered') })
         : null,
 
       fallback !== 'metacom' && metacom.isReady() ? defaultNote() : null,
@@ -374,11 +379,11 @@ export function openSettings(options: SettingsOptions): void {
   function forgottenSays(): string {
     const own = options.openCollectionProvider();
     if (own === 'metacom') {
-      return 'METACOM-Ordner entfernt. Diese Sammlung ist auf METACOM eingestellt und kann bis auf Weiteres keine Symbole zeigen.';
+      return t('ui.metacom_gone_collection');
     }
     return settings.activeProvider === 'metacom'
-      ? 'METACOM-Ordner entfernt. ARASAAC ist wieder die Standardquelle.'
-      : 'METACOM-Ordner entfernt.';
+      ? t('ui.metacom_gone_default')
+      : t('ui.metacom_gone');
   }
 
   /*
@@ -402,22 +407,19 @@ export function openSettings(options: SettingsOptions): void {
         },
       },
     },
-      el('option', { text: 'Keine Vorgabe', attrs: { value: '' } }),
+      el('option', { text: t('ui.no_preference'), attrs: { value: '' } }),
       ...renderings.map((rendering) => el('option', {
-        text: `${rendering.segment} · ${rendering.count} Symbole`,
+        text: `${rendering.segment} · ${t('ui.n_symbols', { n: rendering.count })}`,
         attrs: { value: rendering.segment },
       })),
     );
     select.value = settings.metacomRendering ?? '';
 
     return el('div', { class: 'opt', style: { marginTop: '14px' } },
-      el('label', { text: 'Darstellung', attrs: { for: 'opt-rendering' } }),
+      el('label', { text: t('ui.rendering'), attrs: { for: 'opt-rendering' } }),
       select,
       el('span', { class: 'small faint', text:
-        'METACOM enthält dieselben Symbole mehrfach — mit und ohne Rahmen, mit und '
-        + 'ohne aufgedrucktes Wort. Ohne Vorgabe entscheidet der Zufall, welche '
-        + 'Fassung ein Satz bekommt. Die Auswahl gilt für neue Sätze und ordnet '
-        + 'bestehende Zeilen nach; von Hand gewählte Symbole bleiben.' }),
+        t('ui.rendering_note') }),
     );
   }
 
@@ -432,31 +434,31 @@ export function openSettings(options: SettingsOptions): void {
 
     fill(dictPanel.body,
       el('p', { class: 'small muted', style: { marginTop: '0' },
-        text: `Jede Korrektur wird hier gemerkt und beim nächsten Mal automatisch verwendet — für ${provider === 'arasaac' ? 'ARASAAC' : 'METACOM'}.` }),
+        text: t('ui.dictionary_note', { source: provider === 'arasaac' ? 'ARASAAC' : 'METACOM' }) }),
       list);
-    fill(list, el('p', { class: 'small muted', text: 'Wird geladen …' }));
+    fill(list, el('p', { class: 'small muted', text: t('ui.loading') }));
     // The count comes from the database, so the heading would otherwise be
     // blank for a frame — and a blank heading is this panel's whole promise
     // broken at the moment somebody is reading it. Say what is true meanwhile.
-    if (!dictPanel.state.textContent) dictPanel.state.textContent = 'Wird geladen …';
+    if (!dictPanel.state.textContent) dictPanel.state.textContent = t('ui.loading');
 
     void listOverrides(provider).then((overrides: Override[]) => {
       // The heading counts what is inside, whether or not anybody opens it.
       dictPanel.state.textContent = overrides.length === 0
-        ? 'Noch keine Einträge'
-        : `${overrides.length} ${overrides.length === 1 ? 'Eintrag' : 'Einträge'}`;
+        ? t('ui.no_entries')
+        : t(overrides.length === 1 ? 'ui.n_entry' : 'ui.n_entries', { n: overrides.length });
 
       if (overrides.length === 0) {
         fill(list, el('div', { class: 'empty' },
-          el('b', { text: 'Noch keine Einträge' }),
-          el('small', { text: 'Klicke in einer Zeile auf ein Symbol und wähle ein besseres aus.' })));
+          el('b', { text: t('ui.no_entries') }),
+          el('small', { text: t('ui.dictionary_empty_hint') })));
         return;
       }
       fill(list, ...overrides.map((override) => el('div',
         { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 2px' } },
         el('b', { text: override.token, style: { minWidth: '140px' } }),
         el('span', { class: 'small muted', text: `→ ${override.label}`, style: { flex: '1' } }),
-        el('button', { class: 'btn destructive sm', text: 'Entfernen', attrs: { type: 'button' },
+        el('button', { class: 'btn destructive sm', text: t('ui.remove'), attrs: { type: 'button' },
           on: { click: async () => { await deleteOverride(override.provider, override.token); paintDictionary(); } } }),
       )));
     });
@@ -470,27 +472,25 @@ export function openSettings(options: SettingsOptions): void {
   function fillWords(): void {
     const area = el('textarea', {
       class: 'field stopword-area',
-      attrs: { spellcheck: 'false', 'aria-label': 'Funktionswörter' },
+      attrs: { spellcheck: 'false', 'aria-label': t('ui.set_function_words') },
     });
-    area.value = settings.stopwords.join('\n');
-    wordsPanel.state.textContent = `${settings.stopwords.length} Wörter`;
+    area.value = settings.stopwords[LANG].join('\n');
+    wordsPanel.state.textContent = t('ui.n_words', { n: settings.stopwords[LANG].length });
 
     fill(wordsPanel.body,
       el('p', { class: 'small muted', style: { marginTop: '0' }, html:
-        'Diese Wörter bekommen kein eigenes Symbol — AAC-Sequenzen sind telegrafisch. '
-        + 'Pronomen, Präpositionen und Modalverben stehen bewusst <em>nicht</em> auf der '
-        + 'Liste, weil sie Bedeutung tragen. Ein Wort pro Zeile.' }),
+        t('ui.function_words_note') }),
       area,
       el('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } },
-        el('button', { class: 'btn primary sm', text: 'Speichern', attrs: { type: 'button' },
+        el('button', { class: 'btn primary sm', text: t('ui.save'), attrs: { type: 'button' },
           on: { click: () => {
             const words = [...new Set(area.value.split(/[\n,]/).map((w) => w.trim().toLowerCase()).filter(Boolean))]
-              .sort((a, b) => a.localeCompare(b, 'de'));
+              .sort((a, b) => a.localeCompare(b, LANG));
             area.value = words.join('\n');
-            wordsPanel.state.textContent = `${words.length} Wörter`;
-            change({ ...settings, stopwords: words });
+            wordsPanel.state.textContent = t('ui.n_words', { n: words.length });
+            change({ ...settings, stopwords: { ...settings.stopwords, [LANG]: words } });
           } } }),
-        el('span', { class: 'small faint', text: 'Gilt für neu übersetzte Sätze.',
+        el('span', { class: 'small faint', text: t('ui.applies_to_new'),
           style: { alignSelf: 'center' } }),
       ),
     );
@@ -509,10 +509,38 @@ export function openSettings(options: SettingsOptions): void {
    */
   const THEME_KEY = 'bildhaft.theme';
   const THEME_LABELS: Record<Theme, string> = {
-    system: 'Systemeinstellung',
-    light: 'Hell',
-    dark: 'Dunkel',
+    system: t('ui.theme_system'),
+    light: t('ui.theme_light'),
+    dark: t('ui.theme_dark'),
   };
+
+  /*
+   * The language of the page, which is the one choice here that reloads.
+   *
+   * Everything else on this dialog repaints in place. This cannot: the labels
+   * are read out of the table when each element is built, and there is no
+   * re-render path for the shell to rebuild them through. A reload is the
+   * honest small version - see i18n/index.ts, which says what it would take to
+   * do it the way vorlaut does and why bildhaft does not need to.
+   *
+   * The languages name themselves, so somebody who has landed in the one they
+   * cannot read can still find their way out.
+   */
+  function fillLanguage(): void {
+    langPanel.state.textContent = LANGUAGE_NAMES[LANG];
+
+    fill(langPanel.body,
+      el('div', { class: 'opt' },
+        el('div', { class: 'segmented', attrs: { role: 'group', 'aria-label': t('ui.set_language') } },
+          ...LANGUAGES.map((code) => el('button', {
+            text: LANGUAGE_NAMES[code],
+            attrs: { type: 'button', 'aria-pressed': String(code === LANG) },
+            on: { click: () => chooseLanguage(code) },
+          }))),
+        el('span', { class: 'small faint', text: t('ui.language_note') }),
+      ),
+    );
+  }
 
   function fillTheme(): void {
     const current = readTheme(THEME_KEY);
@@ -524,7 +552,7 @@ export function openSettings(options: SettingsOptions): void {
         // aria-pressed, which is the vocabulary the print dialog already uses,
         // and a radiogroup whose children are not radios reads worse than a
         // labelled group of buttons.
-        el('div', { class: 'segmented', attrs: { role: 'group', 'aria-label': 'Erscheinungsbild' } },
+        el('div', { class: 'segmented', attrs: { role: 'group', 'aria-label': t('ui.set_appearance') } },
           ...THEMES.map((theme) => el('button', {
             text: THEME_LABELS[theme],
             attrs: { type: 'button', 'aria-pressed': String(theme === current) },
@@ -538,8 +566,7 @@ export function openSettings(options: SettingsOptions): void {
             } },
           }))),
         el('span', { class: 'small faint', text:
-          'Ohne eigene Wahl folgt bildhaft dem Gerät — und wechselt mit, wenn das '
-          + 'Gerät abends auf dunkel umstellt. Die Wahl gilt nur in diesem Browser.' }),
+          t('ui.theme_note') }),
       ),
     );
   }
@@ -547,9 +574,7 @@ export function openSettings(options: SettingsOptions): void {
   function fillData(): void {
     fill(dataPanel.body,
       el('div', { class: 'notice', style: { marginBottom: '14px' }, html:
-        '<strong>Sicherung.</strong> bildhaft speichert alles im Browser. Wird der '
-        + 'Browser-Speicher gelöscht, ist die Arbeit weg. Eine Sicherung enthält alle '
-        + 'Sammlungen und dein Wörterbuch — nur Symbol-Verweise, keine Bilder.' }),
+        t('ui.backup_note') }),
       // The folder first, because it is the one that keeps working after
       // somebody stops thinking about it. Null in any browser without the
       // picker, and then the download below is the whole offer, unchanged.
@@ -565,19 +590,16 @@ export function openSettings(options: SettingsOptions): void {
        * because importCollectionFile routes on the file's own format.
        */
       el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
-        el('button', { class: 'btn primary sm', text: 'Sicherung als Datei',
+        el('button', { class: 'btn primary sm', text: t('ui.backup_download'),
           attrs: { type: 'button' }, on: { click: options.onExportAll } }),
-        fileButton('Sicherung einlesen', 'application/json,.json', false,
+        fileButton(t('ui.backup_read'), 'application/json,.json', false,
           (files) => { close(); options.onImport(files[0]); })),
       el('p', { class: 'small faint', style: { margin: '8px 0 0' }, html:
-        'Einlesen fügt hinzu und überschreibt nie — auch die Datei einer '
-        + 'einzelnen Sammlung wird hier gelesen. Einzelne Sammlungen '
-        + 'exportierst du über das Menü <strong>⋯</strong> neben ihrem Namen.' }),
-      el('h3', { text: 'Alles löschen', style: { fontSize: '13px', margin: '24px 0 6px' } }),
+        t('ui.backup_read_note') }),
+      el('h3', { text: t('ui.delete_all_heading'), style: { fontSize: '13px', margin: '24px 0 6px' } }),
       el('p', { class: 'small faint', style: { margin: '0 0 10px' }, text:
-        'Setzt bildhaft vollständig zurück: alle Sammlungen, alle Zeilen, dein Wörterbuch '
-        + 'und die zwischengespeicherten Symbole. Das lässt sich nicht rückgängig machen.' }),
-      el('button', { class: 'btn destructive sm', text: 'Alle Daten löschen',
+        t('ui.delete_all_note') }),
+      el('button', { class: 'btn destructive sm', text: t('ui.delete_all_button'),
         attrs: { type: 'button' }, on: { click: () => { close(); options.onClearAll(); } } }),
     );
   }
@@ -585,6 +607,7 @@ export function openSettings(options: SettingsOptions): void {
   paintSources();
   paintDictionary();
   fillWords();
+  fillLanguage();
   fillTheme();
   fillData();
 }

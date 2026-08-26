@@ -24,6 +24,7 @@
 import type { ProviderId } from '../core/types.ts';
 import { getProvider, metacom, needsAttention, PROVIDER_IDS } from '@lautstark/bildquelle';
 import { el, fill } from './dom.ts';
+import { t } from '../i18n/index.ts';
 
 export interface SourceFacts {
   id: ProviderId;
@@ -50,7 +51,7 @@ export interface SourceFacts {
  * so its line is the one fact that decides between it and METACOM. Kept short
  * because both surfaces put it on one line beside a role word.
  */
-const ARASAAC_FACTS = 'rund 13.000 Piktogramme';
+const ARASAAC_FACTS = t('ui.arasaac_count');
 
 export function sourceFacts(id: ProviderId): SourceFacts {
   const label = getProvider(id).name;
@@ -66,7 +67,7 @@ export function sourceFacts(id: ProviderId): SourceFacts {
     // Narrowed on kind, not on isReady(): only the ready variant has no message.
     facts: status.kind === 'ready'
       ? `${metacom.symbolCount} Symbole · ${metacom.rootName}`
-      : attention ? 'Zugriff bestätigen'
+      : attention ? t('ui.confirm_access')
         : status.message,
     ready: metacom.isReady(),
     attention,
@@ -145,12 +146,12 @@ export function sourcePicker(spec: SourcePickerSpec): SourcePicker {
 
   function draw(): void {
     const fallback = sourceFacts(spec.fallback());
-    const rows = [row(null, 'Standard folgen', `Zurzeit ${fallback.label} · ${fallback.facts}`, null)];
+    const rows = [row(null, t('ui.follow_default'), `Zurzeit ${fallback.label} · ${fallback.facts}`, null)];
 
     for (const id of PROVIDER_IDS) {
       const facts = sourceFacts(id);
       rows.push(row(id, facts.label, facts.facts, facts.ready ? null
-        : 'In den Einstellungen einrichten, dann ist diese Quelle hier wählbar.'));
+        : t('ui.set_up_first')));
     }
 
     fill(list, ...rows);
@@ -183,7 +184,7 @@ export function sourcePicker(spec: SourcePickerSpec): SourcePicker {
   });
 
   list.setAttribute('role', 'radiogroup');
-  list.setAttribute('aria-label', 'Symbolquelle');
+  list.setAttribute('aria-label', t('ui.symbol_source'));
   draw();
   return { node: list, draw };
 }

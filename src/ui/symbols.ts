@@ -2,6 +2,7 @@ import type { ProviderId, Slot } from '../core/types.ts';
 import { getOwnImage } from '../db/repo.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, svg } from './dom.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * Process-wide cache of resolved image URLs. Rows, the slot picker and the print
@@ -172,7 +173,7 @@ export function symbolView(options: SymbolOptions): SymbolView {
     tile.removeAttribute('aria-hidden');
     tile.setAttribute('role', 'button');
     tile.setAttribute('tabindex', '0');
-    tile.setAttribute('title', 'Symbol konnte nicht geladen werden. Zum erneuten Versuch klicken.');
+    tile.setAttribute('title', t('ui.symbol_failed'));
     const again = (event: Event) => {
       event.stopPropagation();
       resolve();

@@ -1,7 +1,8 @@
 import { newId } from '../db/repo.ts';
 import type { Override, ProviderId, Slot } from './types.ts';
 import type { SymbolProvider } from '@lautstark/bildquelle';
-import { resolveText, type ResolvedWord } from '@lautstark/bildquelle/german';
+import type { ResolvedWord } from '@lautstark/bildquelle/german';
+import { resolveText } from '../i18n/pipeline.ts';
 
 /**
  * How many candidates travel with a stored slot. Enough to change your mind

@@ -19,6 +19,7 @@
 import { Sicherung, type Status } from '@lautstark/sicherung';
 import { actionsFor, ago, needsAttention } from '@lautstark/sicherung/ui';
 import { el, fill } from './dom.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * The one word this file has to say about language: bildhaft is German, so
@@ -40,10 +41,10 @@ const since = (at: number): string => ago(at, LOCALE);
  * position rather than a gap. See src/ui/dom.ts.
  */
 const LABELS: Record<'choose' | 'confirm' | 'retry' | 'forget', string> = {
-  choose: 'Ordner wählen',
-  confirm: 'Zugriff bestätigen',
-  retry: 'Erneut versuchen',
-  forget: 'Ordner vergessen',
+  choose: t('ui.folder_choose'),
+  confirm: t('ui.confirm_access'),
+  retry: t('ui.try_again'),
+  forget: t('ui.forget_folder'),
 };
 
 /** The age of the last real copy, or the admission that there has never been one. */
@@ -65,8 +66,8 @@ const lastCopy = (at: number | null): string =>
 export function sentence(status: Status): string {
   switch (status.kind) {
     case 'unsupported': return '';
-    case 'off': return 'Noch kein Ordner gewählt.';
-    case 'saving': return 'Wird gesichert …';
+    case 'off': return t('ui.no_folder_yet');
+    case 'saving': return t('ui.backing_up');
     case 'idle': return status.lastWrite === null
       ? `Ordner „${status.folder}“ · noch nie gesichert`
       : `Ordner „${status.folder}“ · gesichert ${since(status.lastWrite)}`;
@@ -132,8 +133,7 @@ export function mountBackupFolder(
   const actions = el('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } });
   const node = el('div', { style: { margin: '0 0 18px' } },
     el('p', { class: 'small faint', style: { margin: '0 0 8px' }, text:
-      'Wähle einen Ordner, dann schreibt bildhaft die Sicherung dort hinein, '
-      + 'sobald sich etwas ändert.' }),
+      t('ui.folder_note') }),
     line, actions);
 
   /** One button, described rather than built at each call site. */
@@ -182,7 +182,7 @@ export function mountBackupFolder(
         await action.run();
         // The only one that says anything: the others are reported by the
         // status line repainting underneath.
-        if (action.id === 'forget') notify('Der Ordner wird nicht mehr beschrieben.');
+        if (action.id === 'forget') notify(t('ui.folder_forgotten'));
       })));
   }
 

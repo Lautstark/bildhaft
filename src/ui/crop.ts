@@ -1,4 +1,5 @@
 import { el } from './dom.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * Cutting a picture of the user's own down to a square, before it is stored.
@@ -137,14 +138,14 @@ export async function cropSquare(file: Blob): Promise<Cropper | null> {
     // Focusable, because the arrow keys below are the only way to move the
     // square without a pointer, and named, because it is a control rather than
     // a picture being shown.
-    attrs: { tabindex: 0, role: 'group', 'aria-label': 'Bildausschnitt' },
+    attrs: { tabindex: 0, role: 'group', 'aria-label': t('ui.crop_title') },
   }, picture, el('div', { class: 'crop__frame' }));
 
   const slider = el('input', {
     class: 'crop__zoom',
     attrs: {
       type: 'range', min: 100, max: CLOSEST * 100, step: 1, value: 100,
-      'aria-label': 'Näher heran',
+      'aria-label': t('ui.zoom_in'),
     },
     on: {
       input: () => {

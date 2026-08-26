@@ -2,6 +2,7 @@ import type { Collection, Sentence } from '../core/types.ts';
 import { drawCollections } from '@lautstark/design/collections';
 import { el, fill } from './dom.ts';
 import { icons, logo } from './logo.ts';
+import { t } from '../i18n/index.ts';
 
 /* ------------------------------------------------------------------ footer */
 
@@ -28,12 +29,12 @@ export function footer(handlers: FooterHandlers): {
   const node = el('footer', { class: 'footer' },
     credit,
     el('p', { class: 'footer__links' },
-      link('Was ist bildhaft?', handlers.onAbout),
+      link(t('ui.what_is'), handlers.onAbout),
       // Both are legally required to be reachable and to be called exactly this.
       // "Kontakt" or a line inside the About dialog would not count.
-      link('Impressum', handlers.onImpressum),
-      link('Datenschutz', handlers.onDatenschutz),
-      el('a', { text: 'Quellcode',
+      link(t('ui.impressum'), handlers.onImpressum),
+      link(t('ui.privacy'), handlers.onDatenschutz),
+      el('a', { text: t('ui.source_code'),
         attrs: { href: 'https://github.com/Lautstark/bildhaft', target: '_blank', rel: 'noreferrer noopener' } }),
       el('a', { text: 'arasaac.org',
         attrs: { href: 'https://arasaac.org', target: '_blank', rel: 'noreferrer noopener' } }),
@@ -62,7 +63,7 @@ export function topBar(onToggleNav: () => void): { node: HTMLElement; setTitle(t
   const node = el('header', { class: 'topbar' },
     el('button', {
       class: 'btn quiet icon',
-      attrs: { type: 'button', 'aria-label': 'Menü öffnen' },
+      attrs: { type: 'button', 'aria-label': t('ui.open_menu') },
       on: { click: onToggleNav },
     }, icons.menuMobile()),
     logo(20),
@@ -96,7 +97,7 @@ export function sidebar(handlers: SidebarHandlers): {
 } {
   const search = el('input', {
     class: 'field',
-    attrs: { type: 'search', placeholder: 'Alle Sätze durchsuchen …', 'aria-label': 'Alle Sätze durchsuchen' },
+    attrs: { type: 'search', placeholder: t('ui.search_placeholder'), 'aria-label': t('ui.search_label') },
     on: { input: () => handlers.onSearchChange(search.value) },
   });
 
@@ -112,7 +113,7 @@ export function sidebar(handlers: SidebarHandlers): {
       el('h1', { text: 'bildhaft' }),
       el('button', {
         class: 'btn quiet icon',
-        attrs: { type: 'button', title: 'Seitenleiste ausblenden' },
+        attrs: { type: 'button', title: t('ui.hide_sidebar') },
         on: { click: handlers.onCollapse },
       }, icons.chevronLeft()),
     ),
@@ -120,7 +121,7 @@ export function sidebar(handlers: SidebarHandlers): {
     listSection,
     el('div', { class: 'sidebar__section',
       style: { marginTop: 'auto', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
-      el('button', { class: 'btn quiet sm', text: 'Einstellungen',
+      el('button', { class: 'btn quiet sm', text: t('ui.settings'),
         attrs: { type: 'button' }, on: { click: handlers.onOpenSettings } }),
     ),
   );
@@ -141,7 +142,7 @@ export function sidebar(handlers: SidebarHandlers): {
             );
           }),
           state.searchResults.length === 0
-            ? el('p', { class: 'small faint', text: 'Nichts gefunden.', style: { padding: '0 10px' } })
+            ? el('p', { class: 'small faint', text: t('ui.nothing_found'), style: { padding: '0 10px' } })
             : null,
         ),
       );
@@ -155,9 +156,9 @@ export function sidebar(handlers: SidebarHandlers): {
        line the package draws. The additive flag it reports is ignored: a
        Sammlung here is a book or a topic and a line belongs to one (§4.1). */
     fill(listSection,
-      el('h2', { text: 'Sammlungen' }),
+      el('h2', { text: t('ui.collections') }),
       rowsHost,
-      el('button', { class: 'btn quiet sm', text: '+ Neue Sammlung',
+      el('button', { class: 'btn quiet sm', text: t('ui.new_collection'),
         style: { marginTop: '6px' }, attrs: { type: 'button' }, on: { click: handlers.onNew } }),
     );
     drawCollections(rowsHost, {

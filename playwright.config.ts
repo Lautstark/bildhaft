@@ -30,6 +30,17 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
+    /*
+     * The language, pinned for the whole suite.
+     *
+     * bildhaft picks its language from the browser when nobody has chosen one,
+     * so without this the assertions quoting a sentence would pass on a German
+     * laptop and fail on an English runner - and the failure would read as a
+     * broken feature rather than as a locale. Every existing spec is written in
+     * German, so German it is; language.spec.ts is the one that switches away
+     * from it, which is the only way to test a switch.
+     */
+    locale: 'de-DE',
   },
 
   projects: [

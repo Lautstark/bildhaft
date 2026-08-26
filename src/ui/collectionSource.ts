@@ -37,6 +37,7 @@ import type { Collection, ProviderId } from '../core/types.ts';
 import { el } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import { sourcePicker } from './symbolSources.ts';
+import { t } from '../i18n/index.ts';
 
 export interface CollectionSourceOptions {
   collection: Collection;
@@ -82,18 +83,17 @@ export function openCollectionSource(options: CollectionSourceOptions): void {
        it ends on „deine von Hand gewählten Symbole", so „sie" would attach to
        the symbols rather than to the Sammlung this sheet is about. */
     const following = chosen === null
-      ? ' Diese Sammlung folgt der Standardquelle — stellst du die um, ändert sie sich mit.'
+      ? ` ${t('ui.source_follows_default')}`
       : '';
-    if (rowCount === 0) return `Diese Sammlung ist noch leer.${following}`;
-    return `${rowCount} Zeile${rowCount === 1 ? '' : 'n'} ${rowCount === 1 ? 'wird' : 'werden'} `
-      + `dabei neu gezeichnet. Deine Sätze und deine von Hand gewählten Symbole bleiben erhalten — `
-      + `bildhaft speichert Verweise, keine Bilder.${following}`;
+    if (rowCount === 0) return `${t('ui.collection_empty')}${following}`;
+    return `${t(rowCount === 1 ? 'ui.rows_redrawn_one' : 'ui.rows_redrawn', { n: rowCount })}`
+      + `${following}`;
   }
 
   const cost = el('p', { class: 'small faint', style: { margin: '14px 0 0' }, text: costSays() });
 
   const dialog = openDialog({
-    title: 'Symbolquelle',
+    title: t('ui.symbol_source'),
     body: [
       el('p', { class: 'small muted', style: { margin: '0 0 12px' },
         text: `Womit „${collection.name}“ gezeichnet wird.` }),
@@ -104,7 +104,7 @@ export function openCollectionSource(options: CollectionSourceOptions): void {
       el('div', { class: 'spacer' }),
       // One way out, and it says what it does. There is nothing to cancel:
       // every press has already been written.
-      el('button', { class: 'btn', text: 'Fertig', attrs: { type: 'button' },
+      el('button', { class: 'btn', text: t('ui.done'), attrs: { type: 'button' },
         on: { click: () => dialog.close() } }),
     ],
     onClose: () => undefined,

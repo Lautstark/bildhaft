@@ -2,6 +2,8 @@ import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
+import { LANG, t } from './i18n/index.ts';
+
 import { buildSlots, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
@@ -133,14 +135,14 @@ export function mountApp(root: HTMLElement): void {
 
   const scrim = el('button', {
     class: 'scrim',
-    attrs: { type: 'button', 'aria-label': 'Menü schließen' },
+    attrs: { type: 'button', 'aria-label': t('ui.close_menu') },
     on: { click: () => { mobileNavOpen = false; render(); } },
   });
 
   const rail = el('div', { class: 'rail' },
     el('button', {
       class: 'btn quiet icon',
-      attrs: { type: 'button', title: 'Seitenleiste einblenden' },
+      attrs: { type: 'button', title: t('ui.show_sidebar') },
       on: { click: () => toggleSidebar() },
     }, icons.menu()),
     logo(22),
@@ -170,7 +172,7 @@ export function mountApp(root: HTMLElement): void {
 
   const titleInput = el('input', {
     class: 'title-input',
-    attrs: { 'aria-label': 'Name der Sammlung', placeholder: 'Name der Sammlung' },
+    attrs: { 'aria-label': t('ui.collection_name'), placeholder: t('ui.collection_name') },
     on: {
       /* The live echo, and only that: the name in the sidebar row and the top
          bar follow each keystroke. Writing it is design/rename's, on its own
@@ -198,7 +200,7 @@ export function mountApp(root: HTMLElement): void {
 
   const printAll = el('button', {
     class: 'btn quiet sm',
-    text: 'Drucken',
+    text: t('ui.print'),
     attrs: { type: 'button' },
     on: { click: () => openPrint(sentences.map((s) => s.id)) },
   });
@@ -209,17 +211,17 @@ export function mountApp(root: HTMLElement): void {
        the delete last. The middle item is not an act on the Sammlung and that
        is the point — the menu holds what a Sammlung *is* as well as what can be
        done to it, because both are answered by which Sammlung it sits beside. */
-    actionMenu('Aktionen für diese Sammlung', (add) => {
-      add('Sammlung exportieren', () => void handleExport(),
+    actionMenu(t('ui.collection_actions'), (add) => {
+      add(t('ui.export_collection'), () => void handleExport(),
         { disabled: sentences.length === 0 });
-      add('Symbolquelle …', () => openSourceSheet());
-      add('Sammlung löschen', () => void confirmDeleteCollection(), { danger: true });
+      add(t('ui.symbol_source_menu'), () => openSourceSheet());
+      add(t('ui.delete_collection'), () => void confirmDeleteCollection(), { danger: true });
     }),
   );
 
   const rowsHost = el('div', { class: 'rows' });
   const emptyState = el('div', { class: 'empty' },
-    el('b', { text: 'Noch keine Sätze' }),
+    el('b', { text: t('ui.no_sentences') }),
     el('small', { html: 'Tippe oben einen Satz und drücke <kbd>Enter</kbd>.' }));
 
   /* The region the banners are drawn into — see the banners block below for
@@ -271,7 +273,7 @@ export function mountApp(root: HTMLElement): void {
   const unusableMessage = el('span', { style: { flex: '1' } });
   const regrant = el('button', {
     class: 'btn sm primary',
-    text: 'Zugriff bestätigen',
+    text: t('ui.confirm_access'),
     attrs: { type: 'button' },
     on: {
       click: async () => {
@@ -291,14 +293,12 @@ export function mountApp(root: HTMLElement): void {
   });
   const unusableBanner = el('div', { class: 'banner', attrs: { role: 'alert' } },
     unusableMessage, regrant,
-    el('button', { class: 'btn sm', text: 'Einstellungen',
+    el('button', { class: 'btn sm', text: t('ui.settings'),
       attrs: { type: 'button' }, on: { click: () => openAppSettings() } }),
   );
 
   const blockedBanner = el('div', { class: 'banner', attrs: { role: 'alert' }, text:
-    'bildhaft ist noch in einem anderen Tab geöffnet und blockiert die '
-    + 'Aktualisierung der Datenbank. Schließe die anderen Tabs und lade diese '
-    + 'Seite neu.' });
+    t('ui.blocked_by_tab') });
 
   let bannerSignature = '';
 
@@ -322,10 +322,10 @@ export function mountApp(root: HTMLElement): void {
     const sourceUnusable = sourceSettled && !sourceBusy
       && (!provider().isReady() || (providerId() === 'metacom' && unreadable >= 3));
 
-    busyMessage.textContent = status.kind === 'loading' ? status.message : 'Einen Moment …';
+    busyMessage.textContent = status.kind === 'loading' ? status.message : t('ui.one_moment');
     unusableMessage.textContent = providerId() === 'metacom'
       ? metacomWanted(status.kind === 'needs-setup' && status.code === 'no-folder')
-      : 'Die Symbolquelle dieser Sammlung ist gerade nicht verfügbar.';
+      : t('ui.source_unavailable');
     toggleVisible(regrant, providerId() === 'metacom');
 
     const wanted: [string, HTMLElement][] = [];
@@ -364,12 +364,10 @@ export function mountApp(root: HTMLElement): void {
   function metacomWanted(noFolder: boolean): string {
     const own = !followsDefault();
     if (noFolder) {
-      return (own
-        ? 'Diese Sammlung ist auf METACOM eingestellt, aber in diesem Browser ist kein METACOM-Ordner eingerichtet. '
-        : 'Als Standard ist METACOM eingestellt, aber in diesem Browser ist kein METACOM-Ordner eingerichtet. ')
-        + 'Richte ihn in den Einstellungen ein — oder stelle die Sammlung über das Menü ⋯ neben ihrem Namen auf eine andere Quelle um. Deine Sätze bleiben ohnehin erhalten.';
+      return `${t(own ? 'ui.metacom_missing_own' : 'ui.metacom_missing_default')} `
+        + t('ui.metacom_missing_fix');
     }
-    return 'bildhaft kann deinen METACOM-Ordner gerade nicht lesen. Bestätige den Zugriff einmal — wähle dabei „Bei jedem Besuch zulassen“, dann fragt der Browser künftig nicht mehr. Deine Sätze bleiben ohnehin erhalten.';
+    return t('ui.metacom_unreadable');
   }
 
   function toggleVisible(node: HTMLElement, on: boolean): void {
@@ -721,7 +719,7 @@ export function mountApp(root: HTMLElement): void {
     try {
       const options = {
         provider: provider(),
-        stopwords: new Set(settings.stopwords),
+        stopwords: new Set(settings.stopwords[LANG]),
         overrides: await overrideMap(providerId()),
       };
 
@@ -750,7 +748,7 @@ export function mountApp(root: HTMLElement): void {
       draft = '';
       reuse = null;
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Der Satz konnte nicht übersetzt werden.');
+      notify(err instanceof Error ? err.message : t('ui.translate_failed'));
     } finally {
       busy = false;
       render();
@@ -901,9 +899,9 @@ export function mountApp(root: HTMLElement): void {
             origin: 'manual' as const,
           } : sl)),
         });
-        notify('Eigenes Bild gespeichert.');
+        notify(t('ui.own_picture_saved'));
       } catch {
-        notify('Das Bild konnte nicht gespeichert werden.');
+        notify(t('ui.own_picture_failed'));
       }
     });
   }
@@ -1037,7 +1035,7 @@ export function mountApp(root: HTMLElement): void {
     const collection = activeCollection();
     if (!collection) return;
     downloadCollectionExport(await exportCollection(collection));
-    notify('Sammlung exportiert.');
+    notify(t('ui.collection_exported'));
   }
 
   async function handleImport(file: File): Promise<void> {
@@ -1051,15 +1049,15 @@ export function mountApp(root: HTMLElement): void {
         + (result.overrideCount > 0 ? ` · ${result.overrideCount} Wörterbuch-Einträge` : ''),
       );
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'Die Datei konnte nicht gelesen werden.');
+      notify(err instanceof Error ? err.message : t('ui.file_unreadable'));
     }
   }
 
   async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
     const ok = await confirmDialog({
-      title: 'Zeile löschen',
-      body: `„${sentence.rawInput}“ wird entfernt.`,
-      confirmLabel: 'Löschen',
+      title: t('ui.delete_row_title'),
+      body: t('ui.row_will_be_removed', { text: sentence.rawInput }),
+      confirmLabel: t('ui.delete'),
       danger: true,
     });
     if (!ok) return;
@@ -1073,9 +1071,9 @@ export function mountApp(root: HTMLElement): void {
     if (!collection) return;
     const count = sentences.length;
     const ok = await confirmDialog({
-      title: 'Sammlung löschen',
+      title: t('ui.delete_collection'),
       // The confirmation names the collection and the row count, deliberately.
-      body: `„${collection.name}“ und alle ${count} enthaltenen Zeilen werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.`,
+      body: t('ui.collection_will_be_deleted', { name: collection.name, n: count }),
       confirmLabel: `${count} Zeile${count === 1 ? '' : 'n'} löschen`,
       danger: true,
     });
@@ -1136,12 +1134,12 @@ export function mountApp(root: HTMLElement): void {
 
     const named = getProvider(providerId()).name;
     notify(choice === null
-      ? `„${collectionName(id)}“ folgt wieder der Standardquelle: ${named}. Alle Zeilen werden neu gezeichnet.`
-      : `„${collectionName(id)}“ wird jetzt mit ${named} gezeichnet. Alle Zeilen werden neu gezeichnet.`);
+      ? t('ui.collection_follows_default', { name: collectionName(id), source: named })
+      : t('ui.collection_uses_source', { name: collectionName(id), source: named }));
   }
 
   const collectionName = (id: string) =>
-    collections.find((c) => c.id === id)?.name ?? 'Sammlung';
+    collections.find((c) => c.id === id)?.name ?? t('ui.collection');
 
   function openAppSettings(): void {
     if (!settings) return;
@@ -1152,8 +1150,8 @@ export function mountApp(root: HTMLElement): void {
       openCollectionProvider: () => activeCollection()?.provider ?? null,
       onNotify: notify,
       onExportAll: async () => {
-        downloadJson(await exportEverything(), 'sicherung');
-        notify('Sicherung exportiert.');
+        downloadJson(await exportEverything(), LANG === 'de' ? 'sicherung' : 'backup');
+        notify(t('ui.backup_exported'));
       },
       backup,
       onImport: (file) => void handleImport(file),
@@ -1165,15 +1163,13 @@ export function mountApp(root: HTMLElement): void {
   async function confirmClearAll(): Promise<void> {
     const totals = await libraryTotals();
     const ok = await confirmDialog({
-      title: 'Alle Daten löschen',
+      title: t('ui.delete_all_button'),
       body:
-        `${totals.collections} Sammlung${totals.collections === 1 ? '' : 'en'}, `
-        + `${totals.sentences} Zeile${totals.sentences === 1 ? '' : 'n'} und `
-        + `${totals.overrides} Wörterbuch-Eintr${totals.overrides === 1 ? 'ag' : 'äge'} `
-        + 'werden endgültig gelöscht — dazu die zwischengespeicherten Symbole und '
-        + 'die Verknüpfung zu deinem METACOM-Ordner. Exportiere vorher eine '
-        + 'Sicherung, wenn du die Arbeit behalten willst.',
-      confirmLabel: 'Alles löschen',
+        t('ui.clear_all_body', {
+          collections: totals.collections, sentences: totals.sentences,
+          entries: totals.overrides,
+        }),
+      confirmLabel: t('ui.delete_everything'),
       danger: true,
     });
     if (!ok) return;
@@ -1183,7 +1179,7 @@ export function mountApp(root: HTMLElement): void {
     await refreshCollections();
     sentences = [];
     setActive(fresh.id);
-    notify('Alle Daten gelöscht.');
+    notify(t('ui.all_data_deleted'));
     render();
   }
 
@@ -1216,7 +1212,7 @@ export function mountApp(root: HTMLElement): void {
 
 /** "Bente-Sommer 2026.jpg" -> "Bente-Sommer 2026". The filename is the only label a photo has. */
 function stemOf(filename: string): string {
-  return filename.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Bild';
+  return filename.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || t('ui.picture');
 }
 
 function mergeCandidate(candidates: Candidate[], candidate: Candidate): Candidate[] {
