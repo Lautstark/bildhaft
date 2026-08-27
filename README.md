@@ -144,6 +144,14 @@ source its recipient has.
 Storage is **IndexedDB**, saved automatically on every change. There is no save
 button.
 
+A change to the schema goes through **one migration step per version**
+([ADR 0001](adr/0001-an-upgrade-has-a-step-or-refuses.md)). An upgrade carries
+the library across inside the browser's own upgrade transaction and says what it
+carried; a version it has no step for is refused rather than half-upgraded — the
+database is left exactly as it was, and every record is offered as a file before
+anything is discarded. [docs/schema-upgrades.md](docs/schema-upgrades.md) weighs
+the alternatives, including which old versions are deliberately not covered.
+
 ### Backup
 
 On a static site the **JSON export** is the only backup. Clear your browser storage
