@@ -6,7 +6,7 @@ import { LANG, t } from './i18n/index.ts';
 
 import { buildSlots, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
-import { isBlockedByOtherTab, onBlockedChange } from './db/db.ts';
+import { isBlockedByOtherTab, onBlockedChange, takeMigrationNote } from './db/db.ts';
 import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
@@ -30,6 +30,7 @@ import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { openCollectionSource } from './ui/collectionSource.ts';
 import { openPrintDialog } from './ui/printDialog.ts';
 import { openSettings } from './ui/settingsDialog.ts';
+import { offerRescue } from './ui/rescue.ts';
 import { openSlotPicker } from './ui/slotPicker.ts';
 import { sentenceRow, type RowView } from './ui/row.ts';
 import { resetSymbolResolution } from './ui/symbols.ts';
@@ -571,7 +572,52 @@ export function mountApp(root: HTMLElement): void {
     // permission re-confirmed lands in needs-permission and says so in
     // Einstellungen → Daten, which is where the click can happen.
     backup.restore().catch(() => undefined);
-  })();
+
+    /*
+     * What the upgrade did, if it did anything. adr/0001: an upgrade that
+     * reorganised somebody's storage without saying so is indistinguishable,
+     * from where they are standing, from one that lost something.
+     *
+     * Said here rather than from inside db.ts, and after the first render, for
+     * two reasons: notify() writes into a toast that render() is what mounts,
+     * and the count of Sammlungen is the one number a person can check the
+     * claim against — so it is worth saying once the library it counts is on
+     * screen behind it.
+     */
+    const carried = takeMigrationNote();
+    if (carried) {
+      notify(carried.collections === 1
+        ? t('ui.db_carried_one', { from: carried.from, to: carried.to })
+        : t('ui.db_carried', { from: carried.from, to: carried.to, n: carried.collections }));
+    }
+  })().catch((error: unknown) => {
+    /*
+     * Boot had no catch at all until adr/0001, and the failure it was missing
+     * is the one that ADR is about: a database this build cannot read left
+     * every await here hanging, and the page sat on its spinner with no
+     * message. Two answers, and which one it is matters — a refusal means the
+     * records are all still there and the person is owed them as a file, which
+     * is what the sheet does. Everything else is an ordinary failure to open a
+     * database, and it gets a sentence rather than silence.
+     */
+    if (offerRescue(error, { report: sayInsteadOfLoading, again: () => location.reload() })) return;
+    sayInsteadOfLoading(t('ui.db_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    }));
+  });
+
+  /** In place of the spinner, which is all there is on screen this early.
+   *
+   * After the first render the spinner is gone and the toast is up, so the
+   * message goes there instead — the same sentence either way, in whichever of
+   * the two is actually on the page. */
+  function sayInsteadOfLoading(message: string): void {
+    if (loading.isConnected) {
+      loading.replaceChildren(el('p', { class: 'banner', attrs: { role: 'alert' }, text: message }));
+    } else {
+      notify(message);
+    }
+  }
 
   /*
    * Whenever METACOM becomes usable again — a folder picked, a zip read,

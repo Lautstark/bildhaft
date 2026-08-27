@@ -150,6 +150,15 @@ eigener Symbolsammlung aufgeht.
 Gespeichert wird in **IndexedDB**, automatisch bei jeder Änderung. Es gibt keinen
 Speichern-Knopf.
 
+Eine Schemaänderung läuft über **einen Migrationsschritt je Version**
+([ADR 0001](adr/0001-an-upgrade-has-a-step-or-refuses.md)). Ein Upgrade bringt
+die Bibliothek innerhalb der Upgrade-Transaktion des Browsers mit und sagt
+anschließend, was mitgekommen ist; eine Version ohne Schritt wird abgelehnt
+statt halb migriert — die Datenbank bleibt unverändert, und alle Datensätze
+werden als Datei angeboten, bevor irgendetwas verworfen wird.
+[docs/schema-upgrades.md](docs/schema-upgrades.md) wägt die Alternativen ab,
+samt der alten Versionen, die bewusst nicht abgedeckt sind.
+
 ### Sicherung
 
 Auf einer statischen Seite ist der **JSON-Export** die einzige Sicherung. Wer den
