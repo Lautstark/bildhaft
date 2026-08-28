@@ -28,7 +28,7 @@ export const newId = (): string =>
  * saved, quietly, which is this feature's whole failure mode.
  *
  * So the rule is one line and lives next to the writes: **a new mutator calls
- * touched()**. test/repo-notifies.test.ts asserts it for every exported
+ * touched()**. tests/unit/repo-notifies.test.ts asserts it for every exported
  * function whose name says it writes, so forgetting is a red test rather than
  * a silent gap.
  */

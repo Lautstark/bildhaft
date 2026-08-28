@@ -2,7 +2,7 @@
 
 /*
  * Colour, shape and shadow tokens come from @lautstark/design, pinned in
- * package.json and imported in main.tsx. They are derived there from one input,
+ * package.json and imported in main.ts. They are derived there from one input,
  * bildhaft's accent #ff6b35, and contrast-checked before they are published, so
  * there is nothing to edit here and nothing to keep in sync by hand — the
  * version pin is the whole update story.

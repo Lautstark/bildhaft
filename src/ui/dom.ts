@@ -3,13 +3,20 @@
  * still doing for this app once the pipeline, the storage and the providers had
  * moved out of it.
  *
- * Every label this file helps build is German, written where it is used, and
- * there is deliberately no t() to route it through. bildhaft turns *German*
- * sentences into pictograms — the lemmatiser, the compound splitter and the
- * function-word list are all German-specific — so an English shell would front a
- * program that still only understands German input. mitreden and vorlaut both
- * carry de/en tables, which is why the absence here reads as an oversight from
- * the outside; it is not one. See README.md, "Constraints", before adding one.
+ * This header used to say that every label here is German, that there is
+ * deliberately no t() to route it through, and that an English shell would
+ * front a program which only understands German input. That was true and is
+ * not: `src/i18n/` carries de and en tables whose keys are held level by
+ * tests/unit/texts.test.ts, bildquelle grew an English pipeline beside the
+ * German one, and main.ts tells it which language the page is in.
+ *
+ * So the rule is now the ordinary one — **a label goes through `t()`** — and
+ * the German strings still written out in this app are leftovers rather than
+ * policy. They are worth knowing about, because they are what an English
+ * reader actually meets: the print dialog, the slot picker, the backup panel,
+ * and `defaultCollectionName()`, which still names a new Sammlung with a
+ * `de-DE` date. Anything citing this comment as a reason to write German in
+ * place is citing something that is no longer here.
  */
 
 type Child = Node | string | number | null | undefined | false;

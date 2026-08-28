@@ -560,7 +560,7 @@ export function mountApp(root: HTMLElement): void {
    * thing it is ever handed — that function is the audited artefact, carrying
    * symbol references and the user's own pictures, and never an ARASAAC or
    * METACOM pixel. A chosen folder may well sit inside Dropbox, so what goes
-   * in it leaves the machine; test/backupFolder.test.ts holds this wiring in
+   * in it leaves the machine; tests/unit/backup-payload.test.ts holds this wiring in
    * place, and a failure there is a licensing problem rather than a bug.
    */
   const backup = new Sicherung({

@@ -13,32 +13,33 @@
  * matters beyond tidiness: a folder inside Dropbox is somewhere else, and
  * bildhaft's export is the audited artefact that carries symbol *references*
  * and never METACOM bytes or filenames. There is a test asserting this exact
- * wiring in test/backupFolder.test.ts; it is a licensing check, not a unit test.
+ * wiring in tests/unit/backup-payload.test.ts; it is a licensing check, not a
+ * unit test.
  */
 
 import { Sicherung, type Status } from '@lautstark/sicherung';
 import { actionsFor, ago, needsAttention } from '@lautstark/sicherung/ui';
 import { el, fill } from './dom.ts';
-import { t } from '../i18n/index.ts';
+import { LANG, t } from '../i18n/index.ts';
 
-/**
- * The one word this file has to say about language: bildhaft is German, so
- * this is a constant and not a lookup. It is passed on every call rather than
- * captured in a formatter, which is the package's rule — see its note on
- * ago(). The rule costs nothing here and is what keeps mitreden correct.
- */
-const LOCALE = 'de';
-
-/** "vor 3 Minuten", against this page's one language. */
-const since = (at: number): string => ago(at, LOCALE);
+/** "vor 3 Minuten" / "3 minutes ago", against whichever language the page is
+ *  in. It is passed on every call rather than captured in a formatter, which
+ *  is the package's rule — see its note on ago().
+ *
+ *  This was `const LOCALE = 'de'` while the rest of the app already had two
+ *  languages, so an English page dated its own backup in German. */
+const since = (at: number): string => ago(at, LANG);
 
 /**
  * The labels, keyed by what the shared table calls each action.
  *
  * This is the whole of what the package left behind for the product, and
- * deliberately so: @lautstark/sicherung/ui returns an id and never a word,
- * because bildhaft has no t() to route one through and that is an argued
- * position rather than a gap. See src/ui/dom.ts.
+ * deliberately so: @lautstark/sicherung/ui returns an id and never a word, so
+ * that each product can name the same action in its own language.
+ *
+ * (It used to say the reason was that bildhaft had no t() to route a word
+ * through. It has had one for some time — these five lines are all calls to
+ * it — and src/ui/dom.ts, which that claim pointed at, no longer makes it.)
  */
 const LABELS: Record<'choose' | 'confirm' | 'save-empty' | 'retry' | 'forget', string> = {
   choose: t('ui.folder_choose'),
