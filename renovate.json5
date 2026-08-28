@@ -1,0 +1,50 @@
+// Renovate, for this repository.
+//
+// Everything general - when updates arrive, what groups with what, what may
+// merge itself - lives in Lautstark/.github and names no package. What is here
+// is the part that is true of bildhaft and would be wrong to inherit.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // The .json5 is spelled out on purpose: the //path/to/file syntax implies a
+  // .json extension, so omitting it looks for a file that is not there and
+  // Renovate stops before it does anything. The shorter "owner/repo:name" form
+  // implies it too.
+  extends: ["github>Lautstark/.github//renovate-shared.json5"],
+
+  packageRules: [
+    // -----------------------------------------------------------------------
+    // The three shared packages: Renovate does not touch them
+    // -----------------------------------------------------------------------
+    //
+    // @lautstark/bildquelle, design and sicherung are pinned as github:
+    // dependencies by release tag, and none is on npm:
+    //
+    //     "@lautstark/bildquelle": "github:Lautstark/bildquelle#v1.7.0"
+    //
+    // Renovate can be made to follow those, but not with the npm manager that
+    // finds them: it needs git-refs or github-tags wired up by hand, with a
+    // versioning scheme told to it, per package.
+    //
+    // It is disabled rather than configured, for a reason that is not about
+    // the plumbing: **a bump of these is a decision, not an update.** These
+    // three carry the parts of this app that are hardest to see from here -
+    // bildquelle owns the METACOM folder and the licensing rule that no byte
+    // of it leaves the browser, design owns the stylesheet this app's own
+    // print measurements are taken against. tools/installcheck.mjs exists
+    // because a *stale* copy of one of these produces a plausible failure in
+    // a test about something else; an unattended bump is the same problem
+    // pointed the other way.
+    //
+    // What keeps the pins from going stale is a check rather than a service:
+    //
+    //     node node_modules/@lautstark/design/pins.js
+    //
+    // runs in the deploy workflow, asks each repository for its newest tag,
+    // and names the pins that are behind. It warns and never fails.
+    {
+      matchPackageNames: ["@lautstark/**"],
+      enabled: false,
+    },
+  ],
+}
