@@ -1,4 +1,5 @@
 import type { Collection, Sentence } from '../core/types.ts';
+import { sentenceCaption } from '../core/types.ts';
 import { drawCollections } from '@lautstark/design/collections';
 import { el, fill } from './dom.ts';
 import { icons, logo } from './logo.ts';
@@ -137,7 +138,7 @@ export function sidebar(handlers: SidebarHandlers): {
             const where = state.collections.find((c) => c.id === sentence.collectionId)?.name ?? '—';
             return el('button', { class: 'hit', attrs: { type: 'button' },
               on: { click: () => handlers.onOpenResult(sentence) } },
-              sentence.rawInput,
+              sentenceCaption(sentence),
               el('small', { text: where }),
             );
           }),

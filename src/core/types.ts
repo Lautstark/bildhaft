@@ -109,6 +109,34 @@ export interface Sentence {
   collectionId: string;
   createdAt: number;
   updatedAt: number;
+
+  /**
+   * What this row is called, when the words that fetched the symbols are not
+   * the words that should name them. Absent or empty means the typed line,
+   * which is what every row had before this existed.
+   *
+   * The same separation `Slot.label` draws, one level up, and for the same
+   * reason. A row is not always a sentence: typing „waschen, einseifen,
+   * abtrocknen" is a way of *searching* for three symbols to stand in a row,
+   * and the row wants to be called „Hände waschen". Rewriting `rawInput` in
+   * place would take that away — it is the reuse key (`normalizedInput` is
+   * derived from it) and what „Diesen Satz hast du schon übersetzt" matches
+   * on, so renaming would quietly repoint what the app has learned.
+   *
+   * Optional, so nothing needs migrating: a row saved before this field
+   * existed is a row that has never been named, which is the same state as one
+   * whose name was cleared.
+   */
+  title?: string | null;
+}
+
+/**
+ * What a row is called, on screen, on paper and in the sidebar. One expression,
+ * used by all of them, for the reason `slotCaption` is one: a name that the
+ * printout disagrees with is a wasted sheet.
+ */
+export function sentenceCaption(sentence: Sentence): string {
+  return sentence.title?.trim() || sentence.rawInput;
 }
 
 /** A named group of sentences — e.g. one book, one topic, one child. */

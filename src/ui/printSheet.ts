@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot,
 } from '../core/types.ts';
-import { slotCaption } from '../core/types.ts';
+import { sentenceCaption, slotCaption } from '../core/types.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
 import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
@@ -178,7 +178,7 @@ function strips(sentences: Sentence[], settings: PrintSettings, provider: Provid
   return sentences.map((sentence, i) => el('div', {
     class: `ps-sentence${settings.onePerPage && i < sentences.length - 1 ? ' ps-sentence--page' : ''}`,
   },
-    settings.showSentenceText ? el('p', { class: 'ps-caption', text: sentence.rawInput }) : null,
+    settings.showSentenceText ? el('p', { class: 'ps-caption', text: sentenceCaption(sentence) }) : null,
     el('div', { class: 'ps-row' }, ...sentence.slots.map((slot) => card(slot, settings, provider))),
   ));
 }

@@ -292,15 +292,26 @@ kbd {
   gap: 8px;
   margin-bottom: 10px;
 }
-.row__text {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  color: var(--text-dim);
-  overflow-wrap: anywhere;
-}
 .row__actions { display: flex; gap: 2px; opacity: 0; transition: opacity .13s; }
 .row:hover .row__actions, .row:focus-within .row__actions { opacity: 1; }
+
+/* The row's name is a field that does not look like one until it is asked to —
+   components.css's .title-input reasoning, at the row's size rather than the
+   page title's. Not that class: this is 15px and dim where that is 17px and
+   650, and the two are different type, not one type at two densities.
+
+   The negative margin puts the text back where the line it replaced sat, so
+   that a row still reads as a line with symbols under it rather than a form. */
+.row__title {
+  flex: 1; min-width: 0; margin: 0 0 0 -7px;
+  font: inherit; font-size: 15px; color: var(--text-dim);
+  padding: 3px 6px;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: none;
+}
+.row__title:hover { border-color: var(--line); }
+.row__title:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.row__title::placeholder { color: var(--text-dim); }
 
 .slots {
   display: flex;

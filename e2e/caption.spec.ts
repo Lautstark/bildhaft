@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { translate, translateAll } from './helpers.ts';
+import { rowFor, translate, translateAll } from './helpers.ts';
 
 /**
  * The words under a symbol.
@@ -82,7 +82,7 @@ test('a card sheet keeps one card per wording, not per symbol', async ({ page })
   await translateAll(page, ['Ich möchte einen Apfel essen', 'Der Apfel ist rot']);
 
   // Same symbol in both sentences; only the second one gets rewritten.
-  await page.locator('.row', { hasText: 'Der Apfel ist rot' })
+  await rowFor(page, 'Der Apfel ist rot')
     .locator('.slot', { hasText: 'Apfel' }).first().click();
   await caption(page).fill('der Apfel');
   await page.getByRole('button', { name: 'Fertig' }).click();

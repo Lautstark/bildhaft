@@ -213,7 +213,18 @@ export async function findByNormalized(normalized: string): Promise<Sentence[]> 
   return hits.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** Flat substring search across every sentence the user has ever made. */
+/**
+ * Flat substring search across every sentence the user has ever made.
+ *
+ * Both the words it was made with and the name it was given. A row typed as
+ * „waschen, einseifen, abtrocknen" and called „Hände waschen" has to answer to
+ * either: the name is how it is thought of now, and the typed words are what
+ * would otherwise become unfindable the moment it was named.
+ *
+ * The name is matched lowercased rather than through `normalizeInput`, because
+ * it never went through it — it is what somebody wrote, not a lookup key, and
+ * there is no second copy of it to keep in step.
+ */
 export async function searchSentences(query: string, limit = 60): Promise<Sentence[]> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -221,7 +232,10 @@ export async function searchSentences(query: string, limit = 60): Promise<Senten
   const out: Sentence[] = [];
   let cursor = await db.transaction('sentences').store.index('byUpdated').openCursor(null, 'prev');
   while (cursor && out.length < limit) {
-    if (cursor.value.normalizedInput.includes(q)) out.push(cursor.value);
+    const row = cursor.value;
+    if (row.normalizedInput.includes(q) || (row.title ?? '').toLowerCase().includes(q)) {
+      out.push(row);
+    }
     cursor = await cursor.continue();
   }
   return out;

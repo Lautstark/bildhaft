@@ -77,7 +77,10 @@ export async function mockArasaac(page: Page, options: MockOptions = {}): Promis
 
 /** Reads persisted rows straight from IndexedDB — the source of truth. */
 export async function readSentences(page: Page): Promise<
-  { rawInput: string; slots: { sourceToken: string; concept: string; origin: string; chosen: string | null }[] }[]
+  {
+    rawInput: string; title?: string | null; updatedAt: number;
+    slots: { sourceToken: string; concept: string; origin: string; chosen: string | null }[];
+  }[]
 > {
   return page.evaluate(async () => {
     const db: IDBDatabase = await new Promise((resolve, reject) => {
@@ -90,10 +93,15 @@ export async function readSentences(page: Page): Promise<
       q.onsuccess = () => resolve(q.result);
     });
     return rows.map((r) => {
-      const row = r as { rawInput: string; createdAt: number; slots: Record<string, unknown>[] };
+      const row = r as {
+        rawInput: string; title?: string | null; createdAt: number; updatedAt: number;
+        slots: Record<string, unknown>[];
+      };
       return {
         rawInput: row.rawInput,
+        title: row.title,
         createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
         slots: row.slots.map((s) => {
           const slot = s as {
             sourceToken: string; concept: string; origin: string;

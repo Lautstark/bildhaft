@@ -19,3 +19,16 @@ export async function translate(page: Page, sentence: string): Promise<void> {
 export async function translateAll(page: Page, sentences: string[]): Promise<void> {
   for (const sentence of sentences) await translate(page, sentence);
 }
+
+/**
+ * The row a given line was typed into.
+ *
+ * Not `hasText`: the head of a row is the field that names it, so the line it
+ * was made from is that field's placeholder rather than text on the page. One
+ * helper rather than the same filter written out at each call site, because
+ * this is exactly the detail that should only have to be learned once.
+ */
+export function rowFor(page: Page, typed: string) {
+  return page.locator('.row')
+    .filter({ has: page.locator(`.row__title[placeholder="${typed}"]`) });
+}

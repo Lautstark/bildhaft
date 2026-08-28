@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { translate } from './helpers.ts';
+import { rowFor, translate } from './helpers.ts';
 
 /**
  * A picture of the user's own, in place of a symbol.
@@ -179,5 +179,5 @@ test('adding the store keeps a database that was already there', async ({ page }
   await page.reload();
   await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
   await expect(page.locator('.collections__item')).toContainText(['Aus Version 3']);
-  await expect(page.locator('.row__text')).toHaveText('Der Hund liegt unter dem Tisch');
+  await expect(rowFor(page, 'Der Hund liegt unter dem Tisch')).toHaveCount(1);
 });

@@ -1,6 +1,7 @@
 import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
+import { sentenceCaption } from './core/types.ts';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { LANG, t } from './i18n/index.ts';
 
@@ -414,6 +415,21 @@ export function mountApp(root: HTMLElement): void {
 
   const rowViews = new Map<string, { view: RowView; sentence: Sentence }>();
 
+  /**
+   * Whether these two records differ in the name and in nothing else.
+   *
+   * By reference where it can be, because `handleRename` is the only thing that
+   * makes the second from the first and it copies the rest across untouched. A
+   * field-by-field comparison would be a second description of the row, kept in
+   * step by hand; this asks the one question that matters — is anything the row
+   * draws from a different object than it was.
+   */
+  const renamedOnly = (before: Sentence, after: Sentence): boolean =>
+    before.title !== after.title
+    && before.slots === after.slots
+    && before.rawInput === after.rawInput
+    && before.collectionId === after.collectionId;
+
   function renderRows(): void {
     if (sentences.length === 0) {
       for (const { view } of rowViews.values()) view.destroy();
@@ -436,6 +452,16 @@ export function mountApp(root: HTMLElement): void {
         nodes.push(existing.view.node);
         continue;
       }
+      /* A rename is the one replacement that draws the same row — same symbols,
+         same order, same captions — and the one where a rebuild would be felt,
+         because the name is typed into the row itself. So the row takes the new
+         record instead of being made again from it. */
+      if (existing && renamedOnly(existing.sentence, sentence)) {
+        existing.view.rename(sentence);
+        rowViews.set(sentence.id, { view: existing.view, sentence });
+        nodes.push(existing.view.node);
+        continue;
+      }
       existing?.view.destroy();
       const view = sentenceRow(sentence, providerId(), {
         onOpenSlot: (slotId) => openPicker(sentence.id, slotId),
@@ -444,6 +470,7 @@ export function mountApp(root: HTMLElement): void {
         onUnreadableSymbol: (id) => void noteUnreadable(id),
         onPrint: () => openPrint([sentence.id]),
         onDelete: () => void confirmDeleteSentence(sentence),
+        onRename: (title) => void handleRename(sentence.id, title),
       });
       rowViews.set(sentence.id, { view, sentence });
       nodes.push(view.node);
@@ -848,6 +875,25 @@ export function mountApp(root: HTMLElement): void {
     render();
   }
 
+  /**
+   * Names a row, or takes the name off it again.
+   *
+   * Trimming is decided here rather than in the bound field, which hands over
+   * exactly what was typed — bildhaft has somewhere to show an unnamed row, so
+   * an empty name is allowed and means the typed line.
+   */
+  function handleRename(sentenceId: string, title: string): Promise<void> {
+    return queued(async () => {
+      const sentence = sentences.find((s) => s.id === sentenceId);
+      if (!sentence) return;
+      const next = title.trim();
+      if (next === (sentence.title?.trim() ?? '')) return;
+      // Empty is stored as absent, so "never named" and "name cleared" stay
+      // the one state rather than two that read alike.
+      await updateSentence({ ...sentence, title: next || null });
+    });
+  }
+
   /** Reads the sentence inside the queue, so it sees the edit before it. */
   function mutateSlots(sentenceId: string, fn: (slots: Slot[]) => Slot[]): Promise<void> {
     return queued(async () => {
@@ -1102,7 +1148,7 @@ export function mountApp(root: HTMLElement): void {
   async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
     const ok = await confirmDialog({
       title: t('ui.delete_row_title'),
-      body: t('ui.row_will_be_removed', { text: sentence.rawInput }),
+      body: t('ui.row_will_be_removed', { text: sentenceCaption(sentence) }),
       confirmLabel: t('ui.delete'),
       danger: true,
     });

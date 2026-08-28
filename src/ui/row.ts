@@ -1,5 +1,6 @@
 import type { ProviderId, Sentence, Slot } from '../core/types.ts';
 import { slotCaption } from '../core/types.ts';
+import { renameField } from '@lautstark/design/rename';
 import { el } from './dom.ts';
 import { icons, negationCross } from './logo.ts';
 import { symbolIdFor, symbolView, type SymbolView } from './symbols.ts';
@@ -20,11 +21,23 @@ export interface RowHandlers {
   onReorder: (from: number, to: number) => void;
   onPrint: () => void;
   onDelete: () => void;
+  /** The field's raw value: untrimmed, and empty for "back to the typed line". */
+  onRename: (title: string) => void;
   onUnreadableSymbol?: (id: string) => void;
 }
 
 export interface RowView {
   node: HTMLElement;
+  /**
+   * Take a renamed record without being rebuilt.
+   *
+   * The one change to a sentence that draws the same row, and the one where
+   * rebuilding would be felt: the name is typed into the row itself, so a
+   * repaint that replaced the row would take the field out from under the
+   * person typing in it. What lands here goes through the bound field's
+   * `refresh`, which knows when the field is the better authority.
+   */
+  rename(sentence: Sentence): void;
   destroy(): void;
 }
 
@@ -120,24 +133,62 @@ export function sentenceRow(
     on: { click: handlers.onAddSlot },
   }));
 
-  const node = el('article', { class: 'row' },
-    el('header', { class: 'row__head' },
-      el('div', { class: 'row__text', text: sentence.rawInput }),
-      el('div', { class: 'row__actions' },
-        el('button', { class: 'btn quiet icon',
-          attrs: { type: 'button', title: t('ui.print_row') },
-          on: { click: handlers.onPrint } }, icons.printer()),
-        el('button', { class: 'btn destructive icon',
-          attrs: { type: 'button', title: t('ui.delete_row') },
-          on: { click: handlers.onDelete } }, icons.trash()),
-      ),
+  /**
+   * The line at the head of the row is the field that names it — conventions.md
+   * §1.6's answer for a Sammlung, one level down, rather than a second way of
+   * spelling the same question. There is no dialog and nothing to open: the
+   * name *is* the input, and .row__title draws it as a line until it is
+   * hovered.
+   *
+   * Empty means unnamed, so the field shows the typed line as a placeholder and
+   * holds only a name that was actually given. The same reading the caption
+   * field in the picker has, so clearing works the same way in both.
+   */
+  const titleInput = el('input', {
+    class: 'row__title',
+    attrs: { type: 'text', maxlength: 80, 'aria-label': t('ui.row_name'),
+      placeholder: sentence.rawInput },
+  });
+  titleInput.value = sentence.title?.trim() ?? '';
+
+  /* A named row still says what was typed, because those are the words the
+     symbols were fetched with and the ones a search finds it by — and the
+     placeholder that was showing them is gone the moment there is a name.
+     Nowhere but here: the paper prints the name alone. */
+  const showTyped = (of: Sentence): void => {
+    if (of.title?.trim()) titleInput.title = t('ui.typed_line', { text: of.rawInput });
+    else titleInput.removeAttribute('title');
+  };
+  showTyped(sentence);
+
+  /* Debounced while typing, written on blur and on Enter, and not written when
+     the value has not moved. @lautstark/design/rename holds that timing for all
+     three products; what is left here is what the field looks like and what an
+     empty one means. */
+  const naming = renameField(titleInput, (typed) => handlers.onRename(typed));
+
+  const head = el('header', { class: 'row__head' },
+    titleInput,
+    el('div', { class: 'row__actions' },
+      el('button', { class: 'btn quiet icon',
+        attrs: { type: 'button', title: t('ui.print_row') },
+        on: { click: handlers.onPrint } }, icons.printer()),
+      el('button', { class: 'btn destructive icon',
+        attrs: { type: 'button', title: t('ui.delete_row') },
+        on: { click: handlers.onDelete } }, icons.trash()),
     ),
-    slots,
   );
+
+  const node = el('article', { class: 'row' }, head, slots);
 
   return {
     node,
+    rename(next) {
+      naming.refresh(next.title?.trim() ?? '');
+      showTyped(next);
+    },
     destroy() {
+      naming.stop();
       for (const view of views) view.destroy();
     },
   };
