@@ -40,9 +40,10 @@ const since = (at: number): string => ago(at, LOCALE);
  * because bildhaft has no t() to route one through and that is an argued
  * position rather than a gap. See src/ui/dom.ts.
  */
-const LABELS: Record<'choose' | 'confirm' | 'retry' | 'forget', string> = {
+const LABELS: Record<'choose' | 'confirm' | 'save-empty' | 'retry' | 'forget', string> = {
   choose: t('ui.folder_choose'),
   confirm: t('ui.confirm_access'),
+  'save-empty': t('ui.save_empty_anyway'),
   retry: t('ui.try_again'),
   forget: t('ui.forget_folder'),
 };
@@ -75,6 +76,11 @@ export function sentence(status: Status): string {
       return `Zugriff auf „${status.folder}“ muss bestätigt werden — ${lastCopy(status.lastWrite)}.`;
     case 'failed':
       return `Sicherung fehlgeschlagen: ${status.reason} — ${lastCopy(status.lastWrite)}.`;
+    // Deliberately not phrased as a failure. Nothing broke: the copy in the
+    // folder is whole and untouched, and the only open question is whether
+    // this browser being empty is the truth.
+    case 'held':
+      return `Dieser Browser hat keine Sammlungen. In „${status.folder}“ wurde nichts überschrieben — ${lastCopy(status.lastWrite)}.`;
   }
 }
 
@@ -100,6 +106,10 @@ export function headline(status: Status): string {
     case 'saving': return `Ordner „${status.folder}“`;
     case 'needs-permission': return `Ordner „${status.folder}“ · Zugriff bestätigen`;
     case 'failed': return `Ordner „${status.folder}“ · Sicherung fehlgeschlagen`;
+    // Says what happened rather than that something broke, and still not just
+    // the folder name — this is a state somebody has to answer, and a heading
+    // that showed only the name would manufacture the confidence above.
+    case 'held': return `Ordner „${status.folder}“ · nichts überschrieben`;
   }
 }
 

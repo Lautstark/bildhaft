@@ -35,13 +35,47 @@ describe('what the standing backup is handed', () => {
    */
   it('is constructed with exportEverything and nothing else', () => {
     const source = readFileSync(new URL('../../src/app.ts', import.meta.url), 'utf8');
-    const calls = [...source.matchAll(/new Sicherung\(([^)]*)\)/g)].map((m) => m[1]);
+    /*
+     * Balanced, not `[^)]*`. That shorter pattern stopped at the first `)` in
+     * the call — which from 2026-08-28 is the one closing `(produced)` in an
+     * arrow function, so everything after it was invisible and a second inlet
+     * added below that line would have passed this test unseen.
+     */
+    const calls: string[] = [];
+    for (let at = source.indexOf('new Sicherung('); at !== -1;
+         at = source.indexOf('new Sicherung(', at + 1)) {
+      const from = source.indexOf('(', at);
+      let depth = 0;
+      for (let i = from; i < source.length; i++) {
+        if (source[i] === '(') depth++;
+        else if (source[i] === ')' && --depth === 0) {
+          calls.push(source.slice(from + 1, i));
+          break;
+        }
+      }
+    }
 
     expect(calls, 'expected exactly one standing backup in this app').toHaveLength(1);
     expect(calls[0]).toContain('produce: exportEverything');
-    // Named, so that adding a second inlet has to change this line on purpose.
-    expect(calls[0].replace(/\s+/g, ' ').trim())
-      .toBe("{ app: 'bildhaft', produce: exportEverything }");
+
+    /*
+     * The option list, named so that adding to it has to be argued for here.
+     *
+     * `looksEmpty` was added on 2026-08-28 and this test is why it had to be
+     * justified rather than merged. It is NOT a second inlet: it is handed the
+     * value `produce` already returned, answers a boolean, and puts nothing
+     * into the file. Data still enters through exactly one function. What it
+     * does is decide whether a write happens at all — see
+     * @lautstark/sicherung v1.3.0 and the `held` status.
+     *
+     * The line that would be a leak is a second `produce`, or a `looksEmpty`
+     * that reached into the database itself rather than reading its argument.
+     * Both would show up here as a name that is not on this list.
+     */
+    const options = [...calls[0].matchAll(/^\s*(?:\/\/.*|([A-Za-z]+):)/gm)]
+      .map((m) => m[1]).filter(Boolean);
+    expect(options).toEqual(['app', 'produce', 'looksEmpty']);
+    expect(calls[0]).toContain('produced as {');
   });
 
   it('carries symbol references, never symbol bytes', async () => {
