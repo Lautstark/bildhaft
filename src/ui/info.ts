@@ -8,7 +8,7 @@ const MITREDEN = 'https://lautstark.github.io/mitreden/';
 const ISSUES = 'https://github.com/Lautstark/bildhaft/issues';
 
 /** The one line to change if a different address should be public. */
-const EMAIL = 'lautstark@grewenig.online';
+const EMAIL = 'steffi@lautstark.tech';
 
 /** Every external link in these pages opens in a new tab and tells the browser so. */
 const ext = (href: string, text: string) =>
