@@ -154,8 +154,10 @@ export function sidebar(handlers: SidebarHandlers): {
        is given, so that container is made once here and refilled rather than
        rebuilt with the rest of the section — the heading above it and the
        button under it are this sidebar's and are not shared, which is the
-       line the package draws. The additive flag it reports is ignored: a
-       Sammlung here is a book or a topic and a line belongs to one (§4.1). */
+       line the package draws. The additive flag it reports is ignored because
+       bildhaft opens one Sammlung at a time (§4.2) — which v1.17.0 separated
+       from how many a line may be *in* (§4.1), the question this comment used
+       to answer and the one that is now one everywhere. */
     fill(listSection,
       el('h2', { text: t('ui.collections') }),
       rowsHost,

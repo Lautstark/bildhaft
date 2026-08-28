@@ -85,14 +85,18 @@ test('clearing the field gives the typed line back', async ({ page }) => {
  * The write lands 400 ms after a keystroke, which is to say in the middle of
  * somebody typing. A repaint that rebuilt the row would replace the field they
  * are typing in: the caret goes, and so does everything typed after the write.
- * The wait here is the debounce itself, not a guess at one.
+ *
+ * Waits for the write rather than for a duration. A sleep long enough to cover
+ * the debounce on an idle machine is not long enough on a loaded one, and this
+ * test failed exactly that way inside the full suite while passing alone —
+ * whereas the stored name reaching the database *is* the moment under test.
  */
 test('a write that lands mid-typing does not take the field away', async ({ page }) => {
   await translate(page, 'waschen einseifen abtrocknen');
 
   await name(page).click();
   await name(page).pressSequentially('Hände');
-  await page.waitForTimeout(700);
+  await expect.poll(async () => (await readSentences(page))[0]?.title).toBe('Hände');
   await name(page).pressSequentially(' waschen');
 
   await expect(name(page)).toBeFocused();
@@ -112,7 +116,10 @@ test('a name that was not touched is not written again', async ({ page }) => {
 
   await name(page).click();
   await name(page).blur();
-  await page.waitForTimeout(700);
+  // A duration, because the thing being asserted is that nothing happens. Well
+  // clear of the 400 ms debounce, so a loaded machine cannot pass it by being
+  // slow rather than by being right.
+  await page.waitForTimeout(1500);
 
   expect((await readSentences(page))[0]?.updatedAt).toBe(before);
 });
