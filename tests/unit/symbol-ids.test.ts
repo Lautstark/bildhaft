@@ -20,7 +20,7 @@ function slot(over: Partial<Slot> = {}): Slot {
     id: 'slot-1',
     sourceToken: 'Apfel',
     concept: 'apfel',
-    origin: 'exact',
+    origin: 'raw',
     choice: {},
     candidates: {},
     ...over,

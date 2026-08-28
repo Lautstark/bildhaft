@@ -15,7 +15,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "types": ["vite/client", "node"]
   },
-  "include": ["src"]
+  "//": "The suites are checked too, not just src. They were outside this list until 2026-08-28, so `npm run typecheck` never read a line of them and vitest and Playwright only ever transpiled them.",
+  "include": ["src", "tests", "e2e"]
 }

@@ -89,7 +89,7 @@ describe('what the standing backup is handed', () => {
         id: newId(),
         sourceToken: 'Wasser',
         concept: 'wasser',
-        origin: 'word',
+        origin: 'raw',
         // A METACOM choice is an id, and an id is all it is.
         choice: { metacom: 'METACOM_wasser_01', arasaac: '2483' },
         candidates: { metacom: [{ id: 'METACOM_wasser_01', label: 'Wasser', score: 1 }] },
@@ -113,6 +113,7 @@ describe('what the standing backup is handed', () => {
     const collection = await createCollection('Familie');
     const image = await putOwnImage(
       new File([new Uint8Array([137, 80, 78, 71])], 'oma.png', { type: 'image/png' }),
+      'oma.png',
     );
     await putSentence({
       id: newId(),
@@ -120,7 +121,7 @@ describe('what the standing backup is handed', () => {
       rawInput: 'Oma kommt',
       normalizedInput: 'oma kommt',
       slots: [{
-        id: newId(), sourceToken: 'Oma', concept: 'oma', origin: 'word',
+        id: newId(), sourceToken: 'Oma', concept: 'oma', origin: 'raw',
         choice: {}, candidates: {}, ownImage: image.id,
       }],
       createdAt: Date.now(),

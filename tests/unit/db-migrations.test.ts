@@ -219,7 +219,9 @@ describe('opening a database', () => {
 
     const db = await getDB();
     expect(db.version).toBe(4);
-    expect(db.objectStoreNames.contains('sessions')).toBe(false);
+    // Cast because `sessions` is not in the current schema, which is the whole
+    // assertion: it is a store an old database had and this one must not.
+    expect(db.objectStoreNames.contains('sessions' as never)).toBe(false);
     expect(await db.count('collections')).toBe(0);
     // A database that has never existed is not a migration, so nothing is
     // claimed about one.
