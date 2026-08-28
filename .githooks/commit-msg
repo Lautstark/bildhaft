@@ -1,6 +1,14 @@
 #!/bin/sh
 #
-# Strip Claude's Co-Authored-By trailer from every commit message.
+# Two things to every commit message: the trailer comes off, and the subject
+# has to be a conventional commit.
+#
+# They are unrelated rules that happen to share the one hook git offers for
+# this, so they are kept apart below rather than tangled together. The strip
+# runs first, because it rewrites the file the check then reads.
+#
+# ---------------------------------------------------------------------------
+# 1. Strip Claude's Co-Authored-By trailer from every commit message.
 #
 # No commit in this repo's history carries one, and agent sessions add it by
 # default without knowing that. A hook is the only thing that catches a session
@@ -33,3 +41,31 @@ awk '
 ' "$tmp" > "$msg"
 
 rm -f "$tmp"
+
+# ---------------------------------------------------------------------------
+# 2. Conventional Commits, checked as the message is written.
+#
+# This half is a CONVENIENCE, not the gate. The gate is
+# .github/workflows/commit-messages.yml, which checks every commit in a push
+# to main and cannot be skipped or forgotten. This exists because CI tells you
+# after the push, when the commit is already history and fixing it means
+# rewriting a branch somebody may have pulled; the hook tells you while the
+# message is still in the editor.
+#
+# The rule itself lives in tools/check-commit-subject.sh, so that this and CI
+# cannot drift apart.
+#
+# `set -e` is off for the rest of this file: the check failing is a thing to
+# report, not a reason to abort before the message below is printed.
+set +e
+
+root=$(git rev-parse --show-toplevel)
+subject=$(head -1 "$msg")
+
+if "$root/tools/check-commit-subject.sh" "$subject"; then
+  exit 0
+fi
+
+echo "To commit anyway, once:  git commit --no-verify" >&2
+echo >&2
+exit 1
