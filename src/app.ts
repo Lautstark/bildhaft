@@ -563,7 +563,25 @@ export function mountApp(root: HTMLElement): void {
    * in it leaves the machine; test/backupFolder.test.ts holds this wiring in
    * place, and a failure there is a licensing problem rather than a bug.
    */
-  const backup = new Sicherung({ app: 'bildhaft', produce: exportEverything });
+  const backup = new Sicherung({
+    app: 'bildhaft',
+    produce: exportEverything,
+    // Nothing in this browser. @lautstark/sicherung v1.3.0 holds a write that
+    // would put that over a folder holding the real thing, and this line is
+    // what tells it — the package knows nothing about collections or
+    // sentences, deliberately, and would have to be told their names to guess.
+    //
+    // This is the product it actually happened to: on 2026-08-28 the site
+    // moved to bildhaft.lautstark.tech, per-origin storage meant the new
+    // address opened empty, and bildhaft-aktuell.json went from three
+    // collections to zero. The dated copy from five days earlier is what was
+    // left. Overrides are not counted: they hang off collections and mean
+    // nothing without them.
+    looksEmpty: (produced) => {
+      const it = produced as { collections?: unknown[]; sentences?: unknown[] };
+      return it.collections?.length === 0 && it.sentences?.length === 0;
+    },
+  });
 
   // Every write to the library, from anywhere, through the one notifier in
   // repo.ts. Debounced inside Sicherung, so a burst of edits is one file.
