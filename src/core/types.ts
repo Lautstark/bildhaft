@@ -89,6 +89,42 @@ export function slotCaption(slot: Slot): string {
   return slot.label?.trim() || slot.sourceToken || slot.concept;
 }
 
+/**
+ * An own image is the same picture whatever symbol source is active, so it is
+ * addressed by a prefix rather than by a provider. Every caller that already
+ * knows how to show a symbol id — rows, the picker, the print sheet — shows one
+ * of these without knowing anything new.
+ */
+export const OWN_PREFIX = 'own:';
+
+export const ownImageId = (id: string): string => `${OWN_PREFIX}${id}`;
+
+/** The id to show for a slot: its own picture if it has one, else its symbol. */
+export function symbolIdFor(slot: Slot, provider: ProviderId): string | null {
+  if (slot.ownImage) return ownImageId(slot.ownImage);
+  return slot.choice[provider] ?? null;
+}
+
+/**
+ * Every image a set of rows needs before it can be drawn all at once.
+ *
+ * This exists as one expression for the same reason `slotCaption` does. The
+ * print sheet builds a card from `symbolIdFor`, but the dialog that opens it
+ * has to resolve the same pictures *first* — a card whose id is not in the
+ * cache draws a blank box and fills itself in later, which is too late once
+ * the printer has the page. Asking the two questions in two different ways is
+ * what broke: the warm step read `slot.choice` directly, so it never named an
+ * own picture, and the one image bildhaft actually holds the bytes for was the
+ * one that could reach paper empty.
+ */
+export function symbolIdsIn(
+  sentences: readonly Pick<Sentence, 'slots'>[], provider: ProviderId,
+): string[] {
+  return sentences.flatMap((sentence) => sentence.slots
+    .map((slot) => symbolIdFor(slot, provider))
+    .filter((id): id is string => Boolean(id)));
+}
+
 /** A picture the user supplied. bildhaft holds the bytes; nothing points at a file. */
 export interface OwnImage {
   id: string;

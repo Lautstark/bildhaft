@@ -1,4 +1,5 @@
 import type { PrintSettings, ProviderId, Sentence } from '../core/types.ts';
+import { symbolIdsIn } from '../core/types.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import {
@@ -144,10 +145,10 @@ export function openPrintDialog(options: PrintOptions): void {
   async function run(): Promise<void> {
     preparing = true;
     paintFooter();
-    // Never open the print dialog over half-loaded images.
-    const ids = options.sentences.flatMap((sentence) =>
-      sentence.slots.map((slot) => slot.choice[options.provider]).filter((id): id is string => Boolean(id)));
-    await warmSymbols(options.provider, ids);
+    // Never open the print dialog over half-loaded images. Asked the same way
+    // the sheet asks it, so an own picture cannot be missed here and drawn
+    // there.
+    await warmSymbols(options.provider, symbolIdsIn(options.sentences, options.provider));
     await document.fonts?.ready;
     // Two frames so the printable copy is laid out before the dialog opens.
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

@@ -1,4 +1,5 @@
-import type { ProviderId, Slot } from '../core/types.ts';
+import type { ProviderId } from '../core/types.ts';
+import { OWN_PREFIX, ownImageId, symbolIdFor } from '../core/types.ts';
 import { getOwnImage } from '../db/repo.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, svg } from './dom.ts';
@@ -12,21 +13,11 @@ import { t } from '../i18n/index.ts';
 const cache = new Map<string, string>();
 const pending = new Map<string, Promise<string | null>>();
 
-/**
- * An own image is the same picture whatever symbol source is active, so it is
- * addressed by a prefix rather than by a provider. Every caller that already
- * knows how to show a symbol id — rows, the picker, the print sheet — shows one
- * of these without knowing anything new.
- */
-const OWN_PREFIX = 'own:';
-
-export const ownImageId = (id: string): string => `${OWN_PREFIX}${id}`;
-
-/** The id to show for a slot: its own picture if it has one, else its symbol. */
-export function symbolIdFor(slot: Slot, provider: ProviderId): string | null {
-  if (slot.ownImage) return ownImageId(slot.ownImage);
-  return slot.choice[provider] ?? null;
-}
+// The id helpers moved to core/types.ts, beside slotCaption, so that the print
+// dialog can ask "which pictures does this job need" without reaching through
+// a module that touches the DOM. Re-exported here because every caller that
+// shows a symbol already imports this file.
+export { ownImageId, symbolIdFor };
 
 const cacheKey = (provider: ProviderId, id: string) =>
   (id.startsWith(OWN_PREFIX) ? `own:${id}` : `${provider}:${id}`);
