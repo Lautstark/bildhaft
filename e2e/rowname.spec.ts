@@ -103,6 +103,12 @@ test('a write that lands mid-typing does not take the field away', async ({ page
   await expect(name(page)).toHaveValue('Hände waschen');
 
   await name(page).blur();
+  // The same wait as above, for the same reason, on the write blur commits.
+  // A reload issued before it has reached the database reads back the value
+  // from the debounced write instead - "Hände" - and reads as this test's
+  // subject failing when what actually happened is that the page was reloaded
+  // mid-write. It was the one race the polling above did not cover.
+  await expect.poll(async () => (await readSentences(page))[0]?.title).toBe('Hände waschen');
   await page.reload();
   await expect(name(page)).toHaveValue('Hände waschen');
 });
