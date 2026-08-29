@@ -93,10 +93,10 @@ export function openCollectionSource(options: CollectionSourceOptions): void {
   const cost = el('p', { class: 'small faint', style: { margin: '14px 0 0' }, text: costSays() });
 
   const dialog = openDialog({
-    title: t('ui.symbol_source'),
+    title: t('ui.symbol_source_menu_title'),
     body: [
       el('p', { class: 'small muted', style: { margin: '0 0 12px' },
-        text: `Womit „${collection.name}“ gezeichnet wird.` }),
+        text: t('ui.drawn_with', { name: collection.name }) }),
       picker.node,
       cost,
     ],

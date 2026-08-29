@@ -95,5 +95,5 @@ test('the line states and does not route', async ({ page }) => {
   // The one door is the ⋯ beside the name, and it opens the Sammlung's sheet.
   await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
   await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
-  await expect(page.getByRole('heading', { name: 'Symbolquelle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Einstellungen dieser Sammlung' })).toBeVisible();
 });

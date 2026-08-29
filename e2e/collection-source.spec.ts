@@ -40,7 +40,7 @@ const sheetRow = (page: Page, choice: '' | 'arasaac' | 'metacom') =>
 async function openSourceSheet(page: Page): Promise<void> {
   await menu(page).click();
   await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
-  await expect(page.getByRole('heading', { name: 'Symbolquelle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Einstellungen dieser Sammlung' })).toBeVisible();
 }
 
 async function closeSheet(page: Page): Promise<void> {

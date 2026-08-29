@@ -342,7 +342,7 @@ export function openSettings(options: SettingsOptions): void {
         fallback !== 'metacom' && metacom.isReady() ? useButton('metacom') : null,
 
         status.kind !== 'needs-setup'
-          ? el('button', { class: 'btn sm destructive', text: t('ui.forget_folder'),
+          ? el('button', { class: 'btn sm destructive', text: t('ui.forget_symbol_folder'),
               attrs: { type: 'button', disabled: busy },
               on: { click: () => void run(async () => {
                 await metacom.forget();

@@ -111,13 +111,13 @@ export function headline(status: Status): string {
     case 'unsupported':
     case 'off': return '';
     case 'idle':
-    case 'saving': return `Ordner „${status.folder}“`;
-    case 'needs-permission': return `Ordner „${status.folder}“ · Zugriff bestätigen`;
-    case 'failed': return `Ordner „${status.folder}“ · Sicherung fehlgeschlagen`;
+    case 'saving': return t('ui.head_folder', { folder: status.folder });
+    case 'needs-permission': return t('ui.head_folder_confirm', { folder: status.folder });
+    case 'failed': return t('ui.head_folder_failed', { folder: status.folder });
     // Says what happened rather than that something broke, and still not just
     // the folder name — this is a state somebody has to answer, and a heading
     // that showed only the name would manufacture the confidence above.
-    case 'held': return `Ordner „${status.folder}“ · nichts überschrieben`;
+    case 'held': return t('ui.head_folder_held', { folder: status.folder });
   }
 }
 

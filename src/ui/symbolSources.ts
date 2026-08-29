@@ -66,7 +66,7 @@ export function sourceFacts(id: ProviderId): SourceFacts {
     label,
     // Narrowed on kind, not on isReady(): only the ready variant has no message.
     facts: status.kind === 'ready'
-      ? `${metacom.symbolCount} Symbole · ${metacom.rootName}`
+      ? `${t('ui.n_symbols', { n: String(metacom.symbolCount) })} · ${metacom.rootName}`
       : attention ? t('ui.confirm_access')
         : status.message,
     ready: metacom.isReady(),
@@ -146,7 +146,7 @@ export function sourcePicker(spec: SourcePickerSpec): SourcePicker {
 
   function draw(): void {
     const fallback = sourceFacts(spec.fallback());
-    const rows = [row(null, t('ui.follow_default'), `Zurzeit ${fallback.label} · ${fallback.facts}`, null)];
+    const rows = [row(null, t('ui.follow_default'), t('ui.currently', { what: `${fallback.label} · ${fallback.facts}` }), null)];
 
     for (const id of PROVIDER_IDS) {
       const facts = sourceFacts(id);
