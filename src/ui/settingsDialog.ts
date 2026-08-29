@@ -87,11 +87,17 @@ export function openSettings(options: SettingsOptions): void {
   const wordsPanel = makePanel(t('ui.set_function_words'));
   const themePanel = makePanel(t('ui.set_appearance'));
   const dataPanel = makePanel(t('ui.set_data'));
+  /* „Alles löschen" was an <h3> at the foot of „Daten" until 2026-08-29 — a
+     second heading level doing a panel's job, and the one control in this
+     dialog that destroys something filed under the word for making a backup.
+     Its own panel, last in the column, so the list says what is here without
+     anybody opening anything. vorlaut never mixed the two. */
+  const dangerPanel = makePanel(t('ui.delete_all_heading'));
 
   const dialog = openDialog({
     title: t('ui.settings'),
-    body: [langPanel, arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel, dataPanel]
-      .map((p) => p.node),
+    body: [langPanel, arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel,
+      dataPanel, dangerPanel].map((p) => p.node),
     onClose: () => { unsubscribe(); folder?.dispose(); options.onClose(); },
   });
 
@@ -610,7 +616,11 @@ export function openSettings(options: SettingsOptions): void {
           (files) => { close(); options.onImport(files[0]); })),
       el('p', { class: 'small faint', style: { margin: '8px 0 0' }, html:
         t('ui.backup_read_note') }),
-      el('h3', { text: t('ui.delete_all_heading'), style: { fontSize: '13px', margin: '24px 0 6px' } }),
+    );
+  }
+
+  function fillDanger(): void {
+    fill(dangerPanel.body,
       el('p', { class: 'small faint', style: { margin: '0 0 10px' }, text:
         t('ui.delete_all_note') }),
       el('button', { class: 'btn destructive sm', text: t('ui.delete_all_button'),
@@ -624,4 +634,5 @@ export function openSettings(options: SettingsOptions): void {
   fillLanguage();
   fillTheme();
   fillData();
+  fillDanger();
 }

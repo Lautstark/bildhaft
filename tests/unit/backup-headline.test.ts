@@ -3,7 +3,7 @@ import type { Status } from '@lautstark/sicherung';
 import { headline } from '../../src/ui/backupFolder.ts';
 
 /**
- * What the „Daten" heading says about the standing backup.
+ * What the „Sicherung" heading says about the standing backup.
  *
  * The heading is read without opening the panel, which is the whole reason it
  * exists — and therefore the whole reason it must not flatten the states. A
