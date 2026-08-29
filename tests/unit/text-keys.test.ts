@@ -4,6 +4,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { TEXTS } from '../../src/i18n/texts.ts';
 import { SLOT_ORIGINS } from '../../src/core/types.ts';
+import { SOURCE_STATUS_CODES } from '../../src/ui/symbolSources.ts';
 
 /**
  * The table and the calls, held to each other.
@@ -100,6 +101,10 @@ function asked(): Ask[] {
  */
 const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   { prefix: 'ui.origin_', from: SLOT_ORIGINS, where: 'ui/row.ts' },
+  // The sentence for a source that cannot answer. Ours since bildquelle 2.0.0
+  // stopped shipping German ones; the codes come from the package, so a new
+  // state arrives here rather than as a blank line on the settings card.
+  { prefix: 'ui.source_status_', from: SOURCE_STATUS_CODES, where: 'ui/symbolSources.ts' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

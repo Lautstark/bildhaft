@@ -26,6 +26,7 @@ import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
 import { confirmDialog } from './ui/dialog.ts';
+import { sourceStatusLine } from './ui/symbolSources.ts';
 import { icons, logo } from './ui/logo.ts';
 import { actionMenu } from './ui/menu.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
@@ -317,7 +318,8 @@ export function mountApp(root: HTMLElement): void {
     const sourceUnusable = sourceSettled && !sourceBusy
       && (!provider().isReady() || (providerId() === 'metacom' && unreadable >= 3));
 
-    busyMessage.textContent = status.kind === 'loading' ? status.message : t('ui.one_moment');
+    busyMessage.textContent = status.kind === 'loading'
+      ? sourceStatusLine(status) : t('ui.one_moment');
     unusableMessage.textContent = providerId() === 'metacom'
       ? metacomWanted(status.kind === 'needs-setup' && status.code === 'no-folder')
       : t('ui.source_unavailable');

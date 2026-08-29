@@ -1,6 +1,6 @@
 import type { AppSettings, Override, ProviderId } from '../core/types.ts';
 import { arasaac, metacom, MetacomProvider, needsAttention } from '@lautstark/bildquelle';
-import { sourceFacts } from './symbolSources.ts';
+import { sourceFacts, sourceStatusLine } from './symbolSources.ts';
 import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
@@ -326,9 +326,10 @@ export function openSettings(options: SettingsOptions): void {
             status.kind === 'needs-setup'
               ? t('ui.metacom_permission_lost')
               // The other state that needs acting on is a folder that could not
-              // be read, and the package's own words for it are the specific
-              // ones: which failure, not that there was one.
-              : status.kind === 'error' ? status.message : '' })
+              // be read, and the specific sentence is the useful one: which
+              // failure, not that there was one. Ours since bildquelle 2.0.0 —
+              // it used to hand us German whatever this page was set to.
+              : status.kind === 'error' ? sourceStatusLine(status) : '' })
         : null,
 
       /*
@@ -339,7 +340,7 @@ export function openSettings(options: SettingsOptions): void {
        */
       status.kind === 'loading'
         ? el('p', { class: 'small muted', style: { margin: '0 0 10px' } },
-            el('span', { class: 'spinner' }), ` ${status.message}`)
+            el('span', { class: 'spinner' }), ` ${sourceStatusLine(status)}`)
         : null,
 
       el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
