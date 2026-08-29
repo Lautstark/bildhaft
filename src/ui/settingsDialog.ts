@@ -54,7 +54,7 @@ export function openSettings(options: SettingsOptions): void {
   let settings = options.settings;
   let busy = false;
 
-  function makePanel(label: string): Panel {
+  function makePanel(label: string, opensOnArrival = false): Panel {
     const state = el('span', { class: 'state' });
     const summary = el('summary', {}, el('span', { class: 'section', text: label }), state);
     const body = el('div', { class: 'body' });
@@ -62,21 +62,35 @@ export function openSettings(options: SettingsOptions): void {
     // The platform's own accordion, radio-group semantics and no script, which
     // is what keeps the state lines in the headings readable at a glance.
     // @lautstark/design conventions.md §3.5.
-    const node = el('details', { class: 'panel', attrs: { name: 'settings' } }, summary, body);
+    const node = el('details', {
+      class: 'panel',
+      attrs: opensOnArrival ? { name: 'settings', open: '' } : { name: 'settings' },
+    }, summary, body);
     return { node, summary, state, body };
   }
 
+  /* Sprache first, and the one panel that opens on arrival.
+   *
+   * Somebody who cannot read this page needs it before any of the others, and
+   * its two options name themselves - „Deutsch" and „English" are the same
+   * words whichever language the rest of the dialog is in. Every other heading
+   * here is in a language that reader has already told us they cannot read.
+   *
+   * vorlaut said this first and mitreden followed on 2026-08-29; it is the
+   * page's reasoning rather than any one product's. One panel open is a choice
+   * about which one somebody most needs on arrival, and "the setting you need
+   * in order to use anything at all" wins. */
+  const langPanel = makePanel(t('ui.set_language'), true);
   const arasaacPanel = makePanel('ARASAAC');
   const metacomPanel = makePanel('METACOM');
   const dictPanel = makePanel(t('ui.set_dictionary'));
   const wordsPanel = makePanel(t('ui.set_function_words'));
-  const langPanel = makePanel(t('ui.set_language'));
   const themePanel = makePanel(t('ui.set_appearance'));
   const dataPanel = makePanel(t('ui.set_data'));
 
   const dialog = openDialog({
     title: t('ui.settings'),
-    body: [arasaacPanel, metacomPanel, dictPanel, wordsPanel, langPanel, themePanel, dataPanel]
+    body: [langPanel, arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel, dataPanel]
       .map((p) => p.node),
     onClose: () => { unsubscribe(); folder?.dispose(); options.onClose(); },
   });

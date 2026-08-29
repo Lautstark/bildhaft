@@ -31,10 +31,13 @@ async function openSettings(page: Page, lang: 'de' | 'en'): Promise<void> {
   await page.getByRole('button', { name: says(lang, 'ui.settings'), exact: true }).click();
 }
 
-/** ...and the language panel inside it, which is a collapsed <details>. */
+/** ...and the language panel inside it, which since 2026-08-29 is already open
+ *  when the dialog arrives: it is the first panel and the only one that opens
+ *  on arrival, because somebody who cannot read this page needs it before the
+ *  headings they cannot read either. Clicking it would close it, so this waits
+ *  rather than presses - and the wait is the assertion that it really is open. */
 async function openLanguagePanel(page: Page, lang: 'de' | 'en'): Promise<void> {
   await openSettings(page, lang);
-  await page.getByText(says(lang, 'ui.set_language'), { exact: true }).click();
   await page.getByRole('group', { name: says(lang, 'ui.set_language') }).waitFor();
 }
 

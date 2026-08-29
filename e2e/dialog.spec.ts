@@ -116,7 +116,9 @@ test('opening a panel closes the one open before it', async ({ page }) => {
   const first = panels.first();
   const second = panels.nth(1);
 
-  await first.locator('summary').click();
+  // The first panel is Sprache, which opens on arrival - see settingsDialog.ts
+  // for why it and no other. So it is already open rather than clicked open,
+  // and that is what the group is demonstrated against.
   await expect(first).toHaveJSProperty('open', true);
 
   await second.locator('summary').click();
