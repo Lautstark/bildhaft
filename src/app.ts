@@ -21,6 +21,7 @@ import {
 } from './db/exportImport.ts';
 import { Sicherung } from '@lautstark/sicherung';
 import { renameField } from '@lautstark/design/rename';
+import { announcer } from '@lautstark/design/toast';
 import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
@@ -379,37 +380,34 @@ export function mountApp(root: HTMLElement): void {
   /* ------------------------------------------------------------- toast --- */
 
   /*
-   * The toast is a live region, and a live region has to be in the
-   * accessibility tree *before* the text lands. A reader announces a change in
-   * something it was already watching; it has no reason to look at an element
-   * that arrives already carrying its message.
+   * The toast is a live region, and the rule it lives under is
+   * @lautstark/design/toast's: the node is mounted once, with the app, and
+   * never taken out again - see render(), which is the only place root's
+   * children are set. A reader announces a change in something it was already
+   * watching, so a region that arrives already carrying its message announces
+   * nothing at all.
    *
-   * This used to set the text, append the node, and remove it again 3.2
-   * seconds later — so it re-entered the tree carrying each message and left
-   * again between them, which is the one arrangement under which a live region
-   * announces nothing at all. Every acknowledgement this page makes was silent:
-   * a saved image, an exported Sammlung, a failed import, "Alle Daten
-   * gelöscht". The words were on screen and correct the whole time, which is
-   * why nothing ever looked wrong.
+   * This product is why that module refuses a node it did not get handed. The
+   * code here used to set the text, append the node, and remove it again 3.2
+   * seconds later, and every acknowledgement the page made was silent: a saved
+   * image, an exported Sammlung, a failed import, "Alle Daten gelöscht". The
+   * words were on screen and correct the whole time, which is why nothing ever
+   * looked wrong. mitreden had the same failure by a different route.
    *
-   * So the node is mounted once, with the app, and never taken out again — see
-   * render(), which is the only place root's children are set. What the timer
-   * clears is the *text*. Empty it paints nothing (`.toast:empty` in app.css)
-   * and it is position:fixed besides, so it costs no room either.
+   * What is bildhaft's rather than shared is what happens after: the line
+   * empties, so the page goes quiet. Empty it paints nothing (`.toast:empty`
+   * in app.css) and it is position:fixed besides, so it costs no room.
    *
-   * mitreden and vorlaut each met this and each hold it with a spec of their
-   * own; conventions.md §3.8 is the rule, and e2e/announce.spec.ts is this
-   * product's copy of it.
+   * conventions.md §3.8 is the rule and e2e/announce.spec.ts is this product's
+   * copy of it; the module's own tests hold the half that is shared.
    */
   const toast = el('div', { class: 'toast', attrs: { role: 'status' } });
-  let toastTimer = 0;
+  const line = announcer(toast, {
+    rest: 3200,
+    onRest: (node) => { node.textContent = ''; },
+  });
 
-  function notify(message: string): void {
-    toast.textContent = message;
-    window.clearTimeout(toastTimer);
-    // Cleared rather than removed, which is the whole of the fix above.
-    toastTimer = window.setTimeout(() => { toast.textContent = ''; }, 3200);
-  }
+  const notify = (message: string): void => { line.say(message); };
 
   /* -------------------------------------------------------------- rows --- */
 
