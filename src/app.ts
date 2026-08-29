@@ -407,7 +407,9 @@ export function mountApp(root: HTMLElement): void {
     onRest: (node) => { node.textContent = ''; },
   });
 
-  const notify = (message: string): void => { line.say(message); };
+  // rests(), not say(): every message here fades, which is what makes the page
+  // go quiet. vorlaut has both verbs on one line and mitreden uses neither.
+  const notify = (message: string): void => { line.rests(message); };
 
   /* -------------------------------------------------------------- rows --- */
 
