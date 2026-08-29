@@ -217,7 +217,7 @@ export function mountApp(root: HTMLElement): void {
   const rowsHost = el('div', { class: 'rows' });
   const emptyState = el('div', { class: 'empty' },
     el('b', { text: t('ui.no_sentences') }),
-    el('small', { html: 'Tippe oben einen Satz und drücke <kbd>Enter</kbd>.' }));
+    el('small', { html: t('ui.no_sentences_hint') }));
 
   /* The region the banners are drawn into — see the banners block below for
      why it is a region and they are not. Mounted here, once, and never taken
@@ -532,7 +532,9 @@ export function mountApp(root: HTMLElement): void {
       providerOwned: !followsDefault(),
     });
 
-    rowCount.textContent = `${sentences.length} Zeile${sentences.length === 1 ? '' : 'n'}`;
+    rowCount.textContent = sentences.length === 1
+      ? t('ui.n_rows_one')
+      : t('ui.n_rows', { n: sentences.length });
     printAll.toggleAttribute('disabled', sentences.length === 0);
     footerView.setAttribution(provider().attribution);
 
@@ -1145,11 +1147,17 @@ export function mountApp(root: HTMLElement): void {
       const result = await importCollectionFile(file);
       await refreshCollections();
       setActive(result.collection.id);
-      notify(
-        (result.collectionCount > 1 ? `${result.collectionCount} Sammlungen · ` : '')
-        + `${result.sentenceCount} Zeile${result.sentenceCount === 1 ? '' : 'n'} importiert`
-        + (result.overrideCount > 0 ? ` · ${result.overrideCount} Wörterbuch-Einträge` : ''),
-      );
+      // Built from parts rather than from one sentence per shape: the three
+      // facts are independently present or absent, and a key per combination
+      // is eight keys in two languages for one line of a toast.
+      notify([
+        result.collectionCount > 1
+          ? t('ui.n_collections', { n: result.collectionCount }) : null,
+        result.sentenceCount === 1
+          ? t('ui.import_done_one') : t('ui.import_done', { n: result.sentenceCount }),
+        result.overrideCount > 0
+          ? t('ui.n_overrides', { n: result.overrideCount }) : null,
+      ].filter(Boolean).join(' · '));
     } catch (err) {
       notify(err instanceof Error ? err.message : t('ui.file_unreadable'));
     }
@@ -1176,7 +1184,7 @@ export function mountApp(root: HTMLElement): void {
       title: t('ui.delete_collection'),
       // The confirmation names the collection and the row count, deliberately.
       body: t('ui.collection_will_be_deleted', { name: collection.name, n: count }),
-      confirmLabel: `${count} Zeile${count === 1 ? '' : 'n'} löschen`,
+      confirmLabel: count === 1 ? t('ui.delete_n_rows_one') : t('ui.delete_n_rows', { n: count }),
       danger: true,
     });
     if (!ok) return;

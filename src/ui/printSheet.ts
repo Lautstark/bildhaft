@@ -4,6 +4,7 @@ import type {
 import { sentenceCaption, slotCaption } from '../core/types.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
+import { t } from '../i18n/index.ts';
 import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
 
 /** The margin @page reserves on every side. Millimetres, because the sheet is. */
@@ -166,7 +167,7 @@ export function printSheet(options: SheetOptions): HTMLElement {
     sheet.appendChild(el('p', { class: 'ps-attribution' },
       ...lines,
       el('br'),
-      `${collectionName} · erstellt mit bildhaft`,
+      `${collectionName} · ${t('ui.made_with')}`,
     ));
   }
 

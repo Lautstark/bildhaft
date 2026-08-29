@@ -15,7 +15,7 @@
 import type { Sentence } from '../core/types.ts';
 import { el } from './dom.ts';
 import { icons } from './logo.ts';
-import { t } from '../i18n/index.ts';
+import { LANG, t } from '../i18n/index.ts';
 
 /** Past this the box scrolls instead of growing. */
 const MAX_INPUT_HEIGHT = 190;
@@ -50,8 +50,11 @@ export function composer(handlers: ComposerHandlers): {
 } {
   const input = el('textarea', {
     class: 'composer__input',
+    /* `lang` follows the page: it is what the browser spellchecks against, and
+       main.ts already sets documentElement.lang, which a hard-coded 'de' here
+       was quietly overriding for an English reader. */
     attrs: { rows: 1, placeholder: t('ui.composer_placeholder'),
-      'aria-label': t('ui.composer_label'), spellcheck: 'true', lang: 'de' },
+      'aria-label': t('ui.composer_label'), spellcheck: 'true', lang: LANG },
     on: {
       input: () => { handlers.onChange(input.value); grow(); },
       keydown: (event) => {
@@ -89,7 +92,7 @@ export function composer(handlers: ComposerHandlers): {
   const node = el('div', { class: 'composer' },
     el('div', { class: 'composer__box' }, input, go),
     el('div', { class: 'composer__meta' },
-      el('span', { html: '<kbd>Enter</kbd> übersetzt · <kbd>Shift</kbd>+<kbd>Enter</kbd> neue Zeile' }),
+      el('span', { html: t('ui.composer_hint') }),
       providerLine,
     ),
   );
@@ -150,7 +153,7 @@ export function composer(handlers: ComposerHandlers): {
     const own = state.inCollection && state.providerOwned;
     providerWhat.textContent = own ? t('ui.symbols_of_collection') : t('ui.symbols_default');
     providerName.textContent =
-      `${state.providerName}${state.providerReady ? '' : ' (nicht bereit)'}`;
+      `${state.providerName}${state.providerReady ? '' : ` (${t('ui.not_ready')})`}`;
   }
 
   return { node, render };

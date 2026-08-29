@@ -4,7 +4,7 @@ import { getDB } from './db.ts';
 // stays in this database; what the package supplies is where it starts.
 import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
 import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
-import { LANG } from '../i18n/index.ts';
+import { LANG, LOCALE, t } from '../i18n/index.ts';
 import {
   DEFAULT_PRINT_SETTINGS,
   type AppSettings, type Collection, type Override, type OwnImage, type ProviderId,
@@ -94,10 +94,19 @@ export async function getCollection(id: string): Promise<Collection | undefined>
   return (await getDB()).get('collections', id);
 }
 
+/*
+ * §1.5: a new Sammlung is named for the day. The name and the date format both
+ * follow the page - this used to be a German sentence around a `de-DE` date,
+ * which is the name every collection an English reader made was born with, and
+ * it then appeared in the sidebar, the title field, the delete confirmation and
+ * the printed footer.
+ */
 export function defaultCollectionName(): string {
-  return `Sammlung vom ${new Date().toLocaleDateString('de-DE', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  })}`;
+  return t('ui.new_collection_name', {
+    date: new Date().toLocaleDateString(LOCALE, {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    }),
+  });
 }
 
 export async function createCollection(name?: string): Promise<Collection> {

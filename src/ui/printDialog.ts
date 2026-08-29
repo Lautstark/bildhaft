@@ -7,7 +7,7 @@ import {
   printSheet,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
-import { t } from '../i18n/index.ts';
+import { LOCALE, t } from '../i18n/index.ts';
 
 /** Millimetres at the CSS reference resolution of 96dpi. */
 const PX_PER_MM = 96 / 25.4;
@@ -26,9 +26,15 @@ export interface PrintOptions {
   onClose: () => void;
 }
 
-/** A millimetre as this app's users write one: a comma, and no trailing zero. */
+/**
+ * A millimetre as this app's reader writes one, and no trailing zero.
+ *
+ * The locale follows the page rather than being `de-DE`: a decimal comma in an
+ * English sentence is not a smaller mistake than a German word in one, and this
+ * readout is a measurement somebody is about to cut paper by.
+ */
 const mmText = (value: number): string =>
-  value.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+  value.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
 
 /*
  * An element's border box, in CSS pixels.
@@ -89,7 +95,7 @@ export function openPrintDialog(options: PrintOptions): void {
   const dialog = openDialog({
     title: options.sentences.length === 1
       ? t('ui.print_row_title')
-      : `Sammlung drucken (${options.sentences.length} Zeilen)`,
+      : t('ui.print_collection_title', { n: options.sentences.length }),
     wide: true,
     body: [el('div', { class: 'print-layout' }, controls, frame)],
     footer: [
@@ -177,12 +183,13 @@ export function openPrintDialog(options: PrintOptions): void {
   }
 
   function paintFooter(): void {
-    const paper =
-      `${paperLabel(settings.paper)} ${settings.orientation === 'landscape' ? 'quer' : 'hoch'}`;
+    const paper = `${paperLabel(settings.paper)} ${
+      settings.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait')}`;
     const cards = settings.layout === 'sheet' && settings.sheetFit === 'grid'
-      ? `Raster ${settings.gridCols} × ${settings.gridRows}`
-      : `${settings.symbolSizeMm} mm Symbole`;
-    meta.textContent = `${paper} · Ränder ${PAGE_MARGIN_MM} mm · ${cards}`;
+      ? t('ui.grid_meta', { cols: settings.gridCols, rows: settings.gridRows })
+      : t('ui.symbol_size_meta', { mm: settings.symbolSizeMm });
+    meta.textContent =
+      `${paper} · ${t('ui.margins_meta', { mm: PAGE_MARGIN_MM })} · ${cards}`;
     printButton.toggleAttribute('disabled', preparing);
     if (preparing) {
       fill(printButton, el('span', { class: 'spinner' }), ` ${t('ui.preparing')}`);
@@ -289,8 +296,8 @@ export function openPrintDialog(options: PrintOptions): void {
       el('div', { class: 'opt' },
         check(t('ui.word_under'), settings.showLabel, false, (next) => set('showLabel', next)),
         settings.showLabel ? segmented([
-          { label: 'unten', active: settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
-          { label: 'oben', active: settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
+          { label: t('ui.label_below'), active: settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
+          { label: t('ui.label_above'), active: settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
         ], { marginTop: '6px' }) : null,
         settings.showLabel
           ? numberOpt('opt-label', t('ui.font_size'), settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null,

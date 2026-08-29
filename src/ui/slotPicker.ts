@@ -148,7 +148,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   const memoryNote = isNew ? el('span') : el('p', {
     class: 'small faint',
     style: { marginTop: '14px', marginBottom: '0' },
-    text: `Deine Auswahl wird für „${slot.sourceToken}“ gemerkt und beim nächsten Mal automatisch verwendet.`,
+    text: t('ui.choice_remembered', { word: slot.sourceToken }),
   });
 
   /*
@@ -167,7 +167,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   const asideWhileCropping = [search, ownRow, captionRow, negateRow, status, grid, memoryNote];
 
   const dialog = openDialog({
-    title: isNew ? t('ui.add_slot') : `Symbol für „${slot.sourceToken}“`,
+    title: isNew ? t('ui.add_slot') : t('ui.symbol_for', { word: slot.sourceToken }),
     body: [
       search,
       ownRow,
@@ -363,8 +363,8 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   function idleMessage(): string {
     if (isNew) return t('ui.search_to_fill');
     return suggested.length > 0
-      ? `Vorschläge für „${slot.concept}“`
-      : `Für „${slot.concept}“ wurde nichts gefunden. Suche oben nach einem anderen Wort.`;
+      ? t('ui.suggestions_for', { word: slot.concept })
+      : t('ui.no_suggestions_for', { word: slot.concept });
   }
 
   function onQuery(raw: string, now = false): void {
@@ -386,9 +386,11 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     searchTimer = window.setTimeout(async () => {
       const found = await getProvider(provider).search(term).catch(() => []);
       if (mine !== searchToken) return;
-      paint(found, found.length > 0
-        ? `${found.length} Treffer für „${term}“`
-        : `Keine Treffer für „${term}“`);
+      paint(found, found.length === 0
+        ? t('ui.no_hits_for', { term })
+        : found.length === 1
+          ? t('ui.hits_for_one', { term })
+          : t('ui.hits_for', { n: found.length, term }));
     }, now ? 0 : 260);
   }
 

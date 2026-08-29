@@ -79,7 +79,7 @@ export function sentenceRow(
         draggable: 'true',
         /* A rewritten caption is named in full here, because the tile clips it
            to one line and the paper does not. */
-        title: `${slot.ownImage ? t('ui.own_picture') : originHint(slot.origin)}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ` · ${t('ui.crossed_out')}` : ''}${slot.label?.trim() ? `\n${t('ui.text_label')}: „${slot.label.trim()}“` : ''}\n${t('ui.drag_to_reorder')}`,
+        title: `${slot.ownImage ? t('ui.own_picture') : originHint(slot.origin)}${symbolLabel ? ` · ${symbolLabel}` : ''}${slot.negated ? ` · ${t('ui.crossed_out')}` : ''}${slot.label?.trim() ? `\n${t('ui.text_label_value', { text: slot.label.trim() })}` : ''}\n${t('ui.drag_to_reorder')}`,
       },
       on: {
         click: () => handlers.onOpenSlot(slot.id),

@@ -72,6 +72,20 @@ function preferred(): LanguageCode {
  */
 export const LANG: LanguageCode = remembered() ?? preferred();
 
+/**
+ * The BCP 47 tag to format numbers and dates with, for the language the page is
+ * in.
+ *
+ * Here rather than at each `toLocaleString` call, and it is not a text key: it
+ * is not a label anybody reads, and a table whose test asserts both languages
+ * carry the same placeholders has no business holding one. What it is for is
+ * the failure `de-DE` written in place produces — a decimal comma in an English
+ * measurement, or a German date on the name of every new Sammlung — which is
+ * the same failure as an untranslated string and is invisible to a check that
+ * only reads `t()`.
+ */
+export const LOCALE: string = LANG === 'de' ? 'de-DE' : 'en-GB';
+
 /** Remembers the choice and reloads into it. Does nothing if it is already on. */
 export function chooseLanguage(code: LanguageCode): void {
   if (code === LANG) return;
@@ -88,7 +102,14 @@ export function chooseLanguage(code: LanguageCode): void {
  *
  * A missing key returns the key itself rather than an empty string, so a
  * mistake shows up as `ui.print_start` on a button instead of as a button with
- * nothing on it. tests/unit/texts.test.ts is what stops it getting that far.
+ * nothing on it.
+ *
+ * That is the right behaviour and it is not a check. This line used to name
+ * tests/unit/texts.test.ts as what stops it getting that far, and that test
+ * holds the two languages to each other and never looks at a call site — so a
+ * key nobody declared passed it in both languages equally. `ui.folder_permission`
+ * reached a person that way. tests/unit/text-keys.test.ts is the one that
+ * holds the table against the program, in both directions.
  */
 export function t(key: string, params?: Record<string, string | number>): string {
   let out = TEXTS[LANG][key] ?? TEXTS.de[key] ?? key;

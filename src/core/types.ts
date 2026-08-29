@@ -21,17 +21,29 @@ import type { Candidate, ProviderId } from '@lautstark/bildquelle';
 import type { LanguageCode } from '../i18n/index.ts';
 export type { Candidate, ProviderId };
 
-/** How a slot's concept was arrived at — surfaced as a tooltip, nothing more. */
-export type SlotOrigin =
-  | 'override' // personal override dictionary
-  | 'lemma' // direct lemma lookup
-  | 'separable' // German: particle reattached, e.g. "räum … auf" -> aufräumen
-  | 'compound' // German: part of a split compound, e.g. Apfelsaft -> Apfel + Saft
-  | 'synonym' // German: resolved via the synonym table
-  | 'phrasal' // English: verb and particle read as one, e.g. "clean up"
-  | 'raw' // matched on the surface form
-  | 'manual' // chosen by hand from the picker, whether added or corrected
-  | 'unmatched'; // nothing found; user must pick manually
+/**
+ * How a slot's concept was arrived at — surfaced as a tooltip, nothing more.
+ *
+ * A runtime array with the type read off it, rather than a bare union, because
+ * the tooltip is the one place in this app that composes a text key from a
+ * value: `ui.origin_${origin}`. A union is gone by the time the program runs,
+ * so nothing could check that every rung has a sentence to show, and a rung
+ * without one prints the literal `ui.origin_phrasal` on a tooltip.
+ * tests/unit/text-keys.test.ts walks this list against the table.
+ */
+export const SLOT_ORIGINS = [
+  'override', // personal override dictionary
+  'lemma', // direct lemma lookup
+  'separable', // German: particle reattached, e.g. "räum … auf" -> aufräumen
+  'compound', // German: part of a split compound, e.g. Apfelsaft -> Apfel + Saft
+  'synonym', // German: resolved via the synonym table
+  'phrasal', // English: verb and particle read as one, e.g. "clean up"
+  'raw', // matched on the surface form
+  'manual', // chosen by hand from the picker, whether added or corrected
+  'unmatched', // nothing found; user must pick manually
+] as const;
+
+export type SlotOrigin = (typeof SLOT_ORIGINS)[number];
 
 export interface Slot {
   id: string;

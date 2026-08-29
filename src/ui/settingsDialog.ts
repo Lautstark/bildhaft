@@ -299,7 +299,7 @@ export function openSettings(options: SettingsOptions): void {
     const attention = needsAttention(status);
     const metacomFacts = sourceFacts('metacom');
     metacomPanel.state.textContent = status.kind === 'ready'
-      ? `${fallback === 'metacom' ? 'Standardquelle' : 'Eingerichtet'} · ${metacomFacts.facts}`
+      ? `${fallback === 'metacom' ? t('ui.default_source') : t('ui.configured')} · ${metacomFacts.facts}`
       : metacomFacts.facts;
 
     fill(metacomPanel.body,
@@ -417,13 +417,13 @@ export function openSettings(options: SettingsOptions): void {
 
     const select = el('select', {
       class: 'field',
-      attrs: { id: 'opt-rendering', 'aria-label': 'Darstellung' },
+      attrs: { id: 'opt-rendering', 'aria-label': t('ui.rendering') },
       on: {
         change: () => {
           change({ ...settings, metacomRendering: select.value || null });
           options.onNotify(select.value
-            ? `Darstellung „${select.value}“ wird bevorzugt.`
-            : 'Keine Darstellung mehr bevorzugt.');
+            ? t('ui.rendering_preferred', { name: select.value })
+            : t('ui.rendering_cleared'));
         },
       },
     },

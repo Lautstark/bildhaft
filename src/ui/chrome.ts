@@ -132,7 +132,9 @@ export function sidebar(handlers: SidebarHandlers): {
 
     if (state.searchQuery.trim().length > 0) {
       fill(listSection,
-        el('h2', { text: `${state.searchResults.length} Treffer` }),
+        el('h2', { text: state.searchResults.length === 1
+          ? t('ui.n_hits_one')
+          : t('ui.n_hits', { n: state.searchResults.length }) }),
         el('div', { class: 'list' },
           ...state.searchResults.map((sentence) => {
             const where = state.collections.find((c) => c.id === sentence.collectionId)?.name ?? '—';
