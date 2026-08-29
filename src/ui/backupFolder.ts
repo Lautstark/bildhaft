@@ -18,7 +18,7 @@
  */
 
 import { Sicherung, type Status } from '@lautstark/sicherung';
-import { actionsFor, ago, needsAttention } from '@lautstark/sicherung/ui';
+import { actionsFor, ago, lineFor, needsAttention } from '@lautstark/sicherung/ui';
 import { el, fill } from './dom.ts';
 import { LANG, t } from '../i18n/index.ts';
 
@@ -51,7 +51,7 @@ const LABELS: Record<'choose' | 'confirm' | 'save-empty' | 'retry' | 'forget', s
 
 /** The age of the last real copy, or the admission that there has never been one. */
 const lastCopy = (at: number | null): string =>
-  at === null ? 'noch nie gesichert' : `zuletzt gesichert ${since(at)}`;
+  at === null ? t('ui.folder_never') : t('ui.folder_last', { age: since(at) });
 
 /**
  * The sentence for each state.
@@ -60,28 +60,35 @@ const lastCopy = (at: number | null): string =>
  * that is the point rather than a detail: „es funktioniert nicht" is a sentence
  * somebody can put off, and „seit elf Tagen nichts gesichert" is not.
  *
- * Exported for the test that holds that rule, the way `headline` below is —
- * it is the one thing about this panel still written out in three products
- * with nothing checking they agree. @lautstark/sicherung/ui owns the rest, and
- * deliberately not the words. Nothing outside this file calls it.
+ * Which arms exist and which carry an age is @lautstark/sicherung/ui's
+ * `lineFor` since v1.4.0, and this switch answers its keys rather than
+ * Status's. All three products held this table and nothing compared them - by
+ * the time it moved, five of the seven arms here had drifted to German written
+ * out in place while the other two went through t(), so an English page said
+ * „Zugriff auf „Sicherung" muss bestätigt werden". The words are still
+ * bildhaft's; the shape is not, and a missing arm is now a compile error.
+ *
+ * Exported for the test that holds the age rule, the way `headline` below is.
+ * Nothing outside this file calls it.
  */
 export function sentence(status: Status): string {
-  switch (status.kind) {
-    case 'unsupported': return '';
+  const line = lineFor(status);
+  switch (line.key) {
+    case 'none': return '';
     case 'off': return t('ui.no_folder_yet');
     case 'saving': return t('ui.backing_up');
-    case 'idle': return status.lastWrite === null
-      ? `Ordner „${status.folder}“ · noch nie gesichert`
-      : `Ordner „${status.folder}“ · gesichert ${since(status.lastWrite)}`;
+    case 'idle-never': return t('ui.folder_idle_never', { folder: line.folder });
+    case 'idle':
+      return t('ui.folder_idle', { folder: line.folder, age: since(line.lastWrite) });
     case 'needs-permission':
-      return `Zugriff auf „${status.folder}“ muss bestätigt werden — ${lastCopy(status.lastWrite)}.`;
+      return t('ui.folder_permission', { folder: line.folder, age: lastCopy(line.lastWrite) });
     case 'failed':
-      return `Sicherung fehlgeschlagen: ${status.reason} — ${lastCopy(status.lastWrite)}.`;
+      return t('ui.folder_failed', { reason: line.reason, age: lastCopy(line.lastWrite) });
     // Deliberately not phrased as a failure. Nothing broke: the copy in the
     // folder is whole and untouched, and the only open question is whether
     // this browser being empty is the truth.
     case 'held':
-      return `Dieser Browser hat keine Sammlungen. In „${status.folder}“ wurde nichts überschrieben — ${lastCopy(status.lastWrite)}.`;
+      return t('ui.folder_held', { folder: line.folder, age: lastCopy(line.lastWrite) });
   }
 }
 
