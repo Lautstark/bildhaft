@@ -39,7 +39,7 @@ const sheetRow = (page: Page, choice: '' | 'arasaac' | 'metacom') =>
 
 async function openSourceSheet(page: Page): Promise<void> {
   await menu(page).click();
-  await page.getByRole('menuitem', { name: 'Symbolquelle …' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
   await expect(page.getByRole('heading', { name: 'Symbolquelle' })).toBeVisible();
 }
 
@@ -81,7 +81,7 @@ test('the ⋯ holds what this Sammlung is set to, under the export and above the
   // the delete last. The middle item is not an act on the Sammlung, which is
   // the amendment that section carries.
   await expect(page.locator('.menu button')).toHaveText([
-    'Sammlung exportieren', 'Symbolquelle …', 'Sammlung löschen',
+    'Sammlung exportieren', 'Einstellungen dieser Sammlung …', 'Sammlung löschen',
   ]);
 });
 

@@ -6,9 +6,13 @@ import { chooseFakeFolder, openSymbolSettings, withoutDirectoryPicker } from './
  * The line under the input, which names the source the rows are drawn from.
  *
  * It says *whose* answer that is, and the reason is that a line naming a source
- * without saying which of the two it read is a line that is right by luck. It
- * is also what makes one „Ändern" leading to two places honest: the caption
- * says which door before the press rather than after it.
+ * without saying which of the two it read is a line that is right by luck.
+ *
+ * It used to carry an „Ändern" button as well, leading to this Sammlung's
+ * sheet or to the settings card depending on where the next sentence landed.
+ * That went on 2026-08-29: the line states and nothing more, and each of the
+ * two answers has one door - a Sammlung's is its ⋯, the default is the
+ * settings card.
  *
  * These assertions are about the words rather than about the pictures on
  * purpose. What is on the page and what the page says about it are two things
@@ -17,7 +21,6 @@ import { chooseFakeFolder, openSymbolSettings, withoutDirectoryPicker } from './
  */
 
 const line = (page: Page) => page.locator('.composer__provider');
-const change = (page: Page) => line(page).getByRole('button');
 
 test.beforeEach(async ({ page }) => {
   await withoutDirectoryPicker(page);
@@ -33,7 +36,7 @@ test('names the default while the Sammlung is following it', async ({ page }) =>
 
 test('names the Sammlung once the Sammlung has answered', async ({ page }) => {
   await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Symbolquelle …' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
   await page.locator('.source[data-choice="arasaac"]').click();
   await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
 
@@ -56,7 +59,7 @@ test('follows the source into the Sammlung it belongs to', async ({ page }) => {
 
 test('says a source that cannot draw is not ready', async ({ page }) => {
   await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Symbolquelle …' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
   // METACOM is not offered in the sheet without a folder, so the state has to
   // arrive the way it really does: from storage, as a restored Sicherung does.
   await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
@@ -83,11 +86,14 @@ test('says a source that cannot draw is not ready', async ({ page }) => {
   await expect(page.locator('.banner')).toContainText('kein METACOM-Ordner eingerichtet');
 });
 
-test('the button says which door it opens, before it is pressed', async ({ page }) => {
-  await expect(change(page)).toHaveAttribute('aria-label', 'Symbolquelle dieser Sammlung ändern');
+test('the line states and does not route', async ({ page }) => {
+  // It carried an „Ändern" button whose destination changed with where the next
+  // sentence would land, and the caption was what made that honest. Both halves
+  // of that arrangement are gone: there is nothing pressable in the line.
+  await expect(line(page).getByRole('button')).toHaveCount(0);
 
-  await change(page).click();
-  // The Sammlung's own sheet, because a Sammlung is open — which in this
-  // product is always.
+  // The one door is the ⋯ beside the name, and it opens the Sammlung's sheet.
+  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
   await expect(page.getByRole('heading', { name: 'Symbolquelle' })).toBeVisible();
 });

@@ -29,7 +29,6 @@ export interface ComposerHandlers {
    * answer the line just named, so the caller routes it — see drawProvider for
    * why the button says which door before it is pressed.
    */
-  onChangeProvider: () => void;
 }
 
 export interface ComposerState {
@@ -73,14 +72,14 @@ export function composer(handlers: ComposerHandlers): {
 
   const providerWhat = el('span');
   const providerName = el('b', { style: { fontWeight: '600' } });
-  const providerChange = el('button', {
-    class: 'btn quiet sm',
-    text: t('ui.change'),
-    attrs: { type: 'button' },
-    on: { click: handlers.onChangeProvider },
-  });
+  /* A statement, not a control. It carried an „Aendern" button until
+     2026-08-29 that led to this Sammlung's sheet or to the settings card
+     depending on where the next sentence would land, and the caption beside it
+     was what made that honest - an argument this file used to have to make.
+     Each answer has one door now: a Sammlung's is its ⋯, the default is the
+     settings card. */
   const providerLine = el('span', { class: 'composer__provider' },
-    providerWhat, providerName, providerChange);
+    providerWhat, providerName);
   const reuseRow = el('div', { class: 'composer__reuse' },
     el('span', { text: t('ui.already_translated'), style: { flex: '1' } }),
     el('button', { class: 'btn sm', text: t('ui.reuse'),
@@ -140,30 +139,18 @@ export function composer(handlers: ComposerHandlers): {
    * The second fact is what the line was missing. It was right before because
    * there was one answer; there are two now — this Sammlung's own, or the
    * default it follows — and a line naming a source without saying which of the
-   * two it read is a line that is right by luck. It is also what makes one
-   * „Ändern" leading to two different places honest: the word beside it says
-   * which door, before the press rather than after it.
+   * two it read is a line that is right by luck.
    *
-   * bildhaft opens exactly one Sammlung at a time and boot makes one where the
-   * library is empty, so the third arm — no Sammlung at all, where the default
-   * is the only answer there could be and the settings card is the only place
-   * to change it — is the type's case rather than one somebody reaches. It is
-   * written anyway: it costs a branch, and the alternative is a button that
-   * would silently lead nowhere if that ever stopped being true.
+   * That second fact used to do double duty, as the caption that made one
+   * „Ändern" button leading to two different places honest. The button is gone
+   * and the fact stays, because it was always the more useful half: it answers
+   * "which source is this" without anybody pressing anything.
    */
   function drawProvider(state: ComposerState): void {
     const own = state.inCollection && state.providerOwned;
     providerWhat.textContent = own ? t('ui.symbols_of_collection') : t('ui.symbols_default');
     providerName.textContent =
       `${state.providerName}${state.providerReady ? '' : ' (nicht bereit)'}`;
-    /* The button says nothing but „Ändern" and has room for nothing more, so
-       what it leads to is in the name a reader hears rather than only in the
-       caption a reader sees. */
-    const what = state.inCollection
-      ? t('ui.change_collection_source')
-      : t('ui.change_default_source');
-    providerChange.title = what;
-    providerChange.setAttribute('aria-label', what);
   }
 
   return { node, render };
