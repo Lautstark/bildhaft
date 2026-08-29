@@ -4,6 +4,7 @@ import { getOwnImage } from '../db/repo.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, svg } from './dom.ts';
 import { t } from '../i18n/index.ts';
+import { changes } from '@lautstark/werkzeuge/changed';
 
 /**
  * Process-wide cache of resolved image URLs. Rows, the slot picker and the print
@@ -86,7 +87,11 @@ export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<stri
  * the "confirm access" button appear to do nothing at all.
  */
 let generation = 0;
-const resetListeners = new Set<() => void>();
+
+/* The same notifier db/repo.ts uses for the library, for a subject that has
+ * nothing to do with backups — which is why @lautstark/werkzeuge/changed is a
+ * factory rather than a module holding one Set. */
+const reset = changes();
 
 /** Makes every mounted symbol try again. */
 export function resetSymbolResolution(provider?: ProviderId): void {
@@ -94,14 +99,11 @@ export function resetSymbolResolution(provider?: ProviderId): void {
   else cache.clear();
   pending.clear();
   generation += 1;
-  for (const listener of resetListeners) listener();
+  reset.touched();
 }
 
 /** Subscribes to "a source became usable again"; returns an unsubscribe. */
-export function onSymbolReset(listener: () => void): () => void {
-  resetListeners.add(listener);
-  return () => { resetListeners.delete(listener); };
-}
+export const onSymbolReset = reset.onChanged;
 
 /** Dropped when a provider is reconfigured and its object URLs are revoked. */
 export function clearSymbolCache(provider: ProviderId): void {

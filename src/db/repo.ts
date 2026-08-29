@@ -10,6 +10,7 @@ import {
   type AppSettings, type Collection, type Override, type OwnImage, type ProviderId,
   type Sentence,
 } from '../core/types.ts';
+import { changes } from '@lautstark/werkzeuge/changed';
 
 const SETTINGS_KEY = 'app';
 
@@ -31,17 +32,15 @@ export const newId = (): string =>
  * touched()**. tests/unit/repo-notifies.test.ts asserts it for every exported
  * function whose name says it writes, so forgetting is a red test rather than
  * a silent gap.
+ *
+ * The Set behind it is @lautstark/werkzeuge/changed's now; three products had
+ * written the same ten lines and a fourth copy of them is in ui/symbols.ts,
+ * for a subject with nothing to do with backups. What stays here is the rule
+ * above, which is the part that is about this repository.
  */
-const watchers = new Set<() => void>();
-
-export function onChanged(listener: () => void): () => void {
-  watchers.add(listener);
-  return () => watchers.delete(listener);
-}
-
-function touched(): void {
-  for (const listener of watchers) listener();
-}
+const changed = changes();
+export const onChanged = changed.onChanged;
+const touched = changed.touched;
 
 /* ------------------------------------------------------------- settings --- */
 

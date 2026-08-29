@@ -8,6 +8,8 @@ import { t } from '../i18n/index.ts';
 import {
   getOwnImage, listCollections, listAllOverrides, listOwnImages, listSentences, newId,
 } from './repo.ts';
+import { downloadJson as offer } from '@lautstark/werkzeuge/download';
+import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
 const NOTICE = t('export.notice');
 
@@ -124,19 +126,25 @@ export async function exportEverything(): Promise<BackupExport> {
   };
 }
 
+/**
+ * What bildhaft calls the files it hands out: the product's name, the
+ * Sammlung's, and the day.
+ *
+ * The trigger under it is @lautstark/werkzeuge/download, which takes a
+ * filename whole — the prefix and the stamp are this product's and vorlaut
+ * deliberately has neither. What this file lost with it is the bug: the copy
+ * here revoked the blob URL on the line after the click, and a blob revoked
+ * before the browser has opened the URL is a download that silently never
+ * begins. Both other products carried a comment saying so.
+ *
+ * The name is now spelled rather than stripped, which is the visible half:
+ * "Häufige Wörter!" was `Häufige Wörter` and is `Haeufige_Woerter_`. See
+ * @lautstark/werkzeuge/filename — nothing reads a download's name back, and
+ * the person it is for reads it.
+ */
 export function downloadJson(data: unknown, name: string): void {
-  const safeName = name.replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'export';
   const stamp = new Date().toISOString().slice(0, 10);
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `bildhaft-${safeName}-${stamp}.json`;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  offer(data, `bildhaft-${downloadSlug(name, 'export')}-${stamp}.json`);
 }
 
 export function downloadCollectionExport(data: CollectionExport): void {
