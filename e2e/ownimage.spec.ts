@@ -45,6 +45,44 @@ test('puts an own picture in a slot, and keeps it across a reload', async ({ pag
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 });
 
+/**
+ * Opening a field that has a picture in it shows the picture.
+ *
+ * It did not, and the gap was invisible from the code: the dialog knew there was
+ * one — it offered to remove it — but drew nothing of it. Nothing in it is
+ * marked while an own picture is up either, by design, because the suggestions
+ * below are what the field would fall back to and not what it holds. So opening
+ * a field that had a photograph in it presented a search for a word, a grid of
+ * pictograms, and the photograph nowhere: it read as having lost it.
+ */
+test('the picker shows the picture the field is already holding', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  const slot = page.locator('.row').first().locator('.slot').nth(2);
+  await slot.click();
+  await attachPhoto(page);
+  await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
+
+  await slot.click();
+  await expect(page.locator('.picker__grid')).toBeVisible();
+
+  /*
+   * The picture itself, not a placeholder: 3 is the fixture and 1 is the
+   * ARASAAC mock, so the width says which of them arrived. Beside the buttons
+   * that change it, because keep, replace and remove are one decision and it
+   * needs the picture in front of it.
+   */
+  const shown = page.locator('.picker__own img');
+  await expect(shown).toHaveCount(1);
+  await expect(shown).toHaveJSProperty('naturalWidth', 3);
+
+  // And nowhere when there is nothing to show: the field two along has only a
+  // symbol, and a preview box standing empty would say it had a picture.
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await page.locator('.row').first().locator('.slot').nth(1).click();
+  await expect(page.locator('.picker__grid')).toBeVisible();
+  await expect(page.locator('.picker__own img')).toHaveCount(0);
+});
+
 test('leaves the symbol underneath, and uncovers it again on removal', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   const slot = page.locator('.row').first().locator('.slot').nth(2);

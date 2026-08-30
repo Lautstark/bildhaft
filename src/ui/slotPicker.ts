@@ -1,4 +1,5 @@
 import type { Candidate, ProviderId, Slot } from '../core/types.ts';
+import { ownImageId } from '../core/types.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
@@ -89,7 +90,23 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
     },
   });
 
+  /*
+   * The picture the field is actually showing.
+   *
+   * It was the one thing this dialog would not show. Nothing here is marked
+   * while an own picture is up — the suggestions below are what the slot would
+   * fall back to, not what it holds — so opening a field that had a photograph
+   * in it presented a search for a word and no photograph anywhere, and read as
+   * having lost it. It is shown where the buttons that change it are, because
+   * "keep, replace, remove" is one decision and needs the picture in front of it.
+   */
+  const ownView = slot.ownImage
+    ? symbolView({ provider, id: ownImageId(slot.ownImage), alt: t('ui.own_picture') })
+    : null;
+  if (ownView) views.push(ownView);
+
   const ownRow = el('div', { class: 'picker__own' },
+    ownView ? el('span', { class: 'slot__img picker__own-shown' }, ownView.node) : null,
     el('label', { class: 'btn sm', text: t('ui.own_picture_choose'), style: { cursor: 'pointer' } },
       upload),
     slot.ownImage

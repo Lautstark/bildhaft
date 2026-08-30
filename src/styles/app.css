@@ -470,6 +470,15 @@ kbd {
   margin-top: 10px;
 }
 
+/* The picture the field is showing, beside the buttons that change it. Small:
+   it is here to be recognised, not to be judged — the square was already
+   decided when it was cropped. */
+.picker__own-shown {
+  width: 46px;
+  height: 46px;
+  flex: none;
+}
+
 .picker__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
