@@ -44,6 +44,46 @@ test('a link naming a Sammlung opens it', async ({ page }) => {
   expect(new URL(page.url()).searchParams.has('sammlung')).toBe(false);
 });
 
+/* The bug this file was written a day too early to catch: a Sammlung published
+   with ARASAAC choices, opened by somebody working in METACOM, arrived with
+   every symbol blank. Nothing was wrong with the file — no slot had a choice for
+   the source in front of them, and nothing asked. Here the published file
+   carries a choice for a provider that is not the active one, which is the same
+   shape from the other side. */
+test('a Sammlung made in another symbol source still shows symbols', async ({ page }) => {
+  await mockArasaac(page);
+  await page.route(SHELF, (route) => route.fulfill({
+    json: {
+      ...published,
+      collection: { name: 'Aus einer anderen Quelle', sentenceIds: [] },
+      sentences: [{
+        id: 's0',
+        rawInput: 'Apfel',
+        normalizedInput: 'apfel',
+        slots: [{
+          id: 's0-0',
+          sourceToken: 'Apfel',
+          concept: 'apfel',
+          origin: 'lemma',
+          // A choice for a source this reader does not use, and none for the
+          // one they do — which is exactly what a shared file looks like.
+          choice: { metacom: 'irgendwo/apfel.png' },
+          candidates: {},
+        }],
+      }],
+    },
+  }));
+
+  await page.goto('/?sammlung=aus-einer-anderen-quelle');
+
+  await expect(page.getByLabel('Name der Sammlung')).toHaveValue('Aus einer anderen Quelle');
+  // Resolved on arrival, against the source actually in front of the reader:
+  // one slot, carrying a picture rather than an empty frame.
+  const slot = page.locator('.row').first().locator('.slot', { hasText: 'Apfel' });
+  await expect(slot).toBeVisible();
+  await expect(slot.locator('.slot__img img')).toBeVisible();
+});
+
 test('a link naming a Sammlung that is not there says so, and adds nothing', async ({ page }) => {
   await mockArasaac(page);
   await page.route(SHELF, (route) => route.fulfill({ status: 404, body: '' }));
