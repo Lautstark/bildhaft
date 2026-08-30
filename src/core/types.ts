@@ -224,6 +224,25 @@ export interface Collection {
    */
   provider?: ProviderId;
 
+  /**
+   * The language the sentences in it are written in, where that is known.
+   *
+   * Unlike `provider` this one *does* travel in an export, and the difference
+   * is what each is about. A provider is a fact about the reader's machine —
+   * which symbol library they happen to own — and naming it in a shared file
+   * points somebody at a source they may not have. A language is a fact about
+   * the sentences themselves: „Kopfschmerzen" is German wherever it is opened,
+   * and stays German on a page somebody reads in English.
+   *
+   * What it drives is the symbol search, not the interface. Somebody working in
+   * English on a German Sammlung needs „Zähne putzen" looked up in German, or
+   * no symbol they search for can be right; the labels around them are their own
+   * choice and this does not touch them.
+   *
+   * Absent means what it always meant: the page's own language, as before.
+   */
+  language?: LanguageCode;
+
   createdAt: number;
   updatedAt: number;
 }

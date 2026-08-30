@@ -3,6 +3,7 @@ import type {
 } from './core/types.ts';
 import { sentenceCaption } from './core/types.ts';
 import { wanted } from '@lautstark/werkzeuge/sammlung';
+import { setSymbolLanguage } from '@lautstark/bildquelle';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { LANG, t } from './i18n/index.ts';
 
@@ -730,6 +731,21 @@ export function mountApp(root: HTMLElement): void {
 
   function setActive(id: string): void {
     activeId = id;
+    /* The symbol search follows the Sammlung, not the page.
+     *
+     * main.ts sets this once from LANG, and that is right for a page somebody
+     * is writing in. It is wrong for a Sammlung that arrived from somewhere
+     * else: a German one opened by somebody reading the interface in English
+     * had „Zähne putzen" looked up at the English endpoint, which does not
+     * refuse an English word — it answers one — so every correction they tried
+     * to make found the wrong picture or none.
+     *
+     * The interface stays in the language they chose. bildquelle keys its cache
+     * and its in-flight map by language and passes the language down through a
+     * search rather than reading it again at the end, so moving this while the
+     * page is open is a thing that module was built for.
+     */
+    setSymbolLanguage(collections.find((c) => c.id === id)?.language ?? LANG);
     if (settings && settings.lastCollectionId !== id) {
       settings = { ...settings, lastCollectionId: id };
       void saveSettings(settings);

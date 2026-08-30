@@ -249,6 +249,11 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     id: collectionId,
     name: source.name || 'Importierte Sammlung',
     sentenceIds: sentences.map((s) => s.id),
+    /* Carried, where provider is not: which language the sentences are in is a
+       fact about them, and it is what the symbol search has to be asked in for
+       a correction to be findable at all. */
+    ...(source.language === 'de' || source.language === 'en'
+      ? { language: source.language } : {}),
     createdAt: now,
     updatedAt: now,
   };
