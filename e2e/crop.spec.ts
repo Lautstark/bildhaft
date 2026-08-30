@@ -23,6 +23,18 @@ const WIDE = 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAMCAIAAAD3UuoiAAAAIElEQVR4nGO4pqGBhj
 /** 3x3 green, the already-square case. The same picture ownimage.spec.ts uses. */
 const SQUARE = 'iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAD0lEQVR4nGNg+M8ARVhYAIaXCPjDmz7KAAAAAElFTkSuQmCC';
 
+/**
+ * 8x4, every pixel (255, 0, 0), tagged Display P3 — a red no sRGB screen can
+ * make, and the ordinary case for a photograph off a phone.
+ *
+ * A 91-byte PNG rather than a JPEG carrying an ICC profile, which is what a
+ * camera writes and what `sips` produces: the whole tag here is a four-byte
+ * cICP chunk saying "Display P3, sRGB transfer", so the fixture stays something
+ * a person can read the bytes of. What it is for is the one thing an sRGB
+ * fixture cannot test — a colour that has to be thrown away to fit in sRGB.
+ */
+const P3_RED = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAIAAAA8r+mnAAAABGNJQ1AMDQABbgPj7wAAABJJREFUeJxj+M/AgBVhFyVLAgBaXh/hHkKEKAAAAABJRU5ErkJggg==';
+
 const RED = [214, 40, 40];
 const GREEN = [40, 160, 60];
 
@@ -43,6 +55,25 @@ const dropCrop = (page: Page) =>
 
 /** The picture the third slot of the first row is drawing. */
 const kept = (page: Page) => page.locator('.row').first().locator('.slot').nth(2).locator('img');
+
+/**
+ * The same stripe, to within a value or two.
+ *
+ * Exact equality was right while the square was a byte-for-byte copy of the
+ * source. It is not any more: the square is cut on a Display P3 canvas so that
+ * a photograph keeps the colours sRGB cannot hold, so an sRGB fixture makes the
+ * trip sRGB → P3 → 8-bit PNG → sRGB and can land a value out. (214, 40, 40)
+ * comes back as (214, 39, 40).
+ *
+ * What these assertions read a pixel for is which stripe of the fixture it is,
+ * and the stripes are 120 apart. A tolerance of two keeps that question exactly
+ * as sharp as it was while saying that the last bit is not the subject.
+ */
+function expectStripe(seen: number[], want: number[]): void {
+  const near = seen.length === want.length
+    && want.every((value, i) => Math.abs(seen[i]! - value) <= 2);
+  expect(near, `${JSON.stringify(seen)} is not ${JSON.stringify(want)}`).toBe(true);
+}
 
 /**
  * One pixel out of a picture that is on screen, as [r, g, b].
@@ -151,8 +182,8 @@ test('the square it opens on is the middle of the picture', async ({ page }) => 
    * from either end would have red or blue in it; a picture squashed to fit
    * rather than cut would have all three.
    */
-  expect(await pixelAt(image, 0, 6)).toEqual(GREEN);
-  expect(await pixelAt(image, -1, 6)).toEqual(GREEN);
+  expectStripe(await pixelAt(image, 0, 6), GREEN);
+  expectStripe(await pixelAt(image, -1, 6), GREEN);
 });
 
 test('dragging the picture moves what is kept, the other way', async ({ page }) => {
@@ -182,8 +213,8 @@ test('dragging the picture moves what is kept, the other way', async ({ page }) 
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 12);
   // Hard against the left edge: the first six columns are the red stripe.
-  expect(await pixelAt(image, 0, 6)).toEqual(RED);
-  expect(await pixelAt(image, -1, 6)).toEqual(GREEN);
+  expectStripe(await pixelAt(image, 0, 6), RED);
+  expectStripe(await pixelAt(image, -1, 6), GREEN);
 });
 
 test('the arrow keys move it too, and stop at the edge', async ({ page }) => {
@@ -201,7 +232,7 @@ test('the arrow keys move it too, and stop at the edge', async ({ page }) => {
 
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 12);
-  expect(await pixelAt(image, 0, 6)).toEqual(RED);
+  expectStripe(await pixelAt(image, 0, 6), RED);
 });
 
 test('Enter keeps the square too, the way it means Fertig everywhere else',
@@ -218,7 +249,7 @@ test('Enter keeps the square too, the way it means Fertig everywhere else',
 
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 12);
-  expect(await pixelAt(image, 0, 6)).toEqual(GREEN);
+  expectStripe(await pixelAt(image, 0, 6), GREEN);
 });
 
 test('the slider takes a smaller square', async ({ page }) => {
@@ -238,6 +269,53 @@ test('the slider takes a smaller square', async ({ page }) => {
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 6);
   await expect(image).toHaveJSProperty('naturalHeight', 6);
-  expect(await pixelAt(image, 0, 3)).toEqual(GREEN);
-  expect(await pixelAt(image, -1, 3)).toEqual(GREEN);
+  expectStripe(await pixelAt(image, 0, 3), GREEN);
+  expectStripe(await pixelAt(image, -1, 3), GREEN);
+});
+
+/**
+ * The colours a photograph came with.
+ *
+ * The square is cut on a canvas, and a canvas is sRGB unless it is asked to be
+ * something else — so every colour the picture had outside sRGB was clamped on
+ * the way through, and what got stored was duller than what was chosen. On a
+ * phone that is most of what makes a photograph look like a photograph.
+ *
+ * It showed on some pictures and not others, which is what made it hard to
+ * believe rather than merely wrong: a picture that is already square never
+ * reaches the canvas at all and keeps its own bytes.
+ *
+ * Sampled in a Display P3 canvas, because an sRGB one cannot hold the
+ * difference it is being asked about: read there, both would say (255, 0, 0)
+ * and the test would pass on the broken code.
+ */
+test('a photograph keeps the colours it came with', async ({ page }) => {
+  await openPicker(page);
+  await attach(page, P3_RED, 'Bente.png');
+  await keepCrop(page);
+
+  // 8x4 in, so the centred square is 4 — and not the 1x1 ARASAAC mock, which
+  // is what the box holds until the stored picture arrives in it.
+  await expect(kept(page)).toHaveJSProperty('naturalWidth', 4);
+
+  const seen = await kept(page).evaluate((element: HTMLImageElement) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = element.naturalWidth;
+    canvas.height = element.naturalHeight;
+    const context = canvas.getContext('2d', { colorSpace: 'display-p3' });
+    if (!context) throw new Error('no display-p3 canvas');
+    context.drawImage(element, 0, 0);
+    const { data } = context.getImageData(1, 1, 1, 1);
+    return [data[0], data[1], data[2]];
+  });
+
+  /*
+   * The picture that went in reads (254, 0, 0) here. Through an sRGB canvas it
+   * came out (233, 51, 35) — the same red as far as sRGB is concerned, and
+   * visibly flatter than the one that was chosen. Loose on the blue channel
+   * only: that is JPEG-grade rounding, and 51 of green is not.
+   */
+  expect(seen[0]).toBeGreaterThan(250);
+  expect(seen[1]).toBeLessThan(10);
+  expect(seen[2]).toBeLessThan(10);
 });
