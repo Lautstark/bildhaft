@@ -730,6 +730,15 @@ export function mountApp(root: HTMLElement): void {
   }
 
   function setActive(id: string): void {
+    /* Nothing from the last one stays on screen.
+     *
+     * The rows below are replaced when listSentences() answers, which for a
+     * local read is a frame — except where what follows is long, and after an
+     * import it is: the symbols of a Sammlung that has just arrived all have to
+     * be resolved. Until then the head carried the new name over the previous
+     * Sammlung's rows, which does not read as "loading", it reads as those rows
+     * being what this Sammlung contains. */
+    if (activeId !== id) sentences = [];
     activeId = id;
     /* The symbol search follows the Sammlung, not the page.
      *
