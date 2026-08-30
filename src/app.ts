@@ -2,6 +2,7 @@ import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
 import { sentenceCaption } from './core/types.ts';
+import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { LANG, t } from './i18n/index.ts';
 
@@ -631,6 +632,10 @@ export function mountApp(root: HTMLElement): void {
         ? t('ui.db_carried_one', { from: carried.from, to: carried.to })
         : t('ui.db_carried', { from: carried.from, to: carried.to, n: carried.collections }));
     }
+
+    // Last, and after the first render: this may add a Sammlung and open it,
+    // and notify() writes into a toast that render() is what mounts.
+    await openNamed();
   })().catch((error: unknown) => {
     /*
      * Boot had no catch at all until adr/0001, and the failure it was missing
@@ -1142,6 +1147,43 @@ export function mountApp(root: HTMLElement): void {
     if (!collection) return;
     downloadCollectionExport(await exportCollection(collection));
     notify(t('ui.collection_exported'));
+  }
+
+  /**
+   * A Sammlung the address names.
+   *
+   *     …/bildhaft/?sammlung=saetze-zum-drucken
+   *
+   * A link on <https://lautstark.tech/sammlungen/> lands somebody here with the
+   * sentences already in front of them. The reading half — the parameter, the
+   * id check, the fetch — is `@lautstark/werkzeuge/sammlung`, shared with
+   * vorlaut and mitreden: the address names an entry and never a URL, because a
+   * parameter holding an address turns a link into „fetch whatever this says
+   * and import it", and what gets imported is read to a child.
+   *
+   * There is no check here that the file is ours. handleImport() hands it to
+   * importCollectionFile(), which refuses anything that is not a bildhaft file
+   * by name — one refusal, in the words the file picker already uses.
+   *
+   * Never rejects: this runs in boot, where a rejection would be read as the
+   * page having failed to open.
+   */
+  async function openNamed(here?: string): Promise<void> {
+    const asked = here === undefined ? await wanted() : await wanted(here);
+    switch (asked.kind) {
+      case 'none':
+        return;
+      case 'unknown':
+        notify(t('ui.shelf_unknown'));
+        return;
+      case 'offline':
+        notify(t('ui.shelf_offline', { error: asked.error.message }));
+        return;
+      case 'file':
+        // The same path „Sammlung einlesen" takes, down to the toast it writes
+        // and the collection it opens afterwards.
+        await handleImport(asked.file);
+    }
   }
 
   async function handleImport(file: File): Promise<void> {

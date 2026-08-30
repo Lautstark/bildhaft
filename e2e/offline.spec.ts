@@ -41,6 +41,9 @@ const ALLOWED = new Map([
   // Fetched. The pictogram search and the pictures it returns. Declared.
   ['api.arasaac.org', 'the pictogram search'],
   ['static.arasaac.org', 'the pictogram images'],
+  // Fetched, and only ever after a ?sammlung= link is opened: the one published
+  // Sammlung that link names. Declared — „Eine fertige Sammlung holen".
+  ['lautstark.tech', 'a published Sammlung a ?sammlung= link names'],
   // Linked in prose, never fetched - the about, Impressum and privacy texts.
   ['arasaac.org', 'the attribution the licence requires'],
   ['github.com', 'the source code and the issue tracker'],
