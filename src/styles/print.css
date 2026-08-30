@@ -33,6 +33,27 @@
 }
 
 /*
+ * A page, as a box exactly the size of the printable area.
+ *
+ * The sheet used to be one column that the browser cut wherever it liked, which
+ * is why the preview could not show a page break outside a card grid and why
+ * nothing could say how many sheets a job came to. planPages() works the cuts
+ * out and applyPlan() builds them, so a page is now a real element in both
+ * copies. A column, so the credit block can be sent to the foot of the last one.
+ */
+.ps-page {
+  display: flex;
+  flex-direction: column;
+  height: var(--page-h);
+  break-after: page;
+  page-break-after: always;
+}
+.ps-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+/*
  * The fixed grid: exactly --cols across, each row --cell-h tall, so cols x rows
  * fills the page. 1fr columns need no arithmetic — the sheet's own padding has
  * already made the container the printable width.
@@ -214,15 +235,19 @@
 }
 
 /*
- * 5mm and not 6: printSheet() reserves this block CREDIT_CHROME_MM = 8mm of
- * chrome, and 6 + 2 + 0.2 plus the whole pixel a browser rounds a box up to is
- * 8.5 — which on A5, the one paper narrow enough to wrap the ARASAAC credit
- * onto a second line, put the block half a millimetre past the page and onto a
- * sheet of its own. The reservation is the fixed thing: it is baked into the
- * height of every card on every grid page. So the block fits the reservation.
+ * At the foot of the page, always — `margin-top: auto` in the page's column.
+ *
+ * It used to follow the last thing on the sheet, which on a half-empty last page
+ * left the licence notice floating in the middle of it. Where it sits is also
+ * what makes it fit: pinned, only its own height has to be inside the room a
+ * grid page reserves, and the margin that used to be counted into that room is
+ * now whatever is left over.
  */
 .ps-attribution {
-  margin-top: 5mm;
+  margin-top: auto;
+  /* A <p>, so the UA gives it a bottom margin of 1em — which at 7.5pt is the
+     2.6mm that stood between "at the foot of the page" and nearly there. */
+  margin-bottom: 0;
   padding-top: 2mm;
   border-top: 0.2mm solid #ddd;
   font-size: 7.5pt;
@@ -266,22 +291,34 @@
 }
 
 /*
- * Preview only: frame each page of a card grid.
+ * Preview only: every page is a sheet of paper.
  *
- * The preview scrolls as one continuous sheet, so pages after the first run
- * straight into each other with nothing to say where the paper ends — which in
- * a mode whose whole subject is "how many cards fit on a page" is the one thing
- * it has to show. An outline draws it without moving anything: adding a margin
- * or a border here would push the following pages down and make the preview
- * disagree with the printer about where the break falls.
+ * This used to be one long sheet with an outline drawn round each page of a
+ * card grid, and the note here said a margin between pages would push the
+ * following ones down and make the preview disagree with the printer about
+ * where the break falls. That was true while the browser decided the breaks.
+ * It is not any more: planPages() decides them, and a page is a box of a fixed
+ * height, so nothing put between two pages can move anything inside either.
+ *
+ * So the paper's margin moves onto the page — where on paper it has always been,
+ * and where it shows that every page has one and not just the first — and the
+ * pages come apart. What the preview shows is now the stack that comes out of
+ * the printer rather than a roll of it.
  */
-.preview-scaler .ps-grid {
-  outline: 0.4mm solid #9aa0a6;
+.preview-scaler .ps-sheet--paged {
+  background: transparent;
+  padding: 0;
 }
-
-/* On screen the sheet floats like a sheet of paper inside the preview frame. */
-.preview-scaler .ps-sheet {
+.preview-scaler .ps-page {
+  /* content-box, so `height` stays the printable height and the margin is added
+     round it rather than taken out of it. */
+  box-sizing: content-box;
+  padding: var(--page-margin);
+  background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18), 0 10px 30px rgba(0, 0, 0, .12);
+}
+.preview-scaler .ps-page + .ps-page {
+  margin-top: 8mm;
 }
 
 /* The printable DOM lives in the document but is invisible until printing. */
@@ -325,9 +362,14 @@
   }
 
   /*
-   * The last grid page must not force a blank sheet after it. It carries no
-   * break itself, but a page-height grid sitting flush against the bottom of
-   * the printable area is enough for the browser to start another one.
+   * The last page must not force a blank sheet after it. It carries no break of
+   * its own, but a page-height box sitting flush against the bottom of the
+   * printable area is enough for the browser to start another one.
+   *
+   * On .ps-page rather than .ps-grid, which is where this rule used to sit: a
+   * grid is now inside a page box and is the last child of every one of them,
+   * so left as it was it would have told the browser to avoid the break its
+   * parent was asking for on every page but the last.
    */
-  #print-root .ps-grid:last-child { break-after: avoid; page-break-after: avoid; }
+  #print-root .ps-page:last-child { break-after: avoid; page-break-after: avoid; }
 }

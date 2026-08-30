@@ -3,14 +3,12 @@ import { symbolIdsIn } from '../core/types.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import {
-  applyPageSetup, clearPageSetup, METACOM_COPYRIGHT, PAGE_MARGIN_MM, paperLabel, paperSize,
-  printSheet,
+  applyPageSetup, applyPlan, clearPageSetup, METACOM_COPYRIGHT, PAGE_MARGIN_MM, paperLabel,
+  paperSize, planPages, printSheet, PX_PER_MM,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { LOCALE, t } from '../i18n/index.ts';
 
-/** Millimetres at the CSS reference resolution of 96dpi. */
-const PX_PER_MM = 96 / 25.4;
 const PREVIEW_PADDING = 28;
 
 /** What "give the cards a background" starts as before anyone picks a colour. */
@@ -69,6 +67,8 @@ function clamp(value: number, min: number, max: number, fallback: number): numbe
 export function openPrintDialog(options: PrintOptions): void {
   let settings = options.settings;
   let preparing = false;
+  /** How many sheets of paper this comes to. Measured, never guessed. */
+  let pageCount = 1;
 
   const printRoot = document.getElementById('print-root');
   const frame = el('div', { class: 'preview-frame' });
@@ -156,6 +156,13 @@ export function openPrintDialog(options: PrintOptions): void {
     // there.
     await warmSymbols(options.provider, symbolIdsIn(options.sentences, options.provider));
     await document.fonts?.ready;
+    /*
+     * Laid out again now that the type is the type. The page plan is measured,
+     * and a label set in a fallback face is not the same height as the same
+     * label in the real one — so a plan made before the fonts arrived can put a
+     * break where the printer would not.
+     */
+    paint();
     // Two frames so the printable copy is laid out before the dialog opens.
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     preparing = false;
@@ -188,8 +195,10 @@ export function openPrintDialog(options: PrintOptions): void {
     const cards = settings.layout === 'sheet' && settings.sheetFit === 'grid'
       ? t('ui.grid_meta', { cols: settings.gridCols, rows: settings.gridRows })
       : t('ui.symbol_size_meta', { mm: settings.symbolSizeMm });
+    // How much paper this is, said before the paper is used rather than after.
+    const pages = t(pageCount === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pageCount });
     meta.textContent =
-      `${paper} · ${t('ui.margins_meta', { mm: PAGE_MARGIN_MM })} · ${cards}`;
+      `${paper} · ${t('ui.margins_meta', { mm: PAGE_MARGIN_MM })} · ${cards} · ${pages}`;
     printButton.toggleAttribute('disabled', preparing);
     if (preparing) {
       fill(printButton, el('span', { class: 'spinner' }), ` ${t('ui.preparing')}`);
@@ -367,11 +376,24 @@ export function openPrintDialog(options: PrintOptions): void {
       collectionName: options.collectionName,
     });
 
-    sheetHolder.replaceChildren(build());
+    const preview = build();
+    sheetHolder.replaceChildren(preview);
     // The actual printable DOM: same builder, hidden on screen, revealed by
     // @media print. Built separately rather than moved, so neither copy can
     // steal nodes from the other.
-    printRoot?.replaceChildren(build());
+    const printable = build();
+    printRoot?.replaceChildren(printable);
+
+    /*
+     * Where the pages fall, worked out once off the copy that has heights — the
+     * printable one is display:none and has none — and then applied to both. One
+     * plan for two sheets is what keeps the preview's page boxes and the
+     * printer's page breaks the same answer rather than two guesses at it.
+     */
+    const plan = planPages(preview, settings);
+    applyPlan(preview, plan);
+    applyPlan(printable, plan);
+    pageCount = plan.pages.length;
 
     paintFooter();
     paintCardSize();

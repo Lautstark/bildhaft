@@ -556,16 +556,22 @@ test('a credit line does not push itself onto a page of its own', async ({ page 
   await page.getByLabel('Copyright-Hinweis drucken').check();
 
   /*
-   * offsetTop/offsetHeight, not getBoundingClientRect: the preview is drawn
-   * inside a CSS transform: scale(), so rects come back in scaled pixels and a
-   * 277mm page measures as whatever the panel happened to shrink it to.
-   * 277mm is the printable height of a portrait A4 once @page has its margins.
+   * Asked of the last page box rather than measured off the sheet in
+   * millimetres. The notice is pinned to the foot of its page, so the distance
+   * from the grid down to it is the page height by construction and says
+   * nothing; what the reservation is for is that the notice shares that page
+   * with a card instead of taking a sheet for itself.
    */
-  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
-    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
-    const last = pages[pages.length - 1];
-    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
-    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
+  const seen = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = [...sheet.querySelectorAll<HTMLElement>('.ps-page')];
+    const last = pages[pages.length - 1]!;
+    return {
+      creditOnLast: !!last.querySelector('.ps-attribution'),
+      cardsOnLast: last.querySelectorAll('.ps-card').length,
+      spill: last.scrollHeight - last.clientHeight,
+    };
   });
-  expect(used).toBeLessThanOrEqual(277);
+  expect(seen.creditOnLast).toBe(true);
+  expect(seen.cardsOnLast).toBeGreaterThan(0);
+  expect(seen.spill).toBe(0);
 });

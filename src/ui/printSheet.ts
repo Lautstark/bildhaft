@@ -145,6 +145,172 @@ const TITLE_LINE_MM = 5.5;
 const TITLE_GAP_MM = 4;
 const TITLE_ALLOWANCE_MM = TITLE_GAP_MM + 2 * TITLE_LINE_MM;
 
+/* --------------------------------------------------------------- pages --- */
+
+/** Millimetres at the CSS reference resolution of 96dpi. */
+export const PX_PER_MM = 96 / 25.4;
+
+/**
+ * Where the pages fall, measured off a sheet that is in the document.
+ *
+ * The grid decides its own pages — that is the whole of `cardSheet()`. Nothing
+ * else did: a strip sheet was one long column that the browser broke wherever
+ * it happened to break, which the preview could not show and nobody could count
+ * before pressing Print. So the cut is worked out here, once, and both copies
+ * are built from the answer — the same rule the grid already follows, and the
+ * reason the preview can now be page boxes rather than a scroll.
+ *
+ * Measured rather than derived, because the heights are not knowable from the
+ * settings: a caption that wraps makes its strip taller, and how many cards fit
+ * across a row depends on a frame that may or may not be drawn. Only the sheet
+ * on screen knows. #print-root is `display: none` and so has no heights at all,
+ * which is why this returns a plan to apply to it rather than measuring it too.
+ */
+export interface SheetPlan {
+  /** A card sheet sized in millimetres: how many cards each row came out with. */
+  rows: number[] | null;
+  /** How many blocks each page holds, in order. One entry per page. */
+  pages: number[];
+}
+
+/** A block's own height and the margins above and below it, in pixels. */
+function outer(node: HTMLElement): { top: number; height: number; bottom: number } {
+  const style = getComputedStyle(node);
+  return {
+    top: parseFloat(style.marginTop),
+    height: node.offsetHeight,
+    bottom: parseFloat(style.marginBottom),
+  };
+}
+
+/**
+ * How many cards each row of a flowing card sheet took.
+ *
+ * By where they landed, not by dividing the page: `.ps-row` wraps, and what it
+ * fits depends on the frame and the cut margin as laid out rather than as
+ * specified. Cards on one row share an offsetTop because the row is a flex line.
+ */
+function cardRows(row: HTMLElement): number[] {
+  const rows: number[] = [];
+  let top: number | null = null;
+  for (const card of row.querySelectorAll<HTMLElement>(':scope > .ps-card')) {
+    if (card.offsetTop !== top) { rows.push(0); top = card.offsetTop; }
+    rows[rows.length - 1]! += 1;
+  }
+  return rows;
+}
+
+/** The one flowing row of a card sheet, or null when the sheet has none. */
+function flowingRow(sheet: HTMLElement): HTMLElement | null {
+  return sheet.querySelector<HTMLElement>(':scope > .ps-row');
+}
+
+/**
+ * Cuts that one row into one row per line of cards, so a page can hold whole
+ * lines. Without it the only block a card sheet has is the row itself, and a
+ * sheet of forty cards would be one indivisible block eight pages tall.
+ */
+function splitRow(sheet: HTMLElement, rows: number[]): void {
+  const row = flowingRow(sheet);
+  if (!row || rows.length < 2) return;
+  /*
+   * Idempotent, because it is asked twice of the same sheet: planPages() splits
+   * the preview to measure it and applyPlan() is then run against both copies
+   * from the one plan. Splitting an already-split sheet would take its first row
+   * — one card — and cut that into as many rows as the whole sheet had.
+   */
+  if (sheet.querySelectorAll(':scope > .ps-row').length === rows.length) return;
+  const cards = [...row.children];
+  const made: HTMLElement[] = [];
+  let taken = 0;
+  for (const count of rows) {
+    made.push(el('div', { class: 'ps-row' }, ...cards.slice(taken, taken + count)));
+    taken += count;
+  }
+  if (taken < cards.length) made[made.length - 1]!.append(...cards.slice(taken));
+  row.replaceWith(...made);
+}
+
+/** Sub-pixel slack, so a block that fits exactly is not pushed off the page. */
+const FIT_TOLERANCE = 0.5;
+
+export function planPages(sheet: HTMLElement, settings: PrintSettings): SheetPlan {
+  const row = settings.layout === 'sheet' && settings.sheetFit !== 'grid'
+    ? flowingRow(sheet) : null;
+  const rows = row ? cardRows(row) : null;
+  // Split before measuring: until it is, a card sheet's only block is the one
+  // flowing row, which is as tall as every card it holds.
+  if (rows) splitRow(sheet, rows);
+
+  const limit = printableArea(settings.paper, settings.orientation).height * PX_PER_MM;
+  const blocks = [...sheet.children] as HTMLElement[];
+  /*
+   * The credit block is not packed with the rest. It belongs at the foot of the
+   * last page — a licence notice on a page of its own is a wasted sheet, and one
+   * floating half-way up a short last page reads as something that got left
+   * behind. So it is set aside here and placed once the pages are known.
+   */
+  const credit = blocks.at(-1)?.classList.contains('ps-attribution') ? blocks.pop()! : null;
+
+  const pages: number[] = [];
+  const filled: number[] = [];
+  let count = 0;
+  let used = 0;
+
+  const close = () => { pages.push(count); filled.push(used); count = 0; used = 0; };
+
+  for (const block of blocks) {
+    const box = outer(block);
+    // A block that will not fit in what is left starts the page it needs.
+    if (count > 0 && used + box.top + box.height > limit + FIT_TOLERANCE) close();
+    count += 1;
+    used += box.top + box.height + box.bottom;
+    // A grid page is a page by construction, and "one sentence per page" says so.
+    if (block.classList.contains('ps-grid') || block.classList.contains('ps-sentence--page')) {
+      close();
+    }
+  }
+  if (count > 0) close();
+  if (pages.length === 0) { pages.push(0); filled.push(0); }
+
+  if (credit) {
+    const box = outer(credit);
+    // Pinned to the foot of its page, so only its own height has to fit.
+    if (filled[filled.length - 1]! + box.height > limit + FIT_TOLERANCE) pages.push(1);
+    else pages[pages.length - 1]! += 1;
+  }
+
+  return { rows, pages };
+}
+
+/**
+ * Puts a plan into a sheet: one `.ps-page` box per page, each exactly the
+ * printable area. Run against both copies from the one plan, so the preview and
+ * the printer cannot disagree about where a page ends.
+ */
+export function applyPlan(sheet: HTMLElement, plan: SheetPlan): void {
+  if (plan.rows) splitRow(sheet, plan.rows);
+  const blocks = [...sheet.children] as HTMLElement[];
+  const pages: HTMLElement[] = [];
+  let taken = 0;
+  for (const count of plan.pages) {
+    pages.push(el('div', { class: 'ps-page' }, ...blocks.slice(taken, taken + count)));
+    taken += count;
+  }
+  // Cannot happen, and is checked anyway: a block the plan did not account for
+  // would be a symbol silently missing from a printout.
+  if (taken < blocks.length) pages[pages.length - 1]!.append(...blocks.slice(taken));
+  sheet.replaceChildren(...pages);
+  /*
+   * Said in a class, because the preview draws a paginated sheet differently: the
+   * paper's margin moves onto the page boxes. It cannot move before they exist —
+   * planPages() measures how many cards fit across a row, and it has to measure
+   * that inside the printable width, not inside the sheet with its margin taken
+   * off it.
+   */
+  sheet.classList.add('ps-sheet--paged');
+}
+
 export interface SheetOptions {
   sentences: Sentence[];
   settings: PrintSettings;
