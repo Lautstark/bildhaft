@@ -78,7 +78,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
   const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 127,1 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 128,9 mm.');
 });
 
 test('card sheet collapses duplicate symbols', async ({ page }) => {
@@ -202,7 +202,7 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   // A5 portrait: 210mm less two 10mm margins, less the room ARASAAC's credit
   // needs, halved.
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
-    .toBeCloseTo(83.6, 0);
+    .toBeCloseTo(85.4, 0);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
@@ -223,7 +223,7 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(127.1, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(128.9, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
@@ -324,15 +324,16 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
 /*
  * The same room, under the two things that make that line longest: the
  * narrowest paper this app offers, and a Sammlung named the way people name
- * one. The credit line carries a collection name, a sentence about ARASAAC and
- * a URL, and the allowance it is reserved out of gives it a fixed number of
- * lines — so the case that would spill is a long name on a narrow page.
+ * one. The allowance gives the collection's line exactly one line, so a name
+ * long enough to wrap it is a page carrying nothing but the tail of a credit —
+ * which is why the name is clipped rather than the allowance made bigger, and
+ * why the address has to survive the clipping intact.
  */
-test('the credit still fits on the narrowest paper under a long name', async ({ page }) => {
+test('a long name is clipped so the credit keeps to its one line', async ({ page }) => {
   await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
   await expect(page.locator('dialog.sheet')).toBeHidden();
   await page.getByLabel('Name der Sammlung', { exact: true })
-    .fill('Kindergarten Sonnenschein – Morgenkreis');
+    .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
 
   await page.getByRole('button', { name: 'A5', exact: true }).click();
@@ -349,6 +350,24 @@ test('the credit still fits on the narrowest paper under a long name', async ({ 
   });
   // A5 portrait: 210mm less two 10mm margins.
   expect(used).toBeLessThanOrEqual(190);
+
+  // Clipped, and clipped in the right place: the name gives way, the address
+  // is printed whole. scrollWidth is what the name would need; clientWidth is
+  // what it got.
+  const line = await page.locator('.preview-frame .ps-made').evaluate((made: HTMLElement) => {
+    const name = made.querySelector<HTMLElement>('.ps-made__name')!;
+    const tail = made.querySelector<HTMLElement>('.ps-made__tail')!;
+    return {
+      wanted: name.scrollWidth,
+      got: name.clientWidth,
+      tailClipped: tail.scrollWidth > tail.clientWidth,
+      lines: Math.round(made.offsetHeight / parseFloat(getComputedStyle(made).lineHeight)),
+    };
+  });
+  expect(line.wanted).toBeGreaterThan(line.got);
+  expect(line.tailClipped).toBe(false);
+  expect(line.lines).toBe(1);
+  await expect(page.locator('.preview-frame .ps-url')).toHaveText('https://bildhaft.lautstark.tech');
 });
 
 /*

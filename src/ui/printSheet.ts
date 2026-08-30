@@ -110,14 +110,15 @@ const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
  * page and an obviously wrong printout. Reserved on every page rather than only
  * the last, because the alternative is cards of two different sizes in one deck.
  *
- * Sized rather than guessed: the block is its own margin and rule plus two
- * lines each for the credits and for the collection. Two rather than one,
- * because ARASAAC's credit is a sentence long and wraps on a narrow page where
- * METACOM's does not — and the collection's line, which carries a name somebody
- * chose and the address the printout came from, does the same. A5 portrait
- * under „Kindergarten Sonnenschein – Morgenkreis" overran by half a millimetre
- * when it was allowed one. e2e asserts the block actually fits inside this,
- * on the narrowest paper and under a name of that kind.
+ * Sized rather than guessed: the block is its own margin and rule plus one line
+ * per credit and one for the collection. Each credit is allowed two lines,
+ * because ARASAAC's is a sentence long and wraps on a narrow page where
+ * METACOM's does not. The collection's line gets one and is held to it: it
+ * carries a name somebody chose, and a name long enough to wrap would otherwise
+ * cost every card on every grid page 1.8mm of height to make room for a second
+ * line that is usually empty. So the name is clipped instead — see .ps-made.
+ * e2e asserts the block actually fits inside this, on the narrowest paper and
+ * under a name long enough to be clipped.
  */
 /** 7.5pt of type at 1.4 line-height, in millimetres. */
 const CREDIT_LINE_MM = 3.7;
@@ -125,7 +126,7 @@ const CREDIT_LINE_MM = 3.7;
 const CREDIT_CHROME_MM = 8;
 
 function creditAllowanceMm(creditCount: number): number {
-  return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 2);
+  return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 1);
 }
 
 /*
@@ -216,9 +217,19 @@ export function printSheet(options: SheetOptions): HTMLElement {
     }
     sheet.appendChild(el('p', { class: 'ps-attribution' },
       ...lines,
-      el('br'),
-      `${collectionName} · ${t('ui.made_with')} `,
-      el('a', { class: 'ps-url', text: BILDHAFT_URL, attrs: { href: BILDHAFT_URL } }),
+      /*
+       * The name gives way, never the address. Both are on one line and a long
+       * name would push the address off it, so the name is the part allowed to
+       * be clipped — an ellipsis on a name the reader chose still says which
+       * collection this is, where half a URL says nothing and is not something
+       * anybody can type back in.
+       */
+      el('span', { class: 'ps-made' },
+        el('span', { class: 'ps-made__name', text: collectionName }),
+        el('span', { class: 'ps-made__tail' },
+          ` · ${t('ui.made_with')} `,
+          el('a', { class: 'ps-url', text: BILDHAFT_URL, attrs: { href: BILDHAFT_URL } })),
+      ),
     ));
   }
 
