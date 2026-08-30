@@ -148,6 +148,13 @@ export function printSheet(options: SheetOptions): HTMLElement {
       '--frame-pad': `${framePadMm(settings)}mm`,
       '--card-radius': `${settings.cardRadiusMm}mm`,
       '--card-bg': settings.cardBackground ?? 'transparent',
+      /*
+       * The strip frame's own thickness. It follows the card frame when there
+       * is one so both are drawn with the same pen, and falls back to a line
+       * thin enough to cut along when card frames are off — which is the usual
+       * case, since a strip frame is asked for on its own.
+       */
+      '--strip-w': `${settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm`,
     },
   });
 
@@ -177,7 +184,9 @@ export function printSheet(options: SheetOptions): HTMLElement {
 /** Sentence strips: one row per sentence, in reading order. */
 function strips(sentences: Sentence[], settings: PrintSettings, provider: ProviderId): HTMLElement[] {
   return sentences.map((sentence, i) => el('div', {
-    class: `ps-sentence${settings.onePerPage && i < sentences.length - 1 ? ' ps-sentence--page' : ''}`,
+    class: 'ps-sentence'
+      + (settings.onePerPage && i < sentences.length - 1 ? ' ps-sentence--page' : '')
+      + (settings.stripFrame ? ' ps-sentence--framed' : ''),
   },
     settings.showSentenceText ? el('p', { class: 'ps-caption', text: sentenceCaption(sentence) }) : null,
     el('div', { class: 'ps-row' }, ...sentence.slots.map((slot) => card(slot, settings, provider))),

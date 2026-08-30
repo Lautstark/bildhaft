@@ -197,6 +197,9 @@ The options are the ones that matter in practice:
   material a child already has. Drawn *inside* the cut margin: the card's own edge
   is where the scissors go. Off by default, and when off nothing is drawn at all,
   so an unframed card is exactly the size it has always been.
+- **Frame around the strip** (sentence strips only) — one line around the whole
+  strip, sentence text and symbols together, along which it is cut out. Drawn in
+  the same colour and with the same corner radius as the card frame.
 - **Label** on/off, above or below the symbol.
 - **One sentence per page** or continuous.
 - **Copyright notice** (METACOM only) — `METACOM Symbole © Annette Kitzinger` at
