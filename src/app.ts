@@ -742,9 +742,16 @@ export function mountApp(root: HTMLElement): void {
       /* Opening a collection can change the source, because the collection is
          where the answer lives now. Its rows may never have been resolved
          against that source, and an unresolved slot draws as an empty field
-         rather than as a symbol. syncProvider() returns at once when the source
-         has not moved, which is the ordinary case. */
-      void syncProvider();
+         rather than as a symbol.
+
+         resolveOpen() and not syncProvider(), which is the fix: syncProvider
+         returns at once when the source has not moved — and a Sammlung that has
+         just arrived from somebody else has rows that were never resolved for
+         this source *whether or not it moved*. That is how an imported Sammlung
+         drawn in METACOM opened entirely blank for a reader on ARASAAC, and the
+         other way round. resolveSlotsForProvider leaves a slot alone once it has
+         a choice, so this costs nothing in the ordinary case. */
+      void resolveOpen();
     });
   }
 
@@ -1100,6 +1107,26 @@ export function mountApp(root: HTMLElement): void {
   async function syncProvider(): Promise<void> {
     if (previousProvider === providerId()) return;
     previousProvider = providerId();
+    await resolveOpen();
+  }
+
+  /**
+   * Fills in the symbol source this person actually uses, for every sentence in
+   * the open Sammlung.
+   *
+   * resolveSlotsForProvider() leaves a slot alone once it has a choice for that
+   * provider, so this is cheap where there is nothing to do and is the whole
+   * job where there is.
+   *
+   * **Two callers, and the second is why this is a function.** A provider change
+   * is the obvious one. The other is an import: a file carries the choices of
+   * whoever made it, and a Sammlung drawn in METACOM opened by somebody with
+   * ARASAAC — or the reverse — arrived entirely blank. Nothing was wrong with
+   * the file; every slot simply had no choice for the source in front of them,
+   * and nothing ever asked. That is the case this whole concept-and-choice shape
+   * exists for, and it was the one case not wired up.
+   */
+  async function resolveOpen(): Promise<void> {
     if (!activeId) return;
 
     busy = true;
@@ -1190,6 +1217,8 @@ export function mountApp(root: HTMLElement): void {
     try {
       const result = await importCollectionFile(file);
       await refreshCollections();
+      // setActive() resolves what it opens against the source in front of the
+      // reader, which is what a file from somebody else needs.
       setActive(result.collection.id);
       // Built from parts rather than from one sentence per shape: the three
       // facts are independently present or absent, and a key per combination
