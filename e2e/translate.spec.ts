@@ -146,6 +146,53 @@ test('makes one row per line of a multi-line entry', async ({ page }) => {
     .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
 });
 
+/*
+ * A pasted text is the case this was written for: a song or a page of a picture
+ * book, dozens of lines, each one a chain of lookups. Translating the lot before
+ * anything appeared meant an empty page for as long as the slowest network took,
+ * which reads as a hang rather than as work — so the rows have to land as they
+ * come, and the wait has to say how far it has got.
+ *
+ * One line is held back by the route rather than by a timer, so what is asserted
+ * is the half-done state itself and not a guess about how long it lasts.
+ */
+test('a long text fills in line by line, and says how far it has got', async ({ page }) => {
+  let release = (): void => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route('**://api.arasaac.org/**', async (route) => {
+    const term = decodeURIComponent(new URL(route.request().url()).pathname.split('/').pop() ?? '');
+    if (term.toLowerCase().startsWith('schnecke')) await held;
+    await route.fallback();
+  });
+
+  const input = page.getByLabel('Satz eingeben');
+  await input.fill([
+    'Der Hund liegt unter dem Tisch',
+    'Die Katze schläft',
+    'Der Vogel singt',
+    'Die Schnecke kriecht',
+  ].join('\n'));
+  await input.press('Enter');
+
+  // Three rows are on the page while the fourth is still out at the source.
+  const rows = page.locator('.row');
+  await expect(rows).toHaveCount(3);
+  await expect(page.locator('.banner--busy')).toContainText('von 4');
+  // And the box is already empty, which is the other half of "it took the text".
+  await expect(input).toHaveValue('');
+
+  release();
+  await expect(rows).toHaveCount(4);
+  await expect(page.locator('.banner--busy')).toHaveCount(0);
+
+  /* Reading order, top to bottom. The lines are translated several at a time
+     now, so the order rows arrive in is not the order they were typed in — and
+     that order is what gets printed. */
+  await expect(rows.first().locator('.slot__label'))
+    .toHaveText(['Hund', 'liegt', 'unter', 'Tisch']);
+  await expect(rows.last().locator('.slot__label')).toHaveText(['Schnecke', 'kriecht']);
+});
+
 test('a focused field inside a sheet is not clipped by its scroll region', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await page.locator('.row').first().locator('.slot-add').click();
