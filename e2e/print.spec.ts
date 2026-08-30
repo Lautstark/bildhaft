@@ -78,7 +78,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
   const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 127,1 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 128,9 mm.');
 });
 
 test('card sheet collapses duplicate symbols', async ({ page }) => {
@@ -202,7 +202,7 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   // A5 portrait: 210mm less two 10mm margins, less the room ARASAAC's credit
   // needs, halved.
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
-    .toBeCloseTo(83.6, 0);
+    .toBeCloseTo(85.4, 0);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
@@ -223,7 +223,7 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(127.1, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(128.9, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
@@ -308,31 +308,33 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
 
   /*
-   * offsetTop/offsetHeight rather than getBoundingClientRect: the preview sits
-   * inside a transform: scale(), so rects come back in scaled pixels.
-   * ARASAAC's credit is a sentence long and is the one that wraps.
+   * Asked of the page box rather than of the distance from the grid to the foot
+   * of the credit. Since the notice is pinned to the bottom of its page that
+   * distance simply is the page height, and offsetTop and offsetHeight are
+   * whole pixels — it would read a quarter of a millimetre over and mean
+   * nothing. What the reservation is for is the two things below: five cards at
+   * one per page come to five sheets and not six, and the last of them holds
+   * everything on it.
    */
-  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
-    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
-    const last = pages[pages.length - 1];
-    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
-    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
-  });
-  expect(used).toBeLessThanOrEqual(277);
+  await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
+  const spill = await page.locator('.preview-frame .ps-page').last()
+    .evaluate((el: HTMLElement) => el.scrollHeight - el.clientHeight);
+  expect(spill).toBe(0);
 });
 
 /*
  * The same room, under the two things that make that line longest: the
  * narrowest paper this app offers, and a Sammlung named the way people name
- * one. The credit line carries a collection name, a sentence about ARASAAC and
- * a URL, and the allowance it is reserved out of gives it a fixed number of
- * lines — so the case that would spill is a long name on a narrow page.
+ * one. The allowance gives the collection's line exactly one line, so a name
+ * long enough to wrap it is a page carrying nothing but the tail of a credit —
+ * which is why the name is clipped rather than the allowance made bigger, and
+ * why the address has to survive the clipping intact.
  */
-test('the credit still fits on the narrowest paper under a long name', async ({ page }) => {
+test('a long name is clipped so the credit keeps to its one line', async ({ page }) => {
   await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
   await expect(page.locator('dialog.sheet')).toBeHidden();
   await page.getByLabel('Name der Sammlung', { exact: true })
-    .fill('Kindergarten Sonnenschein – Morgenkreis');
+    .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
 
   await page.getByRole('button', { name: 'A5', exact: true }).click();
@@ -341,14 +343,30 @@ test('the credit still fits on the narrowest paper under a long name', async ({ 
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
 
-  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
-    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
-    const last = pages[pages.length - 1]!;
-    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
-    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
+  // Five cards at one per page: five sheets, and the last of them holds the
+  // notice as well as its card.
+  await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
+  const spill = await page.locator('.preview-frame .ps-page').last()
+    .evaluate((el: HTMLElement) => el.scrollHeight - el.clientHeight);
+  expect(spill).toBe(0);
+
+  // Clipped, and clipped in the right place: the name gives way, the address
+  // is printed whole. scrollWidth is what the name would need; clientWidth is
+  // what it got.
+  const line = await page.locator('.preview-frame .ps-made').evaluate((made: HTMLElement) => {
+    const name = made.querySelector<HTMLElement>('.ps-made__name')!;
+    const tail = made.querySelector<HTMLElement>('.ps-made__tail')!;
+    return {
+      wanted: name.scrollWidth,
+      got: name.clientWidth,
+      tailClipped: tail.scrollWidth > tail.clientWidth,
+      lines: Math.round(made.offsetHeight / parseFloat(getComputedStyle(made).lineHeight)),
+    };
   });
-  // A5 portrait: 210mm less two 10mm margins.
-  expect(used).toBeLessThanOrEqual(190);
+  expect(line.wanted).toBeGreaterThan(line.got);
+  expect(line.tailClipped).toBe(false);
+  expect(line.lines).toBe(1);
+  await expect(page.locator('.preview-frame .ps-url')).toHaveText('https://bildhaft.lautstark.tech');
 });
 
 /*
@@ -396,4 +414,111 @@ test('a headed grid page takes its room from the cards, not from the paper', asy
     return (first.offsetTop + first.offsetHeight - title.offsetTop) / (96 / 25.4);
   });
   expect(used).toBeLessThanOrEqual(277);
+});
+
+/*
+ * The sheet used to be one column the browser cut wherever it liked. Only a
+ * card grid built pages, so a strip sheet could not show where the paper ended
+ * and nothing anywhere could say how much paper a job came to — which is the
+ * question somebody standing at a shared printer is actually asking.
+ */
+test('the preview is cut into pages, and the footer counts them', async ({ page }) => {
+  const pages = page.locator('.preview-frame .ps-page');
+  const meta = page.locator('.sheet .foot .small.faint').first();
+
+  await expect(pages).toHaveCount(1);
+  await expect(meta).toContainText('1 Seite');
+  /*
+   * A page box is the paper, not the content that happened to land on it — and
+   * in the preview it is the whole sheet, margin included, because a preview
+   * that showed the margin only at the top of the first page would be saying
+   * the second one has none. The printable copy carries the printable area
+   * instead — there @page supplies the margin — which is measured in print
+   * media by the last test in this file; it has no height at all in this one.
+   */
+  expect(mm(await pages.first().evaluate((el: HTMLElement) => el.offsetHeight)))
+    .toBeCloseTo(297, 0);
+
+  // A forced break.
+  await page.getByLabel('Ein Satz pro Seite').check();
+  await expect(pages).toHaveCount(2);
+  await expect(meta).toContainText('2 Seiten');
+  // One plan, applied to both copies: the preview and the printer cannot
+  // disagree about where a page ends, because neither worked it out alone.
+  await expect(page.locator('#print-root .ps-page')).toHaveCount(2);
+
+  // And one nobody forced: 90mm cards simply stop fitting.
+  await page.getByLabel('Ein Satz pro Seite').uncheck();
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByLabel('Symbolgröße').fill('90');
+  await expect(pages).toHaveCount(3);
+  await expect(meta).toContainText('3 Seiten');
+});
+
+/*
+ * ARASAAC's credit is a licence condition, and METACOM's is what makes material
+ * lawful to hand out. Under the last strip on a half-empty page it reads as
+ * something that got left behind; at the foot of the page it reads as the
+ * notice it is.
+ */
+test('the credit block sits at the foot of the last page, whatever the layout', async ({ page }) => {
+  const foot = () => page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = sheet.querySelectorAll<HTMLElement>('.ps-page');
+    const last = pages[pages.length - 1]!;
+    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
+    // The foot of the printable area, not of the box: in the preview a page
+    // carries the paper's own margin as padding, and the notice is printed
+    // inside that margin like everything else.
+    const pad = parseFloat(getComputedStyle(last).paddingBottom);
+    return {
+      onLast: last.contains(credit),
+      // In whole pixels, which is what offsetTop and offsetHeight are: at 96dpi
+      // one of them is a quarter of a millimetre.
+      gap: (last.offsetTop + last.offsetHeight - pad) - (credit.offsetTop + credit.offsetHeight),
+    };
+  });
+
+  // A strip sheet with most of the page still empty.
+  const strip = await foot();
+  expect(strip.onLast).toBe(true);
+  expect(Math.abs(strip.gap)).toBeLessThanOrEqual(1);
+
+  // And a grid, where the room it drops into is the band every page reserves
+  // so that the notice never costs a sheet of its own.
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
+
+  const grid = await foot();
+  expect(grid.onLast).toBe(true);
+  expect(Math.abs(grid.gap)).toBeLessThanOrEqual(1);
+});
+
+/*
+ * The page boxes are exactly the printable area, which is the one size at which
+ * being a hair too tall is fatal: a box a pixel over its page prints as two,
+ * and every sheet after it is a blank with a sliver at the top.
+ */
+test('every page of the printable copy holds inside the paper', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await page.emulateMedia({ media: 'print' });
+
+  const seen = await page.locator('#print-root .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = [...sheet.querySelectorAll<HTMLElement>('.ps-page')];
+    return {
+      count: pages.length,
+      overflow: pages.map((p) => p.scrollHeight - p.clientHeight),
+      total: sheet.offsetHeight / (96 / 25.4),
+    };
+  });
+
+  expect(seen.count).toBe(5);
+  expect(seen.overflow).toEqual([0, 0, 0, 0, 0]);
+  // Five pages of paper and nothing else — no padding, and no sixth sheet.
+  expect(seen.total).toBeCloseTo(5 * 277, 0);
 });
