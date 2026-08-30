@@ -104,6 +104,8 @@ export function openDatenschutz(onClose: () => void): void {
     para(t('info.arasaac_requests_body', {
       arasaac: ext('https://arasaac.org', 'arasaac.org'),
     })),
+    h3(t('info.shelf')),
+    para(t('info.shelf_body')),
     h3(t('info.storage')),
     para(t('info.storage_body')),
     h3(t('info.not_happening')),
