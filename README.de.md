@@ -204,6 +204,9 @@ Einstellbar ist, was in der Praxis zählt:
   ein Kind schon hat. Gezeichnet wird *innerhalb* des Schneiderands: die Kante der
   Karte ist die Schnittkante. Standardmäßig aus, und wenn aus, wird gar nichts
   gezeichnet — eine Karte ohne Rahmen ist exakt so groß wie eh und je.
+- **Rahmen um den Streifen** (nur Satzstreifen) — eine Linie um den ganzen
+  Streifen, Satztext und Symbole zusammen, entlang der ausgeschnitten wird.
+  Gezeichnet mit derselben Farbe und demselben Eckenradius wie der Kartenrahmen.
 - **Beschriftung** an/aus, über oder unter dem Symbol.
 - **Ein Satz pro Seite** oder fortlaufend.
 - **Copyright-Hinweis** (nur METACOM) — `METACOM Symbole © Annette Kitzinger` am

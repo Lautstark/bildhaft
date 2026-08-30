@@ -312,6 +312,14 @@ export interface PrintSettings {
   showCutLines: boolean;
   onePerPage: boolean;
   showSentenceText: boolean;
+  /**
+   * Strips only. A printed border around a whole sentence — the symbols and the
+   * sentence text inside one line — so a strip reads as one thing and can be
+   * cut out along an edge that is actually drawn. Uses the same pen as the card
+   * frame below, because two frames on one sheet drawn in two different colours
+   * is a printout nobody asked for.
+   */
+  stripFrame: boolean;
 
   /*
    * The printed frame around a card, drawn inside the cut margin so the sealed
@@ -354,6 +362,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   showCutLines: true,
   onePerPage: false,
   showSentenceText: true,
+  stripFrame: false,
   cardBorderMm: 0,
   cardBorderColor: '#333333',
   cardRadiusMm: 2,

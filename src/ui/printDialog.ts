@@ -294,7 +294,7 @@ export function openPrintDialog(options: PrintOptions): void {
         t('ui.cut_margin_note'),
         (next) => set('cutMarginMm', next)),
       el('div', { class: 'opt' },
-        check(t('ui.word_under'), settings.showLabel, false, (next) => set('showLabel', next)),
+        check(t('ui.print_label'), settings.showLabel, false, (next) => set('showLabel', next)),
         settings.showLabel ? segmented([
           { label: t('ui.label_below'), active: settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
           { label: t('ui.label_above'), active: settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
@@ -308,9 +308,19 @@ export function openPrintDialog(options: PrintOptions): void {
         el('label', { text: t('ui.frame_colour') }),
         check(t('ui.frame_each'), settings.cardBorderMm > 0, false,
           (next) => set('cardBorderMm', next ? 0.5 : 0)),
-        settings.cardBorderMm > 0 ? el('div', { class: 'opt--pair' },
-          numberOpt('opt-border', t('ui.thickness'), settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null,
-            (next) => set('cardBorderMm', next)),
+        check(t('ui.frame_strip'), settings.stripFrame, settings.layout === 'sheet',
+          (next) => set('stripFrame', next)),
+        /*
+         * Corners and colour belong to whichever frame is switched on — both
+         * are drawn with the same pen. Thickness is the card frame's alone: the
+         * strip takes its own from that number when there is one, and a line
+         * thin enough to cut along when there is not.
+         */
+        settings.cardBorderMm > 0 || settings.stripFrame ? el('div', { class: 'opt--pair' },
+          settings.cardBorderMm > 0
+            ? numberOpt('opt-border', t('ui.thickness'), settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null,
+                (next) => set('cardBorderMm', next))
+            : null,
           numberOpt('opt-radius', t('ui.corners'), settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null,
             (next) => set('cardRadiusMm', next)),
           colorOpt('opt-border-color', t('ui.colour'), settings.cardBorderColor,

@@ -18,6 +18,7 @@
   --page-w: 190mm;
   --page-h: 277mm;
   --page-margin: 10mm;
+  --strip-w: 0.5mm;
 
   width: calc(var(--page-w) + 2 * var(--page-margin));
   min-height: calc(var(--page-h) + 2 * var(--page-margin));
@@ -61,12 +62,26 @@
   page-break-after: auto;
 }
 
+/*
+ * No rule under the caption, and only a hair of space: the cards below already
+ * carry their cut margin, so anything more here reads as a gap between the
+ * sentence and the row it belongs to.
+ */
 .ps-caption {
-  margin: 0 0 2.5mm;
-  padding-bottom: 1mm;
-  border-bottom: 0.2mm solid #ddd;
+  margin: 0 0 0.5mm;
   font-size: 10pt;
   color: #444;
+}
+
+/*
+ * A frame around the whole strip — sentence and symbols inside one line, drawn
+ * where the strip is meant to be cut out. Its padding is the same allowance the
+ * card frame uses, so a rounded corner has room and never clips the caption.
+ */
+.ps-sentence--framed {
+  padding: var(--frame-pad);
+  border: var(--strip-w) solid var(--frame-color);
+  border-radius: var(--card-radius);
 }
 
 .ps-row {

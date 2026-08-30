@@ -249,6 +249,42 @@ test('a card frame is drawn inside the cut margin, not on it', async ({ page }) 
   await expect(page.locator('#print-root .ps-card__frame').first()).toHaveCount(1);
 });
 
+/*
+ * A strip frame is a cutting line for the whole strip, so the sentence text has
+ * to be inside it: a strip cut out along a frame that excluded its caption would
+ * lose the sentence it is a strip of.
+ */
+test('a strip frame encloses the sentence text and the symbols', async ({ page }) => {
+  const strip = page.locator('.preview-frame .ps-sentence').first();
+  expect(await strip.evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('none');
+
+  await page.getByLabel('Rahmen um den ganzen Streifen').check();
+  expect(await strip.evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('solid');
+
+  const boxes = await strip.evaluate((el: HTMLElement) => {
+    const outer = el.getBoundingClientRect();
+    const caption = el.querySelector('.ps-caption')!.getBoundingClientRect();
+    const row = el.querySelector('.ps-row')!.getBoundingClientRect();
+    return { top: outer.top, bottom: outer.bottom, capTop: caption.top, rowBottom: row.bottom };
+  });
+  expect(boxes.capTop).toBeGreaterThan(boxes.top);
+  expect(boxes.rowBottom).toBeLessThan(boxes.bottom);
+
+  // And it reaches the printable copy, not only the preview.
+  expect(await page.locator('#print-root .ps-sentence').first()
+    .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('solid');
+});
+
+/*
+ * Card sheets have no strips to frame, and the sentence text they would carry
+ * is not printed either — so the option has to be unavailable rather than a
+ * checkbox that quietly does nothing.
+ */
+test('the strip frame is offered only for strips', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toBeDisabled();
+});
+
 test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
