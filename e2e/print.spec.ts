@@ -78,7 +78,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
   const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 128,9 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 127,1 mm.');
 });
 
 test('card sheet collapses duplicate symbols', async ({ page }) => {
@@ -95,6 +95,21 @@ test('card sheet collapses duplicate symbols', async ({ page }) => {
 test('always prints the ARASAAC attribution', async ({ page }) => {
   await expect(page.locator('#print-root .ps-attribution')).toContainText('ARASAAC');
   await expect(page.locator('#print-root .ps-attribution')).toContainText('CC BY-NC-SA');
+});
+
+/*
+ * The paper outlives the tab, so the credit line has to say where the printout
+ * came from in a form somebody holding it can act on — and keep it clickable
+ * for the case where the "print" was a PDF.
+ */
+test('the credit line gives the address, not just the name', async ({ page }) => {
+  const link = page.locator('#print-root .ps-attribution a');
+  await expect(link).toHaveText('https://bildhaft.lautstark.tech');
+  await expect(link).toHaveAttribute('href', 'https://bildhaft.lautstark.tech');
+
+  // Grey like the sentence it sits in: a blue underline is for screens.
+  expect(await link.evaluate((el: HTMLElement) => getComputedStyle(el).textDecorationLine))
+    .toBe('none');
 });
 
 /*
@@ -187,7 +202,7 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   // A5 portrait: 210mm less two 10mm margins, less the room ARASAAC's credit
   // needs, halved.
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
-    .toBeCloseTo(85.4, 0);
+    .toBeCloseTo(83.6, 0);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
@@ -208,7 +223,7 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(128.9, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(127.1, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
@@ -307,12 +322,43 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
 });
 
 /*
+ * The same room, under the two things that make that line longest: the
+ * narrowest paper this app offers, and a Sammlung named the way people name
+ * one. The credit line carries a collection name, a sentence about ARASAAC and
+ * a URL, and the allowance it is reserved out of gives it a fixed number of
+ * lines — so the case that would spill is a long name on a narrow page.
+ */
+test('the credit still fits on the narrowest paper under a long name', async ({ page }) => {
+  await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
+  await expect(page.locator('dialog.sheet')).toBeHidden();
+  await page.getByLabel('Name der Sammlung', { exact: true })
+    .fill('Kindergarten Sonnenschein – Morgenkreis');
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+
+  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const pages = sheet.querySelectorAll<HTMLElement>('.ps-grid');
+    const last = pages[pages.length - 1]!;
+    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
+    return (credit.offsetTop + credit.offsetHeight - last.offsetTop) / (96 / 25.4);
+  });
+  // A5 portrait: 210mm less two 10mm margins.
+  expect(used).toBeLessThanOrEqual(190);
+});
+
+/*
  * A printout is a stack of paper that looks like every other stack of paper.
  * The name is the one thing that tells this stack from the folder's other
  * twenty, so it has to reach the printable copy and not only the preview.
  */
 test('the collection name can head the sheet', async ({ page }) => {
   await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
+  await expect(page.locator('dialog.sheet')).toBeHidden();
   await page.getByLabel('Name der Sammlung', { exact: true }).fill('Morgenkreis');
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
 

@@ -88,6 +88,20 @@ export function clearPageSetup(): void {
  */
 export const METACOM_COPYRIGHT = 'METACOM Symbole © Annette Kitzinger';
 
+/**
+ * Where the printout came from, written out in full.
+ *
+ * "erstellt mit bildhaft" named the tool to somebody who already knew it. The
+ * paper outlives the tab it was printed from and travels further: a strip goes
+ * home in a school bag, a board goes up on a wall a colleague sees. The name
+ * alone leaves them a word to search for; the address leaves them the thing.
+ *
+ * A real link rather than text, because a sheet is not always paper — printing
+ * to PDF and sending that on is the ordinary way this material is shared, and a
+ * link that survives that costs nothing on the page it is printed on.
+ */
+const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
+
 /*
  * Vertical room set aside on a grid page for the credit block.
  *
@@ -96,10 +110,14 @@ export const METACOM_COPYRIGHT = 'METACOM Symbole © Annette Kitzinger';
  * page and an obviously wrong printout. Reserved on every page rather than only
  * the last, because the alternative is cards of two different sizes in one deck.
  *
- * Sized rather than guessed: the block is its own margin and rule plus one line
- * per credit and one for the collection. Each credit is allowed two lines,
- * because ARASAAC's is a sentence long and wraps on a narrow page where
- * METACOM's does not. e2e asserts the block actually fits inside this.
+ * Sized rather than guessed: the block is its own margin and rule plus two
+ * lines each for the credits and for the collection. Two rather than one,
+ * because ARASAAC's credit is a sentence long and wraps on a narrow page where
+ * METACOM's does not — and the collection's line, which carries a name somebody
+ * chose and the address the printout came from, does the same. A5 portrait
+ * under „Kindergarten Sonnenschein – Morgenkreis" overran by half a millimetre
+ * when it was allowed one. e2e asserts the block actually fits inside this,
+ * on the narrowest paper and under a name of that kind.
  */
 /** 7.5pt of type at 1.4 line-height, in millimetres. */
 const CREDIT_LINE_MM = 3.7;
@@ -107,7 +125,7 @@ const CREDIT_LINE_MM = 3.7;
 const CREDIT_CHROME_MM = 8;
 
 function creditAllowanceMm(creditCount: number): number {
-  return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 1);
+  return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 2);
 }
 
 /*
@@ -199,7 +217,8 @@ export function printSheet(options: SheetOptions): HTMLElement {
     sheet.appendChild(el('p', { class: 'ps-attribution' },
       ...lines,
       el('br'),
-      `${collectionName} · ${t('ui.made_with')}`,
+      `${collectionName} · ${t('ui.made_with')} `,
+      el('a', { class: 'ps-url', text: BILDHAFT_URL, attrs: { href: BILDHAFT_URL } }),
     ));
   }
 

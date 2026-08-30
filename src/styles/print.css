@@ -223,6 +223,17 @@
 }
 
 /*
+ * The address, as part of the sentence it sits in rather than as a link. It is
+ * a link in the markup so that a sheet printed to PDF keeps it clickable, but
+ * blue underlined type in a credit line is a thing to click on a screen, and
+ * this is grey 7.5pt at the foot of a page that is usually paper.
+ */
+.ps-url {
+  color: inherit;
+  text-decoration: none;
+}
+
+/*
  * Preview only: frame each page of a card grid.
  *
  * The preview scrolls as one continuous sheet, so pages after the first run
