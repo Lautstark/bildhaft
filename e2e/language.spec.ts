@@ -126,3 +126,41 @@ test('says METACOM is named in German, but only where that is news', async ({ pa
   await page.getByText('METACOM', { exact: true }).click();
   await expect(page.getByText(says('en', 'ui.metacom_german_only'))).toBeVisible();
 });
+
+/*
+ * The third way round, and the one a link introduced.
+ *
+ * The two above are about a page somebody switched. This is about a Sammlung
+ * that arrived already written in a language the reader does not have the page
+ * in: opened from lautstark.tech/sammlungen, „Kopfschmerzen" and „Zähne putzen"
+ * on an interface somebody reads in English. The labels are their choice and
+ * stay. What may not stay is the endpoint the search asks, for the reason at the
+ * head of this file — it answers rather than refusing, so the failure looks like
+ * a working page with the wrong picture on it.
+ */
+test('a Sammlung carries the language its symbols are searched in', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('bildhaft.language', 'en'));
+  await mockArasaac(page);
+  await page.route('https://lautstark.tech/sammlungen/download/*.json', (route) => route.fulfill({
+    json: {
+      format: 'bildhaft.collection',
+      version: 3,
+      exportedAt: '2026-08-30T00:00:00.000Z',
+      collection: { name: 'Auf Deutsch', language: 'de', sentenceIds: [] },
+      sentences: [],
+      notice: '',
+    },
+  }));
+
+  await page.goto('/?sammlung=auf-deutsch');
+  await expect(page.getByLabel(says('en', 'ui.collection_name'))).toHaveValue('Auf Deutsch');
+
+  const asked = page.waitForRequest((request) => request.url().includes('/pictograms/'));
+  const input = page.getByLabel(says('en', 'ui.composer_label'));
+  await input.fill('Apfel');
+  await input.press('Enter');
+
+  // German, because the Sammlung is — while the page around it stays English.
+  expect((await asked).url()).toContain('/pictograms/de/');
+  await expect(page.getByLabel(says('en', 'ui.composer_label'))).toBeVisible();
+});
