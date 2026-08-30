@@ -45,6 +45,9 @@ const ALLOWED = new Map([
   // Sammlung that link names. Declared — „Eine fertige Sammlung holen".
   ['lautstark.tech', 'a published Sammlung a ?sammlung= link names'],
   // Linked in prose, never fetched - the about, Impressum and privacy texts.
+  // bildhaft's own address is among them: it is printed at the foot of a sheet
+  // so that paper says where it came from, and nothing ever asks it for anything.
+  ['bildhaft.lautstark.tech', 'this page, named in the printed credit line'],
   ['arasaac.org', 'the attribution the licence requires'],
   ['github.com', 'the source code and the issue tracker'],
   ['lautstark.github.io', 'the sister projects'],

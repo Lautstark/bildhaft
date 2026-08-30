@@ -48,6 +48,22 @@
 }
 
 
+/*
+ * The collection's name, at the top of the first page and nowhere else.
+ *
+ * Sized to be read across a table rather than to be a poster: what it settles
+ * is which of the twenty near-identical printouts in the folder this one is.
+ * The millimetres here are the ones printSheet() reserves room for on a grid
+ * page, so a change to either has to be a change to both.
+ */
+.ps-title {
+  margin: 0 0 4mm;
+  font-size: 12pt;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #000;
+}
+
 .ps-sentence {
   break-inside: avoid;
   page-break-inside: avoid;
@@ -204,6 +220,17 @@
   font-size: 7.5pt;
   line-height: 1.4;
   color: #666;
+}
+
+/*
+ * The address, as part of the sentence it sits in rather than as a link. It is
+ * a link in the markup so that a sheet printed to PDF keeps it clickable, but
+ * blue underlined type in a credit line is a thing to click on a screen, and
+ * this is grey 7.5pt at the foot of a page that is usually paper.
+ */
+.ps-url {
+  color: inherit;
+  text-decoration: none;
 }
 
 /*

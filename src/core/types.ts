@@ -313,6 +313,15 @@ export interface PrintSettings {
   onePerPage: boolean;
   showSentenceText: boolean;
   /**
+   * Print the collection's name once, at the top of the first page.
+   *
+   * Off by default: most printouts are cut up the moment they leave the
+   * printer, and a heading on a sheet that becomes a pile of cards is a heading
+   * on the offcuts. It is on for the other case — a strip sheet or a board that
+   * stays whole and goes into a folder with the twenty others that look like it.
+   */
+  showCollectionTitle: boolean;
+  /**
    * Strips only. A printed border around a whole sentence — the symbols and the
    * sentence text inside one line — so a strip reads as one thing and can be
    * cut out along an edge that is actually drawn. Uses the same pen as the card
@@ -362,6 +371,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   showCutLines: true,
   onePerPage: false,
   showSentenceText: true,
+  showCollectionTitle: false,
   stripFrame: false,
   cardBorderMm: 0,
   cardBorderColor: '#333333',
