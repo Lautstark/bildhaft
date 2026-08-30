@@ -305,3 +305,49 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
   });
   expect(used).toBeLessThanOrEqual(277);
 });
+
+/*
+ * A printout is a stack of paper that looks like every other stack of paper.
+ * The name is the one thing that tells this stack from the folder's other
+ * twenty, so it has to reach the printable copy and not only the preview.
+ */
+test('the collection name can head the sheet', async ({ page }) => {
+  await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
+  await page.getByLabel('Name der Sammlung', { exact: true }).fill('Morgenkreis');
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+
+  await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
+
+  await page.getByLabel('Name der Sammlung auf der ersten Seite').check();
+  await expect(page.locator('.preview-frame .ps-title')).toHaveText('Morgenkreis');
+  await expect(page.locator('#print-root .ps-title')).toHaveText('Morgenkreis');
+
+  // Once, above everything — not a running header. Two sentences broken onto a
+  // page each is the case that would show a second copy if it were one.
+  await page.getByLabel('Ein Satz pro Seite').check();
+  await expect(page.locator('#print-root .ps-sentence--page')).toHaveCount(1);
+  await expect(page.locator('#print-root .ps-title')).toHaveCount(1);
+});
+
+/*
+ * The heading has to be paid for out of the cards, the way the credit block is.
+ * A grid page is exactly as tall as the paper, so a heading the grid did not
+ * know about pushes its bottom row onto a sheet of its own.
+ */
+test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
+  await page.getByLabel('Name der Sammlung auf der ersten Seite').check();
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  // One card per page, so the first page is full and reaches the paper's edge.
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+
+  // offsetTop/offsetHeight rather than getBoundingClientRect: the preview sits
+  // inside a transform: scale(), so rects come back in scaled pixels.
+  const used = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const title = sheet.querySelector<HTMLElement>('.ps-title')!;
+    const first = sheet.querySelector<HTMLElement>('.ps-grid')!;
+    return (first.offsetTop + first.offsetHeight - title.offsetTop) / (96 / 25.4);
+  });
+  expect(used).toBeLessThanOrEqual(277);
+});

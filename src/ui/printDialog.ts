@@ -340,6 +340,8 @@ export function openPrintDialog(options: PrintOptions): void {
           (next) => set('showSentenceText', next)),
         check(t('ui.one_per_page'), settings.onePerPage, settings.layout === 'sheet',
           (next) => set('onePerPage', next)),
+        check(t('ui.collection_title'), settings.showCollectionTitle, false,
+          (next) => set('showCollectionTitle', next)),
       ),
       /*
        * METACOM only. ARASAAC's attribution is a licence condition and prints

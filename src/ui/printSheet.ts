@@ -110,6 +110,22 @@ function creditAllowanceMm(creditCount: number): number {
   return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 1);
 }
 
+/*
+ * Vertical room set aside on a grid page for the collection's name.
+ *
+ * Reserved on every page although the heading only prints on the first, for the
+ * reason the credit block gives above: a grid that divided the first page by a
+ * smaller figure than the rest would hand back a deck whose first six cards are
+ * a different size from the other twelve. Two lines are allowed, because a
+ * collection is named by the person who made it and "Kindergarten Sonnenschein
+ * – Morgenkreis" is the kind of name they give it.
+ */
+/** 12pt of type at 1.3 line-height, in millimetres. */
+const TITLE_LINE_MM = 5.5;
+/** The heading's margin-bottom. */
+const TITLE_GAP_MM = 4;
+const TITLE_ALLOWANCE_MM = TITLE_GAP_MM + 2 * TITLE_LINE_MM;
+
 export interface SheetOptions {
   sentences: Sentence[];
   settings: PrintSettings;
@@ -158,8 +174,17 @@ export function printSheet(options: SheetOptions): HTMLElement {
     },
   });
 
+  /*
+   * Once, above everything, rather than per page: a header repeated on every
+   * sheet would cost the grid its room on all of them, and what this answers is
+   * "which collection is this printout" — a question a stack of paper asks once.
+   */
+  const title = settings.showCollectionTitle ? collectionName.trim() : '';
+  if (title) sheet.appendChild(el('h1', { class: 'ps-title', text: title }));
+
   if (settings.layout === 'sheet') {
-    const reserve = credits.length > 0 ? creditAllowanceMm(credits.length) : 0;
+    const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
+      + (title ? TITLE_ALLOWANCE_MM : 0);
     for (const node of cardSheet(sentences, settings, provider, reserve)) sheet.appendChild(node);
   } else {
     for (const node of strips(sentences, settings, provider)) sheet.appendChild(node);
