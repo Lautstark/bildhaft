@@ -55,6 +55,9 @@ export function mountApp(root: HTMLElement): void {
   let draft = '';
   let reuse: Sentence | null = null;
   let busy = false;
+  /* How far a pasted text has got. Null for a single line, whose spinner in the
+     composer is the whole story — see handleSubmit. */
+  let batch: { done: number; total: number } | null = null;
 
   let query = '';
   let results: Sentence[] = [];
@@ -310,6 +313,16 @@ export function mountApp(root: HTMLElement): void {
     const status = metacom.status();
     const sourceBusy = providerId() === 'metacom' && status.kind === 'loading';
     /*
+     * A pasted text, and how far through it we are.
+     *
+     * It shares the source's banner rather than getting one of its own: both
+     * are the same sentence — something is working, wait — and the region below
+     * shows one banner per kind. A single line does not raise it at all; its
+     * spinner in the composer is over before there is anything to report, and a
+     * banner that appears and vanishes within a second is noise.
+     */
+    const translating = batch !== null;
+    /*
      * The active source cannot answer. For METACOM this is the normal state
      * after anything that resets a browser's per-site permissions — a new
      * address, cleared site data — because the folder grant is scoped to the
@@ -320,15 +333,20 @@ export function mountApp(root: HTMLElement): void {
     const sourceUnusable = sourceSettled && !sourceBusy
       && (!provider().isReady() || (providerId() === 'metacom' && unreadable >= 3));
 
-    busyMessage.textContent = status.kind === 'loading'
-      ? sourceStatusLine(status) : t('ui.one_moment');
+    /* The source's own words win: a folder being read is why nothing is being
+       looked up yet, which is the more useful half of the same wait. */
+    if (status.kind === 'loading') busyMessage.textContent = sourceStatusLine(status);
+    else if (batch) {
+      busyMessage.textContent =
+        t('ui.translating_lines', { n: Math.min(batch.done + 1, batch.total), total: batch.total });
+    } else busyMessage.textContent = t('ui.one_moment');
     unusableMessage.textContent = providerId() === 'metacom'
       ? metacomWanted(status.kind === 'needs-setup' && status.code === 'no-folder')
       : t('ui.source_unavailable');
     toggleVisible(regrant, providerId() === 'metacom');
 
     const wanted: [string, HTMLElement][] = [];
-    if (sourceBusy) wanted.push(['busy', busyBanner]);
+    if (sourceBusy || translating) wanted.push(['busy', busyBanner]);
     if (sourceUnusable) wanted.push(['unusable', unusableBanner]);
     if (dbBlocked) wanted.push(['blocked', blockedBanner]);
 
@@ -830,6 +848,34 @@ export function mountApp(root: HTMLElement): void {
 
   /* ------------------------------------------------------------ submit --- */
 
+  /**
+   * How many lines are translated at the same time.
+   *
+   * Four rather than all of them. A line is a chain of lookups — one per word,
+   * each waiting on the one before it — so a pasted song spent its whole time
+   * with a single request in flight and the page empty: 24 lines of a children's
+   * song took eight seconds against a 150 ms endpoint, and a picture book takes
+   * minutes. Four keeps four requests moving without turning a paste into a
+   * burst at a free public service, which is the same restraint the cache is
+   * there for.
+   */
+  const LINES_AT_ONCE = 4;
+
+  /**
+   * Puts a row where its age says it goes.
+   *
+   * The list is sorted newest first and translations no longer land in the
+   * order they were started, so a row cannot simply go on the front. createdAt
+   * is what fixes the order — it counts down through the batch — and reading it
+   * back here is what lets a line that finished early wait for its place.
+   */
+  function placeRow(sentence: Sentence): void {
+    const at = sentences.findIndex((s) => s.createdAt < sentence.createdAt);
+    sentences = at === -1
+      ? [...sentences, sentence]
+      : [...sentences.slice(0, at), sentence, ...sentences.slice(at)];
+  }
+
   async function handleSubmit(): Promise<void> {
     const raw = draft.trim();
     const collectionId = activeId;
@@ -839,7 +885,27 @@ export function mountApp(root: HTMLElement): void {
     if (lines.length === 0) return;
 
     busy = true;
+    /*
+     * The box is emptied now, not at the end. A pasted text is the case where
+     * the wait is long enough to read as a hang, and a box still holding the
+     * words is the strongest sign nothing happened. Whatever fails to translate
+     * is put back below, so nothing is lost by clearing it early.
+     */
+    draft = '';
+    reuse = null;
+    batch = lines.length > 1 ? { done: 0, total: lines.length } : null;
     render();
+
+    const now = Date.now();
+    /*
+     * The lines still owed a row. A line is struck off the moment its row is
+     * written, so whatever is left at the end — a word the source could not be
+     * asked about, or a failure before the first line was even started — is
+     * exactly what goes back into the box.
+     */
+    const owed = [...lines];
+    let firstError: unknown = null;
+
     try {
       const options = {
         provider: provider(),
@@ -847,34 +913,58 @@ export function mountApp(root: HTMLElement): void {
         overrides: await overrideMap(providerId()),
       };
 
-      const now = Date.now();
-      const created: Sentence[] = [];
+      /*
+       * Each line is written and drawn as it comes back, rather than the whole
+       * batch appearing at the end. That is what a long text needed: the rows
+       * fill in from the top while the rest is still being looked up, and the
+       * first corrections can be made before the last line has arrived.
+       */
+      const translate = async (line: string, index: number): Promise<void> => {
+        try {
+          const sentence: Sentence = {
+            id: newId(),
+            normalizedInput: normalizeInput(line),
+            rawInput: line,
+            slots: await buildSlots(line, options),
+            collectionId,
+            /*
+             * Descending within the batch. The list is sorted newest first, so
+             * this is what keeps the lines in the order they were typed — which
+             * is also the order they get printed in.
+             */
+            createdAt: now - index,
+            updatedAt: now,
+          };
+          await putSentence(sentence);
+          delete owed[index];
+          if (activeId === collectionId) placeRow(sentence);
+        } catch (err) {
+          firstError ??= err;
+        }
+        if (batch) batch = { ...batch, done: batch.done + 1 };
+        render();
+      };
 
-      for (const [index, line] of lines.entries()) {
-        created.push({
-          id: newId(),
-          normalizedInput: normalizeInput(line),
-          rawInput: line,
-          slots: await buildSlots(line, options),
-          collectionId,
-          /*
-           * Descending within the batch. The list is sorted newest first, so
-           * this is what keeps the lines in the order they were typed — which
-           * is also the order they get printed in.
-           */
-          createdAt: now - index,
-          updatedAt: now,
-        });
-      }
-
-      for (const sentence of created) await putSentence(sentence);
-      sentences = [...created, ...sentences];
-      draft = '';
-      reuse = null;
+      let next = 0;
+      await Promise.all(Array.from({ length: Math.min(LINES_AT_ONCE, lines.length) },
+        async () => {
+          while (next < lines.length) {
+            const index = next++;
+            await translate(lines[index], index);
+          }
+        }));
     } catch (err) {
-      notify(err instanceof Error ? err.message : t('ui.translate_failed'));
+      firstError ??= err;
     } finally {
       busy = false;
+      batch = null;
+      /* Back into the box, in the order they were written. A book whose tenth
+         line has no symbols must not take the ninety after it down with it. */
+      const left = [...owed].filter(Boolean);
+      if (left.length > 0) draft = left.join('\n');
+      if (firstError !== null) {
+        notify(firstError instanceof Error ? firstError.message : t('ui.translate_failed'));
+      }
       render();
     }
   }
