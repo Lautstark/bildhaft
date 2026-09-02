@@ -7,7 +7,7 @@ import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import type { Sicherung } from '@lautstark/sicherung';
 import { mountBackupFolder } from './backupFolder.ts';
-import { ablage } from '../db/folder.ts';
+import { ablage, isStore } from '../db/folder.ts';
 import { wherePanel } from '@lautstark/sicherung/ablage-panel';
 import { adoptFolder } from '../db/repo.ts';
 
@@ -622,10 +622,11 @@ export function openSettings(options: SettingsOptions): void {
       el('p', { class: 'sub', text: t('ui.keep_out_in') }),
       el('div', { class: 'notice', style: { marginBottom: '14px' }, html:
         t('ui.backup_note') }),
-      // The folder first, because it is the one that keeps working after
-      // somebody stops thinking about it. Null in any browser without the
-      // picker, and then the download below is the whole offer, unchanged.
-      folder?.node ?? null,
+      /* Only where there is no store folder. With one, the copies already go
+         beside the work, and a second picker here would be the same offer under a
+         name that reads almost the same. Null in any browser without the picker,
+         and then the download below is the whole offer, unchanged. */
+      isStore() ? null : folder?.node ?? null,
       /*
        * The two halves of the same subject, side by side.
        *

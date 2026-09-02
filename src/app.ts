@@ -637,10 +637,17 @@ export function mountApp(root: HTMLElement): void {
     // Only judge the symbol source once it has had its chance to come back.
     metacom.restore().catch(() => undefined).finally(() => { sourceSettled = true; render(); });
 
-    // Never prompts — there is no gesture here. A folder that needs its
-    // permission re-confirmed lands in needs-permission and says so in
-    // Einstellungen → Daten, which is where the click can happen.
-    backup.restore().catch(() => undefined);
+    /* Where the work already lives in a folder, the dated copies go beside it.
+       The store fills `<folder>/bildhaft/` and these are flat files above it, so
+       the two never meet — and nobody is asked to pick a second folder that reads
+       almost exactly like the first.
+
+       Otherwise as before: never prompts, because there is no gesture here. A
+       folder that needs its permission re-confirmed lands in needs-permission and
+       says so in the panel, which is where the click can happen. */
+    const alreadyHeld = ablage.handle();
+    if (alreadyHeld) void backup.useFolder(alreadyHeld).catch(() => undefined);
+    else backup.restore().catch(() => undefined);
 
     /* Somebody else's edit, arriving as a file that changed under this browser.
        Only once the folder is the store: a folder mid-adoption changes
