@@ -16,12 +16,14 @@ import {
   loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
   onChanged, putSentence, renameCollection, saveCollectionProvider, saveSettings,
   searchSentences,
+  pullFromFolder,
 } from './db/repo.ts';
 import {
   downloadCollectionExport, downloadJson, exportCollection, exportEverything,
   importCollectionFile,
 } from './db/exportImport.ts';
 import { Sicherung } from '@lautstark/sicherung';
+import { ablage, adopted, watchFolder } from './db/folder.ts';
 import { renameField } from '@lautstark/design/rename';
 import { announcer } from '@lautstark/design/toast';
 import { el, fill, toggleClass } from './ui/dom.ts';
@@ -606,6 +608,12 @@ export function mountApp(root: HTMLElement): void {
   /* -------------------------------------------------------------- boot --- */
 
   void (async () => {
+    /* Before anything is read. Where a folder is the store it is the truth, and a
+       first paint from the browser's copy would be a library that changes under
+       somebody a moment later. */
+    await ablage.restore().catch(() => null);
+    await pullFromFolder().catch(() => false);
+
     const loaded = await loadSettings();
     let all = await listCollections();
 
@@ -633,6 +641,16 @@ export function mountApp(root: HTMLElement): void {
     // permission re-confirmed lands in needs-permission and says so in
     // Einstellungen → Daten, which is where the click can happen.
     backup.restore().catch(() => undefined);
+
+    /* Somebody else's edit, arriving as a file that changed under this browser.
+       Only once the folder is the store: a folder mid-adoption changes
+       constantly, and all of those changes are ours. */
+    void adopted().then((yes: boolean) => {
+      if (yes) watchFolder(() => void pullFromFolder().then(() => {
+        void refreshCollections();
+        if (activeId) setActive(activeId);
+      }));
+    });
 
     /*
      * What the upgrade did, if it did anything. adr/0001: an upgrade that
@@ -1445,6 +1463,7 @@ export function mountApp(root: HTMLElement): void {
       settings,
       onChange: persistSettings,
       onProviderChanged: () => { void syncProvider(); render(); },
+      onFolderChanged: () => { void refreshCollections(); if (activeId) setActive(activeId); },
       openCollectionProvider: () => activeCollection()?.provider ?? null,
       onNotify: notify,
       onExportAll: async () => {

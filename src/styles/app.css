@@ -844,3 +844,33 @@ kbd {
   background: var(--surface-2);
   color: var(--text-dim);
 }
+
+/* ---------------------------------------------------- where everything lives */
+
+/* A folder drawn the way a file manager draws it. Recognition beats
+   instruction: somebody who cannot follow a sentence about nesting can copy a
+   shape they have seen a thousand times. */
+.tree {
+  margin: 0; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+  font-family: var(--mono); font-size: 12px; line-height: 1.8; overflow-x: auto;
+}
+
+/* What is, stated plainly. The ordinary answer wears no red: the browser is a
+   complete answer and not a deficiency, and a warning here would argue with the
+   sentence beside it. */
+.where {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.where b { font-size: 13px; font-weight: 600; }
+.where.bad { border-color: var(--danger); }
+
+/* A heading inside a panel, for the half of a subject that is a handful of
+   actions rather than a state. */
+.sub {
+  margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-faint);
+}
+.hair { border: 0; border-top: 1px solid var(--line); margin: 14px 0 10px; }

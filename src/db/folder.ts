@@ -1,4 +1,4 @@
-import { Ablage } from '@lautstark/sicherung/ablage';
+import { Ablage, announceFolder, announcedFolder, stopAnnouncing } from '@lautstark/sicherung/ablage';
 import type { Collection, OwnImage, Override, Sentence } from '../core/types.js';
 
 /**
@@ -134,3 +134,13 @@ export const watchFolder = (onChange: () => void) =>
   ablage.watch(30_000, (found) => {
     if (found.length) onChange();
   });
+
+/* Telling the other Lautstark programmes on this device which folder is in use,
+   and hearing what they said. Only ever because somebody switched it on — see
+   the package for why that is what makes it lawful. */
+export const tellOthers = (folder: string) => announceFolder(APP, folder);
+export const stopTelling = () => stopAnnouncing();
+export const toldByOthers = () => {
+  const said = announcedFolder();
+  return said && said.app !== APP ? said : null;
+};
