@@ -7,14 +7,10 @@ import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import type { Sicherung } from '@lautstark/sicherung';
 import { mountBackupFolder } from './backupFolder.ts';
-import {
-  ablage, adopted, folders, HOME, isStale, isStore, nest, stopTelling, toldByOthers,
-} from '../db/folder.ts';
+import { ablage } from '../db/folder.ts';
+import { wherePanel } from '@lautstark/sicherung/ablage-panel';
 import { adoptFolder } from '../db/repo.ts';
 
-/* Every Lautstark product files under the folder somebody picks, so one folder
-   can hold them all — and picking a Dropbox root instead scatters them. */
-const OURS = ['bildhaft', 'wochenwerk', 'mitreden', 'vorlaut'];
 import { resetSymbolResolution } from './symbols.ts';
 import { LANG, LANGUAGES, LANGUAGE_NAMES, chooseLanguage, t } from '../i18n/index.ts';
 
@@ -68,34 +64,14 @@ export function openSettings(options: SettingsOptions): void {
   /* The name of a folder somebody just picked that holds nothing of ours yet, or
      null. It lives across renders because the question is asked in the panel
      rather than in a dialog over it. */
-  let asking: string | null = null;
+  const store = wherePanel({
+    store: ablage,
+    adopt: adoptFolder,
+    changed: () => options.onFolderChanged(),
+    say: options.onNotify,
+    lang: LANG === 'en' ? 'en' : 'de',
+  });
 
-  async function choose(): Promise<void> {
-    await ablage.choose();
-    if (!isStore()) return;
-    if (!(await adopted()) && !(await folders()).some((name) => OURS.includes(name.toLowerCase()))) {
-      asking = 'folder' in ablage.status ? ablage.status.folder : '';
-      fillData();
-      return;
-    }
-    await settle(false);
-  }
-
-  async function settle(makeIt: boolean): Promise<void> {
-    asking = null;
-    if (makeIt) await nest(HOME);
-    const went = await adoptFolder();
-    options.onNotify(went === 'pushed' ? t('ui.where_pushed')
-      : went === 'pulled' ? t('ui.where_pulled') : t('ui.where_incomplete'));
-    options.onFolderChanged();
-    fillData();
-  }
-
-  async function forget(): Promise<void> {
-    await ablage.forget();
-    stopTelling();
-    fillData();
-  }
 
   function makePanel(label: string, opensOnArrival = false): Panel {
     const state = el('span', { class: 'state' });
@@ -636,44 +612,12 @@ export function openSettings(options: SettingsOptions): void {
   }
 
   function fillData(): void {
-    const at = ablage.status;
-    const held = isStore();
-    const named = 'folder' in at ? at.folder : '';
-    const other = toldByOthers();
+    store.refresh();
     fill(dataPanel.body,
-      /* The picture before the decision: one folder, a compartment per
-         programme. Five lines answer what three paragraphs do not. */
-      held || asking ? null : el('p', { class: 'small', style: { margin: '0 0 8px' }, text: t('ui.where_intro') }),
-      held || asking ? null : el('pre', { class: 'tree', text:
-        `${HOME}\n├── METACOM_9_Desktop\n├── bildhaft/\n└── wochenwerk/` }),
-      /* What is, stated plainly — no red on the ordinary answer, because the
-         browser is a complete answer and not a deficiency. */
-      asking ? null : el('div', { class: 'where' + (isStale() ? ' bad' : '') },
-        el('b', { text: isStale() ? t('ui.where_unreachable')
-          : held ? t('ui.where_folder', { name: named }) : t('ui.where_browser') }),
-        el('span', { class: 'small faint', text: isStale() ? t('ui.where_unreachable_note')
-          : held ? t('ui.where_folder_note') : t('ui.where_browser_note') })),
-      held || asking ? null : el('p', { class: 'small faint', style: { margin: '8px 0 0' }, text: t('ui.where_offer') }),
-      held || asking ? null : el('p', { class: 'small faint', style: { margin: '4px 0 0' }, text:
-        other ? t('ui.where_named', { app: other.app, name: other.folder }) : t('ui.where_same') }),
-
-      /* Asked once, and only where the answer is open: a folder that already
-         gathers Lautstark work is obviously the right one. */
-      asking ? el('p', { class: 'small', text: t('ui.where_empty', { name: asking }) }) : null,
-      asking ? el('pre', { class: 'tree', text: `${asking}\n└── ${HOME}\n    └── bildhaft/` }) : null,
-      asking ? el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '10px 0 0' } },
-        el('button', { class: 'btn primary sm', text: t('ui.where_make', { name: HOME }),
-          attrs: { type: 'button' }, on: { click: () => void settle(true) } }),
-        el('button', { class: 'btn quiet sm', text: t('ui.where_direct', { name: asking }),
-          attrs: { type: 'button' }, on: { click: () => void settle(false) } })) : null,
-
-      asking ? null : el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '10px 0 14px' } },
-        el('button', { class: isStale() ? 'btn primary sm' : 'btn sm',
-          text: isStale() ? t('ui.where_retry') : held ? t('ui.where_other') : t('ui.where_pick'),
-          attrs: { type: 'button' }, on: { click: () => void choose() } }),
-        held ? el('button', { class: 'btn destructive sm', text: t('ui.where_forget'),
-          attrs: { type: 'button' }, on: { click: () => void forget() } }) : null),
-
+      /* The panel itself comes from the package, so every Lautstark programme
+         shows the same one. What stays here is what bildhaft alone offers
+         besides the store: its standing snapshot and its file. */
+      store.node,
       el('hr', { class: 'hair' }),
       el('p', { class: 'sub', text: t('ui.keep_out_in') }),
       el('div', { class: 'notice', style: { marginBottom: '14px' }, html:
