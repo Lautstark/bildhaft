@@ -173,7 +173,8 @@ describe('what the folder store is handed', () => {
       normalizedInput: 'ich möchte wasser',
       slots: [{
         id: newId(), sourceToken: 'Wasser', concept: 'wasser', origin: 'raw',
-        provider: 'metacom', symbolId: 'METACOM_Symbole/Essen/wasser.png', label: 'Wasser',
+        choice: { metacom: 'METACOM_Symbole/Essen/wasser.png', arasaac: '2483' },
+        candidates: {}, ownImage: null,
       }],
       createdAt: Date.now(),
       updatedAt: Date.now(),
