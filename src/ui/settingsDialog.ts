@@ -1,9 +1,8 @@
-import type { AppSettings, Override, ProviderId } from '../core/types.ts';
+import type { AppSettings, ProviderId } from '../core/types.ts';
 import { arasaac, metacom, MetacomProvider, needsAttention } from '@lautstark/bildquelle';
 import { sourceFacts, sourceStatusLine } from './symbolSources.ts';
-import { deleteOverride, listOverrides } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
-import { symbolView, type SymbolView } from './symbols.ts';
+import { wortschatzList, type WortschatzList } from './wortschatz.ts';
 import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import type { Sicherung } from '@lautstark/sicherung';
@@ -121,7 +120,7 @@ export function openSettings(options: SettingsOptions): void {
     onClose: () => {
       unsubscribe();
       folder?.dispose();
-      for (const view of dictViews.splice(0)) view.destroy();
+      dict?.destroy();
       options.onClose();
     },
   });
@@ -166,7 +165,7 @@ export function openSettings(options: SettingsOptions): void {
   function close(): void {
     unsubscribe();
     folder?.dispose();
-    for (const view of dictViews.splice(0)) view.destroy();
+    dict?.destroy();
     dialog.close();
   }
 
@@ -485,67 +484,36 @@ export function openSettings(options: SettingsOptions): void {
     );
   }
 
-  /* The thumbnails on show right now. Rebuilt on every repaint, and each one
-     holds a subscription to "a symbol source became readable again" — so the
-     old ones have to be let go of, or a removed entry keeps a listener alive
-     that paints into a node nobody can see. row.ts keeps its views for the
-     same reason. */
-  let dictViews: SymbolView[] = [];
+  /* The Wortschatz list, built once and kept, because it holds the symbol
+     subscriptions its rows draw through. Rebuilding it per repaint would leak
+     them; the note above it is what actually changes here. */
+  let dict: WortschatzList | null = null;
 
   function paintDictionary(): void {
-    for (const view of dictViews.splice(0)) view.destroy();
     /* The source the page is drawing in, which is what a correction made now
        gets filed under — not the default, which the open Sammlung may not be
        following. `provider:token` is the override key, so a panel showing the
        default's entries beside a page rendering something else would be a list
        of corrections that are not the ones in force. */
-    const provider = options.openCollectionProvider() ?? settings.activeProvider;
-    const list = el('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } });
+    const source = () => options.openCollectionProvider() ?? settings.activeProvider;
+    dict ??= wortschatzList({
+      provider: source,
+      // The count comes from the database, so the heading would otherwise be
+      // blank for a frame — and a blank heading is this panel's whole promise
+      // broken at the moment somebody is reading it.
+      onCount: (n) => {
+        dictPanel.state.textContent = n === 0
+          ? t('ui.no_entries')
+          : t(n === 1 ? 'ui.n_entry' : 'ui.n_entries', { n });
+      },
+    });
 
     fill(dictPanel.body,
       el('p', { class: 'small muted', style: { marginTop: '0' },
-        text: t('ui.dictionary_note', { source: provider === 'arasaac' ? 'ARASAAC' : 'METACOM' }) }),
-      list);
-    fill(list, el('p', { class: 'small muted', text: t('ui.loading') }));
-    // The count comes from the database, so the heading would otherwise be
-    // blank for a frame — and a blank heading is this panel's whole promise
-    // broken at the moment somebody is reading it. Say what is true meanwhile.
+        text: t('ui.dictionary_note', { source: source() === 'arasaac' ? 'ARASAAC' : 'METACOM' }) }),
+      dict.node);
     if (!dictPanel.state.textContent) dictPanel.state.textContent = t('ui.loading');
-
-    void listOverrides(provider).then((overrides: Override[]) => {
-      // The heading counts what is inside, whether or not anybody opens it.
-      dictPanel.state.textContent = overrides.length === 0
-        ? t('ui.no_entries')
-        : t(overrides.length === 1 ? 'ui.n_entry' : 'ui.n_entries', { n: overrides.length });
-
-      if (overrides.length === 0) {
-        fill(list, el('div', { class: 'empty' },
-          el('b', { text: t('ui.no_entries') }),
-          el('small', { text: t('ui.dictionary_empty_hint') })));
-        return;
-      }
-      fill(list, ...overrides.map((override) => {
-        /* The picture, not just its name. A dictionary of words pointing at
-           labels is a table of what was decided; a dictionary showing the
-           pictures is the thing itself — and it is the only place somebody can
-           check a correction without going back into a Sammlung and clicking
-           the symbol it belongs to. */
-        const view = symbolView({
-          provider: override.provider,
-          id: override.symbolId,
-          alt: override.label,
-        });
-        dictViews.push(view);
-        return el('div', { class: 'dict__row' },
-          el('span', { class: 'slot__img dict__pic' }, view.node),
-          el('span', { class: 'dict__word' },
-            el('b', { text: override.token }),
-            el('span', { class: 'small muted', text: override.label })),
-          el('button', { class: 'btn destructive sm', text: t('ui.remove'), attrs: { type: 'button' },
-            on: { click: async () => { await deleteOverride(override.provider, override.token); paintDictionary(); } } }),
-        );
-      }));
-    });
+    dict.refresh();
   }
 
   /*

@@ -271,6 +271,20 @@ export interface Override {
   token: string;
   symbolId: string;
   label: string;
+  /**
+   * The person's own tags, in the form they typed them.
+   *
+   * Optional for the same reason `lang` is, and with the same consequence: an
+   * entry made before there were tags carries none, and nothing rewrites it.
+   * Adding a field is a change to what a row says, not to the shape of the
+   * store holding it, so `DB_VERSION` stays where it is.
+   *
+   * Compared case-insensitively — "Kita" and "kita" are one tag — but stored
+   * as written, because the list shows them and a lower-cased Kita reads as a
+   * typo. First spelling wins for display; adr/0002 has why a tag is a lens
+   * over this list rather than a folder holding its own copy of the word.
+   */
+  tags?: string[];
   updatedAt: number;
 }
 

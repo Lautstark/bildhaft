@@ -902,3 +902,35 @@ kbd {
 }
 .dict__word { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dict__word b { font-size: 14px; }
+
+/* A word's own tags. Not chips: components.css reserves those for "changes
+   what is shown, never what is stored", and these are stored. The accent tint
+   is the badge shape the sidebar's counts use, at the size of a caption. */
+.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 4px; }
+.tag {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 12px; line-height: 1.5; padding: 1px 4px 1px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft); color: var(--accent-strong);
+}
+.tag__x {
+  font: inherit; font-size: 14px; line-height: 1; cursor: pointer;
+  padding: 0 4px; border: 0; border-radius: var(--radius-pill);
+  background: transparent; color: inherit; opacity: .7;
+}
+.tag__x:hover { opacity: 1; }
+/* Dashed, and it does not carry the tint: it is an invitation, not a tag. */
+.tag--add {
+  font: inherit; font-size: 12px; cursor: pointer; padding: 1px 9px;
+  background: transparent; color: var(--text-dim);
+  border: 1px dashed var(--line);
+}
+.tag--add:hover { color: var(--text); border-color: var(--text-dim); }
+.tag-input {
+  font: inherit; font-size: 12px; width: 9em; padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent); background: var(--surface-2); color: var(--text);
+}
+/* The filter row sits above the list, apart from it. */
+.tag-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+.tag-filters:empty { display: none; }

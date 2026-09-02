@@ -404,13 +404,60 @@ export async function putOverride(
   provider: ProviderId, token: string, symbolId: string, label: string,
 ): Promise<void> {
   const db = await getDB();
+  const key = overrideKey(provider, token);
+  /* A second correction of the same word replaces the record, and the tags are
+     on the record. Read them across, or filing "Oma" under Familie and then
+     picking a better picture for her quietly unfiles her. */
+  const held = await db.get('overrides', key);
   const override: Override = {
-    key: overrideKey(provider, token),
+    key,
     lang: LANG,
     provider,
     token: token.toLowerCase(),
     symbolId,
     label,
+    ...(held?.tags?.length ? { tags: held.tags } : {}),
+    updatedAt: Date.now(),
+  };
+  await db.put('overrides', override);
+  await fileOverride(override);
+  touched();
+}
+
+/**
+ * Files an entry under tags, or takes it out of them. The whole set at once,
+ * because that is what the caller knows: it holds the row it is editing.
+ *
+ * Tags are deduplicated case-insensitively and the first spelling of each is
+ * the one kept — see the note on `Override.tags`. An entry that has been
+ * emptied of tags loses the field rather than storing `[]`, so that a record
+ * written before tags existed and one cleared of them are the same record.
+ *
+ * A word with no entry cannot be tagged. That is not an oversight: the
+ * Wortschatz is the words this household has settled, and settling one is what
+ * `putOverride` does.
+ */
+export async function setOverrideTags(
+  provider: ProviderId, token: string, tags: readonly string[],
+): Promise<void> {
+  const db = await getDB();
+  const held = await db.get('overrides', overrideKey(provider, token));
+  if (!held) return;
+
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const raw of tags) {
+    const tag = raw.trim();
+    const fold = tag.toLowerCase();
+    if (!tag || seen.has(fold)) continue;
+    seen.add(fold);
+    kept.push(tag);
+  }
+
+  const { tags: _dropped, ...rest } = held;
+  const override: Override = {
+    ...rest,
+    ...(kept.length ? { tags: kept } : {}),
     updatedAt: Date.now(),
   };
   await db.put('overrides', override);

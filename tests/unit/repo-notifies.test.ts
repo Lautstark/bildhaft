@@ -26,6 +26,7 @@ const MUTATORS = [
   'deleteSentence',
   'clearEverything',
   'putOverride',
+  'setOverrideTags',
   'deleteOverride',
   'putOwnImage',
   'saveOwnImage',
@@ -106,6 +107,11 @@ describe('the change notifier', () => {
     },
     clearEverything: () => repo.clearEverything(),
     putOverride: () => repo.putOverride('arasaac', 'Hund', '123', 'Hund'),
+    setOverrideTags: async () => {
+      await repo.putOverride('arasaac', 'Hund', '123', 'Hund');
+      heard = 0;
+      return repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
+    },
     deleteOverride: async () => {
       await repo.putOverride('arasaac', 'Hund', '123', 'Hund');
       heard = 0;
