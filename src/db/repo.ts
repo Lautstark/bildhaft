@@ -1,5 +1,9 @@
 import { clearAllProviderData } from '@lautstark/bildquelle';
 import { getDB } from './db.ts';
+import {
+  adopt, adopted, fileCollection, fileImage, fileNameFor, fileOverride, isStore,
+  pushKind, readImage, readKind, unfile, unfileOverride, type Kind,
+} from './folder.ts';
 // The seed for a user's own editable list. The list itself stays theirs and
 // stays in this database; what the package supplies is where it starts.
 import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
@@ -119,13 +123,16 @@ export async function createCollection(name?: string): Promise<Collection> {
   };
   const db = await getDB();
   await db.put('collections', collection);
+  await fileCollection(collection);
   touched();
   return collection;
 }
 
 export async function putCollection(collection: Collection): Promise<void> {
   const db = await getDB();
-  await db.put('collections', { ...collection, updatedAt: Date.now() });
+  const kept = { ...collection, updatedAt: Date.now() };
+  await db.put('collections', kept);
+  await fileCollection(kept);
   touched();
 }
 
@@ -162,7 +169,96 @@ export async function deleteCollectionDeep(id: string): Promise<void> {
   for (const key of sentenceIds) await tx.objectStore('sentences').delete(key);
   await tx.objectStore('collections').delete(id);
   await tx.done;
+  await mirror('sammlungen', 'saetze');
   touched();
+}
+
+/* Where a folder is the store, every change has to reach it. Single records go
+   through the folder as they are written; a change that happens inside one
+   IndexedDB transaction is mirrored afterwards, wholesale, because a folder write
+   cannot happen inside a transaction that has to stay open. */
+async function mirror(...kinds: Kind[]): Promise<void> {
+  const db = await getDB();
+  for (const kind of kinds) {
+    if (kind === 'sammlungen') await pushKind('sammlungen', await db.getAll('collections'));
+    if (kind === 'saetze') await pushKind('saetze', await db.getAll('sentences'));
+    if (kind === 'woerterbuch') {
+      const rows = await db.getAll('overrides');
+      await pushKind('woerterbuch', await Promise.all(
+        rows.map(async (row) => ({ ...row, id: await fileNameFor(row.key) })),
+      ));
+    }
+    if (kind === 'bilder') {
+      const rows = await db.getAll('ownImages');
+      await pushKind('bilder', rows.map(({ blob: _blob, ...rest }) => ({ ...rest, updatedAt: rest.createdAt })));
+    }
+  }
+}
+
+/* Where a folder is the store, the folder is the truth: on start it is read and
+   the browser's copy is replaced wholesale. A replace needs no reconciliation and
+   no tombstones — it is not a merge — which is the whole reason two-way sync is
+   not being attempted.
+
+   It only replaces a folder that has finished becoming the store. A folder
+   halfway through adoption holds fewer records than the browser does, and reading
+   that back is indistinguishable from "everything was deleted elsewhere". It is
+   not the same thing, and guessing cost a household its calendar once. */
+export async function pullFromFolder(): Promise<boolean> {
+  if (!isStore() || !(await adopted())) return false;
+  const db = await getDB();
+  const [collections, sentences, overrides, images] = await Promise.all([
+    readKind<Collection>('sammlungen'),
+    readKind<Sentence>('saetze'),
+    readKind<Override & { id?: string }>('woerterbuch'),
+    readKind<Omit<OwnImage, 'blob'>>('bilder'),
+  ]);
+  /* A picture's bytes lie beside its record; one without them would render as a
+     hole, so it is left out rather than restored broken. */
+  const withBytes: OwnImage[] = [];
+  for (const image of images) {
+    const blob = await readImage(image.id);
+    if (blob) withBytes.push({ ...image, blob });
+  }
+
+  const stores = ['collections', 'sentences', 'overrides', 'ownImages'] as const;
+  const tx = db.transaction(stores, 'readwrite');
+  for (const store of stores) await tx.objectStore(store).clear();
+  await Promise.all([
+    ...collections.map((item) => tx.objectStore('collections').put(item)),
+    ...sentences.map((item) => tx.objectStore('sentences').put(item)),
+    /* The id was only ever a filename; the store is keyed by the word. */
+    ...overrides.map(({ id: _id, ...rest }) => tx.objectStore('overrides').put(rest)),
+    ...withBytes.map((item) => tx.objectStore('ownImages').put(item)),
+    tx.done,
+  ]);
+  touched();
+  return true;
+}
+
+/* Connecting a folder for the first time is the migration with a before and an
+   after. A folder that is already a store replaces what this browser holds; one
+   that is not adopts what this browser holds — written, checked, and only then
+   marked. Which happened is reported rather than assumed. */
+export async function adoptFolder(): Promise<'pushed' | 'pulled' | 'incomplete'> {
+  if (await adopted()) { await pullFromFolder(); return 'pulled'; }
+  const db = await getDB();
+  const overrides = await db.getAll('overrides');
+  const went = await adopt({
+    sammlungen: await db.getAll('collections'),
+    saetze: await db.getAll('sentences'),
+    woerterbuch: await Promise.all(
+      overrides.map(async (row) => ({ ...row, id: await fileNameFor(row.key) })),
+    ),
+    bilder: (await db.getAll('ownImages')).map(({ blob: _blob, ...rest }) => ({
+      ...rest, updatedAt: rest.createdAt,
+    })),
+  });
+  if (!went.adopted) return went.reason === 'already' ? 'pulled' : 'incomplete';
+  /* The records landed; their bytes have to follow, or the folder holds a library
+     of pictures that are only names. */
+  for (const image of await db.getAll('ownImages')) await fileImage(image);
+  return 'pushed';
 }
 
 /* ------------------------------------------------------------ sentences --- */
@@ -188,6 +284,7 @@ export async function putSentence(sentence: Sentence): Promise<void> {
     });
   }
   await tx.done;
+  await mirror('saetze', 'sammlungen');
   touched();
 }
 
@@ -208,6 +305,8 @@ export async function deleteSentence(id: string): Promise<void> {
     }
   }
   await tx.done;
+  await unfile('saetze', id);
+  await mirror('sammlungen');
   touched();
 }
 
@@ -278,6 +377,7 @@ export async function clearEverything(): Promise<void> {
   const tx = db.transaction(stores, 'readwrite');
   for (const store of stores) await tx.objectStore(store).clear();
   await tx.done;
+  await mirror('sammlungen', 'saetze', 'woerterbuch', 'bilder');
   // The cached symbols and the folder handle live in bildquelle's database now.
   await clearAllProviderData();
   touched();
@@ -304,7 +404,7 @@ export async function putOverride(
   provider: ProviderId, token: string, symbolId: string, label: string,
 ): Promise<void> {
   const db = await getDB();
-  await db.put('overrides', {
+  const override: Override = {
     key: overrideKey(provider, token),
     lang: LANG,
     provider,
@@ -312,16 +412,22 @@ export async function putOverride(
     symbolId,
     label,
     updatedAt: Date.now(),
-  });
+  };
+  await db.put('overrides', override);
+  await fileOverride(override);
   touched();
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {
   const db = await getDB();
   await db.delete('overrides', overrideKey(provider, token));
+  await unfileOverride(overrideKey(provider, token));
   // A German page also clears the entry as it was keyed before there was a
   // language to key it by. Deleting a key that is not there is not an error.
-  if (LANG === 'de') await db.delete('overrides', legacyKey(provider, token));
+  if (LANG === 'de') {
+    await db.delete('overrides', legacyKey(provider, token));
+    await unfileOverride(legacyKey(provider, token));
+  }
   touched();
 }
 
@@ -375,6 +481,7 @@ export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage
   };
   const db = await getDB();
   await db.put('ownImages', image);
+  await fileImage(image);
   touched();
   return image;
 }
@@ -392,6 +499,7 @@ export async function listOwnImages(): Promise<OwnImage[]> {
 export async function saveOwnImage(image: OwnImage): Promise<void> {
   const db = await getDB();
   await db.put('ownImages', image);
+  await fileImage(image);
   touched();
 }
 
@@ -416,6 +524,6 @@ export async function pruneOwnImages(): Promise<number> {
     removed++;
   }
   await tx.done;
-  if (removed > 0) touched();
+  if (removed > 0) { await mirror('bilder'); touched(); }
   return removed;
 }

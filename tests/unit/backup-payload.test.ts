@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { exportEverything } from '../../src/db/exportImport.ts';
 import {
-  clearEverything, createCollection, newId, putOverride, putOwnImage, putSentence,
+  clearEverything, createCollection, getOwnImage, listSentences, newId, putOverride,
+  putOwnImage, putSentence,
 } from '../../src/db/repo.ts';
 
 /**
@@ -144,5 +145,59 @@ describe('what the standing backup is handed', () => {
     // The notice travels with the file, so somebody who receives one can tell
     // whether they are allowed to open it without asking us.
     expect(backup.notice).toContain('keine Bilddateien');
+  });
+});
+
+/*
+ * The second door.
+ *
+ * Until the folder store there was one way into a folder — the standing backup,
+ * handed `exportEverything()` and audited above. There are two now, and a
+ * licensing guard that knows about one of them is a guard with a hole in it: the
+ * store writes records straight out of the library, and it writes them to a
+ * folder whose whole purpose is to be picked up by a sync client.
+ *
+ * The rule it is held to is the same one, and it is bildhaft's own: a symbol is
+ * a reference, and a reference is all it is. Bytes from a licensed folder never
+ * travel. A household's own pictures do, because those are theirs.
+ */
+describe('what the folder store is handed', () => {
+  beforeEach(() => clearEverything());
+
+  it('carries a METACOM choice as an id, and never anything read from the folder', async () => {
+    const collection = await createCollection('Küche');
+    await putSentence({
+      id: newId(),
+      collectionId: collection.id,
+      rawInput: 'Ich möchte Wasser',
+      normalizedInput: 'ich möchte wasser',
+      slots: [{
+        id: newId(), sourceToken: 'Wasser', concept: 'wasser', origin: 'raw',
+        provider: 'metacom', symbolId: 'METACOM_Symbole/Essen/wasser.png', label: 'Wasser',
+      }],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    const [stored] = await Promise.all([listSentences(collection.id)]).then(([rows]) => rows);
+    const asFiled = JSON.stringify(stored);
+    /* The reference is there — that is the point of it. */
+    expect(asFiled).toContain('METACOM_Symbole/Essen/wasser.png');
+    /* And nothing that could only have come from reading the folder. */
+    expect(asFiled).not.toContain('data:');
+    expect(asFiled).not.toContain('base64');
+    expect(asFiled).not.toContain('blob:');
+  });
+
+  it('sends own pictures as bytes, which is the one thing that may travel that way', async () => {
+    const image = await putOwnImage(
+      new File([new Uint8Array([137, 80, 78, 71])], 'oma.png', { type: 'image/png' }),
+      'oma.png',
+    );
+    const found = await getOwnImage(image.id);
+    expect(found?.blob).toBeInstanceOf(Blob);
+    /* Filed as a record without its bytes, and the bytes beside it as a file —
+       so a listing stays a question about ids. See folder.ts. */
+    const { blob: _blob, ...record } = found!;
+    expect(JSON.stringify(record)).not.toContain('PNG');
   });
 });

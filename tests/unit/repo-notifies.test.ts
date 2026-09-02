@@ -32,6 +32,20 @@ const MUTATORS = [
   'pruneOwnImages',
 ] as const;
 
+/**
+ * The folder direction: exports that move records between the library and the
+ * folder that holds it. They are not reads, and they are not mutators in the
+ * sense this file means — they change nothing at all unless a folder is the
+ * store, which is a state this suite has no way to enter and no business
+ * faking. `pullFromFolder` notifies when it replaces the library; that it does
+ * so is tested where a folder can be stood up, in sicherung's own suite and in
+ * the ones that mock the folder module.
+ *
+ * They are named here rather than left out so the completeness check keeps its
+ * promise: a new export nobody classified still fails.
+ */
+const FOLDER = ['pullFromFolder', 'adoptFolder'];
+
 /** Reads, listed so the completeness check below can tell the two apart. */
 const READS = [
   'defaultSettings', 'loadSettings', 'listCollections', 'getCollection',
@@ -126,7 +140,7 @@ describe('the change notifier', () => {
 
   it('accounts for every export, so a new one cannot slip in unclassified', () => {
     const exported = Object.keys(repo).sort();
-    const known = [...MUTATORS, ...READS].sort();
+    const known = [...MUTATORS, ...READS, ...FOLDER].sort();
     expect(exported).toEqual(known);
   });
 
