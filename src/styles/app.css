@@ -797,7 +797,6 @@ kbd {
 /* ------------------------------------------------------------------ menu */
 
 /* Panel, items and anchoring geometry come from components.css. */
-.menu-anchor { display: inline-flex; }
 
 /* Failed symbol: an affordance to retry, never an endless spinner. */
 .slot__blank--error {
