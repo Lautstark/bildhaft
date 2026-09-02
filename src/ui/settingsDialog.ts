@@ -6,7 +6,7 @@ import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import type { Sicherung } from '@lautstark/sicherung';
-import { mountBackupFolder } from './backupFolder.ts';
+import { backupPanel } from '@lautstark/sicherung/backup-panel';
 import { ablage, isStore } from '../db/folder.ts';
 import { wherePanel } from '@lautstark/sicherung/ablage-panel';
 import { adoptFolder } from '../db/repo.ts';
@@ -134,12 +134,27 @@ export function openSettings(options: SettingsOptions): void {
    * subscription and a pair of buttons whose disabled state tracks a write in
    * flight; rebuilding it on every repaint would drop both on the floor.
    */
-  const folder = mountBackupFolder(options.backup, options.onNotify, (text) => {
+  const folder = backupPanel({
+    backup: options.backup,
+    say: options.onNotify,
+    lang: LANG === 'en' ? 'en' : 'de',
     // The heading carries the folder, the way every other panel's heading
     // carries its own state — so „Daten" stops being the one section whose
     // status you have to unfold it to learn. Blank where no folder is set,
     // and blank in a browser without a picker, where there is nothing to say.
-    dataPanel.state.textContent = text;
+    //
+    // This was bildhaft's alone across four products drawing the same panel.
+    // It is @lautstark/sicherung/backup-panel's now, and the 211 lines that
+    // used to sit in src/ui/backupFolder.ts went with it — words, markup, the
+    // age rule and the dispose. See that module's header for what the four
+    // copies had drifted into.
+    //
+    // tests/unit/backup-headline.test.ts and backup-sentence.test.ts went with
+    // them, to test/backup-panel.test.ts in the package. They are not deleted
+    // rules: the age rule and this heading's one distinction are asserted
+    // there, against the one implementation there now is, and each was watched
+    // to fail before it was allowed to count.
+    headline: (text) => { dataPanel.state.textContent = text; },
   });
 
   function close(): void {
