@@ -1122,7 +1122,7 @@ export function mountApp(root: HTMLElement): void {
         // so it fires again whether the same surface form or a variant shows up.
         const keys = new Set([slot.sourceToken.toLowerCase(), slot.concept.toLowerCase()]);
         for (const key of keys) {
-          if (key.trim()) await putOverride(providerId(), key, candidate.id, candidate.label);
+          if (key.trim()) await putOverride(providerId(), key, candidate);
         }
       }
     });

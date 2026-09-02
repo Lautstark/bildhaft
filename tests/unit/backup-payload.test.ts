@@ -138,7 +138,7 @@ describe('what the standing backup is handed', () => {
 
   it('says in the file itself what it does and does not contain', async () => {
     await createCollection('Küche');
-    await putOverride('metacom', 'Wasser', 'METACOM_wasser_01', 'Wasser');
+    await putOverride('metacom', 'Wasser', { id: 'METACOM_wasser_01', label: 'Wasser', score: 100 });
 
     const backup = await exportEverything();
 

@@ -11,7 +11,8 @@ import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
 import { LANG, LOCALE, t } from '../i18n/index.ts';
 import {
   DEFAULT_PRINT_SETTINGS,
-  type AppSettings, type Collection, type Override, type OwnImage, type ProviderId,
+  type AppSettings, type Candidate, type Collection, type Override, type OwnImage,
+  type ProviderId,
   type Sentence,
 } from '../core/types.ts';
 import { changes } from '@lautstark/werkzeuge/changed';
@@ -401,7 +402,7 @@ const legacyKey = (provider: ProviderId, token: string) =>
 const mine = (override: Override) => (override.lang ?? 'de') === LANG;
 
 export async function putOverride(
-  provider: ProviderId, token: string, symbolId: string, label: string,
+  provider: ProviderId, token: string, candidate: Candidate,
 ): Promise<void> {
   const db = await getDB();
   const key = overrideKey(provider, token);
@@ -414,9 +415,14 @@ export async function putOverride(
     lang: LANG,
     provider,
     token: token.toLowerCase(),
-    symbolId,
-    label,
+    symbolId: candidate.id,
+    label: candidate.label,
     ...(held?.tags?.length ? { tags: held.tags } : {}),
+    /* What the source says, as it says it. Absent stays absent rather than
+       being written as an empty list, so an entry that predates this and one
+       whose source knows nothing are the same record. */
+    ...(candidate.categories?.length ? { categories: candidate.categories } : {}),
+    ...(candidate.wordClass ? { wordClass: candidate.wordClass } : {}),
     updatedAt: Date.now(),
   };
   await db.put('overrides', override);

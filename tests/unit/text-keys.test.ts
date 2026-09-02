@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { TEXTS } from '../../src/i18n/texts.ts';
 import { SLOT_ORIGINS } from '../../src/core/types.ts';
 import { SOURCE_STATUS_CODES } from '../../src/ui/symbolSources.ts';
+import { TOPICS } from '../../src/core/tags.ts';
 
 /**
  * The table and the calls, held to each other.
@@ -105,6 +106,10 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // stopped shipping German ones; the codes come from the package, so a new
   // state arrives here rather than as a blank line on the settings card.
   { prefix: 'ui.source_status_', from: SOURCE_STATUS_CODES, where: 'ui/symbolSources.ts' },
+  // The themes a source's own categories are mapped onto. `TOPICS` is a real
+  // array in core/tags.ts so a twelfth theme fails here rather than reaching
+  // somebody as a dotted identifier in their Wortschatz.
+  { prefix: 'ui.topic_', from: TOPICS, where: 'ui/wortschatz.ts' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

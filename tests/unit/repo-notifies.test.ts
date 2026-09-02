@@ -106,14 +106,14 @@ describe('the change notifier', () => {
       return repo.deleteSentence(one.id);
     },
     clearEverything: () => repo.clearEverything(),
-    putOverride: () => repo.putOverride('arasaac', 'Hund', '123', 'Hund'),
+    putOverride: () => repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 }),
     setOverrideTags: async () => {
-      await repo.putOverride('arasaac', 'Hund', '123', 'Hund');
+      await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
       heard = 0;
       return repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
     },
     deleteOverride: async () => {
-      await repo.putOverride('arasaac', 'Hund', '123', 'Hund');
+      await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
       heard = 0;
       return repo.deleteOverride('arasaac', 'Hund');
     },

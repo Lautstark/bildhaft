@@ -934,3 +934,10 @@ kbd {
 /* The filter row sits above the list, apart from it. */
 .tag-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
 .tag-filters:empty { display: none; }
+/* What the source suggests, as opposed to what the person filed. Dotted and
+   untinted: it is offered rather than chosen, and there is no × on it because
+   removing it would mean arguing with ARASAAC about what an apple is. */
+.tag--auto {
+  background: transparent; color: var(--text-dim);
+  border: 1px dashed var(--line); padding: 1px 9px;
+}

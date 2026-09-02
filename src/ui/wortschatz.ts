@@ -16,6 +16,7 @@
 import type { Override, ProviderId } from '../core/types.ts';
 import { deleteOverride, listOverrides, setOverrideTags } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
+import { topicsOf } from '../core/tags.ts';
 import { symbolView, type SymbolView } from './symbols.ts';
 import { t } from '../i18n/index.ts';
 
@@ -65,6 +66,32 @@ export function wortschatzList(options: WortschatzListOptions): WortschatzList {
     return entry.tags ?? [];
   }
 
+  /**
+   * What the source suggests this word is, already in the reader's language.
+   *
+   * Derived at every repaint rather than stored, because these are wordings and
+   * the interface has two languages — see the note on `Override.categories`.
+   * ARASAAC's own vocabulary is mapped onto our themes; METACOM's is the
+   * person's folder names and is shown as it stands, because replacing what
+   * somebody called a thing with what we would have called it is not a
+   * translation.
+   *
+   * A suggestion a person has also typed themselves is dropped here: it is the
+   * same tag, and one of them has a way to be removed.
+   */
+  function suggestedFor(entry: Override): string[] {
+    const said: string[] = [];
+    if (entry.wordClass) {
+      said.push(t(entry.wordClass === 'noun' ? 'ui.wordclass_noun' : 'ui.wordclass_verb'));
+    }
+    said.push(...(entry.provider === 'arasaac'
+      ? topicsOf(entry.categories).map((topic) => t(`ui.topic_${topic}`))
+      : entry.categories ?? []));
+
+    const own = new Set(tagsOf(entry).map(fold));
+    return said.filter((tag) => !own.has(fold(tag)));
+  }
+
   async function retag(entry: Override, tags: string[]): Promise<void> {
     editing = null;
     await setOverrideTags(entry.provider, entry.token, tags);
@@ -85,10 +112,12 @@ export function wortschatzList(options: WortschatzListOptions): WortschatzList {
       return;
     }
 
-    // First spelling wins for display; the count is over the folded form.
+    // First spelling wins for display; the count is over the folded form. A
+    // suggested tag counts exactly like a typed one — a lens does not care who
+    // said the word, only which entries carry it.
     const tally = new Map<string, { label: string; n: number }>();
     for (const entry of entries) {
-      for (const tag of tagsOf(entry)) {
+      for (const tag of [...tagsOf(entry), ...suggestedFor(entry)]) {
         const seen = tally.get(fold(tag));
         if (seen) seen.n += 1;
         else tally.set(fold(tag), { label: tag, n: 1 });
@@ -103,7 +132,8 @@ export function wortschatzList(options: WortschatzListOptions): WortschatzList {
 
     const shown = lens === null
       ? entries
-      : entries.filter((entry) => tagsOf(entry).some((tag) => fold(tag) === lens));
+      : entries.filter((entry) => [...tagsOf(entry), ...suggestedFor(entry)]
+        .some((tag) => fold(tag) === lens));
     fill(list, ...shown.map(row));
   }
 
@@ -139,6 +169,7 @@ export function wortschatzList(options: WortschatzListOptions): WortschatzList {
         el('span', { class: 'small muted', text: entry.label }),
         el('div', { class: 'tags' },
           ...tagsOf(entry).map((tag) => badge(entry, tag)),
+          ...suggestedFor(entry).map((tag) => el('span', { class: 'tag tag--auto', text: tag })),
           adder(entry))),
       el('button', { class: 'btn destructive sm', text: t('ui.remove'), attrs: { type: 'button' },
         on: { click: async () => { await deleteOverride(entry.provider, entry.token); refresh(); } } }),

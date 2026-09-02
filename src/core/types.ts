@@ -17,9 +17,9 @@
  * come with them are enforced. Re-exported so the rest of the app keeps taking
  * its model from one place.
  */
-import type { Candidate, ProviderId } from '@lautstark/bildquelle';
+import type { Candidate, ProviderId, WordClass } from '@lautstark/bildquelle';
 import type { LanguageCode } from '../i18n/index.ts';
-export type { Candidate, ProviderId };
+export type { Candidate, ProviderId, WordClass };
 
 /**
  * How a slot's concept was arrived at — surfaced as a tooltip, nothing more.
@@ -285,6 +285,24 @@ export interface Override {
    * over this list rather than a folder holding its own copy of the word.
    */
   tags?: string[];
+  /**
+   * What the source said about this symbol when the entry was made — the raw
+   * answer, not our reading of it. `categories` is ARASAAC's own vocabulary or
+   * METACOM's folders (bildquelle's `Candidate` says which is which), and the
+   * themes shown in the Wortschatz are derived from it at display time.
+   *
+   * Derived rather than stored on purpose: „Essen & Trinken" is a wording, and
+   * a household that switches the interface to English would otherwise be
+   * looking at German tags that nothing can re-translate. The fact keeps; the
+   * word does not.
+   *
+   * Absent on every entry made before there was anything to record, and on
+   * every entry whose source says nothing. Nothing backfills them: a Wortschatz
+   * of three hundred words would mean three hundred searches, and the entry
+   * gains its facts the next time that word is chosen.
+   */
+  categories?: readonly string[];
+  wordClass?: WordClass;
   updatedAt: number;
 }
 

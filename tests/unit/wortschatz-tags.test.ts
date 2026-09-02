@@ -15,7 +15,7 @@ import * as repo from '../../src/db/repo.ts';
 describe('an entry’s tags', () => {
   beforeEach(async () => {
     await repo.clearEverything();
-    await repo.putOverride('arasaac', 'Oma', '111', 'Großmutter');
+    await repo.putOverride('arasaac', 'Oma', { id: '111', label: 'Großmutter', score: 100 });
   });
 
   const tagsOf = async () =>
@@ -23,7 +23,7 @@ describe('an entry’s tags', () => {
 
   it('survives a second correction of the same word', async () => {
     await repo.setOverrideTags('arasaac', 'Oma', ['Familie']);
-    await repo.putOverride('arasaac', 'Oma', '222', 'Oma');
+    await repo.putOverride('arasaac', 'Oma', { id: '222', label: 'Oma', score: 100 });
     expect(await tagsOf()).toEqual(['Familie']);
   });
 
