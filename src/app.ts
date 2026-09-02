@@ -23,13 +23,13 @@ import {
   importCollectionFile,
 } from './db/exportImport.ts';
 import { Sicherung } from '@lautstark/sicherung';
-import { ablage, adopted, watchFolder } from './db/folder.ts';
+import { ablage, adopted, folderName, watchFolder, wipeReaches } from './db/folder.ts';
 import { renameField } from '@lautstark/design/rename';
 import { announcer } from '@lautstark/design/toast';
 import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
-import { confirmDialog } from './ui/dialog.ts';
+import { confirmDialog, openDialog } from './ui/dialog.ts';
 import { sourceStatusLine } from './ui/symbolSources.ts';
 import { icons, logo } from './ui/logo.ts';
 import { actionMenu } from './ui/menu.ts';
@@ -1484,7 +1484,27 @@ export function mountApp(root: HTMLElement): void {
     });
   }
 
+  /* How far this goes depends on where the work lives, and the difference is not
+     a nicety: with a folder as the store, clearEverything() removes the files, so
+     it removes them on every device the household has. With the folder out of
+     reach it is refused — a wipe there empties this browser, leaves the folder
+     whole, and hands everything back on the next start. */
   async function confirmClearAll(): Promise<void> {
+    const reach = wipeReaches();
+    const folder = folderName();
+
+    if (reach === 'unreachable') {
+      const sheet = openDialog({
+        title: t('ui.clear_all_blocked_title'),
+        body: [t('ui.clear_all_blocked', { folder })],
+        footer: [el('button', {
+          class: 'btn primary', text: t('ui.understood'),
+          attrs: { type: 'button' }, on: { click: () => sheet.close() },
+        })],
+      });
+      return;
+    }
+
     const totals = await libraryTotals();
     const ok = await confirmDialog({
       title: t('ui.delete_all_button'),
@@ -1492,7 +1512,7 @@ export function mountApp(root: HTMLElement): void {
         t('ui.clear_all_body', {
           collections: totals.collections, sentences: totals.sentences,
           entries: totals.overrides,
-        }),
+        }) + (reach === 'folder' ? t('ui.clear_all_reach', { folder }) : ''),
       confirmLabel: t('ui.delete_everything'),
       danger: true,
     });

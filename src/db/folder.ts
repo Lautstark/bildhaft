@@ -31,6 +31,23 @@ export const isStore = () =>
 /** Whether it is the store but currently out of reach. */
 export const isStale = () => ablage.status.kind === 'stale';
 
+/**
+ * How far a „Alles löschen" would reach.
+ *
+ * Three answers rather than a boolean, because the sentence differs in each.
+ * With a folder as the store, clearEverything() removes the files — so it
+ * removes them on every device the household has, which „endgültig gelöscht"
+ * said nothing about. And with the folder out of reach it would empty this
+ * browser while the folder kept everything and handed it back on the next
+ * start: a delete that undoes itself. That one is refused rather than asked.
+ */
+export const wipeReaches = (): 'browser' | 'folder' | 'unreachable' =>
+  !isStore() ? 'browser' : isStale() ? 'unreachable' : 'folder';
+
+/** The folder's own name, for a sentence that has to point at it. */
+export const folderName = (): string =>
+  'folder' in ablage.status ? ablage.status.folder : '';
+
 /*
  * A dictionary entry is keyed by the word it is about — `de:arasaac:hund` — and
  * that is not a filename and not a UUID. Rather than rewrite a store that works,
