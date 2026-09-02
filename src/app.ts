@@ -1515,6 +1515,11 @@ export function mountApp(root: HTMLElement): void {
         }) + (reach === 'folder' ? t('ui.clear_all_reach', { folder }) : ''),
       confirmLabel: t('ui.delete_everything'),
       danger: true,
+      /* The one act in this product that asks for a word. It empties the library
+         on every device the household has; design.md §4.3 says this is what the
+         friction is for, and that spending it anywhere else is what breaks it. */
+      requireTyping: t('ui.clear_all_word'),
+      typingLabel: t('ui.clear_all_type'),
     });
     if (!ok) return;
 

@@ -31,6 +31,7 @@ export function openDialog(options: Omit<DialogOptions, 'closeLabel'>): OpenDial
 /** A destructive or confirming prompt. Resolves true when confirmed. */
 export function confirmDialog(options: {
   title: string; body: string; confirmLabel: string; danger?: boolean;
+  requireTyping?: string; typingLabel?: string;
 }): Promise<boolean> {
   return ask({ ...options, cancelLabel: t('ui.cancel'), closeLabel: CLOSE });
 }
