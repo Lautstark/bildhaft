@@ -611,7 +611,14 @@ export function openSettings(options: SettingsOptions): void {
        * because importCollectionFile routes on the file's own format.
        */
       el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
-        el('button', { class: 'btn primary sm', text: t('ui.backup_download'),
+        /* Not primary. The panel above this one is @lautstark/sicherung's, and
+           its „Ordner wählen" is already the accent fill — design.md §4.3 gives
+           that fill to one thing per screen. Two filled buttons three pixels
+           apart in the same colour read as one control, which is what a visual
+           baseline showed the moment one was taken. The folder is the offer that
+           keeps working after somebody stops thinking about it; the file is the
+           one they reach for deliberately. */
+        el('button', { class: 'btn sm', text: t('ui.backup_download'),
           attrs: { type: 'button' }, on: { click: options.onExportAll } }),
         fileButton(t('ui.backup_read'), 'application/json,.json', false,
           (files) => { close(); options.onImport(files[0]); })),
