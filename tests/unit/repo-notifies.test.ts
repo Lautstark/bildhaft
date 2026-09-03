@@ -27,6 +27,8 @@ const MUTATORS = [
   'clearEverything',
   'putOverride',
   'setOverrideTags',
+  'renameTag',
+  'dropTag',
   'deleteOverride',
   'putOwnImage',
   'saveOwnImage',
@@ -111,6 +113,18 @@ describe('the change notifier', () => {
       await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
       heard = 0;
       return repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
+    },
+    renameTag: async () => {
+      await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
+      await repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
+      heard = 0;
+      return repo.renameTag('Tiere', 'Haustiere');
+    },
+    dropTag: async () => {
+      await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
+      await repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
+      heard = 0;
+      return repo.dropTag('Tiere');
     },
     deleteOverride: async () => {
       await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });

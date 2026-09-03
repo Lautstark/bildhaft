@@ -14,6 +14,7 @@ import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
   loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
+  listOverrides,
   onChanged, putSentence, renameCollection, saveCollectionProvider, saveSettings,
   searchSentences,
   pullFromFolder,
@@ -29,6 +30,7 @@ import { announcer } from '@lautstark/design/toast';
 import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
+import { wortschatzView as makeWortschatz } from './ui/wortschatz.ts';
 import { confirmDialog, openDialog } from './ui/dialog.ts';
 import { sourceStatusLine } from './ui/symbolSources.ts';
 import { icons, logo } from './ui/logo.ts';
@@ -52,6 +54,13 @@ export function mountApp(root: HTMLElement): void {
   let collections: Collection[] = [];
   let counts: Record<string, number> = {};
   let activeId: string | null = null;
+  /* Which of the two nouns the main area is showing. `null` is a Sammlung —
+     `activeId` stays put while the Wortschatz is open, so leaving it comes
+     back to the same one. adr/0002 has why there are two. */
+  let wortschatz: { tag: string | null } | null = null;
+  /** What the sidebar's Wortschatz rows count. Read with the Sammlungen. */
+  let wordCount = 0;
+  let tagRows: { name: string; count: number }[] = [];
   let sentences: Sentence[] = [];
 
   let draft = '';
@@ -131,8 +140,16 @@ export function mountApp(root: HTMLElement): void {
   const loading = el('div', { class: 'loading-state' }, el('span', { class: 'spinner' }));
 
   const sidebarView = sidebar({
-    onSelect: (id) => { setActive(id); query = ''; closeNavOnMobile(); render(); },
-    onNew: () => { void handleNewCollection(); closeNavOnMobile(); },
+    onSelect: (id) => { wortschatz = null; setActive(id); query = ''; closeNavOnMobile(); render(); },
+    onNew: () => { wortschatz = null; void handleNewCollection(); closeNavOnMobile(); },
+    onWords: (tag) => {
+      wortschatz = { tag };
+      query = '';
+      wortschatzView.open(tag);
+      closeNavOnMobile();
+      render();
+    },
+    onNewTag: () => { void handleNewTag(); closeNavOnMobile(); },
     onSearchChange: (value) => { query = value; scheduleSearch(); render(); },
     onOpenResult: (sentence) => {
       setActive(sentence.collectionId);
@@ -160,6 +177,22 @@ export function mountApp(root: HTMLElement): void {
   );
 
   const topBarView = topBar(() => toggleSidebar());
+
+  /* The Wortschatz is the other half of the sidebar and the other half of the
+     main area. It is handed the same things a Sammlung's parts are handed —
+     the source in force, a way to write settings, a way to say something —
+     and nothing about the shell it sits in. */
+  const wortschatzView = makeWortschatz({
+    provider,
+    providerId,
+    pinned: () => settings?.pinnedTags ?? [],
+    onPinned: (tags: string[]) => {
+      if (settings) persistSettings({ ...settings, pinnedTags: tags });
+    },
+    onChanged: () => { void refreshCollections(); },
+    onLens: (tag: string | null) => { wortschatz = { tag }; render(); },
+    notify: (message: string) => notify(message),
+  });
 
   const composerView = composer({
     onChange: (value) => { draft = value; scheduleReuseLookup(); render(); },
@@ -536,7 +569,20 @@ export function mountApp(root: HTMLElement): void {
 
     sidebarView.render({
       collections, counts, activeId, searchQuery: query, searchResults: results,
+      wordCount, tags: tagRows, openTag: wortschatz ? wortschatz.tag : undefined,
     });
+
+    /* The two nouns share `.main__inner` and never overlap: one of them has the
+       composer, the head and the wall of things, and the other has its own
+       three. Rebuilding the list rather than hiding it keeps the symbol
+       subscriptions of whichever is off screen from being kept alive. */
+    place(inner, wortschatz
+      ? [bannerHost, ...wortschatzView.parts]
+      : [bannerHost, composerView.node, collectionHead, rowsHost]);
+    if (wortschatz) {
+      topBarView.setTitle(wortschatz.tag ?? t('ui.all_words'));
+      return;
+    }
 
     const collection = activeCollection();
     topBarView.setTitle(collection?.name ?? 'bildhaft');
@@ -829,9 +875,49 @@ export function mountApp(root: HTMLElement): void {
       all.map(async (c) => [c.id, await countSentences(c.id)] as const));
     collections = all;
     counts = Object.fromEntries(entries);
+
+    /* The Wortschatz counts come from the same pass, because they change for
+       the same reasons: a correction in a Sammlung files a word, and the row
+       above the Sammlungen has to say so without anybody opening it. */
+    const words = await listOverrides();
+    wordCount = words.length;
+    const held = new Map<string, number>();
+    for (const word of words) {
+      for (const tag of word.tags ?? []) {
+        held.set(tag.toLowerCase(), (held.get(tag.toLowerCase()) ?? 0) + 1);
+      }
+    }
+    tagRows = (settings?.pinnedTags ?? [])
+      .map((name) => ({ name, count: held.get(name.toLowerCase()) ?? 0 }));
+
     sidebarView.render({
       collections, counts, activeId, searchQuery: query, searchResults: results,
+      wordCount, tags: tagRows, openTag: wortschatz ? wortschatz.tag : undefined,
     });
+  }
+
+  /**
+   * Makes a tag and opens it, the way „+ Neue Sammlung" makes a Sammlung.
+   *
+   * It exists the moment it is made, before it has a name anybody chose and
+   * before a single word carries it — which is what `pinnedTags` is for, and
+   * why the name is edited in the work head rather than asked for in a dialog
+   * (§1.5). The number is only there so that making three in a row does not
+   * produce three rows called the same thing.
+   */
+  async function handleNewTag(): Promise<void> {
+    if (!settings) return;
+    const taken = new Set(settings.pinnedTags.map((tag) => tag.toLowerCase()));
+    let name = t('ui.new_tag_name');
+    for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${t('ui.new_tag_name')} ${n}`;
+
+    persistSettings({ ...settings, pinnedTags: [...settings.pinnedTags, name] });
+    wortschatz = { tag: name };
+    query = '';
+    wortschatzView.open(name);
+    await refreshCollections();
+    render();
+    wortschatzView.nameIt();
   }
 
   /*

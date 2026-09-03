@@ -78,6 +78,10 @@ export function topBar(onToggleNav: () => void): { node: HTMLElement; setTitle(t
 export interface SidebarHandlers {
   onSelect: (id: string) => void;
   onNew: () => void;
+  /** Open the Wortschatz — every word, or one tag. */
+  onWords: (tag: string | null) => void;
+  /** Make a tag. It is made and opened at once, and named in the work head. */
+  onNewTag: () => void;
   onSearchChange: (value: string) => void;
   onOpenResult: (sentence: Sentence) => void;
   onOpenSettings: () => void;
@@ -90,6 +94,11 @@ export interface SidebarState {
   activeId: string | null;
   searchQuery: string;
   searchResults: Sentence[];
+  /** How many words the Wortschatz holds, and how many each pinned tag does. */
+  wordCount: number;
+  tags: { name: string; count: number }[];
+  /** Which lens is open, or `undefined` when a Sammlung is showing instead. */
+  openTag: string | null | undefined;
 }
 
 export function sidebar(handlers: SidebarHandlers): {
@@ -102,6 +111,9 @@ export function sidebar(handlers: SidebarHandlers): {
     on: { input: () => handlers.onSearchChange(search.value) },
   });
 
+  const wordsSection = el('div', { class: 'sidebar__section' });
+  /* Made once and refilled, for the same reason the Sammlung rows are. */
+  const wordRowsHost = el('div', { class: 'collections' });
   const listSection = el('div', { class: 'sidebar__section' });
   /* Made once and refilled: drawCollections() empties whatever it is handed,
      so a node rebuilt on every render would throw its listeners away each
@@ -119,6 +131,7 @@ export function sidebar(handlers: SidebarHandlers): {
       }, icons.chevronLeft()),
     ),
     el('div', { class: 'sidebar__section' }, search),
+    wordsSection,
     listSection,
     el('div', { class: 'sidebar__section',
       style: { marginTop: 'auto', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
@@ -131,6 +144,7 @@ export function sidebar(handlers: SidebarHandlers): {
     if (search.value !== state.searchQuery) search.value = state.searchQuery;
 
     if (state.searchQuery.trim().length > 0) {
+      fill(wordsSection);
       fill(listSection,
         el('h2', { text: state.searchResults.length === 1
           ? t('ui.n_hits_one')
@@ -160,6 +174,32 @@ export function sidebar(handlers: SidebarHandlers): {
        bildhaft opens one Sammlung at a time (§4.2) — which v1.17.0 separated
        from how many a line may be *in* (§4.1), the question this comment used
        to answer and the one that is now one everywhere. */
+    /*
+     * The Wortschatz, above the Sammlungen.
+     *
+     * „Alle Wörter" is always there, including on the first day when it counts
+     * nothing: it is the door, and a section that appears only once somebody
+     * has done the thing it is the door to would never be found. „+ Neuer Tag"
+     * is not — a button to sort something that does not exist yet is a control
+     * that cannot do anything, so it waits until there is a word to sort.
+     */
+    fill(wordsSection,
+      el('h2', { text: t('ui.wortschatz') }),
+      wordRowsHost,
+      state.wordCount > 0
+        ? el('button', { class: 'btn quiet sm', text: t('ui.new_tag'),
+          style: { marginTop: '6px' }, attrs: { type: 'button' }, on: { click: handlers.onNewTag } })
+        : null,
+    );
+    drawCollections(wordRowsHost, {
+      rows: [
+        { id: '', name: t('ui.all_words'), count: state.wordCount },
+        ...state.tags.map((tag) => ({ id: `#${tag.name}`, name: tag.name, count: tag.count })),
+      ],
+      open: state.openTag === undefined ? [] : [state.openTag === null ? '' : `#${state.openTag}`],
+      onPick: (id) => handlers.onWords(id === '' ? null : id.slice(1)),
+    });
+
     fill(listSection,
       el('h2', { text: t('ui.collections') }),
       rowsHost,
@@ -172,7 +212,10 @@ export function sidebar(handlers: SidebarHandlers): {
         name: collection.name,
         count: state.counts[collection.id] ?? 0,
       })),
-      open: state.activeId ? [state.activeId] : [],
+      /* Nothing is open down here while the Wortschatz is showing. Two rows
+         lit in two sections would say both are, and one of them is only the
+         Sammlung that will be there again when the person comes back. */
+      open: state.openTag === undefined && state.activeId ? [state.activeId] : [],
       onPick: (id) => handlers.onSelect(id),
     });
   }

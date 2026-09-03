@@ -57,6 +57,7 @@ export function defaultSettings(): AppSettings {
     lastCollectionId: null,
     sidebarOpen: false,
     metacomRendering: null,
+    pinnedTags: [],
   };
 }
 
@@ -469,6 +470,68 @@ export async function setOverrideTags(
   await db.put('overrides', override);
   await fileOverride(override);
   touched();
+}
+
+/**
+ * Renames a tag wherever it is written, in this language.
+ *
+ * A tag is a string on each entry rather than a record of its own, so renaming
+ * one is a write to every entry carrying it — which is the price of tags being
+ * lenses instead of folders, and it is paid here rather than by the caller.
+ * Case-insensitive on the way in, so renaming „kita" also catches the entry
+ * that spelled it „Kita"; the new spelling is written as given.
+ *
+ * Returns how many entries moved, so a caller can say nothing happened.
+ */
+export async function renameTag(from: string, to: string): Promise<number> {
+  const before = from.trim().toLowerCase();
+  const after = to.trim();
+  if (!before || !after || before === after.toLowerCase()) return 0;
+
+  const db = await getDB();
+  let moved = 0;
+  for (const override of await listOverrides()) {
+    if (!override.tags?.some((tag) => tag.toLowerCase() === before)) continue;
+    const seen = new Set<string>();
+    const tags: string[] = [];
+    for (const tag of override.tags) {
+      const next = tag.toLowerCase() === before ? after : tag;
+      if (seen.has(next.toLowerCase())) continue;
+      seen.add(next.toLowerCase());
+      tags.push(next);
+    }
+    const moved_ = { ...override, tags, updatedAt: Date.now() };
+    await db.put('overrides', moved_);
+    await fileOverride(moved_);
+    moved += 1;
+  }
+  if (moved > 0) touched();
+  return moved;
+}
+
+/**
+ * Takes a tag off every entry that carries it.
+ *
+ * The words stay. Deleting a lens is not deleting what it was pointed at, and
+ * a tag that took its words with it would be the folder this deliberately is
+ * not — see adr/0002.
+ */
+export async function dropTag(tag: string): Promise<void> {
+  const gone = tag.trim().toLowerCase();
+  if (!gone) return;
+
+  const db = await getDB();
+  let touchedAny = false;
+  for (const override of await listOverrides()) {
+    if (!override.tags?.some((held) => held.toLowerCase() === gone)) continue;
+    const tags = override.tags.filter((held) => held.toLowerCase() !== gone);
+    const { tags: _dropped, ...rest } = override;
+    const next: Override = { ...rest, ...(tags.length ? { tags } : {}), updatedAt: Date.now() };
+    await db.put('overrides', next);
+    await fileOverride(next);
+    touchedAny = true;
+  }
+  if (touchedAny) touched();
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {

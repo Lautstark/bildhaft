@@ -444,6 +444,17 @@ export interface AppSettings {
    * without this the one that wins is whichever the index listed first.
    */
   metacomRendering: string | null;
+  /**
+   * The tags that have a row of their own in the sidebar.
+   *
+   * Two jobs in one list, and that is deliberate. It is which tags are worth
+   * seeing without opening the Wortschatz — there are quickly twenty and a
+   * sidebar of twenty is not navigation. And it is the only place a tag with no
+   * words can exist at all: a tag otherwise lives on the entries carrying it,
+   * so a freshly made empty one would have nowhere to be until the first word
+   * arrived. Making a tag is therefore the same act as pinning one.
+   */
+  pinnedTags: string[];
 }
 
 /* --------------------------------------------------------------- export --- */

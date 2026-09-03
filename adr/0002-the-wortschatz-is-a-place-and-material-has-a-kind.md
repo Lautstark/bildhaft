@@ -1,6 +1,7 @@
 # ADR 0002 — The Wortschatz is a place of its own, and material has a kind
 
-**Status:** proposed · **Date:** 2026-09-02 · **Applies to:** the sidebar shell,
+**Status:** accepted · **Date:** 2026-09-02 · **Amended:** 2026-09-03 · **Applies
+to:** the sidebar shell,
 `src/db/repo.ts`'s overrides, `src/db/folder.ts`'s `woerterbuch` kind, and every
 future editor that is not the sentence editor
 
@@ -36,9 +37,18 @@ paused.
 
 **bildhaft has two nouns, and both are in the sidebar.** *Wortschatz* is the
 words a household has settled: this picture for this word, in this language.
-*Material* is what gets made out of them and printed. The sidebar carries a
-WORTSCHATZ section above a MATERIAL section, and Einstellungen stays at its foot.
-The dictionary panel keeps working; it stops being the only door.
+*Sammlung* is what gets made out of them and printed, and it keeps that name:
+„Material" was a word from the druckwerk spike and names nothing a Sammlung does
+not already name, so the second noun is the one that is already there. The
+sidebar carries a WORTSCHATZ section above the SAMMLUNGEN, and Einstellungen
+stays at its foot.
+
+**The dictionary panel goes, rather than staying as a second door.** This said
+the opposite when it was written — the panel would keep working — and it was
+wrong in a way worth recording: the panel held the list only because there was
+nowhere else to put it, and once there is a place, every trace of it left in
+Einstellungen is the same count kept in two places and two answers to "where is
+my Wortschatz". What §3.10 has left there is only what a setting is.
 
 **A tag is a lens, not a folder.** A word carries any number of tags. Some are
 derived — ARASAAC hands back `categories` and a keyword `type` per pictogram, so
@@ -55,14 +65,14 @@ person from choosing differently for one Slot. This is what `prefer()` in
 bildquelle's `ResolveOptions` is for, and it is why that hook exists rather than
 a fifth `ProviderId`.
 
-**Material has a kind, chosen when it is created, and the kind decides the
+**A Sammlung has a kind, chosen when it is created, and the kind decides the
 editor and the print dialog.** vorlaut already works this way. The kind is
 written once and not changed afterwards: a Sammlung of Sätze does not become a
 Tafel by a menu, it becomes one by being made as a Tafel from the same words. The
 sentence editor that exists today is the kind `saetze`, and nothing about it
 changes.
 
-**Material can be made without the Wortschatz.** Typing sentences into a new
+**A Sammlung can be made without the Wortschatz.** Typing sentences into a new
 Sammlung — no tags, no words filed, nothing pinned — stays a complete way to use
 bildhaft. The Wortschatz is what a person accumulates by using the app, not a
 step they have to complete before the app does anything.
@@ -148,7 +158,7 @@ between every pair of kinds, most of which have no honest definition, and every
 one of which has to keep working as kinds are added. Whoever proposes it has to
 say what a Kommunikationsfächer becomes when it is turned into Sätze.
 
-**"Material without a Wortschatz is a special case — require the Wortschatz and
+**"A Sammlung without a Wortschatz is a special case — require the Wortschatz and
 there is one path."** The empty case is not a special case, it is the first ten
 minutes of everybody's use of the app, and an app that asks a person to build a
 vocabulary before it will print anything is an app they close. The Wortschatz is

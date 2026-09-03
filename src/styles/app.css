@@ -881,62 +881,121 @@ kbd {
 }
 .hair { border: 0; border-top: 1px solid var(--line); margin: 14px 0 10px; }
 
-/* The dictionary panel's rows: the picture first, because that is what somebody
-   is checking. The thumbnail is the slot chip at a third of its size — one rule
-   of it — `.slot__img` sizes what is inside, this only makes the box smaller. */
-.dict__row {
-  display: flex;
-  align-items: center;
+/* --------------------------------------------------------------- Wortschatz */
+
+/* The wall of words. A card rather than the row the settings panel had: this is
+   a place now, with the width of one, and at that width a list of forty rows is
+   a scroll where a wall is a look. */
+.wortschatz { display: flex; flex-direction: column; min-height: 0; }
+/* The empty state is a sentence, not a card: it spans the wall rather than
+   standing in its first cell looking like a word with no picture. */
+.words .empty { grid-column: 1 / -1; }
+.words {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
   gap: 10px;
-  padding: 4px 2px;
+  align-content: start;
 }
-.dict__pic {
-  flex: none;
-  box-sizing: border-box;
-  width: 34px;
-  height: 34px;
-  padding: 2px;
+.word {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+/* Its own box rather than `.slot__img` at another size, which is what this was
+   for an afternoon. That rule is a fixed 68mm chip and carries
+   `pointer-events: none`, because in a Sammlung the *slot* takes the click —
+   here the picture is the button, and inheriting the chip made it a picture
+   that could not be pressed and would not fit. */
+.word__pic {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 5px;
+  border: 0;
   border-radius: var(--radius-sm);
   background: #fff;
+  cursor: pointer;
+  overflow: hidden;
 }
-.dict__word { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.dict__word b { font-size: 14px; }
+.word__pic .slot__img-inner { display: grid; place-items: center; width: 100%; height: 100%; }
+.word__pic img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* A word waiting for a picture. Dashed and empty, which is the same thing an
+   unresolved slot says in a Sammlung, said the same way. */
+.word__pic--asking {
+  display: grid;
+  place-items: center;
+  font: inherit;
+  font-size: 26px;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+}
+.word__name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Kept off the card until it is wanted: a wall of forty crosses reads as a
+   wall of forty things to undo. Focus shows it too, or it would be a control
+   nobody using a keyboard could find. */
+.word__drop {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  font: inherit; font-size: 15px; line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-dim);
+  opacity: 0;
+}
+.word:hover .word__drop, .word__drop:focus-visible { opacity: 1; }
+.word__drop:hover { color: var(--danger, var(--text)); border-color: currentColor; }
 
 /* A word's own tags. Not chips: components.css reserves those for "changes
    what is shown, never what is stored", and these are stored. The accent tint
    is the badge shape the sidebar's counts use, at the size of a caption. */
-.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 4px; }
+.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .tag {
   display: inline-flex; align-items: center; gap: 2px;
-  font-size: 12px; line-height: 1.5; padding: 1px 4px 1px 9px;
+  font-size: 11px; line-height: 1.5; padding: 1px 3px 1px 8px;
   border-radius: var(--radius-pill);
   background: var(--accent-soft); color: var(--accent-strong);
 }
 .tag__x {
-  font: inherit; font-size: 14px; line-height: 1; cursor: pointer;
-  padding: 0 4px; border: 0; border-radius: var(--radius-pill);
+  font: inherit; font-size: 13px; line-height: 1; cursor: pointer;
+  padding: 0 3px; border: 0; border-radius: var(--radius-pill);
   background: transparent; color: inherit; opacity: .7;
 }
 .tag__x:hover { opacity: 1; }
-/* Dashed, and it does not carry the tint: it is an invitation, not a tag. */
-.tag--add {
-  font: inherit; font-size: 12px; cursor: pointer; padding: 1px 9px;
-  background: transparent; color: var(--text-dim);
-  border: 1px dashed var(--line);
-}
-.tag--add:hover { color: var(--text); border-color: var(--text-dim); }
-.tag-input {
-  font: inherit; font-size: 12px; width: 9em; padding: 1px 8px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--accent); background: var(--surface-2); color: var(--text);
-}
-/* The filter row sits above the list, apart from it. */
-.tag-filters { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
-.tag-filters:empty { display: none; }
 /* What the source suggests, as opposed to what the person filed. Dotted and
    untinted: it is offered rather than chosen, and there is no × on it because
    removing it would mean arguing with ARASAAC about what an apple is. */
 .tag--auto {
   background: transparent; color: var(--text-dim);
-  border: 1px dashed var(--line); padding: 1px 9px;
+  border: 1px dashed var(--line); padding: 1px 8px;
 }
+/* Dashed, and it does not carry the tint: it is an invitation, not a tag. */
+.tag--add, .tag--ask {
+  font: inherit; font-size: 11px; cursor: pointer; padding: 1px 8px;
+  background: transparent; color: var(--text-dim);
+  border: 1px dashed var(--line); border-radius: var(--radius-pill);
+}
+.tag--add:hover, .tag--ask:hover { color: var(--text); border-color: var(--text-dim); }
+.tag--ask { color: var(--accent-strong); border-color: var(--accent); }
+.tag-input {
+  font: inherit; font-size: 11px; width: 9em; padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent); background: var(--surface-2); color: var(--text);
+}
+
+/* The filter row sits above the wall, apart from it. The separators are what
+   keep "yours" and "what the source said" from reading as one list. */
+.tag-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 12px 0 10px; }
+.tag-filters:empty { display: none; }
+.tag-filters__sep { width: 1px; height: 16px; background: var(--line); margin: 0 3px; }
+.chip__pin { cursor: pointer; margin-left: 6px; font-size: 11px; }

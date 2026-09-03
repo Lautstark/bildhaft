@@ -2,7 +2,6 @@ import type { AppSettings, ProviderId } from '../core/types.ts';
 import { arasaac, metacom, MetacomProvider, needsAttention } from '@lautstark/bildquelle';
 import { sourceFacts, sourceStatusLine } from './symbolSources.ts';
 import { el, fill } from './dom.ts';
-import { wortschatzList, type WortschatzList } from './wortschatz.ts';
 import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import type { Sicherung } from '@lautstark/sicherung';
@@ -102,7 +101,6 @@ export function openSettings(options: SettingsOptions): void {
   const langPanel = makePanel(t('ui.set_language'), true);
   const arasaacPanel = makePanel('ARASAAC');
   const metacomPanel = makePanel('METACOM');
-  const dictPanel = makePanel(t('ui.set_dictionary'));
   const wordsPanel = makePanel(t('ui.set_function_words'));
   const themePanel = makePanel(t('ui.set_appearance'));
   const dataPanel = makePanel(t('ui.where_all'));
@@ -115,12 +113,11 @@ export function openSettings(options: SettingsOptions): void {
 
   const dialog = openDialog({
     title: t('ui.settings'),
-    body: [langPanel, arasaacPanel, metacomPanel, dictPanel, wordsPanel, themePanel,
+    body: [langPanel, arasaacPanel, metacomPanel, wordsPanel, themePanel,
       dataPanel, dangerPanel].map((p) => p.node),
     onClose: () => {
       unsubscribe();
       folder?.dispose();
-      dict?.destroy();
       options.onClose();
     },
   });
@@ -165,7 +162,6 @@ export function openSettings(options: SettingsOptions): void {
   function close(): void {
     unsubscribe();
     folder?.dispose();
-    dict?.destroy();
     dialog.close();
   }
 
@@ -235,7 +231,6 @@ export function openSettings(options: SettingsOptions): void {
       const adopted = adopt && metacom.isReady() && settings.activeProvider !== 'metacom';
       if (adopted) {
         change({ ...settings, activeProvider: 'metacom' });
-        paintDictionary();
       }
       resetSymbolResolution('metacom');
       options.onProviderChanged();
@@ -287,7 +282,6 @@ export function openSettings(options: SettingsOptions): void {
           change({ ...settings, activeProvider: id });
           options.onProviderChanged();
           paintSources();
-          paintDictionary();
           options.onNotify(defaultMoved(sourceFacts(id).label));
         },
       } });
@@ -410,7 +404,6 @@ export function openSettings(options: SettingsOptions): void {
                 if (settings.activeProvider === 'metacom') {
                   change({ ...settings, activeProvider: 'arasaac' });
                 }
-                paintDictionary();
               }, forgottenSays()) } })
           : null,
       ),
@@ -482,38 +475,6 @@ export function openSettings(options: SettingsOptions): void {
       el('span', { class: 'small faint', text:
         t('ui.rendering_note') }),
     );
-  }
-
-  /* The Wortschatz list, built once and kept, because it holds the symbol
-     subscriptions its rows draw through. Rebuilding it per repaint would leak
-     them; the note above it is what actually changes here. */
-  let dict: WortschatzList | null = null;
-
-  function paintDictionary(): void {
-    /* The source the page is drawing in, which is what a correction made now
-       gets filed under — not the default, which the open Sammlung may not be
-       following. `provider:token` is the override key, so a panel showing the
-       default's entries beside a page rendering something else would be a list
-       of corrections that are not the ones in force. */
-    const source = () => options.openCollectionProvider() ?? settings.activeProvider;
-    dict ??= wortschatzList({
-      provider: source,
-      // The count comes from the database, so the heading would otherwise be
-      // blank for a frame — and a blank heading is this panel's whole promise
-      // broken at the moment somebody is reading it.
-      onCount: (n) => {
-        dictPanel.state.textContent = n === 0
-          ? t('ui.no_entries')
-          : t(n === 1 ? 'ui.n_entry' : 'ui.n_entries', { n });
-      },
-    });
-
-    fill(dictPanel.body,
-      el('p', { class: 'small muted', style: { marginTop: '0' },
-        text: t('ui.dictionary_note', { source: source() === 'arasaac' ? 'ARASAAC' : 'METACOM' }) }),
-      dict.node);
-    if (!dictPanel.state.textContent) dictPanel.state.textContent = t('ui.loading');
-    dict.refresh();
   }
 
   /*
@@ -669,7 +630,6 @@ export function openSettings(options: SettingsOptions): void {
   }
 
   paintSources();
-  paintDictionary();
   fillWords();
   fillLanguage();
   fillTheme();
