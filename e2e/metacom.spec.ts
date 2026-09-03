@@ -50,6 +50,63 @@ test('a chosen folder becomes the default source on its own', async ({ page }) =
   await expect(page.locator('.toast')).toContainText('Alle Zeilen werden neu gezeichnet');
 });
 
+/**
+ * The way in is a control, and the keyboard can work it.
+ *
+ * This is the one property the shared panel bought that nothing else here would
+ * notice losing. bildhaft drew the folder button as `<label class="btn">`
+ * wrapping a hidden file input: it looked exactly like a button, it worked
+ * under a pointer, and it was not a control — a label has no tab stop and does
+ * nothing on Enter. So the way into METACOM was mouse-only, in the product
+ * whose whole subject is somebody who cannot use a mouse well.
+ * `@lautstark/bildquelle/metacom-panel` uses a real `<button>` that clicks the
+ * input, which is what wochenwerk and vorlaut-editor already did.
+ *
+ * Asserted three ways, because each alone can be true of the broken version:
+ * the accessibility tree calls it a button; **Tab** reaches it, walking from the
+ * panel's own heading through the licence link, which is the part a label fails;
+ * and **Enter** on it forwards a click to the file input, which is the part a
+ * `tabindex="0"` bolted onto a label would still fail.
+ *
+ * `withoutDirectoryPicker` in beforeEach is what puts the file-input arm in
+ * play. On a browser that has `showDirectoryPicker` the same button opens the
+ * native dialog instead — also from Enter, and also unreachable before.
+ */
+test('the folder button is a control, and the keyboard can reach and press it', async ({ page }) => {
+  await openSymbolSettings(page);
+  const panel = page.locator('details.panel', { has: page.locator('.metacom-panel') });
+
+  // The four acts are buttons, not labels dressed as them.
+  await expect(panel.locator('.metacom-panel .acts button')).toHaveCount(4);
+  const choose = panel.getByRole('button', { name: 'Ordner wählen', exact: true });
+  await expect(choose).toBeEnabled();
+
+  /* The click the button owes the hidden input, counted. Prevented, because a
+     real one opens a file dialog the test could never close. */
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll<HTMLInputElement>('input[type=file]')]
+      .find((i) => i.hasAttribute('webkitdirectory'))!;
+    Object.assign(window, { picks: 0 });
+    input.addEventListener('click', (event) => {
+      event.preventDefault();
+      (window as unknown as { picks: number }).picks += 1;
+    });
+  });
+
+  /* From the panel's heading, which is where a reader who just opened this
+     section already is. Two stops: the licence link the module added, then the
+     button. A label would be neither of them — Tab would arrive somewhere else
+     entirely, which is what this walk is really asserting. */
+  await panel.locator('summary').focus();
+  await page.keyboard.press('Tab');
+  await expect(panel.getByRole('link')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(choose).toBeFocused();
+
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => (window as unknown as { picks: number }).picks)).toBe(1);
+});
+
 test('indexes a folder, ignoring anything that is not an image', async ({ page }) => {
   await openSymbolSettings(page);
   await chooseFakeFolder(page);

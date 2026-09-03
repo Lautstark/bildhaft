@@ -115,16 +115,34 @@ test('reads an English sentence with the English pipeline', async ({ page }) => 
   await expect(page.locator('.row .slot')).toHaveCount(4);
 });
 
+/*
+ * Quoted here rather than looked up, which is the one thing this test lost when
+ * the panel moved to @lautstark/bildquelle/metacom-panel.
+ *
+ * `says()` above reads bildhaft's own table, and this sentence is no longer in
+ * it: the module carries the words for the surface it draws, in both languages
+ * — conventions.md §4.12 argues why that is the opposite of the rule about
+ * status codes rather than a breach of it. The package exports `stateLineFor`
+ * and `headlineFor` for that kind of assertion and does not export the rest, so
+ * there is nothing here to import.
+ *
+ * A fragment and not the whole sentence, so that a comma moving in the package
+ * does not fail bildhaft. What is asserted is not the wording anyway: it is
+ * that the note is shown on an English page and on no other, which is a
+ * decision about *this* page and stays this file's to make.
+ */
+const GERMAN_ONLY = 'are named in German, because the file names in your licensed folder are';
+
 test('says METACOM is named in German, but only where that is news', async ({ page }) => {
   await openLanguagePanel(page, 'de');
-  await expect(page.getByText(says('en', 'ui.metacom_german_only'))).toHaveCount(0);
+  await expect(page.getByText(GERMAN_ONLY)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await openSettings(page, 'en');
   // The panel is named after the product, so it is the one heading that is
   // the same word in both languages.
   await page.getByText('METACOM', { exact: true }).click();
-  await expect(page.getByText(says('en', 'ui.metacom_german_only'))).toBeVisible();
+  await expect(page.getByText(GERMAN_ONLY)).toBeVisible();
 });
 
 /*

@@ -244,6 +244,58 @@ test('the „Wo alles liegt" panel, unfolded', async ({ page }) => {
 });
 
 /*
+ * METACOM, which nothing here had ever photographed.
+ *
+ * **Why this shot exists, and the measurement that asked for it.** The block
+ * inside this panel is `@lautstark/bildquelle/metacom-panel`'s markup drawn by
+ * `@lautstark/design`'s `.metacom-panel` rules — a package's DOM styled from a
+ * second package, which is exactly the position the „Wo alles liegt" test above
+ * describes for the two Sicherung boxes. components.css says so beside the
+ * rules in as many words: they were added with no product emitting the class
+ * yet, and the migration is where their drawing has to be checked. This is that
+ * check.
+ *
+ * **The three shots above could not have been it, and their silence proves it
+ * rather than clearing anything.** None of them unfolds this panel, so the
+ * block's licence paragraph, its state line and its four buttons appear on no
+ * baseline at all. What is visible of METACOM elsewhere is one line — the state
+ * in its folded heading — and `dynamic()` below paints a rectangle over exactly
+ * that line. The rectangle does not even change size when the sentence does:
+ * `.panel > summary .state` is `flex: 1 1 auto`, so it fills the row whatever is
+ * in it. Migrating the whole panel therefore left all three pictures
+ * byte-identical, which looks like "nothing moved" and means "nothing was
+ * looked at". vorlaut-editor reached the same conclusion the same way.
+ *
+ * The element and not the sheet, for the „Alles löschen" reason below: with no
+ * folder connected this panel is a paragraph, a link, a state line and a row of
+ * buttons, which stands inside the sheet's body with room to spare.
+ *
+ * `dynamic()` all the same, though nothing in a fresh context needs it here —
+ * every test gets its own browser profile, so there is no adopted folder whose
+ * name could reach a committed picture. Kept because the instruction is the
+ * file's, not this test's, and because it costs this shot nothing: it covers the
+ * folded heading's line, while the block's own state line and dot — which is the
+ * part `.standing[data-state]` draws and the part that had never been checked —
+ * are in the picture.
+ */
+test('the METACOM panel, unfolded', async ({ page }) => {
+  await openSettings(page);
+  const panel = await openPanel(page, 'METACOM');
+
+  /* The block is really there before anything is taken. `.metacom-panel` is the
+     package's own class name, so this fails loudly if the module ever stops
+     emitting it — rather than quietly photographing an empty panel and holding
+     every later run to that. */
+  await expect(panel.locator('.metacom-panel')).toBeVisible();
+  // Its two halves that this migration is about: the state line with its dot,
+  // and the four acts drawn whether or not they can run.
+  await expect(panel.locator('.metacom-panel .standing .dot')).toBeVisible();
+  await expect(panel.locator('.metacom-panel .acts button')).toHaveCount(4);
+
+  await expect(panel).toHaveScreenshot('metacom-panel.png', { mask: dynamic(page) });
+});
+
+/*
  * The panel element itself this time, which is the tighter frame and the one to
  * prefer wherever it works: a sentence and a button are short enough to stand
  * inside the sheet's body with room to spare, so every pixel in the shot is

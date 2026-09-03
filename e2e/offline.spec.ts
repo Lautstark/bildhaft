@@ -49,6 +49,14 @@ const ALLOWED = new Map([
   // so that paper says where it came from, and nothing ever asks it for anything.
   ['bildhaft.lautstark.tech', 'this page, named in the printed credit line'],
   ['arasaac.org', 'the attribution the licence requires'],
+  // Linked in prose, never fetched: where a METACOM licence is bought. New in
+  // the bundle with @lautstark/bildquelle/metacom-panel, which took the link
+  // from vorlaut-editor — the only one of the three products that said where a
+  // licence comes from, in a panel nobody without one can use. Nothing is ever
+  // requested from it: the panel renders an <a target="_blank">, and the whole
+  // reason that package owns this surface is that no METACOM byte crosses the
+  // network in either direction.
+  ['www.metacom-symbole.de', 'where a METACOM licence comes from, linked from the panel'],
   ['github.com', 'the source code and the issue tracker'],
   ['lautstark.github.io', 'the sister projects'],
   // Never fetched and never linked: strings that travel inside third-party

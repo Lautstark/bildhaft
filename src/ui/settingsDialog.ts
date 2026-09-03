@@ -1,6 +1,10 @@
 import type { AppSettings, ProviderId } from '../core/types.ts';
-import { arasaac, metacom, MetacomProvider, needsAttention } from '@lautstark/bildquelle';
-import { sourceFacts, sourceStatusLine } from './symbolSources.ts';
+import { arasaac, metacom } from '@lautstark/bildquelle';
+/* Aliased: `metacomPanel` below is this dialog's own folded <details> for
+   METACOM, and the two would otherwise be one name for the section and the
+   block inside it. */
+import { metacomPanel as metacomBlock } from '@lautstark/bildquelle/metacom-panel';
+import { sourceFacts } from './symbolSources.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
@@ -59,7 +63,6 @@ interface Panel {
  */
 export function openSettings(options: SettingsOptions): void {
   let settings = options.settings;
-  let busy = false;
 
   /* The name of a folder somebody just picked that holds nothing of ours yet, or
      null. It lives across renders because the question is asked in the panel
@@ -119,6 +122,7 @@ export function openSettings(options: SettingsOptions): void {
     onClose: () => {
       unsubscribe();
       folder?.dispose();
+      symbolFolder.dispose();
       options.onClose();
     },
   });
@@ -160,9 +164,82 @@ export function openSettings(options: SettingsOptions): void {
     headline: (text) => { dataPanel.state.textContent = text; },
   });
 
+  /*
+   * The licensed symbol folder, drawn by the package that owns it.
+   *
+   * Built once and kept for `folder`'s reasons above and one of its own: the
+   * block holds the hidden file inputs a pick is delivered through, and
+   * rebuilding it under `fill()` would swap the input out from under a picker
+   * that is already open.
+   *
+   * What is passed is what this product alone knows. `after` moves the default
+   * source; `say` adds what that did to the page; `headline` puts the state in
+   * the panel's own summary. Everything else — the licence paragraph, the four
+   * acts, the state line and its sentences in both languages — is the module's,
+   * and conventions.md §4.12 is why the words came with it.
+   */
+  let adopted = false;
+  let defaultDropped = false;
+  /* The module's half of the METACOM heading, kept because the other half — the
+     role word — changes without the folder's state changing at all. */
+  let metacomHeadline = '';
+  const symbolFolder = metacomBlock({
+    metacom,
+    /* A value and not a function, unlike the option's own default reading.
+       chooseLanguage() reloads the document, so a locale captured here cannot
+       go stale — and both sibling panels above take it the same way. */
+    lang: LANG === 'en' ? 'en' : 'de',
+    headline: (text) => {
+      metacomHeadline = text;
+      paintMetacomHeading();
+    },
+    after: async (action) => {
+      /*
+       * Choosing a folder or reading a ZIP makes METACOM the default; the other
+       * two deliberately do not. Re-reading re-reads a folder that may be set up
+       * without being the default, and forgetting is the opposite move.
+       *
+       * isReady() and not the mere absence of a throw: a pick that produced no
+       * usable index must not switch the whole app onto an empty source, which
+       * would blank every row and look like the data had gone.
+       */
+      adopted = (action === 'choose' || action === 'zip')
+        && metacom.isReady() && settings.activeProvider !== 'metacom';
+      if (adopted) change({ ...settings, activeProvider: 'metacom' });
+
+      /* Forgetting resets the *default* when the default was METACOM. It
+         deliberately reaches into no Sammlung that chose METACOM for itself —
+         that is somebody's answer, and the folder may well come back. Recorded
+         rather than re-derived: `say` runs after this and would find the
+         setting already moved. */
+      defaultDropped = action === 'forget' && settings.activeProvider === 'metacom';
+      if (defaultDropped) change({ ...settings, activeProvider: 'arasaac' });
+
+      resetSymbolResolution('metacom');
+      options.onProviderChanged();
+      // The other source's heading says „Standardquelle" too, and the default
+      // may just have moved off it.
+      paintSources();
+    },
+    /*
+     * The module's sentence, and what it means here added to it.
+     *
+     * §4.12's rule for where a product still differs: it is handed the shared
+     * line and adds, rather than replacing it. So „Der METACOM-Ordner wird
+     * nicht mehr gelesen." is the same sentence in all three products, and only
+     * what it costs *this* Sammlung is bildhaft's.
+     */
+    say: (line, action) => {
+      const extra = action === 'forget' ? forgottenCosts()
+        : adopted ? defaultMoved('METACOM') : '';
+      options.onNotify(extra ? `${line} ${extra}` : line);
+    },
+  });
+
   function close(): void {
     unsubscribe();
     folder?.dispose();
+    symbolFolder.dispose();
     dialog.close();
   }
 
@@ -192,79 +269,6 @@ export function openSettings(options: SettingsOptions): void {
     return options.openCollectionProvider()
       ? t('ui.default_moved_kept', { name })
       : t('ui.default_moved_redrawn', { name });
-  }
-
-  /**
-   * Runs one METACOM task and, for the three that *adopt* a folder, makes
-   * METACOM the default on the way out.
-   *
-   * Choosing a folder and then pressing a second button was two steps for one
-   * intention: nobody points bildhaft at their own licensed collection in
-   * order to keep rendering ARASAAC. The button stays, because the case it is
-   * really about is switching back once both sources are set up.
-   *
-   * **What adopting means changed with the setting.** It used to switch the
-   * whole app; it now moves the *default*, and reaches into no Sammlung that
-   * has answered for itself. That is the right reading of one intention rather
-   * than a weaker one: pointing bildhaft at a licensed folder says what to draw
-   * with from here on, and a Sammlung somebody deliberately set to ARASAAC —
-   * the one they hand to a colleague, the one for a child whose device has no
-   * METACOM — is not covered by that intention. §3.10's own words for it are
-   * that the app's settings apply forward and never reach back. The Sammlungen
-   * that do follow the default are exactly the ones that never expressed a
-   * view, and they move, which is the whole of what somebody adopting a folder
-   * wanted.
-   *
-   * „Neu einlesen" and „Ordner vergessen" pass nothing: the first re-reads a
-   * folder that may deliberately not be the default, and the second is the
-   * opposite move.
-   */
-  async function run(task: () => Promise<void>, done: string, adopt = false): Promise<void> {
-    busy = true;
-    paintSources();
-    try {
-      await task();
-      /*
-       * isReady() and not the mere absence of a throw: a pick that produced no
-       * usable index must not switch the whole app onto an empty source, which
-       * would blank every row and look like the data had gone.
-       */
-      const adopted = adopt && metacom.isReady() && settings.activeProvider !== 'metacom';
-      if (adopted) {
-        change({ ...settings, activeProvider: 'metacom' });
-      }
-      resetSymbolResolution('metacom');
-      options.onProviderChanged();
-      options.onNotify(adopted ? `${done} ${defaultMoved('METACOM')}` : done);
-    } catch (err) {
-      // An aborted folder picker is a normal user action, not an error.
-      if (!(err instanceof DOMException && err.name === 'AbortError')) {
-        options.onNotify(err instanceof Error ? err.message : t('ui.didnt_work'));
-      }
-    } finally {
-      busy = false;
-      paintSources();
-    }
-  }
-
-  function fileButton(label: string, accept: string | null, directory: boolean,
-                      onPick: (files: FileList) => void): HTMLElement {
-    const input = el('input', {
-      attrs: { type: 'file', hidden: true, ...(accept ? { accept } : {}) },
-      on: {
-        change: () => {
-          if (input.files?.length) onPick(input.files);
-          input.value = '';
-        },
-      },
-    });
-    if (directory) {
-      // Non-standard, and the only directory input Firefox and Safari offer.
-      input.setAttribute('webkitdirectory', '');
-      input.setAttribute('directory', '');
-      input.setAttribute('multiple', '');
-    }
-    return el('label', { class: 'btn sm', text: label, style: { cursor: 'pointer' } }, input);
   }
 
   /**
@@ -305,7 +309,6 @@ export function openSettings(options: SettingsOptions): void {
        „Aktive Quelle": a heading that claimed to name what is on screen would
        be right by luck. */
     const fallback = settings.activeProvider;
-    const status = metacom.status();
 
     mark(arasaacPanel, fallback === 'arasaac');
     arasaacPanel.state.textContent =
@@ -321,124 +324,105 @@ export function openSettings(options: SettingsOptions): void {
     );
 
     mark(metacomPanel, fallback === 'metacom');
-    /* A heading carries what a section is set to, and a summary is one line.
-     * The package's message for the state that needs acting on is a whole
-     * sentence - "Zugriff auf den METACOM-Ordner muss erneut bestätigt
-     * werden" - so it went in here and truncated. The state goes here and the
-     * sentence goes in the body, beside the button it is about.
-     * @lautstark/design conventions.md §3.7.
+    paintMetacomHeading();
+
+    /*
+     * The block is the module's; what is stacked under it is what the module
+     * leaves here on purpose, and its header says why for each.
      *
-     * The facts after the role word are symbolSources.ts', so that the folder
-     * count and the root name this heading states are the same ones a
-     * Sammlung's own sheet states. */
-    const attention = needsAttention(status);
-    const metacomFacts = sourceFacts('metacom');
-    metacomPanel.state.textContent = status.kind === 'ready'
-      ? `${fallback === 'metacom' ? t('ui.default_source') : t('ui.configured')} · ${metacomFacts.facts}`
-      : metacomFacts.facts;
-
+     * The „Als Standard verwenden" button and its note: which source is the
+     * default is a question the three products answer with three different
+     * models, so there was nothing to share. The rendering chooser: it is built
+     * out of this app's own `<select class="field">`, and sharing it would mean
+     * sharing a menu component, which is @lautstark/design/menu's subject.
+     *
+     * The block itself is re-appended rather than rebuilt. `fill()` moves the
+     * same node back into place, which keeps its listeners, its file inputs and
+     * whatever it has in flight.
+     */
     fill(metacomPanel.body,
-      el('div', { class: 'notice notice--accent', style: { marginBottom: '10px' },
-        text: t('ui.metacom_licence') }),
-      /* METACOM's ids are the filenames in somebody's own licensed folder, and
-         those are German. Saying so on the English page is not a disclaimer:
-         it is the difference between a source that looks broken and one that
-         was never going to answer the words being typed at it. */
-      LANG === 'en'
-        ? el('p', { class: 'small faint', style: { margin: '6px 0 0' },
-            text: t('ui.metacom_german_only') })
+      symbolFolder.node,
+      fallback !== 'metacom' && metacom.isReady()
+        ? el('div', { style: { marginTop: '10px' } }, useButton('metacom'), defaultNote())
         : null,
-
-      /*
-       * The one state that is a thing to do rather than a thing to read: no
-       * symbol resolves until somebody presses the button below. It says what
-       * is true, what the browser did, and what one press does - the middle
-       * part because without it "bestätige den Zugriff" reads as bildhaft
-       * having mislaid the folder, which it has not.
-       */
-      attention
-        ? el('div', { class: 'notice bad', style: { marginBottom: '10px' }, text:
-            status.kind === 'needs-setup'
-              ? t('ui.metacom_permission_lost')
-              // The other state that needs acting on is a folder that could not
-              // be read, and the specific sentence is the useful one: which
-              // failure, not that there was one. Ours since bildquelle 2.0.0 —
-              // it used to hand us German whatever this page was set to.
-              : status.kind === 'error' ? sourceStatusLine(status) : '' })
-        : null,
-
-      /*
-       * The heading states this panel's status, so the body no longer repeats
-       * it — that duplication is what the old card needed and the panel makes
-       * plain. Work in progress is the exception: the spinner says the one
-       * thing the sentence cannot, which is that the state can still end.
-       */
-      status.kind === 'loading'
-        ? el('p', { class: 'small muted', style: { margin: '0 0 10px' } },
-            el('span', { class: 'spinner' }), ` ${sourceStatusLine(status)}`)
-        : null,
-
-      el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px' } },
-        MetacomProvider.supportsPersistentPicker
-          ? el('button', { class: 'btn sm', text: t('ui.choose_folder'),
-              attrs: { type: 'button', disabled: busy },
-              on: { click: () => void run(() => metacom.pickDirectory(), t('ui.metacom_read'), true) } })
-          : fileButton(t('ui.choose_folder'), null, true,
-              (files) => void run(() => metacom.useFileList(files), t('ui.metacom_read'), true)),
-
-        fileButton(t('ui.read_zip'), '.zip,application/zip', false,
-          (files) => void run(() => metacom.useZip(files[0]), t('ui.zip_read'), true)),
-
-        metacom.isReady()
-          ? el('button', { class: 'btn sm', text: t('ui.reindex'),
-              attrs: { type: 'button', disabled: busy },
-              on: { click: () => void run(() => metacom.rebuildIndex(), t('ui.index_rebuilt')) } })
-          : null,
-
-        fallback !== 'metacom' && metacom.isReady() ? useButton('metacom') : null,
-
-        status.kind !== 'needs-setup'
-          ? el('button', { class: 'btn sm destructive', text: t('ui.forget_symbol_folder'),
-              attrs: { type: 'button', disabled: busy },
-              on: { click: () => void run(async () => {
-                await metacom.forget();
-                if (settings.activeProvider === 'metacom') {
-                  change({ ...settings, activeProvider: 'arasaac' });
-                }
-              }, forgottenSays()) } })
-          : null,
-      ),
-
-      !MetacomProvider.supportsPersistentPicker
-        ? el('p', { class: 'small faint', style: { margin: '10px 0 0' },
-            text: t('ui.folder_not_remembered') })
-        : null,
-
-      fallback !== 'metacom' && metacom.isReady() ? defaultNote() : null,
-
       renderingChooser(),
     );
   }
 
   /**
-   * What „Ordner vergessen" leaves behind, said before it is pressed rather
-   * than discovered afterwards.
+   * The one line the METACOM heading carries: what the source is *to this app*,
+   * and then the module's word for what state it is in.
    *
-   * Forgetting the folder resets the *default* when the default was METACOM.
-   * It deliberately does not reach into Sammlungen that chose METACOM for
+   * A heading carries what a section is set to, and a summary is one line — so
+   * the state goes here and the sentences stay in the body beside the buttons
+   * they name. @lautstark/design conventions.md §3.7. The right-hand half is
+   * `headlineFor`'s now, which is how the folder and its count come to read the
+   * same here, in wochenwerk and in vorlaut-editor.
+   *
+   * The role word is the half no module can supply: „Standardquelle" is a fact
+   * about this app's settings, and the module has never heard of them. It is
+   * also why the module's blank answer for „no folder" is not simply passed
+   * through — every other heading in this column says what its section is set
+   * to, and one that said nothing would read as a section still loading rather
+   * than as one nobody has set up.
+   */
+  function paintMetacomHeading(): void {
+    const role = settings.activeProvider === 'metacom' ? t('ui.default_source')
+      : metacom.isReady() ? t('ui.configured')
+        : t('ui.not_set_up');
+    metacomPanel.state.textContent = metacomHeadline
+      ? `${role} · ${metacomHeadline}`
+      : role;
+  }
+
+  /**
+   * What forgetting the folder costs *here*, added to the module's sentence.
+   *
+   * The module says the shared half — „Der METACOM-Ordner wird nicht mehr
+   * gelesen." — which is the correction this migration brings: the old wording
+   * was „METACOM-Ordner entfernt.", and nothing is removed from anybody's disk.
+   * Only bildhaft's own consequence is left to say, and often there is none.
+   *
+   * Forgetting resets the *default* when the default was METACOM. It
+   * deliberately does not reach into Sammlungen that chose METACOM for
    * themselves — that is somebody's answer, and the folder may well come back.
    * What it must not do is leave such a Sammlung looking broken with no
    * explanation, so where the open one is in that position the sentence says
    * so; the banner above the composer says the same thing on the page itself.
+   *
+   * It reads `defaultDropped` rather than the setting, because `after` has
+   * already moved it by the time this is asked.
    */
-  function forgottenSays(): string {
-    const own = options.openCollectionProvider();
-    if (own === 'metacom') {
+  function forgottenCosts(): string {
+    if (options.openCollectionProvider() === 'metacom') {
       return t('ui.metacom_gone_collection');
     }
-    return settings.activeProvider === 'metacom'
-      ? t('ui.metacom_gone_default')
-      : t('ui.metacom_gone');
+    return defaultDropped ? t('ui.metacom_gone_default') : '';
+  }
+
+  /**
+   * A label wrapping a hidden file input, for the one button still built here.
+   *
+   * It used to draw METACOM's folder and ZIP buttons too, and those are the
+   * module's now — which fixed them: a `<label>` is not a control, so it has no
+   * tab stop and no Enter, and `metacom-panel` uses a real `<button>` that
+   * clicks a hidden input instead. The same defect is still under
+   * „Sicherung einlesen" below, which is a different surface and a change of
+   * its own; it is written down here so the next reader finds it rather than
+   * rediscovers it.
+   */
+  function fileButton(label: string, accept: string | null,
+                      onPick: (files: FileList) => void): HTMLElement {
+    const input = el('input', {
+      attrs: { type: 'file', hidden: true, ...(accept ? { accept } : {}) },
+      on: {
+        change: () => {
+          if (input.files?.length) onPick(input.files);
+          input.value = '';
+        },
+      },
+    });
+    return el('label', { class: 'btn sm', text: label, style: { cursor: 'pointer' } }, input);
   }
 
   /*
@@ -647,7 +631,7 @@ export function openSettings(options: SettingsOptions): void {
            one they reach for deliberately. */
         el('button', { class: 'btn sm', text: t('ui.backup_download'),
           attrs: { type: 'button' }, on: { click: options.onExportAll } }),
-        fileButton(t('ui.backup_read'), 'application/json,.json', false,
+        fileButton(t('ui.backup_read'), 'application/json,.json',
           (files) => { close(); options.onImport(files[0]); })),
       el('p', { class: 'small faint', style: { margin: '8px 0 0' }, html:
         t('ui.backup_read_note') }),
