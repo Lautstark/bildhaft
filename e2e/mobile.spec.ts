@@ -18,7 +18,7 @@ test('the sidebar is reachable from the header', async ({ page }) => {
   await expect(page.locator('.scrim')).toBeVisible();
 
   // Choosing a collection dismisses the overlay panel.
-  await page.locator('.collections__item').first().click();
+  await page.locator('.sidebar__section--collections .collections__item').first().click();
   await expect(page.locator('.sidebar')).not.toBeInViewport();
 });
 

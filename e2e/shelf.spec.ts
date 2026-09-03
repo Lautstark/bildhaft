@@ -93,5 +93,5 @@ test('a link naming a Sammlung that is not there says so, and adds nothing', asy
   await expect(page.getByText(/gibt es hier nicht|no such collection/i)).toBeVisible();
   // One Sammlung: the empty one every first visit starts with, and nothing else.
   await page.getByTitle('Seitenleiste einblenden').click();
-  await expect(page.locator('.collections__item')).toHaveCount(1);
+  await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(1);
 });

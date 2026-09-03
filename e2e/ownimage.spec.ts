@@ -131,7 +131,7 @@ test('carries own pictures through a backup and back', async ({ page }) => {
   await page.locator('.panel', { hasText: 'Sicherung' }).locator('input[type=file]')
     .setInputFiles(path!);
   // The dialog closes itself on a read, so the list is visible again.
-  await expect(page.locator('.collections__item')).toHaveCount(2);
+  await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(2);
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 });
 
@@ -216,6 +216,6 @@ test('adding the store keeps a database that was already there', async ({ page }
 
   await page.reload();
   await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
-  await expect(page.locator('.collections__item')).toContainText(['Aus Version 3']);
+  await expect(page.locator('.sidebar__section--collections .collections__item')).toContainText(['Aus Version 3']);
   await expect(rowFor(page, 'Der Hund liegt unter dem Tisch')).toHaveCount(1);
 });

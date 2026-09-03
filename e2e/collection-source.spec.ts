@@ -137,7 +137,7 @@ test('a Sammlung that answered for itself keeps its source when the default move
   // The first Sammlung never answered, so it followed the default there and
   // follows it back.
   await showSidebar(page);
-  await page.locator('.collections__item').filter({ hasNotText: 'Zweite' }).first().click();
+  await page.locator('.sidebar__section--collections .collections__item').filter({ hasNotText: 'Zweite' }).first().click();
   await expect(credit(page)).toContainText('ARASAAC');
 });
 

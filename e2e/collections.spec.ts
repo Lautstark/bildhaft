@@ -26,7 +26,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('a new Sammlung is named for the day, and the name is selected', async ({ page }) => {
-  const rows = page.locator('.collections__item');
+  const rows = page.locator('.sidebar__section--collections .collections__item');
   const before = await rows.count();
 
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();

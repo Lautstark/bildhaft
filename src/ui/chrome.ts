@@ -111,10 +111,16 @@ export function sidebar(handlers: SidebarHandlers): {
     on: { input: () => handlers.onSearchChange(search.value) },
   });
 
-  const wordsSection = el('div', { class: 'sidebar__section' });
+  /* Both lists are drawn by drawCollections and so both emit
+     `.collections__item`: the row is the same row, and sharing it is the
+     point. What was missing is a way to say *which* list, and without it a
+     page-wide `.collections__item` silently means "a Sammlung or a
+     Wortschatz row, whichever comes first" - which is how three tests came
+     to count „Alle Woerter" as a Sammlung and one of them to click it. */
+  const wordsSection = el('div', { class: 'sidebar__section sidebar__section--words' });
   /* Made once and refilled, for the same reason the Sammlung rows are. */
   const wordRowsHost = el('div', { class: 'collections' });
-  const listSection = el('div', { class: 'sidebar__section' });
+  const listSection = el('div', { class: 'sidebar__section sidebar__section--collections' });
   /* Made once and refilled: drawCollections() empties whatever it is handed,
      so a node rebuilt on every render would throw its listeners away each
      time for no reason. */

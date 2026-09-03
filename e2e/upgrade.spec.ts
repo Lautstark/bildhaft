@@ -116,7 +116,7 @@ test('says what the upgrade carried across', async ({ page }) => {
   await expect(page.locator('.toast'))
     .toHaveText('Die Datenbank wurde von Version 3 auf 4 gebracht. Eine Sammlung ist mitgekommen.');
   await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
-  await expect(page.locator('.collections__item')).toContainText(['Aus Version 3']);
+  await expect(page.locator('.sidebar__section--collections .collections__item')).toContainText(['Aus Version 3']);
 });
 
 test('refuses a version it has no step for, and changes nothing', async ({ page }) => {
@@ -161,6 +161,6 @@ test('hands the records over as a file before anything is discarded', async ({ p
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
   expect(await versionOnDisk(page)).toBe(4);
   await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
-  await expect(page.locator('.collections__item')).toHaveCount(1);
-  await expect(page.locator('.collections__item')).not.toContainText(['Aus Version 1']);
+  await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(1);
+  await expect(page.locator('.sidebar__section--collections .collections__item')).not.toContainText(['Aus Version 1']);
 });

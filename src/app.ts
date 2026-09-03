@@ -575,10 +575,21 @@ export function mountApp(root: HTMLElement): void {
     /* The two nouns share `.main__inner` and never overlap: one of them has the
        composer, the head and the wall of things, and the other has its own
        three. Rebuilding the list rather than hiding it keeps the symbol
-       subscriptions of whichever is off screen from being kept alive. */
+       subscriptions of whichever is off screen from being kept alive.
+
+       The last child is whichever of the two `renderRows` would put there, and
+       naming it here rather than letting that function swap it afterwards is
+       the whole of it. Both used to manage this one slot with different ideas
+       of what belongs in it: this asked for `rowsHost`, `renderRows` replaced
+       it with `emptyState` a few lines later, and so on the next render
+       `place` found a fourth child it had not put there, concluded the list
+       had changed and rebuilt all four. `collectionHead` went out with them,
+       and with it the focus of anything inside it - which is why the name
+       field of a new Sammlung was focused and then silently was not. */
     place(inner, wortschatz
       ? [bannerHost, ...wortschatzView.parts]
-      : [bannerHost, composerView.node, collectionHead, rowsHost]);
+      : [bannerHost, composerView.node, collectionHead,
+         sentences.length === 0 ? emptyState : rowsHost]);
     if (wortschatz) {
       topBarView.setTitle(wortschatz.tag ?? t('ui.all_words'));
       return;
