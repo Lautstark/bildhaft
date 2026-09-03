@@ -4,6 +4,7 @@ import { sourceFacts, sourceStatusLine } from './symbolSources.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import { applyTheme, saveTheme, readTheme, THEMES, type Theme } from '@lautstark/design/theme';
+import { languagePicker, NAMES } from '@lautstark/design/language';
 import type { Sicherung } from '@lautstark/sicherung';
 import { backupPanel } from '@lautstark/sicherung/backup-panel';
 import { ablage, isStore } from '../db/folder.ts';
@@ -11,7 +12,7 @@ import { wherePanel } from '@lautstark/sicherung/ablage-panel';
 import { adoptFolder } from '../db/repo.ts';
 
 import { resetSymbolResolution } from './symbols.ts';
-import { LANG, LANGUAGES, LANGUAGE_NAMES, chooseLanguage, t } from '../i18n/index.ts';
+import { LANG, LANGUAGES, chooseLanguage, t, type LanguageCode } from '../i18n/index.ts';
 
 export interface SettingsOptions {
   settings: AppSettings;
@@ -540,16 +541,42 @@ export function openSettings(options: SettingsOptions): void {
    * cannot read can still find their way out.
    */
   function fillLanguage(): void {
-    langPanel.state.textContent = LANGUAGE_NAMES[LANG];
+    /* The same table the buttons below are named out of, so the heading and the
+       pressed button cannot come to say different things. `?? LANG` is the
+       module's own rule for a code it has no name for — a two-letter heading
+       over a two-letter button, rather than „undefined" over one of them. */
+    langPanel.state.textContent = NAMES[LANG] ?? LANG;
+
+    /*
+     * The row is @lautstark/design/language's now. Three products drew this
+     * control and drew it the same, and only this one had remembered role=group
+     * and an aria-label; the module's header has the count.
+     *
+     * It hands back the `.segmented` row and nothing around it, which is the
+     * right seam: `.opt`, `.small` and `.faint` are drawn in bildhaft's
+     * stylesheet and in no other product's and not in components.css, so a
+     * module emitting them would ship three class names into two products that
+     * draw nothing for them. The column and the note under it therefore stay
+     * here, in bildhaft's own vocabulary — and so does `ui.language_note`,
+     * which is a translation and not a language's name for itself.
+     *
+     * `refresh()` goes unused, and that is this product rather than an
+     * oversight: the switch reloads, so no pressed button ever has to move
+     * within a document. See i18n/index.ts for why bildhaft reloads and vorlaut
+     * does not.
+     */
+    const picker = languagePicker({
+      languages: LANGUAGES,
+      current: () => LANG,
+      /* The module only ever calls back with a code out of `languages`, and
+         `languages` is LANGUAGES itself. The cast asserts that and no more. */
+      choose: (code) => chooseLanguage(code as LanguageCode),
+      label: t('ui.set_language'),
+    });
 
     fill(langPanel.body,
       el('div', { class: 'opt' },
-        el('div', { class: 'segmented', attrs: { role: 'group', 'aria-label': t('ui.set_language') } },
-          ...LANGUAGES.map((code) => el('button', {
-            text: LANGUAGE_NAMES[code],
-            attrs: { type: 'button', 'aria-pressed': String(code === LANG) },
-            on: { click: () => chooseLanguage(code) },
-          }))),
+        picker.node,
         el('span', { class: 'small faint', text: t('ui.language_note') }),
       ),
     );

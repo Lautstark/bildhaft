@@ -27,17 +27,19 @@ export type LanguageCode = 'de' | 'en';
 
 export const LANGUAGES: readonly LanguageCode[] = ['de', 'en'];
 
-/**
- * What each language calls itself, in itself.
+/*
+ * What each language calls itself, in itself, was a `LANGUAGE_NAMES` table
+ * here. It is `NAMES` in @lautstark/design/language as of 1.27.0, beside the
+ * picker that draws the buttons out of it: three products held the same two
+ * words, and why a shared module may carry these and no other words — a
+ * language's name is not a translation, and this is the one control somebody
+ * reaches for when they cannot read the interface around it — is argued in that
+ * module's header.
  *
- * "Deutsch" stays "Deutsch" whatever the page is set to. The control this fills
- * is the one somebody reaches for when they cannot read the interface around
- * it, so it must not depend on being able to read the interface around it.
+ * Nothing in bildhaft names a language any more. ui/settingsDialog.ts asks the
+ * package for the panel's heading as well as for the buttons, so the two cannot
+ * come to disagree.
  */
-export const LANGUAGE_NAMES: Record<LanguageCode, string> = {
-  de: 'Deutsch',
-  en: 'English',
-};
 
 const CHOICE = 'bildhaft.language';
 
