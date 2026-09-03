@@ -71,6 +71,14 @@ test.use({ viewport: { width: 1280, height: 960 } });
  * `npx playwright test e2e/visual.spec.ts --update-snapshots` and commit what
  * it writes. From that moment the file is live on that platform, with no change
  * here: the guard asks the directory, not a list.
+ *
+ * For Linux — the platform that matters, because it is the one CI compares on —
+ * that run has somewhere to happen now: `.github/workflows/baselines.yml`, by
+ * hand from the Actions tab. It does exactly the above on ubuntu-latest and
+ * hands the `-linux.png` files back as an artifact, to download and commit
+ * beside the darwin ones. It cannot be done from a laptop here: the runner
+ * image is amd64 and segfaults under QEMU on Apple Silicon, and an arm64 image
+ * would produce pictures nobody could prove match the runner.
  */
 const SNAPSHOTS = fileURLToPath(new URL('./visual.spec.ts-snapshots', import.meta.url));
 

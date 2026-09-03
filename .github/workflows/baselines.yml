@@ -1,0 +1,98 @@
+# Recording the visual baselines on the machine that will compare them.
+#
+# The screenshots in e2e/visual.spec.ts-snapshots are a picture of the settings
+# surfaces, and their whole purpose is to fail when those surfaces change by
+# accident. That only works where the comparison actually happens — and pixels
+# belong to the machine that drew them. A baseline recorded on a laptop is a
+# baseline the Linux runner has never seen, so the runner writes its own and
+# passes, which is worse than no check at all: a green tick for a comparison
+# that did not take place.
+#
+# The committed baselines are `*-desktop-darwin.png`, recorded where the CSS
+# move was done. deploy.yml runs the suite on ubuntu-latest, which has none, so
+# the guard in e2e/visual.spec.ts skips those three tests there. That is honest
+# and it is also not the check anybody wanted. This workflow is how the runner
+# gets pictures of its own.
+#
+# The obvious alternative is to record in the matching
+# `mcr.microsoft.com/playwright` image locally. That does not work on an Apple
+# Silicon machine: the runner image is amd64, and amd64 under QEMU segfaults
+# during `npm ci`. An arm64 image would run natively and produce baselines
+# nobody could prove match the runner.
+#
+# So the recording happens here. Run it by hand from the Actions tab, download
+# the artifact, and commit the PNGs beside the darwin ones — that is the whole
+# of it. The spec asks the snapshot directory whether a baseline exists for the
+# platform it is running on, so committing the files is what turns the
+# comparison on. Nothing else to flip, and nothing to remember to flip back.
+#
+# Two steps below are not in the sister repositories' copies of this file and
+# are bildhaft's own:
+#
+#   the preflight    tools/installcheck.mjs, because a baseline is committed and
+#                    a wrong one is committed forever. The panels in these shots
+#                    are drawn by @lautstark/design and @lautstark/sicherung, so
+#                    an install that does not match the pins records a picture of
+#                    the wrong stylesheet — and it would then be the picture
+#                    every later run is held to.
+#
+#   the build        playwright.config.ts serves the suite from `vite preview`,
+#                    which serves dist/, and dist/ is gitignored. Without this
+#                    the web server has nothing to hand out. deploy.yml builds
+#                    for the same reason.
+name: Record visual baselines
+
+# By hand only. Nothing here belongs on a push: it writes pictures rather than
+# checking them, and a job that rewrites the baselines on every commit is a job
+# that can never go red.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Whether the install matches the pins
+        run: npm run preflight
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        # The default base path, matching what deploy.yml's test job builds.
+        # Nothing in a picture of a dialog depends on where the bundle is served
+        # from, but a recording run should differ from the checking run in as
+        # few ways as possible.
+        run: npm run build
+
+      - name: Record
+        run: npx playwright test e2e/visual.spec.ts --update-snapshots
+
+      - name: Hand them back
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines-linux
+          # if-no-files-found: error, because the failure this guards against is
+          # silent: the guard in the spec skips when no baseline exists, so a run
+          # that recorded nothing looks exactly like a run that succeeded.
+          path: e2e/visual.spec.ts-snapshots/*-linux.png
+          if-no-files-found: error
