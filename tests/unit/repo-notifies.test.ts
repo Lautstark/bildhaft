@@ -26,6 +26,7 @@ const MUTATORS = [
   'deleteSentence',
   'clearEverything',
   'putOverride',
+  'collectIntoWortschatz',
   'setOverrideTags',
   'setOverrideCaption',
   'renameTag',
@@ -114,6 +115,18 @@ describe('the change notifier', () => {
       await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
       heard = 0;
       return repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
+    },
+    collectIntoWortschatz: async () => {
+      const made = await repo.createCollection('Einkaufsliste');
+      const one = {
+        ...sentence(made.id),
+        slots: [{
+          id: repo.newId(), sourceToken: 'Apfel', concept: 'apfel',
+          origin: 'lemma' as const, choice: { arasaac: '2462' }, candidates: {},
+        }],
+      };
+      heard = 0;
+      return repo.collectIntoWortschatz('arasaac', [one], () => ['Einkaufsliste']);
     },
     setOverrideCaption: async () => {
       await repo.putOverride('arasaac', 'Oma', { id: '123', label: 'washerwoman', score: 100 });

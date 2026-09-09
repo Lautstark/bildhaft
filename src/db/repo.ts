@@ -11,6 +11,7 @@ import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
 import { LANG, LOCALE, t } from '../i18n/index.ts';
 import {
   DEFAULT_PRINT_SETTINGS,
+  symbolIdFor,
   type AppSettings, type Candidate, type Collection, type CollectionKind,
   type Override, type OwnImage,
   type ProviderId,
@@ -587,6 +588,70 @@ export async function setOverrideCaption(
     wrote = true;
   }
   if (wrote) touched();
+}
+
+/**
+ * Takes a whole Sammlung's words into the Wortschatz, under the tags it names.
+ *
+ * The opposite direction of pouring one out, and the one somebody reaches for
+ * after building something good: the Einkaufsliste is a hundred and twenty
+ * words that were looked up, corrected and captioned once, and they should not
+ * have to be looked up again for the next thing.
+ *
+ * **A word already in the Wortschatz keeps its picture and its text.** Only the
+ * tags are added. What is in there is what the household settled on, and a
+ * Sammlung — even their own — is not a reason to overrule it; „Oma" with a
+ * photograph must not become a pictogram because a shopping list mentioned her.
+ *
+ * A word with no symbol is skipped, for the reason a kept row skips one: an
+ * entry is what can be drawn.
+ */
+export async function collectIntoWortschatz(
+  provider: ProviderId,
+  sentences: Sentence[],
+  tagsFor: (sentence: Sentence) => readonly string[],
+): Promise<{ added: number; tagged: number }> {
+  const db = await getDB();
+  let added = 0;
+  let tagged = 0;
+
+  for (const sentence of sentences) {
+    const tags = tagsFor(sentence).map((tag) => tag.trim()).filter(Boolean);
+    for (const slot of sentence.slots) {
+      const symbolId = symbolIdFor(slot, provider);
+      const token = slot.sourceToken.trim();
+      if (!symbolId || !token) continue;
+
+      const [held] = await entriesFor(provider, token);
+      if (!held) {
+        const caption = slot.label?.trim();
+        const override: Override = {
+          key: overrideKey(provider, token),
+          lang: LANG,
+          provider,
+          token: token.toLowerCase(),
+          symbolId,
+          label: caption || token,
+          ...(caption ? { caption } : {}),
+          ...(tags.length ? { tags } : {}),
+          updatedAt: Date.now(),
+        };
+        await db.put('overrides', override);
+        await fileOverride(override);
+        added += 1;
+        continue;
+      }
+
+      const seen = new Set((held.tags ?? []).map((tag) => tag.toLowerCase()));
+      const owed = tags.filter((tag) => !seen.has(tag.toLowerCase()));
+      if (owed.length === 0) continue;
+      await setOverrideTags(provider, token, [...(held.tags ?? []), ...owed]);
+      tagged += 1;
+    }
+  }
+
+  if (added > 0) touched();
+  return { added, tagged };
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {

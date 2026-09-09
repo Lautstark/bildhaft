@@ -81,10 +81,15 @@ test('the ⋯ holds what this Sammlung is set to, under the export and above the
   // the delete last. The middle item is not an act on the Sammlung, which is
   // the amendment that section carries.
   //
-  // Pouring the Wortschatz in would sit above all three — it is the only item
-  // that puts something *into* the Sammlung — and is not here at all, because
-  // this page has no Wortschatz to pour.
+  // The two Wortschatz items sit above all three: they are the ones that move
+  // words in and out, where the rest act on what is there or say what the
+  // Sammlung is, and reading them as a pair in that order says they are one
+  // door in two directions. Only the outgoing one is here — pouring in is
+  // omitted while there is no Wortschatz to pour, and taking out is disabled
+  // while the Sammlung is empty, which is how this menu already treats the
+  // export.
   await expect(page.locator('.menu button')).toHaveText([
+    'Wörter in den Wortschatz',
     'Sammlung exportieren', 'Einstellungen dieser Sammlung …', 'Sammlung löschen',
   ]);
 });

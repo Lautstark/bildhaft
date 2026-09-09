@@ -15,6 +15,7 @@ import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
   loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
+  collectIntoWortschatz,
   listOverrides,
   onChanged, putCollection, putSentence, renameCollection, saveCollectionProvider,
   saveSettings,
@@ -266,6 +267,9 @@ export function mountApp(root: HTMLElement): void {
          have to step over on the way in, which e2e/menu.spec.ts holds the
          menu to. Nothing to pour is nothing to offer. */
       if (wordCount > 0) add(t('ui.add_wortschatz'), () => void openWortschatzSheet());
+      /* And the way back out. Under the pouring-in, because the two are the
+         same door in two directions and reading them in that order says so. */
+      add(t('ui.keep_all'), () => void handleKeepAll(), { disabled: sentences.length === 0 });
       add(t('ui.export_collection'), () => void handleExport(),
         { disabled: sentences.length === 0 });
       add(t('ui.symbol_source_menu'), () => openSourceSheet());
@@ -1051,6 +1055,42 @@ export function mountApp(root: HTMLElement): void {
       collections, counts, activeId, searchQuery: query, searchResults: results,
       wordCount, tags: tagRows, openTag: wortschatz ? wortschatz.tag : undefined,
     });
+  }
+
+  /**
+   * Takes this Sammlung's words into the Wortschatz, tagged by where they came
+   * from.
+   *
+   * Two tags: the Sammlung's name, and the row's — but only when the row has a
+   * name of its own. An unnamed row is called by the line that was typed into
+   * it, and „Spülmittel, Putzmittel, Waschmittel, Weichspüler, Müllbeutel" is a
+   * sentence, not a category. Naming a row is a thing somebody does on purpose,
+   * and that is exactly what makes it worth reading as one.
+   */
+  async function handleKeepAll(): Promise<void> {
+    const open = activeCollection();
+    if (!open || sentences.length === 0) return;
+
+    const { added, tagged } = await collectIntoWortschatz(
+      providerId(),
+      sentences,
+      (sentence) => [open.name, ...(sentence.title?.trim() ? [sentence.title.trim()] : [])],
+    );
+
+    /* Pinned, because a tag nobody can see is a tag nobody uses — and this is
+       the one moment where somebody has just said what to call these words. */
+    if (added + tagged > 0 && settings
+      && !settings.pinnedTags.some((tag) => tag.toLowerCase() === open.name.toLowerCase())) {
+      persistSettings({ ...settings, pinnedTags: [...settings.pinnedTags, open.name] });
+    }
+    await refreshCollections();
+    wortschatzView.refresh();
+    render();
+
+    if (added === 0 && tagged === 0) { notify(t('ui.keep_all_nothing')); return; }
+    notify(added === 0
+      ? t('ui.keep_all_tagged', { n: tagged })
+      : t('ui.keep_all_done', { n: added, tag: open.name }));
   }
 
   /**
