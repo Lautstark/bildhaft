@@ -1,6 +1,6 @@
 # ADR 0002 — The Wortschatz is a place of its own, and material has a kind
 
-**Status:** accepted · **Date:** 2026-09-02 · **Amended:** 2026-09-03 · **Applies
+**Status:** accepted · **Date:** 2026-09-02 · **Amended:** 2026-09-03, 2026-09-09 · **Applies
 to:** the sidebar shell,
 `src/db/repo.ts`'s overrides, `src/db/folder.ts`'s `woerterbuch` kind, and every
 future editor that is not the sentence editor
@@ -65,8 +65,24 @@ person from choosing differently for one Slot. This is what `prefer()` in
 bildquelle's `ResolveOptions` is for, and it is why that hook exists rather than
 a fifth `ProviderId`.
 
-**A Sammlung has a kind, chosen when it is created, and the kind decides the
-editor and the print dialog.** vorlaut already works this way. The kind is
+**A Sammlung has a template, chosen when it is created, and it decides the
+editor and what the print dialog opens on.**
+
+*Amended 2026-09-09, and this is the half that was wrong.* „The kind decides the
+print dialog" put two things on one axis. bildhaft already had the other one:
+`LayoutMode = 'strip' | 'sheet'`, with the grid, the cut lines, the cut margin
+and the card frame. **Satzkarten and Wortkarten are not two kinds — they are one
+print form over two contents**, and a Kommunikationstafel is the card sheet with
+a grid and one page. So what a template decides is what one card holds, and the
+print form stays a separate choice that can be made again as often as somebody
+likes. The only thing the template does to printing is decide what the dialog
+*opens* on, and only where the stored preference would be nonsense: a strip of
+one symbol is a card with the wrong margins.
+
+The two are named after the material — **Satzstreifen** and **Wortkarten** —
+rather than after the data, because that is what somebody is choosing and how
+they will look for it later. The price is written on the tile: „Wortkarten" is
+the commonest of that template's outputs and not its only one. vorlaut already works this way. The kind is
 written once and not changed afterwards: a Sammlung of Sätze does not become a
 Tafel by a menu, it becomes one by being made as a Tafel from the same words. The
 sentence editor that exists today is the kind `saetze`, and nothing about it

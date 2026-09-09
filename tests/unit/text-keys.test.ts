@@ -6,6 +6,7 @@ import { TEXTS } from '../../src/i18n/texts.ts';
 import { SLOT_ORIGINS } from '../../src/core/types.ts';
 import { SOURCE_STATUS_CODES } from '../../src/ui/symbolSources.ts';
 import { TOPICS } from '../../src/core/tags.ts';
+import { COLLECTION_KINDS } from '../../src/core/types.ts';
 
 /**
  * The table and the calls, held to each other.
@@ -110,6 +111,9 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // array in core/tags.ts so a twelfth theme fails here rather than reaching
   // somebody as a dotted identifier in their Wortschatz.
   { prefix: 'ui.topic_', from: TOPICS, where: 'ui/wortschatz.ts' },
+  // The templates a Sammlung can be, named on the tiles in its empty state.
+  { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app.ts' },
+  { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app.ts' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

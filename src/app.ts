@@ -1,13 +1,14 @@
 import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
-import { sentenceCaption } from './core/types.ts';
+import { COLLECTION_KINDS, kindOf, sentenceCaption } from './core/types.ts';
+import type { CollectionKind } from './core/types.ts';
 import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { setSymbolLanguage } from '@lautstark/bildquelle';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { LANG, t } from './i18n/index.ts';
 
-import { buildSlots, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
+import { buildSlots, buildWordSlot, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
 import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange, takeMigrationNote } from './db/db.ts';
 import {
@@ -15,7 +16,8 @@ import {
   deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
   loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
   listOverrides,
-  onChanged, putSentence, renameCollection, saveCollectionProvider, saveSettings,
+  onChanged, putCollection, putSentence, renameCollection, saveCollectionProvider,
+  saveSettings,
   searchSentences,
   pullFromFolder,
 } from './db/repo.ts';
@@ -31,6 +33,7 @@ import { el, fill, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
 import { wortschatzView as makeWortschatz } from './ui/wortschatz.ts';
+import { templateArt, wordCard, type WordCardView } from './ui/wordCard.ts';
 import { confirmDialog, openDialog } from './ui/dialog.ts';
 import { sourceStatusLine } from './ui/symbolSources.ts';
 import { icons, logo } from './ui/logo.ts';
@@ -110,6 +113,11 @@ export function mountApp(root: HTMLElement): void {
   let previousProvider: ProviderId = 'arasaac';
 
   const activeCollection = () => collections.find((c) => c.id === activeId) ?? null;
+  /** The template the open Sammlung is drawn and typed as. */
+  const kind = (): CollectionKind => {
+    const open = activeCollection();
+    return open ? kindOf(open) : 'satzstreifen';
+  };
 
   /**
    * The symbol source the page is drawing in: the open collection's own answer,
@@ -191,6 +199,7 @@ export function mountApp(root: HTMLElement): void {
     },
     onChanged: () => { void refreshCollections(); },
     onLens: (tag: string | null) => { wortschatz = { tag }; render(); },
+    onCollect: (words) => void handleCollect(words),
     notify: (message: string) => notify(message),
   });
 
@@ -256,9 +265,9 @@ export function mountApp(root: HTMLElement): void {
   );
 
   const rowsHost = el('div', { class: 'rows' });
-  const emptyState = el('div', { class: 'empty' },
-    el('b', { text: t('ui.no_sentences') }),
-    el('small', { html: t('ui.no_sentences_hint') }));
+  /* Refilled rather than fixed: an empty Sammlung is where the template is
+     still an open question, and that is the only place it can be asked. */
+  const emptyState = el('div', { class: 'empty' });
 
   /* The region the banners are drawn into — see the banners block below for
      why it is a region and they are not. Mounted here, once, and never taken
@@ -463,6 +472,7 @@ export function mountApp(root: HTMLElement): void {
   /* -------------------------------------------------------------- rows --- */
 
   const rowViews = new Map<string, { view: RowView; sentence: Sentence }>();
+  const cardViews = new Map<string, { view: WordCardView; sentence: Sentence }>();
 
   /**
    * Whether these two records differ in the name and in nothing else.
@@ -480,6 +490,10 @@ export function mountApp(root: HTMLElement): void {
     && before.collectionId === after.collectionId;
 
   function renderRows(): void {
+    if (kind() === 'wortkarten') { renderCards(); return; }
+    for (const { view } of cardViews.values()) view.destroy();
+    cardViews.clear();
+
     if (sentences.length === 0) {
       for (const { view } of rowViews.values()) view.destroy();
       rowViews.clear();
@@ -530,6 +544,107 @@ export function mountApp(root: HTMLElement): void {
     }
 
     place(rowsHost, nodes);
+  }
+
+  /**
+   * The wall a Wortkarten-Sammlung draws instead of rows.
+   *
+   * Kept in step the same way `renderRows` keeps its rows: a card is rebuilt
+   * only when the record behind it was replaced, because rebuilding one throws
+   * away a resolved symbol and the wall is where most of them are.
+   */
+  function renderCards(): void {
+    for (const { view } of rowViews.values()) view.destroy();
+    rowViews.clear();
+    const seen = new Set<string>();
+    const nodes: HTMLElement[] = [];
+    for (const sentence of sentences) {
+      seen.add(sentence.id);
+      const existing = cardViews.get(sentence.id);
+      if (existing && existing.sentence === sentence) { nodes.push(existing.view.node); continue; }
+      existing?.view.destroy();
+      const view = wordCard(sentence, providerId(), {
+        onOpenSlot: (slotId) => openPicker(sentence.id, slotId),
+        onDelete: () => void confirmDeleteSentence(sentence),
+        onUnreadableSymbol: (id) => void noteUnreadable(id),
+      });
+      cardViews.set(sentence.id, { view, sentence });
+      nodes.push(view.node);
+    }
+    for (const [id, { view }] of cardViews) {
+      if (!seen.has(id)) { view.destroy(); cardViews.delete(id); }
+    }
+
+    /* The empty card at the end. Typing is the fast way for ten words at once;
+       this is the way for the one that is missing, and for somebody who has no
+       word in mind and is looking for a picture. It opens the same picker every
+       other card does. */
+    nodes.push(el('button', {
+      class: 'word word--add', text: '+',
+      attrs: { type: 'button', 'aria-label': t('ui.new_card') },
+      on: { click: () => void handleNewCard() },
+    }));
+
+    rowsHost.className = 'rows words';
+    place(rowsHost, nodes);
+  }
+
+  /** A card with no symbol yet, and the picker open on it. */
+  async function handleNewCard(): Promise<void> {
+    const collectionId = activeId;
+    if (!collectionId) return;
+    const slot: Slot = {
+      id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
+    };
+    const sentence: Sentence = {
+      id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
+      collectionId, createdAt: Date.now(), updatedAt: Date.now(),
+    };
+    await putSentence(sentence);
+    sentences = [sentence, ...sentences];
+    render();
+    openPicker(sentence.id, slot.id);
+  }
+
+  /**
+   * The two templates, offered while a Sammlung is still empty.
+   *
+   * Not a dialog before „+ Neue Sammlung": that would be a question in front of
+   * a blank page, and today the button makes one immediately (§1.5). So the
+   * Sammlung is made as a Satzstreifen — which is what bildhaft has always been
+   * and what somebody who touches nothing should get — and the choice stands in
+   * the empty state, where there is nothing yet to convert. Once a card or a
+   * row is in it, the tiles are gone and the answer is to make another one.
+   */
+  /** What an empty Sammlung says: what it is for, and which template it is. */
+  function paintEmpty(): void {
+    fill(emptyState,
+      el('b', { text: t('ui.empty_collection') }),
+      el('small', { text: t('ui.empty_collection_hint') }),
+      templateChoice());
+  }
+
+  function templateChoice(): HTMLElement {
+    const tile = (which: CollectionKind) => el('button', {
+      class: `tpl ${kind() === which ? 'tpl--on' : ''}`,
+      attrs: { type: 'button', 'aria-pressed': String(kind() === which) },
+      on: { click: () => void chooseTemplate(which) },
+    },
+    el('span', { class: 'tpl__art-box' }, templateArt(which)),
+    el('span', {},
+      el('b', { text: t(`ui.template_${which}`) }),
+      el('small', { text: t(`ui.template_${which}_note`) })));
+
+    return el('div', { class: 'templates' }, ...COLLECTION_KINDS.map(tile));
+  }
+
+  async function chooseTemplate(which: CollectionKind): Promise<void> {
+    const open = activeCollection();
+    if (!open || kindOf(open) === which) return;
+    const next: Collection = { ...open, kind: which, updatedAt: Date.now() };
+    collections = collections.map((c) => (c.id === next.id ? next : c));
+    render();
+    await putCollection(next);
   }
 
   /**
@@ -586,6 +701,7 @@ export function mountApp(root: HTMLElement): void {
        had changed and rebuilt all four. `collectionHead` went out with them,
        and with it the focus of anything inside it - which is why the name
        field of a new Sammlung was focused and then silently was not. */
+    if (sentences.length === 0) paintEmpty();
     place(inner, wortschatz
       ? [bannerHost, ...wortschatzView.parts]
       : [bannerHost, composerView.node, collectionHead,
@@ -611,10 +727,13 @@ export function mountApp(root: HTMLElement): void {
       providerReady: provider().isReady(),
       inCollection: Boolean(collection),
       providerOwned: !followsDefault(),
+      words: kind() === 'wortkarten',
     });
 
-    rowCount.textContent = sentences.length === 1
-      ? t('ui.n_rows_one')
+    rowCount.textContent = kind() === 'wortkarten'
+      ? (sentences.length === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: sentences.length }))
+      : sentences.length === 1
+        ? t('ui.n_rows_one')
       : t('ui.n_rows', { n: sentences.length });
     printAll.toggleAttribute('disabled', sentences.length === 0);
     footerView.setAttribution(provider().attribution);
@@ -908,6 +1027,57 @@ export function mountApp(root: HTMLElement): void {
   }
 
   /**
+   * Turns what the Wortschatz is showing into a Wortkarten-Sammlung.
+   *
+   * The words are copied in as they stand — picture and text — rather than
+   * pointed at. A Sammlung printed and laminated in March must not change
+   * because somebody swapped Oma's photo in June, which is the same rule a
+   * written sentence is already under.
+   *
+   * Named after the lens it came from, so „Urlaub" becomes „Urlaub" and the
+   * name is there to be typed over in the head like any other.
+   */
+  async function handleCollect(
+    words: { token: string; caption?: string; symbolId: string }[],
+  ): Promise<void> {
+    if (words.length === 0) return;
+    /* Named after the lens it came from, so „Urlaub" becomes „Urlaub". Made
+       from everything there is no lens to name it after, and „Alle Wörter" is
+       not a name for a Sammlung — that case takes the dated default like any
+       other new one. Either way the head has it selected to type over. */
+    const made = await createCollection(wortschatz?.tag ?? undefined, 'wortkarten');
+    const now = Date.now();
+    await Promise.all(words.map((word, index) => putSentence({
+      id: newId(),
+      normalizedInput: normalizeInput(word.token),
+      rawInput: word.token,
+      slots: [{
+        id: newId(),
+        sourceToken: word.token,
+        concept: word.token.toLowerCase(),
+        origin: 'override',
+        choice: { [providerId()]: word.symbolId },
+        candidates: {},
+        ...(word.caption ? { label: word.caption } : {}),
+      }],
+      collectionId: made.id,
+      createdAt: now - index,
+      updatedAt: now,
+    })));
+
+    wortschatz = null;
+    query = '';
+    await refreshCollections();
+    setActive(made.id);
+    render();
+    titleInput.focus();
+    titleInput.select();
+    notify(words.length === 1
+      ? t('ui.n_cards_made_one')
+      : t('ui.n_cards_made', { n: words.length }));
+  }
+
+  /**
    * Makes a tag and opens it, the way „+ Neue Sammlung" makes a Sammlung.
    *
    * It exists the moment it is made, before it has a name anybody chose and
@@ -1029,6 +1199,7 @@ export function mountApp(root: HTMLElement): void {
     let firstError: unknown = null;
 
     try {
+      const words = kind() === 'wortkarten';
       const options = {
         provider: provider(),
         stopwords: new Set(settings.stopwords[LANG]),
@@ -1047,7 +1218,12 @@ export function mountApp(root: HTMLElement): void {
             id: newId(),
             normalizedInput: normalizeInput(line),
             rawInput: line,
-            slots: await buildSlots(line, options),
+            /* One card holds one thing, so on that template the whole line is
+               looked up as one word — „Kita Sonnenschein" is one card, and
+               „der" is not dropped for being a function word. */
+            slots: words
+              ? [await buildWordSlot(line, options)]
+              : await buildSlots(line, options),
             collectionId,
             /*
              * Descending within the batch. The list is sorted newest first, so
@@ -1514,7 +1690,17 @@ export function mountApp(root: HTMLElement): void {
     openPrintDialog({
       sentences: chosen,
       collectionName: activeCollection()?.name ?? 'bildhaft',
-      settings: settings.print,
+      /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
+         layout says. Strips are a shape for a sentence: a strip of one symbol
+         is a card with the wrong margins, so the stored preference here is not
+         a preference, it is the other template's setting arriving in this one.
+         The control is still there and still changes it for this print.
+
+         Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
+         because cutting sentences into cards is a thing people actually do. */
+      settings: kind() === 'wortkarten' && settings.print.layout !== 'sheet'
+        ? { ...settings.print, layout: 'sheet' as const }
+        : settings.print,
       onChange: (print: PrintSettings) => { if (settings) persistSettings({ ...settings, print }); },
       provider: providerId(),
       attribution: provider().attribution,

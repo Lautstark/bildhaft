@@ -11,7 +11,8 @@ import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
 import { LANG, LOCALE, t } from '../i18n/index.ts';
 import {
   DEFAULT_PRINT_SETTINGS,
-  type AppSettings, type Candidate, type Collection, type Override, type OwnImage,
+  type AppSettings, type Candidate, type Collection, type CollectionKind,
+  type Override, type OwnImage,
   type ProviderId,
   type Sentence,
 } from '../core/types.ts';
@@ -114,12 +115,18 @@ export function defaultCollectionName(): string {
   });
 }
 
-export async function createCollection(name?: string): Promise<Collection> {
+export async function createCollection(
+  name?: string, kind?: CollectionKind,
+): Promise<Collection> {
   const now = Date.now();
   const collection: Collection = {
     id: newId(),
     name: name?.trim() || defaultCollectionName(),
     sentenceIds: [],
+    /* Absent stays absent for the default. A Sammlung made today and one made
+       last month should be the same record when nobody chose anything, or the
+       two are told apart by a field that means the same in both. */
+    ...(kind && kind !== 'satzstreifen' ? { kind } : {}),
     createdAt: now,
     updatedAt: now,
   };

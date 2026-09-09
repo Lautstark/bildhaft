@@ -987,3 +987,62 @@ kbd {
 /* The word an entry answers to, when the text on it says something else. Small
    and quiet: it is the key, not the caption, and only shown when they differ. */
 .word__for { font-size: 11px; color: var(--text-faint); margin-top: -3px; }
+
+/* ----------------------------------------------------------- die Vorlagen */
+
+/* The choice an empty Sammlung offers. A drawing rather than a word, because
+   what is being chosen is what comes out of the printer — and the dashed lines
+   on the card tile say "this paper gets cut up" without a sentence. */
+.templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  max-width: 440px;
+  margin: 16px auto 0;
+  text-align: left;
+}
+.tpl {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.tpl:hover { border-color: var(--accent); }
+.tpl--on { border-color: var(--accent); outline: 1.5px solid var(--accent); }
+.tpl b { display: block; font-size: 13px; margin-bottom: 2px; }
+.tpl small { color: var(--text-dim); font-size: 11px; line-height: 1.4; }
+.tpl__art-box {
+  display: grid;
+  place-items: center;
+  height: 62px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.tpl--on .tpl__art-box { background: var(--accent-soft); }
+.tpl__art { width: 132px; height: 46px; }
+.tpl__ink { fill: none; stroke: var(--text-dim); stroke-width: 1.4; }
+.tpl__fill { fill: var(--text-faint); opacity: .5; }
+.tpl__cut { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 3; opacity: .85; }
+.tpl--on .tpl__ink { stroke: var(--accent-strong); }
+.tpl--on .tpl__fill { fill: var(--accent-strong); opacity: .45; }
+
+/* The empty card at the end of a wall. Same box as a word card, nothing in it. */
+.word--add {
+  display: grid;
+  place-items: center;
+  min-height: 116px;
+  font: inherit;
+  font-size: 24px;
+  color: var(--text-faint);
+  cursor: pointer;
+  background: none;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+}
+.word--add:hover { border-color: var(--accent); color: var(--accent-strong); }

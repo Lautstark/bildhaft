@@ -243,9 +243,44 @@ export interface Collection {
    */
   language?: LanguageCode;
 
+  /**
+   * Which template this Sammlung is — what one card holds, and therefore how it
+   * is typed and what comes out of the printer.
+   *
+   * Named after the material rather than after the data, because that is what
+   * somebody is choosing: they know what should come out of the printer and
+   * look for it by that name. „Wortkarten" is the commonest of the card
+   * template's outputs and not its only one — the same Sammlung prints as a
+   * Kommunikationstafel or a Fächer through the print dialog's own settings,
+   * which is a choice made as often as one likes and is not this.
+   *
+   * Absent means `satzstreifen`, which is every Sammlung that existed before
+   * there was a second template. Nothing rewrites them: this is a change to
+   * what a row says, not to the shape of the store — the same reasoning
+   * `Override.tags` carries.
+   *
+   * Written once, at creation, and while the Sammlung is still empty. There is
+   * no transformation between the two and there is not going to be one: no
+   * honest rule turns four separate word cards into a sentence, and the words
+   * are all still in the Wortschatz, so making the other one costs a minute.
+   */
+  kind?: CollectionKind;
+
   createdAt: number;
   updatedAt: number;
 }
+
+/**
+ * The templates a Sammlung can be. A real array as well as a union, because
+ * `ui.template_*` is built from it and a third template with no sentence has to
+ * fail a test rather than reach somebody as a dotted identifier.
+ */
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten'] as const;
+export type CollectionKind = (typeof COLLECTION_KINDS)[number];
+
+/** What a Sammlung is when it has never been asked. */
+export const kindOf = (collection: Collection): CollectionKind =>
+  collection.kind ?? 'satzstreifen';
 
 /**
  * Personal override dictionary. Checked *first* in the pipeline.

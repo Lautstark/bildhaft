@@ -42,6 +42,8 @@ export interface ComposerState {
   inCollection: boolean;
   /** Whether that Sammlung answered for itself, or is following the default. */
   providerOwned: boolean;
+  /** A Wortkarten-Sammlung takes words, one per line, not sentences. */
+  words: boolean;
 }
 
 export interface TypingBoxOptions {
@@ -156,11 +158,12 @@ export function composer(handlers: ComposerHandlers): {
       attrs: { type: 'button' }, on: { click: handlers.onReuse } }),
   );
 
+  const hint = el('span', { html: t('ui.composer_hint') });
   const box = typingBox({
     placeholder: t('ui.composer_placeholder'),
     label: t('ui.composer_label'),
     action: t('ui.translate'),
-    meta: [el('span', { html: t('ui.composer_hint') }), providerLine],
+    meta: [hint, providerLine],
     onChange: handlers.onChange,
     onSubmit: handlers.onSubmit,
   });
@@ -171,6 +174,11 @@ export function composer(handlers: ComposerHandlers): {
   if (!window.matchMedia('(hover: none)').matches) box.focus();
 
   function render(state: ComposerState): void {
+    /* The same box says two things, because it does two things: a sentence is
+       translated into a row of symbols, a word becomes one card. Enter and
+       Shift+Enter mean the same in both, which is why only the wording moves. */
+    box.setPlaceholder(t(state.words ? 'ui.add_words_placeholder' : 'ui.composer_placeholder'));
+    hint.innerHTML = t(state.words ? 'ui.add_words_hint' : 'ui.composer_hint');
     box.show(state.value, state.busy);
     drawProvider(state);
 

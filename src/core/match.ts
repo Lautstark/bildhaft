@@ -69,6 +69,38 @@ function toSlot(word: ResolvedWord, provider: ProviderId, overrides: Map<string,
 }
 
 /**
+ * One card's worth: the whole line as a single slot.
+ *
+ * Not `buildSlots`, which is the sentence pipeline and would turn „Kita
+ * Sonnenschein" into two cards and drop „der" for being a function word. On a
+ * word card a line is one thing by definition — that is what the template
+ * means — so the line is looked up whole and the Wortschatz is asked first,
+ * exactly as it is for a sentence.
+ *
+ * Returns a slot with no symbol when the source has nothing, rather than
+ * nothing at all: an empty card that opens the picker is where the proper nouns
+ * get their picture, and refusing the line would be refusing the case this is
+ * most needed for.
+ */
+export async function buildWordSlot(raw: string, ctx: MatchContext): Promise<Slot> {
+  const word = raw.trim();
+  const held = ctx.overrides.get(word.toLowerCase());
+  const candidates = held
+    ? [{ id: held.symbolId, label: held.label, score: 1000 }]
+    : await ctx.provider.search(word).catch(() => []);
+
+  return {
+    id: newId(),
+    sourceToken: word,
+    concept: word.toLowerCase(),
+    origin: held ? 'override' : 'lemma',
+    choice: { [ctx.provider.id]: candidates[0]?.id ?? null },
+    candidates: { [ctx.provider.id]: candidates.slice(0, STORED_CANDIDATES) },
+    ...(held?.caption ? { label: held.caption } : {}),
+  };
+}
+
+/**
  * Re-resolves existing slots against a different provider, preserving any manual
  * choice the user already made for that provider. This is what lets one stored
  * sentence render in ARASAAC for someone without a METACOM licence and in METACOM
