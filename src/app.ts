@@ -26,7 +26,9 @@ import {
   importCollectionFile,
 } from './db/exportImport.ts';
 import { Sicherung } from '@lautstark/sicherung';
-import { ablage, adopted, folderName, watchFolder, wipeReaches } from './db/folder.ts';
+import {
+  ablage, adopted, folderName, moveWortschatz, restoreFolder, watchFolder, wipeReaches,
+} from './db/folder.ts';
 import { renameField } from '@lautstark/design/rename';
 import { announcer } from '@lautstark/design/toast';
 import { el, fill, toggleClass } from './ui/dom.ts';
@@ -787,7 +789,11 @@ export function mountApp(root: HTMLElement): void {
     /* Before anything is read. Where a folder is the store it is the truth, and a
        first paint from the browser's copy would be a library that changes under
        somebody a moment later. */
-    await ablage.restore().catch(() => null);
+    await restoreFolder().catch(() => null);
+    /* Before the first read, because it changes where the Wortschatz is read
+       from. A folder written by a version that kept it under `bildhaft/` hands
+       its words over here, once. */
+    await moveWortschatz().catch(() => 0);
     await pullFromFolder().catch(() => false);
 
     const loaded = await loadSettings();

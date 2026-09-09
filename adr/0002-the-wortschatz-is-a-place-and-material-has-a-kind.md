@@ -139,11 +139,20 @@ go, so growing the record does not need a new place to put it.
 
 Four products want the same Wortschatz and sit on four origins, so no shared
 IndexedDB can serve them. The Ablage can — a folder is not bound to an origin —
-but `AblageOptions.app` keys both the subtree and the remembered folder handle,
-so a second, shared `wortschatz` compartment would ask a household to pick the
-same folder twice. That is a small additive gap in `@lautstark/sicherung`, and it
-is the only package change this decision needs. Until it is closed, the Wortschatz
-is bildhaft's and is complete as bildhaft's.
+but `AblageOptions.app` keyed both the subtree and the remembered folder handle,
+so a second, shared `wortschatz` compartment would have asked a household to
+pick the same folder twice.
+
+*Closed 2026-09-09.* `@lautstark/sicherung` 1.16.0 has `follows`, which borrows
+another Ablage's remembered folder while keeping a subtree of its own, and
+bildhaft's Wortschatz is written under `<folder>/wortschatz/` rather than
+`<folder>/bildhaft/`. A folder written before that hands its words over once, on
+the first start after the update — copied, checked, and only then removed.
+
+**Nothing reads it yet but bildhaft**, and that is the honest state of it: what
+this buys today is that the records stop accumulating in a place named after one
+product. Which product reads them second, and what it needs from an entry, is
+the next decision and not this one.
 
 ## Not to be "fixed" later
 

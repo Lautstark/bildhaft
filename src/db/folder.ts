@@ -23,6 +23,31 @@ export const HOME = 'Lautstark';
 export const APP = 'bildhaft';
 
 export const ablage = new Ablage({ app: APP, kinds: KINDS });
+
+/**
+ * The Wortschatz, in a compartment of its own beside bildhaft's.
+ *
+ * The words a household has settled belong to the household, not to the
+ * programme that happened to be open when they settled them — that is the whole
+ * argument of the Wortschatz, and it stops being true the moment the records
+ * live under `bildhaft/`. So they live under `wortschatz/`, in the same folder,
+ * which is a place a second programme can read without knowing anything about
+ * this one.
+ *
+ * `follows` is what makes that free: it borrows the folder bildhaft already
+ * asked for, so nobody is asked to pick the same folder twice under two names
+ * that look alike. It also cannot choose or forget one — see the package.
+ *
+ * Nothing reads it yet but bildhaft. What this buys today is that the records
+ * stop accumulating in the wrong place.
+ */
+export const SHARED = 'wortschatz';
+export const SHARED_KINDS = ['woerterbuch'] as const;
+export const shared = new Ablage({ app: SHARED, kinds: SHARED_KINDS, follows: APP });
+
+/** Which Ablage a kind lives in. One kind has moved out; the rest are bildhaft's. */
+const homeOf = (kind: Kind | 'woerterbuch') => (kind === 'woerterbuch' ? shared : ablage);
+
 export const supported = Ablage.supported;
 
 /** Whether the folder is the store rather than a copy of one. */
@@ -87,6 +112,13 @@ const asStored = {
    it is stale — a copy that took writes nobody else can see would be the second
    source of truth this whole arrangement exists to avoid. */
 const canWrite = () => isStore() && !isStale();
+/* The compartment has its own status, and a write that goes nowhere because it
+   was never restored is the quietest kind of loss. It borrows bildhaft's folder,
+   so in practice the two agree — this is the guard for the case where they do
+   not. */
+const canWriteShared = () =>
+  canWrite() && shared.status.kind !== 'off' && shared.status.kind !== 'unsupported'
+  && shared.status.kind !== 'stale';
 
 export async function fileCollection(item: Collection): Promise<void> {
   if (canWrite()) await ablage.write('sammlungen', asStored.sammlungen(item));
@@ -95,8 +127,8 @@ export async function fileSentence(item: Sentence): Promise<void> {
   if (canWrite()) await ablage.write('saetze', asStored.saetze(item));
 }
 export async function fileOverride(item: Override): Promise<void> {
-  if (!canWrite()) return;
-  await ablage.write('woerterbuch', { ...item, id: await fileNameFor(item.key) });
+  if (!canWriteShared()) return;
+  await shared.write('woerterbuch', { ...item, id: await fileNameFor(item.key) });
 }
 export async function fileImage(item: OwnImage): Promise<void> {
   if (!canWrite()) return;
@@ -105,10 +137,10 @@ export async function fileImage(item: OwnImage): Promise<void> {
 }
 
 export async function unfile(kind: Kind, id: string): Promise<void> {
-  if (canWrite()) await ablage.remove(kind, id);
+  if (canWrite()) await homeOf(kind).remove(kind, id);
 }
 export async function unfileOverride(key: string): Promise<void> {
-  if (canWrite()) await ablage.remove('woerterbuch', await fileNameFor(key));
+  if (canWriteShared()) await shared.remove('woerterbuch', await fileNameFor(key));
 }
 
 /* A batch — a collection imported, everything cleared — happens inside one
@@ -124,22 +156,79 @@ export async function pushKind(
   records: { id: string; updatedAt: number }[],
 ): Promise<void> {
   if (!canWrite()) return;
-  const there = new Map((await ablage.list(kind)).map((item) => [item.id, item.updatedAt]));
+  const home = homeOf(kind);
+  const there = new Map((await home.list(kind)).map((item) => [item.id, item.updatedAt]));
   const here = new Set(records.map((record) => record.id));
-  await ablage.writeAll(
+  await home.writeAll(
     kind,
     records.filter((record) => there.get(record.id) !== record.updatedAt),
   );
-  for (const id of there.keys()) if (!here.has(id)) await ablage.remove(kind, id);
+  for (const id of there.keys()) if (!here.has(id)) await home.remove(kind, id);
 }
 
-export const readKind = <T>(kind: Kind) => ablage.all(kind) as Promise<T[]>;
+export const readKind = <T>(kind: Kind) => homeOf(kind).all(kind) as Promise<T[]>;
 export const readImage = (id: string) => ablage.readFile('bilder', id);
-export const changes = () => ablage.poll();
-export const conflicts = () => ablage.conflicts();
+/* Both compartments, because a word changed on another device lands in one of
+   them and a Sammlung in the other, and a caller asking "what moved" means the
+   folder rather than a subtree of it. */
+export const changes = async () => [...await ablage.poll(), ...await shared.poll()];
+export const conflicts = async () => [...await ablage.conflicts(), ...await shared.conflicts()];
 export const adopted = () => ablage.adopted();
-export const adopt = (everything: Record<string, { id: string; updatedAt: number }[]>) =>
-  ablage.adopt(everything);
+
+/** bildhaft's own records go under `bildhaft/`; the Wortschatz goes beside it. */
+export async function adopt(
+  everything: Record<string, { id: string; updatedAt: number }[]>,
+): Promise<ReturnType<Ablage['adopt']> extends Promise<infer T> ? T : never> {
+  const { woerterbuch = [], ...mine } = everything;
+  const went = await ablage.adopt(mine);
+  /* Only after bildhaft's own landed. A folder that holds a vocabulary and no
+     Sammlungen is a folder somebody has to make sense of; the order makes the
+     half-done state the harmless one. */
+  if (went.adopted && woerterbuch.length > 0) await shared.adopt({ woerterbuch });
+  return went;
+}
+
+/**
+ * Restores both compartments, in the one order that works.
+ *
+ * The shared one follows bildhaft's, so it can only find a folder after
+ * bildhaft has. Awaited together at boot rather than left to whoever writes
+ * first, because the first write is where "it did not save" would appear.
+ */
+export async function restoreFolder(): Promise<void> {
+  await ablage.restore();
+  await shared.restore();
+}
+
+/**
+ * Moves a Wortschatz written before it had a compartment of its own.
+ *
+ * Copied, checked, and only then removed — the order `adopt()` uses, and for
+ * the same reason: a household whose words disappeared between two versions
+ * would have no way of knowing they had ever been anywhere. If a single record
+ * fails to arrive, the originals are left exactly where they are and the move
+ * is simply tried again next time.
+ *
+ * It runs once in practice, because after it there is nothing under
+ * `bildhaft/woerterbuch/` to find. The empty folder is left behind: removing a
+ * directory is not something the Ablage does, and an empty one costs nothing.
+ */
+export async function moveWortschatz(): Promise<number> {
+  if (!canWriteShared()) return 0;
+
+  const held = await ablage.all('woerterbuch');
+  if (held.length === 0) return 0;
+
+  const there = new Set((await shared.list('woerterbuch')).map((item) => item.id));
+  const owed = held.filter((record) => !there.has(record.id));
+  if (owed.length > 0) await shared.writeAll('woerterbuch', owed);
+
+  const arrived = new Set((await shared.list('woerterbuch')).map((item) => item.id));
+  if (!held.every((record) => arrived.has(record.id))) return 0;
+
+  for (const record of held) await ablage.remove('woerterbuch', record.id);
+  return held.length;
+}
 export const folders = () => ablage.folders();
 export const nest = (name: string) => ablage.nest(name);
 export const metacomInFolder = () => ablage.folderHolding('METACOM_Symbole');
@@ -147,10 +236,13 @@ export const metacomInFolder = () => ablage.folderHolding('METACOM_Symbole');
 /* Somebody else's edit reaches this browser as a file that changed under it. A
    poll rather than a subscription, because a folder that syncs from elsewhere has
    nothing to notify with — the file simply differs the next time it is read. */
-export const watchFolder = (onChange: () => void) =>
-  ablage.watch(30_000, (found) => {
-    if (found.length) onChange();
-  });
+export const watchFolder = (onChange: () => void) => {
+  const stop = [
+    ablage.watch(30_000, (found) => { if (found.length) onChange(); }),
+    shared.watch(30_000, (found) => { if (found.length) onChange(); }),
+  ];
+  return () => { for (const end of stop) end(); };
+};
 
 /* Telling the other Lautstark programmes on this device which folder is in use,
    and hearing what they said. Only ever because somebody switched it on — see
