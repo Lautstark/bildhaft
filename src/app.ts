@@ -502,6 +502,12 @@ export function mountApp(root: HTMLElement): void {
     if (kind() === 'wortkarten') { renderCards(); return; }
     for (const { view } of cardViews.values()) view.destroy();
     cardViews.clear();
+    /* Back to rows, and said here rather than only in renderCards(). The host
+       is one node shared by both templates, so whichever draws into it has to
+       state its own layout — leaving the card grid on it turned every row of
+       the next Sammlung into a narrow column with its words stacked, which is
+       what happens when only one of two paths sets a thing. */
+    rowsHost.className = 'rows';
 
     if (sentences.length === 0) {
       for (const { view } of rowViews.values()) view.destroy();
