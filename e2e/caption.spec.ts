@@ -11,7 +11,7 @@ import { rowFor, translate, translateAll } from './helpers.ts';
  */
 
 const caption = (page: import('@playwright/test').Page) =>
-  page.getByLabel('Text unter dem Symbol');
+  page.getByLabel('Text zum Symbol');
 
 const rowLabels = (page: import('@playwright/test').Page) =>
   page.locator('.row').first().locator('.slot__label');
