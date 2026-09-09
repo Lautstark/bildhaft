@@ -1046,3 +1046,11 @@ kbd {
   border-radius: var(--radius-md);
 }
 .word--add:hover { border-color: var(--accent); color: var(--accent-strong); }
+
+/* Which words to pour in. A list with counts rather than a submenu: twenty tags
+   in a menu is a menu somebody scrolls past the one they wanted. */
+.wortschatz-picks { display: flex; flex-direction: column; gap: 6px; }
+.wortschatz-pick {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  width: 100%; text-align: left; padding: 9px 12px;
+}

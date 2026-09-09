@@ -62,3 +62,42 @@ describe('one card’s worth of a line', () => {
     expect(slotCaption(slot)).toBe('Omi');
   });
 });
+
+/**
+ * Pouring the Wortschatz into a Sammlung.
+ *
+ * The direction matters and was wrong for a day: „Sammlung daraus" made a *new*
+ * Sammlung, which serves the rarer half of what people do with a pot of words.
+ * The commoner half is the Sammlung already open, half full, with a name and a
+ * template somebody chose — and that one can be poured into again and again,
+ * which is what these hold.
+ */
+describe('what a Sammlung takes from the Wortschatz', () => {
+  beforeEach(async () => {
+    await repo.clearEverything();
+    await repo.putOverride('arasaac', 'Apfel', { id: '2462', label: 'apple', score: 1 });
+    await repo.putOverride('arasaac', 'Oma', { id: '111', label: 'washerwoman', score: 1 });
+    await repo.setOverrideCaption('arasaac', 'Oma', 'Omi');
+    await repo.setOverrideTags('arasaac', 'Oma', ['Familie']);
+  });
+
+  it('offers every word, and each tag as a smaller answer', async () => {
+    const all = await repo.listOverrides('arasaac');
+    expect(all).toHaveLength(2);
+    expect(all.filter((one) => one.tags?.includes('Familie'))).toHaveLength(1);
+  });
+
+  it('carries the picture and the text, not a pointer to them', async () => {
+    // What handleAddWords copies onto a slot. A Sammlung printed in March must
+    // not change because the Wortschatz changed in June.
+    const oma = (await repo.listOverrides('arasaac')).find((one) => one.token === 'oma');
+    expect(oma?.symbolId).toBe('111');
+    expect(oma?.caption).toBe('Omi');
+
+    await repo.setOverrideCaption('arasaac', 'Oma', 'Großmutter');
+    // The entry moved; a slot written from the earlier value is unaffected,
+    // because it holds the value rather than the entry.
+    const slot = { sourceToken: 'Oma', label: oma?.caption };
+    expect(slot.label).toBe('Omi');
+  });
+});

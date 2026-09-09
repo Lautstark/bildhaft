@@ -80,6 +80,10 @@ test('the ⋯ holds what this Sammlung is set to, under the export and above the
   // conventions.md §3.6's order: the exports first, the settings under them,
   // the delete last. The middle item is not an act on the Sammlung, which is
   // the amendment that section carries.
+  //
+  // Pouring the Wortschatz in would sit above all three — it is the only item
+  // that puts something *into* the Sammlung — and is not here at all, because
+  // this page has no Wortschatz to pour.
   await expect(page.locator('.menu button')).toHaveText([
     'Sammlung exportieren', 'Einstellungen dieser Sammlung …', 'Sammlung löschen',
   ]);

@@ -39,14 +39,6 @@ export interface WortschatzOptions {
   /** Counts moved, a tag was renamed — whatever the sidebar draws. */
   onChanged: () => void;
   /**
-   * Make a Wortkarten-Sammlung out of what is on screen.
-   *
-   * The words are copied, not referenced: a Sammlung printed and laminated in
-   * March does not change because somebody swapped Oma's photo in June. Same
-   * rule a written sentence is under.
-   */
-  onCollect: (words: { token: string; caption?: string; symbolId: string }[]) => void;
-  /**
    * The lens changed from in here — a chip was pressed, or a tag was renamed
    * under the shell's feet. The sidebar row and the mobile title are the
    * shell's, and it cannot know without being told.
@@ -353,26 +345,15 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       : read.filter((entry) => tagsOf(entry).some((tag) => fold(tag) === fold(lens ?? ''))).length;
     count.textContent = shown === 1 ? t('ui.n_words_one') : t('ui.n_words', { n: shown });
 
-    const shownEntries = lens === null
-      ? read
-      : read.filter((entry) => tagsOf(entry).some((tag) => fold(tag) === fold(lens ?? '')));
-    /* The one action a Wortschatz has: turn what is being looked at into
-       something printable. It is one action and not a menu of six materials —
-       what the cards become, a sheet or a Tafel or a Fächer, is the print
-       dialog's question and can be answered again as often as one likes. */
-    const collect = el('button', {
-      class: 'btn primary sm', text: t('ui.collect_into'),
-      attrs: { type: 'button', ...(shownEntries.length === 0 ? { disabled: true } : {}) },
-      on: { click: () => options.onCollect(shownEntries.map((entry) => ({
-        token: entry.token,
-        ...(entry.caption ? { caption: entry.caption } : {}),
-        symbolId: entry.symbolId,
-      }))) },
-    });
-
+    /* No action here, and that is deliberate. „Sammlung daraus" stood here for
+       an afternoon and only ever made a *new* Sammlung — which is the rarer
+       half of what people do with a Wortschatz. Adding words to the one they
+       already have open is the other half and the commoner one, so the action
+       lives there instead, in the Sammlung's own ⋯ where it can be used again
+       and again. The composer is this place's action. */
     if (lens === null) {
       title.textContent = t('ui.all_words');
-      fill(head, title, count, collect);
+      fill(head, title, count);
       return;
     }
     titleField.refresh(lens);
@@ -383,7 +364,7 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       });
       item(t('ui.delete_tag'), () => void deleteLens(), { danger: true });
     }));
-    fill(head, titleInput, count, collect, menuHost);
+    fill(head, titleInput, count, menuHost);
   }
 
   async function deleteLens(): Promise<void> {

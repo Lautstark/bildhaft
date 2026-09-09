@@ -201,7 +201,6 @@ export function mountApp(root: HTMLElement): void {
     },
     onChanged: () => { void refreshCollections(); },
     onLens: (tag: string | null) => { wortschatz = { tag }; render(); },
-    onCollect: (words) => void handleCollect(words),
     notify: (message: string) => notify(message),
   });
 
@@ -259,6 +258,14 @@ export function mountApp(root: HTMLElement): void {
        is the point — the menu holds what a Sammlung *is* as well as what can be
        done to it, because both are answered by which Sammlung it sits beside. */
     actionMenu(t('ui.collection_actions'), (add) => {
+      /* First, because it is the one thing in here that puts something *in*;
+         the rest act on what is already there or on what the Sammlung is.
+         And absent rather than greyed while the Wortschatz is empty — the same
+         answer „+ Neuer Tag" gets in the sidebar, and here it has a second
+         reason: a disabled item in the first position is one the arrow keys
+         have to step over on the way in, which e2e/menu.spec.ts holds the
+         menu to. Nothing to pour is nothing to offer. */
+      if (wordCount > 0) add(t('ui.add_wortschatz'), () => void openWortschatzSheet());
       add(t('ui.export_collection'), () => void handleExport(),
         { disabled: sentences.length === 0 });
       add(t('ui.symbol_source_menu'), () => openSourceSheet());
@@ -623,7 +630,15 @@ export function mountApp(root: HTMLElement): void {
     fill(emptyState,
       el('b', { text: t('ui.empty_collection') }),
       el('small', { text: t('ui.empty_collection_hint') }),
-      templateChoice());
+      templateChoice(),
+      /* The second way to start, said once and where it is useful: an empty
+         Sammlung is exactly where somebody wants their own words poured in
+         rather than typed again. Afterwards it lives in the ⋯, because by then
+         the Sammlung has something in it and the wall is the thing to look at.
+         Absent rather than greyed while there is no Wortschatz to pour. */
+      wordCount === 0 ? null : el('p', { class: 'small muted', style: { marginTop: '14px' } },
+        el('button', { class: 'linklike', text: t('ui.add_wortschatz'),
+          attrs: { type: 'button' }, on: { click: () => void openWortschatzSheet() } })));
   }
 
   function templateChoice(): HTMLElement {
@@ -1033,57 +1048,110 @@ export function mountApp(root: HTMLElement): void {
   }
 
   /**
-   * Turns what the Wortschatz is showing into a Wortkarten-Sammlung.
+   * Pours words from the Wortschatz into the Sammlung that is open.
    *
-   * The words are copied in as they stand — picture and text — rather than
-   * pointed at. A Sammlung printed and laminated in March must not change
-   * because somebody swapped Oma's photo in June, which is the same rule a
+   * This used to point the other way — „Sammlung daraus", standing in the
+   * Wortschatz and making a new one. That only ever served the rarer half of
+   * what people do with a pot of words. The commoner half is the Sammlung they
+   * already have open, half full, with a name and a template they chose: they
+   * want the Kita words *in it*, and then the Urlaub ones too, and then to keep
+   * typing. Which is also why this can be done again and again and the other
+   * could not.
+   *
+   * Copied, not referenced. A Sammlung printed and laminated in March does not
+   * change because somebody swapped Oma's photo in June — the same rule a
    * written sentence is already under.
-   *
-   * Named after the lens it came from, so „Urlaub" becomes „Urlaub" and the
-   * name is there to be typed over in the head like any other.
    */
-  async function handleCollect(
-    words: { token: string; caption?: string; symbolId: string }[],
-  ): Promise<void> {
-    if (words.length === 0) return;
-    /* Named after the lens it came from, so „Urlaub" becomes „Urlaub". Made
-       from everything there is no lens to name it after, and „Alle Wörter" is
-       not a name for a Sammlung — that case takes the dated default like any
-       other new one. Either way the head has it selected to type over. */
-    const made = await createCollection(wortschatz?.tag ?? undefined, 'wortkarten');
+  async function handleAddWords(lens: string | null): Promise<void> {
+    const collectionId = activeId;
+    if (!collectionId || !settings) return;
+
+    const fold = (word: string) => word.trim().toLowerCase();
+    const all = await listOverrides(providerId());
+    const wanted = lens === null
+      ? all
+      : all.filter((entry) => entry.tags?.some((tag) => fold(tag) === fold(lens)));
+
+    /* What is already in here, by the word rather than by the record. Adding
+       the same tag twice is a thing somebody does by accident, and a Sammlung
+       that answers it with a second Apfel is one they have to tidy by hand. */
+    const held = new Set(sentences.flatMap(
+      (sentence) => sentence.slots.map((slot) => fold(slot.sourceToken))));
+    const owed = wanted.filter((entry) => !held.has(fold(entry.token)));
+
+    if (owed.length === 0) { notify(t('ui.wortschatz_all_there')); return; }
+
     const now = Date.now();
-    await Promise.all(words.map((word, index) => putSentence({
+    const made: Sentence[] = owed.map((entry, index) => ({
       id: newId(),
-      normalizedInput: normalizeInput(word.token),
-      rawInput: word.token,
+      normalizedInput: normalizeInput(entry.token),
+      rawInput: entry.token,
       slots: [{
         id: newId(),
-        sourceToken: word.token,
-        concept: word.token.toLowerCase(),
-        origin: 'override',
-        choice: { [providerId()]: word.symbolId },
+        sourceToken: entry.token,
+        concept: entry.token.toLowerCase(),
+        origin: 'override' as const,
+        choice: { [providerId()]: entry.symbolId },
         candidates: {},
-        ...(word.caption ? { label: word.caption } : {}),
+        ...(entry.caption ? { label: entry.caption } : {}),
       }],
-      collectionId: made.id,
+      collectionId,
       createdAt: now - index,
       updatedAt: now,
-    })));
+    }));
+    await Promise.all(made.map((sentence) => putSentence(sentence)));
 
-    wortschatz = null;
-    query = '';
+    sentences = [...made, ...sentences];
     await refreshCollections();
-    setActive(made.id);
     render();
-    titleInput.focus();
-    titleInput.select();
-    notify(words.length === 1
-      ? t('ui.n_cards_made_one')
-      : t('ui.n_cards_made', { n: words.length }));
+    notify(owed.length === 1
+      ? t('ui.n_words_added_one')
+      : t('ui.n_words_added', { n: owed.length }));
   }
 
   /**
+   * Which words: everything, or one tag.
+   *
+   * A sheet rather than a submenu, because the answer is a list with counts and
+   * a submenu of twenty tags is a menu somebody scrolls. Nothing is created
+   * here and nothing is chosen twice — one press adds, and the sheet closes.
+   */
+  async function openWortschatzSheet(): Promise<void> {
+    const all = await listOverrides(providerId());
+    const tally = new Map<string, { label: string; n: number }>();
+    for (const entry of all) {
+      for (const tag of entry.tags ?? []) {
+        const key = tag.toLowerCase();
+        const seen = tally.get(key);
+        if (seen) seen.n += 1;
+        else tally.set(key, { label: tag, n: 1 });
+      }
+    }
+
+    const row = (label: string, n: number, lens: string | null) => el('button', {
+      class: 'btn quiet wortschatz-pick',
+      attrs: { type: 'button', ...(n === 0 ? { disabled: true } : {}) },
+      on: { click: () => { sheet.close(); void handleAddWords(lens); } },
+    },
+    el('b', { text: label }),
+    el('span', { class: 'small faint', text: n === 1 ? t('ui.n_words_one') : t('ui.n_words', { n }) }));
+
+    const sheet = openDialog({
+      title: t('ui.add_wortschatz'),
+      body: [
+        el('p', { class: 'small muted', style: { marginTop: '0' }, text: t('ui.add_wortschatz_note') }),
+        el('div', { class: 'wortschatz-picks' },
+          row(t('ui.all_words'), all.length, null),
+          ...[...tally.values()]
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map((tag) => row(tag.label, tag.n, tag.label))),
+      ],
+      onClose: () => undefined,
+    });
+  }
+
+  /**
+   * Makes a tag and opens it, the way „+ Neue Sammlung" makes a Sammlung.  /**
    * Makes a tag and opens it, the way „+ Neue Sammlung" makes a Sammlung.
    *
    * It exists the moment it is made, before it has a name anybody chose and
