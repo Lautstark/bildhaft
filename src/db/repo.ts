@@ -395,12 +395,32 @@ export async function clearEverything(): Promise<void> {
 const overrideKey = (provider: ProviderId, token: string) =>
   `${LANG}:${provider}:${token.toLowerCase()}`;
 
-/** The key those rows were written under, kept only so they can still be found. */
-const legacyKey = (provider: ProviderId, token: string) =>
-  `${provider}:${token.toLowerCase()}`;
 
 /** Whether an entry belongs to the language this page is in. */
 const mine = (override: Override) => (override.lang ?? 'de') === LANG;
+
+/**
+ * The stored entries for a word, found the way the list finds them.
+ *
+ * This exists because three functions used to build `overrideKey(provider,
+ * token)` and read *that* — and the list does not. It scans and filters by
+ * `mine`, so it shows entries this formula cannot address: one written before
+ * there was a language to key by (`arasaac:oma`, no `lang`), and any row whose
+ * key was written before tokens were lowered. Captioning or tagging such an
+ * entry read `undefined` and returned quietly, which is a card that ignores
+ * what is typed into it; deleting one missed a spelling and left the word on
+ * screen. Both were reported as bugs and both were this.
+ *
+ * A list rather than one record, because a word can have more than one row
+ * behind it — a legacy entry and the one a later correction wrote — and the
+ * person sees them as one word. Acting on all of them is the only answer that
+ * matches what they are looking at.
+ */
+async function entriesFor(provider: ProviderId, token: string): Promise<Override[]> {
+  const wanted = token.trim().toLowerCase();
+  return (await listAllOverrides(provider))
+    .filter((override) => mine(override) && override.token.toLowerCase() === wanted);
+}
 
 export async function putOverride(
   provider: ProviderId, token: string, candidate: Candidate,
@@ -449,8 +469,8 @@ export async function setOverrideTags(
   provider: ProviderId, token: string, tags: readonly string[],
 ): Promise<void> {
   const db = await getDB();
-  const held = await db.get('overrides', overrideKey(provider, token));
-  if (!held) return;
+  const found = await entriesFor(provider, token);
+  if (found.length === 0) return;
 
   const seen = new Set<string>();
   const kept: string[] = [];
@@ -462,14 +482,16 @@ export async function setOverrideTags(
     kept.push(tag);
   }
 
-  const { tags: _dropped, ...rest } = held;
-  const override: Override = {
-    ...rest,
-    ...(kept.length ? { tags: kept } : {}),
-    updatedAt: Date.now(),
-  };
-  await db.put('overrides', override);
-  await fileOverride(override);
+  for (const held of found) {
+    const { tags: _dropped, ...rest } = held;
+    const override: Override = {
+      ...rest,
+      ...(kept.length ? { tags: kept } : {}),
+      updatedAt: Date.now(),
+    };
+    await db.put('overrides', override);
+    await fileOverride(override);
+  }
   touched();
 }
 
@@ -546,28 +568,29 @@ export async function setOverrideCaption(
   provider: ProviderId, token: string, caption: string,
 ): Promise<void> {
   const db = await getDB();
-  const held = await db.get('overrides', overrideKey(provider, token));
-  if (!held) return;
-
   const text = caption.trim();
-  if ((held.caption ?? '') === text) return;
+  let wrote = false;
 
-  const { caption: _cleared, ...rest } = held;
-  const override: Override = { ...rest, ...(text ? { caption: text } : {}), updatedAt: Date.now() };
-  await db.put('overrides', override);
-  await fileOverride(override);
-  touched();
+  for (const held of await entriesFor(provider, token)) {
+    if ((held.caption ?? '') === text) continue;
+    const { caption: _cleared, ...rest } = held;
+    const override: Override = { ...rest, ...(text ? { caption: text } : {}), updatedAt: Date.now() };
+    await db.put('overrides', override);
+    await fileOverride(override);
+    wrote = true;
+  }
+  if (wrote) touched();
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {
   const db = await getDB();
-  await db.delete('overrides', overrideKey(provider, token));
-  await unfileOverride(overrideKey(provider, token));
-  // A German page also clears the entry as it was keyed before there was a
-  // language to key it by. Deleting a key that is not there is not an error.
-  if (LANG === 'de') {
-    await db.delete('overrides', legacyKey(provider, token));
-    await unfileOverride(legacyKey(provider, token));
+  /* Every row the word has, by its own key rather than by a rebuilt one. The
+     two constructed keys this used to delete covered the two spellings we knew
+     about; a word is gone when the entries the list would show for it are, and
+     that is a thing to look up rather than to predict. */
+  for (const held of await entriesFor(provider, token)) {
+    await db.delete('overrides', held.key);
+    await unfileOverride(held.key);
   }
   touched();
 }

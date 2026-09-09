@@ -24,6 +24,7 @@ import { topicsOf } from '../core/tags.ts';
 import { ownImageId } from '../core/types.ts';
 import { symbolView, type SymbolView } from './symbols.ts';
 import { openSlotPicker } from './slotPicker.ts';
+import { confirmDialog } from './dialog.ts';
 import { actionMenu } from './menu.ts';
 import { typingBox } from './composer.ts';
 import { renameField } from '@lautstark/design/rename';
@@ -224,6 +225,20 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
     });
   }
 
+  async function drop(entry: Override): Promise<void> {
+    const name = entry.caption?.trim() || entry.token;
+    const sure = await confirmDialog({
+      title: t('ui.remove_word_title', { word: name }),
+      body: t('ui.remove_word_body'),
+      confirmLabel: t('ui.remove_word_confirm'),
+      danger: true,
+    });
+    if (!sure) return;
+    await deleteOverride(entry.provider, entry.token);
+    options.onChanged();
+    refresh();
+  }
+
   async function retag(entry: Override, tags: string[]): Promise<void> {
     editing = null;
     await setOverrideTags(entry.provider, entry.token, tags);
@@ -254,9 +269,18 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       : t('ui.add_words_placeholder'));
   }
 
+  /* Which read is the current one. Two writes in quick succession start two
+     reads, and the slower one landing second would repaint the list as it was
+     before the second write — a word deleted and back again in the same
+     second, which is exactly what "it is not deleted" looks like. */
+  let reading = 0;
+
   function refresh(): void {
     letGo();
-    void listOverrides(options.providerId()).then(paint);
+    const mine = (reading += 1);
+    void listOverrides(options.providerId()).then((read) => {
+      if (mine === reading) paint(read);
+    });
   }
 
   const tagsOf = (entry: Override) => entry.tags ?? [];
@@ -447,11 +471,11 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       el('button', {
         class: 'word__drop', text: '×',
         attrs: { type: 'button', 'aria-label': t('ui.remove_word', { word: entry.token }) },
-        on: { click: async () => {
-          await deleteOverride(entry.provider, entry.token);
-          options.onChanged();
-          refresh();
-        } },
+        /* Asked first. The settings panel this replaced had a labelled
+           „Entfernen" button that took a deliberate press; a cross in the
+           corner of a card takes a stray one, and what it throws away is a
+           picture somebody chose and a text they wrote. */
+        on: { click: () => void drop(entry) },
       }),
       /* What is stored, in the order it is stored: the picture, the words that
          go with it, and — only when they differ — the word this answers to.
