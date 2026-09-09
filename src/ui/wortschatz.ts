@@ -17,7 +17,7 @@ import type { Candidate, Override, ProviderId, Slot } from '../core/types.ts';
 import type { SymbolProvider } from '@lautstark/bildquelle';
 import {
   deleteOverride, dropTag, listOverrides, newId, putOverride, putOwnImage, renameTag,
-  setOverrideTags,
+  setOverrideCaption, setOverrideTags,
 } from '../db/repo.ts';
 import { el, fill } from './dom.ts';
 import { topicsOf } from '../core/tags.ts';
@@ -64,14 +64,20 @@ export interface WortschatzUi {
 
 const fold = (tag: string) => tag.trim().toLowerCase();
 
-/** A word on its way to being an entry, for the picker, which speaks Slot. */
-const asSlot = (token: string): Slot => ({
+/**
+ * An entry as the picker sees it — that dialog speaks Slot, and an entry is the
+ * same three facts a slot carries: the word, the picture, and the words under
+ * it. Passing the caption in is what makes „Text zum Symbol" open with
+ * what is stored rather than empty.
+ */
+const asSlot = (token: string, entry?: Override): Slot => ({
   id: newId(),
   sourceToken: token,
   concept: token.toLowerCase(),
   origin: 'manual',
-  choice: {},
+  choice: entry ? { [entry.provider]: entry.symbolId } : {},
   candidates: {},
+  ...(entry?.caption ? { label: entry.caption } : {}),
 });
 
 export function wortschatzView(options: WortschatzOptions): WortschatzUi {
@@ -180,13 +186,14 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
     if (lens) await setOverrideTags(options.providerId(), word, [...held, lens]);
   }
 
-  function pick(word: string, held: readonly string[]): void {
+  function pick(word: string, entry?: Override): void {
+    const held = entry?.tags ?? [];
     const done = () => {
       pending = pending.filter((one) => one !== word);
       options.onChanged();
       refresh();
     };
-    openSlotPicker(asSlot(word), options.providerId(), {
+    openSlotPicker(asSlot(word, entry), options.providerId(), {
       onChoose: (candidate) => void file(word, candidate, held).then(done),
       /* A picture of the person's own is the case this whole place exists for
          — Oma, Bello, Kita Sonnenschein — so it has to work here and not only
@@ -198,9 +205,20 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       /* The rest of the picker acts on a Slot in a Sammlung: a crossed-out
          symbol and a caption belong to the field a word sits in, not to the
          word. Nothing here to do, and nothing to pretend. */
+      /* The words that go with the symbol are half of what an entry is, so this is
+         the one field of the dialog that means the same thing here as it does
+         in a Sammlung — and it means it for every sentence, rather than for
+         one row. It was thrown away for a week, which is what made the entry
+         impossible to read: the card showed a word and the picker offered to
+         change a caption that went nowhere. */
+      onLabel: (caption) => void setOverrideCaption(options.providerId(), word, caption)
+        .then(() => { options.onChanged(); refresh(); }),
+      /* The rest acts on a Slot in a Sammlung. Crossing a symbol out is a thing
+         a sentence does to a word in one place, and removing the slot removes
+         the field rather than the word — the × on the card is what removes
+         this. Nothing to do, and nothing to pretend. */
       onClearOwnImage: () => undefined,
       onNegate: () => undefined,
-      onLabel: () => undefined,
       onRemove: () => undefined,
       onClose: () => undefined,
     });
@@ -407,12 +425,12 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       el('button', {
         class: 'word__pic word__pic--asking', text: '?',
         attrs: { type: 'button', 'aria-label': t('ui.pick_picture_for', { word }) },
-        on: { click: () => pick(word, []) },
+        on: { click: () => pick(word) },
       }),
       el('b', { class: 'word__name', text: word }),
       el('span', { class: 'tags' },
         el('button', { class: 'tag tag--ask', text: t('ui.pick_picture'),
-          attrs: { type: 'button' }, on: { click: () => pick(word, []) } })),
+          attrs: { type: 'button' }, on: { click: () => pick(word) } })),
     );
   }
 
@@ -424,7 +442,7 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
       el('button', {
         class: 'word__pic',
         attrs: { type: 'button', 'aria-label': t('ui.change_picture_for', { word: entry.token }) },
-        on: { click: () => pick(entry.token, tagsOf(entry)) },
+        on: { click: () => pick(entry.token, entry) },
       }, view.node),
       el('button', {
         class: 'word__drop', text: '×',
@@ -435,7 +453,15 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
           refresh();
         } },
       }),
-      el('b', { class: 'word__name', text: entry.token }),
+      /* What is stored, in the order it is stored: the picture, the words that
+         go with it, and — only when they differ — the word this answers to.
+         The second line is why: „Omi" under a picture that answers to „oma" is
+         a fact somebody has to be able to see, or the entry is a black box
+         with a photograph in it. */
+      el('b', { class: 'word__name', text: entry.caption?.trim() || entry.token }),
+      entry.caption?.trim() && entry.caption.trim().toLowerCase() !== entry.token
+        ? el('span', { class: 'word__for', text: t('ui.stands_for', { word: entry.token }) })
+        : null,
       el('span', { class: 'tags' },
         ...tagsOf(entry).map((tag) => badge(entry, tag)),
         ...suggestedFor(entry).map((tag) => el('span', { class: 'tag tag--auto', text: tag })),

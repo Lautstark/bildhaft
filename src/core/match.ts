@@ -43,12 +43,20 @@ export async function buildSlots(raw: string, ctx: MatchContext): Promise<Slot[]
         : null;
     },
   });
-  return words.map((word) => toSlot(word, ctx.provider.id));
+  return words.map((word) => toSlot(word, ctx.provider.id, ctx.overrides));
 }
 
-function toSlot(word: ResolvedWord, provider: ProviderId): Slot {
+function toSlot(word: ResolvedWord, provider: ProviderId, overrides: Map<string, Override>): Slot {
   const chosen = word.candidates[0]?.id ?? null;
   const kept = word.candidates.slice(0, STORED_CANDIDATES);
+  /* The words that go with the symbol, when the Wortschatz has been told what
+     they should be. `prefer` above can only hand back a picture — a candidate is an
+     id, a name and a score — so the caption has to be read here, from the same
+     entry, or setting one in the Wortschatz would change nothing anywhere a
+     sentence is written. It lands on the slot as if a person had typed it,
+     because that is what it is: they typed it once, for every sentence. */
+  const caption = (overrides.get(word.concept.toLowerCase())
+    ?? overrides.get(word.sourceToken.toLowerCase()))?.caption;
   return {
     id: newId(),
     sourceToken: word.sourceToken,
@@ -56,6 +64,7 @@ function toSlot(word: ResolvedWord, provider: ProviderId): Slot {
     origin: word.origin,
     choice: { [provider]: chosen },
     candidates: { [provider]: kept },
+    ...(caption ? { label: caption } : {}),
   };
 }
 

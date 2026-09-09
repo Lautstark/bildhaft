@@ -303,6 +303,25 @@ export interface Override {
    */
   categories?: readonly string[];
   wordClass?: WordClass;
+  /**
+   * The text that goes with the symbol, when it should not be the word itself.
+   *
+   * Not `label`, which is the *source's* name for the picture — „washerwoman"
+   * for the pictogram somebody chose for Oma — and exists so a stored entry can
+   * be handed back to the pipeline as a candidate. That name is ARASAAC's and
+   * is often in the wrong language and always beside the point on paper. This
+   * one is the household's, it is what gets printed, and it is the second half
+   * of what an entry *is*: a word, a picture, and the words that go with it.
+   *
+   * Not "the text *under* the symbol", which is what the picker called it until
+   * somebody pointed out that it is a claim about a layout. Under is where a
+   * sentence row puts it; a card, a Tafel or a Fächer put it wherever they put
+   * it, and the text is the same text.
+   *
+   * Absent means the word. Every entry made before this had no way to say
+   * anything else, which is the same thing.
+   */
+  caption?: string;
   updatedAt: number;
 }
 

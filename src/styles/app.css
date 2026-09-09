@@ -984,3 +984,6 @@ kbd {
 .tag-filters:empty { display: none; }
 .tag-filters__sep { width: 1px; height: 16px; background: var(--line); margin: 0 3px; }
 .chip__pin { cursor: pointer; margin-left: 6px; font-size: 11px; }
+/* The word an entry answers to, when the text on it says something else. Small
+   and quiet: it is the key, not the caption, and only shown when they differ. */
+.word__for { font-size: 11px; color: var(--text-faint); margin-top: -3px; }

@@ -23,7 +23,7 @@ export interface PickerHandlers {
   /** Lays a red cross over the symbol — METACOM's "nicht". Leaves the dialog open. */
   onNegate: (negated: boolean) => void;
   /**
-   * The words under the symbol. Empty means the word the sentence used.
+   * The words that go with the symbol. Empty means the word the sentence used.
    * Leaves the dialog open: the wording is a property of the field, and a
    * person setting one is usually still looking for the right picture.
    */
@@ -151,7 +151,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   captionInput.value = slot.label ?? '';
 
   const captionRow = isNew ? el('span') : el('label', { class: 'picker__caption' },
-    el('span', { class: 'small muted', text: t('ui.text_under') }),
+    el('span', { class: 'small muted', text: t('ui.text_for') }),
     captionInput,
   );
 
@@ -317,7 +317,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   }
 
   /*
-   * Typing writes through, so the caption under the symbol in the row behind the
+   * Typing writes through, so the caption beside the symbol in the row behind the
    * dialog updates as it is typed. Debounced because every write is a database
    * write and a repaint of every row.
    */

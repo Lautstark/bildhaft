@@ -419,6 +419,7 @@ export async function putOverride(
     symbolId: candidate.id,
     label: candidate.label,
     ...(held?.tags?.length ? { tags: held.tags } : {}),
+    ...(held?.caption ? { caption: held.caption } : {}),
     /* What the source says, as it says it. Absent stays absent rather than
        being written as an empty list, so an entry that predates this and one
        whose source knows nothing are the same record. */
@@ -532,6 +533,30 @@ export async function dropTag(tag: string): Promise<void> {
     touchedAny = true;
   }
   if (touchedAny) touched();
+}
+
+/**
+ * Sets the words under the symbol, or takes them off again.
+ *
+ * Empty removes the field rather than storing `''`, so an entry that never had
+ * a caption and one whose caption was cleared are the same record — and both
+ * mean "the word itself", which is what `slotCaption` falls back to.
+ */
+export async function setOverrideCaption(
+  provider: ProviderId, token: string, caption: string,
+): Promise<void> {
+  const db = await getDB();
+  const held = await db.get('overrides', overrideKey(provider, token));
+  if (!held) return;
+
+  const text = caption.trim();
+  if ((held.caption ?? '') === text) return;
+
+  const { caption: _cleared, ...rest } = held;
+  const override: Override = { ...rest, ...(text ? { caption: text } : {}), updatedAt: Date.now() };
+  await db.put('overrides', override);
+  await fileOverride(override);
+  touched();
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {

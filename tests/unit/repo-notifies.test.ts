@@ -27,6 +27,7 @@ const MUTATORS = [
   'clearEverything',
   'putOverride',
   'setOverrideTags',
+  'setOverrideCaption',
   'renameTag',
   'dropTag',
   'deleteOverride',
@@ -113,6 +114,11 @@ describe('the change notifier', () => {
       await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
       heard = 0;
       return repo.setOverrideTags('arasaac', 'Hund', ['Tiere']);
+    },
+    setOverrideCaption: async () => {
+      await repo.putOverride('arasaac', 'Oma', { id: '123', label: 'washerwoman', score: 100 });
+      heard = 0;
+      return repo.setOverrideCaption('arasaac', 'Oma', 'Omi');
     },
     renameTag: async () => {
       await repo.putOverride('arasaac', 'Hund', { id: '123', label: 'Hund', score: 100 });
