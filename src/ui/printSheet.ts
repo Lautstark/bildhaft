@@ -367,7 +367,9 @@ export function printSheet(options: SheetOptions): HTMLElement {
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
   if (title) sheet.appendChild(el('h1', { class: 'ps-title', text: title }));
 
-  if (settings.layout === 'sheet') {
+  if (settings.layout === 'einkaufsliste') {
+    for (const node of einkaufsliste(sentences, settings, provider)) sheet.appendChild(node);
+  } else if (settings.layout === 'sheet') {
     const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
       + (title ? TITLE_ALLOWANCE_MM : 0);
     for (const node of cardSheet(sentences, settings, provider, reserve)) sheet.appendChild(node);
@@ -473,6 +475,142 @@ function cardSheet(
     }, ...chunk.map((slot) => card(slot, settings, provider, true))));
   }
   return pages;
+}
+
+/* ------------------------------------------------------- Einkaufsliste ---- */
+
+/**
+ * How many zones a block of the board holds, and how they are arranged.
+ *
+ * Fifteen and fifteen, in the shapes that fit beside each other on a landscape
+ * sheet: a tall block to shop from, a wide one in the cart. Measured rather than
+ * chosen — at 25 mm cards the two blocks come to 302 mm and the sheet is 277.
+ */
+const BOARD = { list: { cols: 3, rows: 5 }, cart: { cols: 5, rows: 3 } };
+
+/** The air a laminated card needs before it will go into a zone at all. */
+const ZONE_AIR_MM = 3;
+const ZONE_GAP_MM = 2;
+/* What the cart reaches beyond its basket — handle up and out, wheels below —
+   is in print.css as the margins around `.ps-cart` and the board's own gap.
+   Kept there rather than here because it is room on the page, and the page is
+   what that file is about. Change one and check the other. */
+
+/** One empty zone: the size a laminated card comes back at, and its velcro dot. */
+const zone = (): HTMLElement => el('span', { class: 'ps-zone' }, el('span', { class: 'ps-dot' }));
+
+const zones = (cols: number, rows: number, extra = ''): HTMLElement =>
+  el('div', { class: `ps-zones${extra}`, style: { '--cols': String(cols) } },
+    ...Array.from({ length: cols * rows }, zone));
+
+/**
+ * The three sheets of an Einkaufsliste, which only mean anything together.
+ *
+ * **The board** is blank and stays blank: it is laminated once and the cards
+ * change, so nothing that changes may be printed on it — no date, no words, no
+ * count. Fifteen zones to shop from, fifteen in the cart, and a card moves from
+ * one to the other when the thing is in the trolley.
+ *
+ * **The cards** carry no word. A card that is handed around in a shop has one
+ * job, and a word under it makes the picture smaller rather than clearer — the
+ * word is on the board nowhere and on the storage sheet always.
+ *
+ * **The storage sheet** is the part most templates leave out and without which
+ * the material is in a bag by the third week: every card has a labelled place,
+ * with its symbol printed faintly so a child finds it without reading and the
+ * word so an adult does not have to hunt. The empty place is the information.
+ *
+ * Each is a `ps-grid`, which is what makes it a page of its own — see
+ * planPages. Nothing here paginates by itself.
+ */
+function einkaufsliste(
+  sentences: Sentence[], settings: PrintSettings, provider: ProviderId,
+): HTMLElement[] {
+  /* The zone in millimetres, which every part of this material is measured
+     from — and which the cart has to be told, because its drawing *is* the
+     block of zones and a hard-coded viewBox would stretch the moment somebody
+     changes the card size. */
+  const zoneMm = settings.symbolSizeMm + 2 * settings.cutMarginMm + ZONE_AIR_MM;
+  const cartW = BOARD.cart.cols * zoneMm + (BOARD.cart.cols - 1) * ZONE_GAP_MM;
+  const cartH = BOARD.cart.rows * zoneMm + (BOARD.cart.rows - 1) * ZONE_GAP_MM;
+
+  const board = el('div', { class: 'ps-grid ps-board ps-grid--page' },
+    zones(BOARD.list.cols, BOARD.list.rows),
+    el('div', { class: 'ps-cart' },
+      cartArt(cartW, cartH),
+      zones(BOARD.cart.cols, BOARD.cart.rows, ' ps-zones--cart')));
+
+  /* The same de-duplication a card sheet does, and for the same reason: a word
+     used twice is one card, and one place to keep it. */
+  const seen = new Set<string>();
+  const cards: Slot[] = [];
+  for (const sentence of sentences) {
+    for (const slot of sentence.slots) {
+      const key = `${symbolIdFor(slot, provider) ?? 'blank'}|${slotCaption(slot).toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cards.push(slot);
+    }
+  }
+
+  const perPage = 35;
+  const out: HTMLElement[] = [board];
+  for (let start = 0; start < Math.max(cards.length, 1); start += perPage) {
+    out.push(el('div', { class: 'ps-grid ps-cut ps-grid--page' },
+      ...cards.slice(start, start + perPage)
+        .map((slot) => card(slot, { ...settings, showLabel: false }, provider))));
+  }
+  for (let start = 0; start < Math.max(cards.length, 1); start += perPage) {
+    const last = start + perPage >= cards.length;
+    out.push(el('div', { class: `ps-grid ps-store${last ? '' : ' ps-grid--page'}` },
+      ...cards.slice(start, start + perPage).map((slot) => el('div', { class: 'ps-place' },
+        card(slot, { ...settings, showLabel: false }, provider),
+        el('span', { class: 'ps-place__word', text: slotCaption(slot) })))));
+  }
+  return out;
+}
+
+/**
+ * The cart, drawn rather than decorated onto the page.
+ *
+ * Its basket is *straight*, and that is the one thing about it worth a note: a
+ * tapering basket is narrower at the bottom than the rectangle of zones inside
+ * it, so the lower rows stand out of it on both sides. Which they did. The
+ * handle points outwards and away, which there is room for on a landscape sheet
+ * and none for on a portrait one.
+ *
+ * `preserveAspectRatio="none"` is safe because the viewBox is the zone block in
+ * millimetres — stretch it and the wheels would be eggs.
+ */
+function cartArt(widthMm: number, heightMm: number): SVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  /* One unit is one millimetre, because the box *is* the zones. That is what
+     lets the numbers below be reaches in millimetres rather than guesses, and
+     what keeps the wheels round however big the cards are. */
+  svg.setAttribute('viewBox', `0 0 ${widthMm} ${heightMm}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'ps-cart__art');
+  const w = widthMm;
+  const h = heightMm;
+  for (const d of [
+    `M -5 -5 H ${w + 5} V ${h + 5} H -5 Z`,
+    'M -5 -5 L -13 -14 H -22',
+    `M -5 ${h + 5} L 4 ${h + 16} H ${w - 7}`,
+  ]) {
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  for (const cx of [24, w - 21]) {
+    const wheel = document.createElementNS(ns, 'circle');
+    wheel.setAttribute('cx', String(cx));
+    wheel.setAttribute('cy', String(h + 22));
+    wheel.setAttribute('r', '6');
+    svg.append(wheel);
+  }
+  return svg;
 }
 
 /** Whether anything is asked for that has to be drawn around the symbol. */

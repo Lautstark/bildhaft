@@ -120,6 +120,10 @@ export function mountApp(root: HTMLElement): void {
     const open = activeCollection();
     return open ? kindOf(open) : 'satzstreifen';
   };
+  /* Zwei Vorlagen halten Wörter und teilen sich deshalb alles, was Wörter
+     angeht: die Kachelwand, die Leiste, den Zähler. Was sie unterscheidet, ist
+     einzig, was hinten aus dem Drucker kommt. */
+  const holdsWords = () => kind() !== 'satzstreifen';
 
   /**
    * The symbol source the page is drawing in: the open collection's own answer,
@@ -499,7 +503,7 @@ export function mountApp(root: HTMLElement): void {
     && before.collectionId === after.collectionId;
 
   function renderRows(): void {
-    if (kind() === 'wortkarten') { renderCards(); return; }
+    if (holdsWords()) { renderCards(); return; }
     for (const { view } of cardViews.values()) view.destroy();
     cardViews.clear();
     /* Back to rows, and said here rather than only in renderCards(). The host
@@ -750,10 +754,10 @@ export function mountApp(root: HTMLElement): void {
       providerReady: provider().isReady(),
       inCollection: Boolean(collection),
       providerOwned: !followsDefault(),
-      words: kind() === 'wortkarten',
+      words: holdsWords(),
     });
 
-    rowCount.textContent = kind() === 'wortkarten'
+    rowCount.textContent = holdsWords()
       ? (sentences.length === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: sentences.length }))
       : sentences.length === 1
         ? t('ui.n_rows_one')
@@ -1279,7 +1283,7 @@ export function mountApp(root: HTMLElement): void {
     let firstError: unknown = null;
 
     try {
-      const words = kind() === 'wortkarten';
+      const words = holdsWords();
       const options = {
         provider: provider(),
         stopwords: new Set(settings.stopwords[LANG]),
@@ -1762,6 +1766,41 @@ export function mountApp(root: HTMLElement): void {
     else await handleNewCollection();
   }
 
+  /**
+   * The print settings a template opens on.
+   *
+   * A Wortkarten-Sammlung opens on the card sheet, and only there: a strip of
+   * one symbol is a card with the wrong margins, so the remembered layout in
+   * that case is the other template's setting arriving in this one. A
+   * Satzstreifen-Sammlung keeps whatever was chosen, because cutting sentences
+   * into cards is a thing people do.
+   *
+   * An Einkaufsliste opens on itself, and brings its own millimetres with it.
+   * Fifteen zones beside fifteen more on one sheet is only possible at 20 mm,
+   * measured rather than chosen — and a 3 mm laminating margin, because 5 mm
+   * around a 20 mm card is a third of the card. Those are facts about this
+   * material and not preferences, which is why the material carries them and
+   * the global settings do not.
+   */
+  function printFor(print: PrintSettings): PrintSettings {
+    if (kind() === 'einkaufsliste') {
+      return {
+        ...print,
+        layout: 'einkaufsliste',
+        paper: 'a4',
+        orientation: 'landscape',
+        symbolSizeMm: 20,
+        cutMarginMm: 3,
+        showLabel: true,
+        showCollectionTitle: true,
+      };
+    }
+    if (kind() === 'wortkarten' && print.layout !== 'sheet') {
+      return { ...print, layout: 'sheet' };
+    }
+    return print;
+  }
+
   function openPrint(ids: string[]): void {
     const byId = new Map(sentences.map((s) => [s.id, s]));
     const chosen = ids.map((id) => byId.get(id)).filter((s): s is Sentence => Boolean(s));
@@ -1778,9 +1817,7 @@ export function mountApp(root: HTMLElement): void {
 
          Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
          because cutting sentences into cards is a thing people actually do. */
-      settings: kind() === 'wortkarten' && settings.print.layout !== 'sheet'
-        ? { ...settings.print, layout: 'sheet' as const }
-        : settings.print,
+      settings: printFor(settings.print),
       onChange: (print: PrintSettings) => { if (settings) persistSettings({ ...settings, print }); },
       provider: providerId(),
       attribution: provider().attribution,

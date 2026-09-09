@@ -373,3 +373,94 @@
    */
   #print-root .ps-page:last-child { break-after: avoid; page-break-after: avoid; }
 }
+
+/* ------------------------------------------------------- Einkaufsliste ---- */
+
+/* One number governs the material: the zone a laminated card comes back at.
+   Everything on all three sheets is measured from it, which is what keeps a
+   card, its place on the board and its place in the box the same size. The
+   3 mm is the air a laminated card needs to go into a zone at all. */
+.ps-sheet { --zone: calc(var(--sym) + 2 * var(--cut) + 3mm); }
+
+.ps-board {
+  display: flex;
+  align-items: flex-start;
+  /* Wide enough for the cart's handle to reach into, because that is the only
+     room there is: the two blocks and the handle are the whole sheet. */
+  gap: 24mm;
+}
+.ps-zones {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--zone));
+  gap: 2mm;
+  align-content: start;
+}
+.ps-zone {
+  width: var(--zone);
+  height: var(--zone);
+  border: 0.3mm solid #c9c9c9;
+  border-radius: 2mm;
+  display: grid;
+  place-items: center;
+}
+/* Where the velcro dot goes. Dashed and pale, so it says "here" without being
+   a circle in the way when nothing is stuck on it. */
+.ps-dot {
+  width: 5mm;
+  height: 5mm;
+  border: 0.3mm dashed #d2d2d2;
+  border-radius: 50%;
+}
+
+/* The cart is drawn *around* its zones: the svg is the block, the zones sit in
+   it, and the handle and wheels reach outside it through overflow. The margins
+   are that reach — without them the wheels would be cut by the page edge. */
+.ps-cart { position: relative; margin: 18mm 0 32mm 0; }
+.ps-cart__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: #b4b9be;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ps-zones--cart { position: relative; }
+
+/* The cards to cut. No word — the picture is the card. */
+.ps-cut {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+}
+
+/* Where each card lives when it is not on the board. Symbol and word, both:
+   the symbol so a child finds it without reading, the word so an adult does
+   not have to hunt. A place is a zone with a caption under it. */
+.ps-store {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+  gap: 2mm;
+}
+.ps-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--zone);
+  padding-bottom: 1mm;
+  border: 0.3mm solid #c9c9c9;
+  border-radius: 2mm;
+}
+.ps-place__word {
+  font-size: calc(var(--label) * 0.85);
+  line-height: 1.1;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

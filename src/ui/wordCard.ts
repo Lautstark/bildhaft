@@ -11,7 +11,7 @@
  * a card is a card whether the word is the household's or this Sammlung's.
  */
 
-import type { ProviderId, Sentence } from '../core/types.ts';
+import type { CollectionKind, ProviderId, Sentence } from '../core/types.ts';
 import { slotCaption, symbolIdFor } from '../core/types.ts';
 import { el } from './dom.ts';
 import { symbolView, type SymbolView } from './symbols.ts';
@@ -81,7 +81,7 @@ export function wordCard(
  * lines between them. The dashed lines are the whole argument — they say
  * without a sentence that this paper gets cut up and the other one does not.
  */
-export function templateArt(kind: 'satzstreifen' | 'wortkarten'): SVGElement {
+export function templateArt(kind: CollectionKind): SVGElement {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 132 46');
   svg.setAttribute('aria-hidden', 'true');
@@ -97,6 +97,31 @@ export function templateArt(kind: 'satzstreifen' | 'wortkarten'): SVGElement {
     add('rect', { class: 'tpl__ink', x: 4, y: 9, width: 124, height: 28, rx: 4 });
     for (let i = 0; i < 4; i += 1) {
       add('rect', { class: 'tpl__fill', x: 12 + i * 20, y: 16, width: 14, height: 14, rx: 2 });
+    }
+    return svg;
+  }
+
+  /* Three sheets that only mean anything together, so the tile draws all three:
+     the board with its cart, the cards to cut, and the sheet they live on. */
+  if (kind === 'einkaufsliste') {
+    add('rect', { class: 'tpl__ink', x: 3, y: 8, width: 40, height: 30, rx: 3 });
+    add('path', { class: 'tpl__ink', d: 'M23 14 h16 v12 h-16 z' });
+    add('path', { class: 'tpl__ink', d: 'M23 14 l-4 -4' });
+    add('circle', { class: 'tpl__ink', cx: 27, cy: 29, r: 2 });
+    add('circle', { class: 'tpl__ink', cx: 36, cy: 29, r: 2 });
+    for (let i = 0; i < 3; i += 1) add('rect', { class: 'tpl__fill', x: 7, y: 12 + i * 8, width: 6, height: 6, rx: 1 });
+    for (let col = 0; col < 2; col += 1) {
+      for (let row = 0; row < 3; row += 1) {
+        add('rect', { class: 'tpl__ink', x: 54 + col * 14, y: 8 + row * 11, width: 11, height: 8, rx: 2 });
+      }
+    }
+    add('line', { class: 'tpl__cut', x1: 51, y1: 6, x2: 51, y2: 42 });
+    add('line', { class: 'tpl__cut', x1: 84, y1: 6, x2: 84, y2: 42 });
+    for (let col = 0; col < 3; col += 1) {
+      for (let row = 0; row < 3; row += 1) {
+        add('rect', { class: 'tpl__ink', x: 92 + col * 13, y: 8 + row * 11, width: 10, height: 6, rx: 1 });
+        add('rect', { class: 'tpl__fill', x: 92 + col * 13, y: 15 + row * 11, width: 7, height: 2, rx: 1 });
+      }
     }
     return svg;
   }

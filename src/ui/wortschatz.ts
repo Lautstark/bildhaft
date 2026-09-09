@@ -264,9 +264,10 @@ export function wortschatzView(options: WortschatzOptions): WortschatzUi {
   /* The placeholder says what typing here will do, and in a tag that is one
      thing more than adding a word. */
   function paintComposer(): void {
-    box.setPlaceholder(lens
-      ? t('ui.add_words_to_tag_placeholder', { tag: lens })
-      : t('ui.add_words_placeholder'));
+    box.says(
+      lens ? t('ui.add_words_to_tag_placeholder', { tag: lens }) : t('ui.add_words_placeholder'),
+      t('ui.add_words_label'),
+    );
   }
 
   /* Which read is the current one. Two writes in quick succession start two

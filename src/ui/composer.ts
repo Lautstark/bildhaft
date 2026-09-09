@@ -59,8 +59,13 @@ export interface TypingBoxOptions {
 
 export interface TypingBox {
   node: HTMLElement;
-  /** What the empty box says it is for, which is not always the same sentence. */
-  setPlaceholder(text: string): void;
+  /**
+   * What the box says it is for — to somebody reading it and to somebody
+   * hearing it. Both, always: the placeholder changed with the template and the
+   * accessible name did not, so a box that showed „Wörter hinzufügen"
+   * announced „Satz eingeben" for a week.
+   */
+  says(placeholder: string, label: string): void;
   /** Sets the text without moving the caret when it already says this. */
   show(value: string, busy: boolean): void;
   focus(): void;
@@ -125,7 +130,10 @@ export function typingBox(options: TypingBoxOptions): TypingBox {
 
   return {
     node,
-    setPlaceholder: (text) => input.setAttribute('placeholder', text),
+    says(placeholder, label) {
+      input.setAttribute('placeholder', placeholder);
+      input.setAttribute('aria-label', label);
+    },
     show(value, busy) {
       if (input.value !== value) {
         input.value = value;
@@ -177,7 +185,10 @@ export function composer(handlers: ComposerHandlers): {
     /* The same box says two things, because it does two things: a sentence is
        translated into a row of symbols, a word becomes one card. Enter and
        Shift+Enter mean the same in both, which is why only the wording moves. */
-    box.setPlaceholder(t(state.words ? 'ui.add_words_placeholder' : 'ui.composer_placeholder'));
+    box.says(
+      t(state.words ? 'ui.add_words_placeholder' : 'ui.composer_placeholder'),
+      t(state.words ? 'ui.add_words_label' : 'ui.composer_label'),
+    );
     hint.innerHTML = t(state.words ? 'ui.add_words_hint' : 'ui.composer_hint');
     box.show(state.value, state.busy);
     drawProvider(state);

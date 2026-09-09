@@ -275,7 +275,7 @@ export interface Collection {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'einkaufsliste'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /** What a Sammlung is when it has never been asked. */
@@ -362,7 +362,15 @@ export interface Override {
 
 /* ---------------------------------------------------------------- print --- */
 
-export type LayoutMode = 'strip' | 'sheet';
+/**
+ * `einkaufsliste` is not a third way of laying cards out — it is a *material*:
+ * three sheets that only mean anything together, a blank board with velcro
+ * zones, the cards to cut for it, and a sheet where each card has a labelled
+ * place to live. It sits here rather than beside them because everything that
+ * builds a page reads this one field, and a material that could not say which
+ * pages it wants would have to be threaded through every one of them.
+ */
+export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**
