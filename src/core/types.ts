@@ -266,8 +266,34 @@ export interface Collection {
    */
   kind?: CollectionKind;
 
+  /**
+   * The grid of a Tafel: how many fields across and down, and which card lies
+   * in each. Only a `tafel` has one, and one without it is a Tafel that has not
+   * been sized yet — `boardOf()` in core/board.ts answers 4 × 3 for it.
+   *
+   * On the Sammlung rather than on the print settings, because it is not a
+   * way of printing this material, it *is* the material: the same words in a
+   * different arrangement are a different Tafel. A field may be empty on
+   * purpose — the space is what tells a child where the card is missing.
+   */
+  board?: Board;
+
   createdAt: number;
   updatedAt: number;
+}
+
+/**
+ * A grid with a place for a card in each field.
+ *
+ * `cells` is row-major and exactly `cols * rows` long; an entry is the id of
+ * the card lying there or `null` for a field left free. Sentence ids rather
+ * than copies of the cards, so a card corrected on the wall is corrected on
+ * the Tafel — it is the same card.
+ */
+export interface Board {
+  cols: number;
+  rows: number;
+  cells: (string | null)[];
 }
 
 /**
@@ -275,7 +301,7 @@ export interface Collection {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'einkaufsliste'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /** What a Sammlung is when it has never been asked. */

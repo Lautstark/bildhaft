@@ -102,3 +102,69 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(last!.x + last!.width).toBeLessThan(basket!.x + basket!.width);
   expect(last!.y + last!.height).toBeLessThan(basket!.y + basket!.height);
 });
+
+/**
+ * A Tafel is a grid whose fields are filled by hand, and some not at all.
+ *
+ * Held here: a word typed into the bar lands beside the Tafel and not on it;
+ * dragged into a field it lies there and nowhere else; a field left free is
+ * printed free, the same size as the others; and a grid made smaller keeps the
+ * cards that still have a place. Those are the four ways a Tafel differs from
+ * a sheet of cards, and each is a card silently gone when it fails.
+ */
+test('a Tafel takes its cards by dragging, and prints its free fields', async ({ page }) => {
+  await showSidebar(page);
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+
+  const tile = page.getByRole('button', { name: /^Tafel/ });
+  await tile.click();
+  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill('Apfel\nBanane');
+  await bar.press('Enter');
+  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel', 'Banane']);
+
+  // Sized 4 × 3 until somebody says otherwise, and every field free.
+  const cells = page.locator('.board .cell');
+  await expect(cells).toHaveCount(12);
+  await expect(page.locator('.board .cell--free')).toHaveCount(12);
+
+  // The drag itself, from the tray into the sixth field.
+  await page.locator('.tray .board-card').filter({ hasText: 'Apfel' }).dragTo(cells.nth(5));
+  await expect(cells.nth(5).locator('.word__name')).toHaveText('Apfel');
+  await expect(page.locator('.tray .word__name')).toHaveText(['Banane']);
+
+  // And on into another field: it moves, it is not copied.
+  await cells.nth(5).locator('.board-card').dragTo(cells.nth(1));
+  await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
+  await expect(cells.nth(5)).toHaveClass(/cell--free/);
+
+  // Without a mouse: the arrow puts a card into the first free field.
+  await page.getByRole('button', { name: '„Banane“ ins erste freie Feld legen' }).click();
+  await expect(cells.nth(0).locator('.word__name')).toHaveText('Banane');
+  await expect(page.locator('.tray .word__name')).toHaveCount(0);
+
+  // A smaller grid keeps what still has a place. Both cards are in the first
+  // row, so 3 × 2 keeps them and the twelve fields become six.
+  await page.getByLabel('Spalten').fill('3');
+  await page.getByLabel('Zeilen').fill('2');
+  await expect(cells).toHaveCount(6);
+  await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
+
+  // The paper: six fields, two with a card, four free and drawn anyway.
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  const sheet = page.locator('.preview-frame');
+  await expect(sheet.locator('.ps-tafel')).toHaveCount(1);
+  await expect(sheet.locator('.ps-tafel .ps-card')).toHaveCount(6);
+  await expect(sheet.locator('.ps-tafel .ps-card--empty')).toHaveCount(4);
+  await expect(sheet.locator('.ps-tafel .ps-card__label')).toHaveText(['Banane', 'Apfel']);
+  // A free field is exactly the size of a full one, or the grid is not a grid.
+  const full = await sheet.locator('.ps-tafel .ps-card').first().boundingBox();
+  const free = await sheet.locator('.ps-tafel .ps-card--empty').first().boundingBox();
+  expect(Math.round(free!.width)).toBe(Math.round(full!.width));
+  expect(Math.round(free!.height)).toBe(Math.round(full!.height));
+  // The grid is the Sammlung's, so the dialog does not offer to change it.
+  await expect(page.getByLabel('Spalten')).toHaveCount(1);
+});

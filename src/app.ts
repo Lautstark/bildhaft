@@ -2,7 +2,8 @@ import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
 import { COLLECTION_KINDS, kindOf, sentenceCaption } from './core/types.ts';
-import type { CollectionKind } from './core/types.ts';
+import { boardOf, placedIds, placeOn, resizeBoard, takeOff } from './core/board.ts';
+import type { Board, CollectionKind } from './core/types.ts';
 import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { setSymbolLanguage } from '@lautstark/bildquelle';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
@@ -36,6 +37,7 @@ import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
 import { wortschatzView as makeWortschatz } from './ui/wortschatz.ts';
 import { templateArt, wordCard, type WordCardView } from './ui/wordCard.ts';
+import { boardView } from './ui/board.ts';
 import { confirmDialog, openDialog } from './ui/dialog.ts';
 import { sourceStatusLine } from './ui/symbolSources.ts';
 import { icons, logo } from './ui/logo.ts';
@@ -503,6 +505,7 @@ export function mountApp(root: HTMLElement): void {
     && before.collectionId === after.collectionId;
 
   function renderRows(): void {
+    if (kind() === 'tafel') { renderBoard(); return; }
     if (holdsWords()) { renderCards(); return; }
     for (const { view } of cardViews.values()) view.destroy();
     cardViews.clear();
@@ -573,26 +576,7 @@ export function mountApp(root: HTMLElement): void {
    * away a resolved symbol and the wall is where most of them are.
    */
   function renderCards(): void {
-    for (const { view } of rowViews.values()) view.destroy();
-    rowViews.clear();
-    const seen = new Set<string>();
-    const nodes: HTMLElement[] = [];
-    for (const sentence of sentences) {
-      seen.add(sentence.id);
-      const existing = cardViews.get(sentence.id);
-      if (existing && existing.sentence === sentence) { nodes.push(existing.view.node); continue; }
-      existing?.view.destroy();
-      const view = wordCard(sentence, providerId(), {
-        onOpenSlot: (slotId) => openPicker(sentence.id, slotId),
-        onDelete: () => void confirmDeleteSentence(sentence),
-        onUnreadableSymbol: (id) => void noteUnreadable(id),
-      });
-      cardViews.set(sentence.id, { view, sentence });
-      nodes.push(view.node);
-    }
-    for (const [id, { view }] of cardViews) {
-      if (!seen.has(id)) { view.destroy(); cardViews.delete(id); }
-    }
+    const nodes = [...syncCards().values()];
 
     /* The empty card at the end. Typing is the fast way for ten words at once;
        this is the way for the one that is missing, and for somebody who has no
@@ -608,8 +592,76 @@ export function mountApp(root: HTMLElement): void {
     place(rowsHost, nodes);
   }
 
-  /** A card with no symbol yet, and the picker open on it. */
-  async function handleNewCard(): Promise<void> {
+  /**
+   * One built card per sentence, kept across paints. Shared by the wall and
+   * the Tafel, which draw the same cards in different places.
+   */
+  function syncCards(): Map<string, HTMLElement> {
+    for (const { view } of rowViews.values()) view.destroy();
+    rowViews.clear();
+    const seen = new Set<string>();
+    const nodes = new Map<string, HTMLElement>();
+    for (const sentence of sentences) {
+      seen.add(sentence.id);
+      const existing = cardViews.get(sentence.id);
+      if (existing && existing.sentence === sentence) { nodes.set(sentence.id, existing.view.node); continue; }
+      existing?.view.destroy();
+      const view = wordCard(sentence, providerId(), {
+        onOpenSlot: (slotId) => openPicker(sentence.id, slotId),
+        onDelete: () => void confirmDeleteSentence(sentence),
+        onUnreadableSymbol: (id) => void noteUnreadable(id),
+      });
+      cardViews.set(sentence.id, { view, sentence });
+      nodes.set(sentence.id, view.node);
+    }
+    for (const [id, { view }] of cardViews) {
+      if (!seen.has(id)) { view.destroy(); cardViews.delete(id); }
+    }
+    return nodes;
+  }
+
+  /**
+   * The Tafel: the grid with its fields, and under it the cards not on it yet.
+   *
+   * Every new word lands in the tray. Typing ten words is one act and deciding
+   * where each one lies is another, done by hand afterwards — that is what a
+   * Tafel is, and why a field can stay free.
+   */
+  const tafel = boardView({
+    onResize: (cols, rows) => void writeBoard((board) => resizeBoard(board, cols, rows)),
+    onPlace: (id, index) => void writeBoard((board) => placeOn(board, id, index)),
+    onTakeOff: (id) => void writeBoard((board) => takeOff(board, id)),
+    onNewCardAt: (index) => void handleNewCard(index),
+    onNewCard: () => void handleNewCard(),
+  });
+
+  function renderBoard(): void {
+    const open = activeCollection();
+    if (!open) return;
+    tafel.render({ board: boardOf(open), sentences, cards: syncCards() });
+    rowsHost.className = 'rows rows--tafel';
+    place(rowsHost, [tafel.head, tafel.grid, tafel.tray]);
+  }
+
+  /** The open Tafel's grid, changed and written back. */
+  async function writeBoard(change: (board: Board) => Board): Promise<void> {
+    const open = activeCollection();
+    if (!open) return;
+    const current = boardOf(open);
+    const board = change(current);
+    // Every helper hands the same object back when there is nothing to do.
+    if (board === current) return;
+    const next: Collection = { ...open, board, updatedAt: Date.now() };
+    collections = collections.map((c) => (c.id === next.id ? next : c));
+    render();
+    await putCollection(next);
+  }
+
+  /**
+   * A card with no symbol yet, and the picker open on it. On a Tafel it can be
+   * made straight into a field, which is where the „+" in a free field leads.
+   */
+  async function handleNewCard(at?: number): Promise<void> {
     const collectionId = activeId;
     if (!collectionId) return;
     const slot: Slot = {
@@ -621,6 +673,7 @@ export function mountApp(root: HTMLElement): void {
     };
     await putSentence(sentence);
     sentences = [sentence, ...sentences];
+    if (at !== undefined) await writeBoard((board) => placeOn(board, sentence.id, at));
     render();
     openPicker(sentence.id, slot.id);
   }
@@ -669,6 +722,10 @@ export function mountApp(root: HTMLElement): void {
     const open = activeCollection();
     if (!open || kindOf(open) === which) return;
     const next: Collection = { ...open, kind: which, updatedAt: Date.now() };
+    /* A Tafel is born with its grid, so the record says what it is from the
+       first paint; the other kinds have none and carry no field for one. */
+    if (which === 'tafel') next.board = boardOf(next);
+    else delete next.board;
     collections = collections.map((c) => (c.id === next.id ? next : c));
     render();
     await putCollection(next);
@@ -1743,6 +1800,10 @@ export function mountApp(root: HTMLElement): void {
     if (!ok) return;
     await deleteSentence(sentence.id);
     sentences = sentences.filter((s) => s.id !== sentence.id);
+    /* Its field on a Tafel is freed with it. The board tolerates an id it
+       cannot find — it draws the field free — but a record that names a card
+       which no longer exists is a record that lies. */
+    if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
     render();
   }
 
@@ -1783,6 +1844,14 @@ export function mountApp(root: HTMLElement): void {
    * the global settings do not.
    */
   function printFor(print: PrintSettings): PrintSettings {
+    /* A Tafel prints as the grid it is. Its columns and rows are the
+       Sammlung's, not the dialog's — the dialog's are for a deck of cards
+       that is being asked to *become* a grid at print time. */
+    if (kind() === 'tafel') {
+      const open = activeCollection();
+      const board = open ? boardOf(open) : boardOf({});
+      return { ...print, layout: 'sheet', sheetFit: 'grid', gridCols: board.cols, gridRows: board.rows };
+    }
     if (kind() === 'einkaufsliste') {
       return {
         ...print,
@@ -1803,11 +1872,21 @@ export function mountApp(root: HTMLElement): void {
 
   function openPrint(ids: string[]): void {
     const byId = new Map(sentences.map((s) => [s.id, s]));
-    const chosen = ids.map((id) => byId.get(id)).filter((s): s is Sentence => Boolean(s));
-    if (chosen.length === 0 || !settings) return;
+    /* A Tafel prints whole and in its own order: the fields, free ones
+       included, and nothing from the tray. What is asked for is ignored on
+       purpose — there is no such thing as printing half a Tafel. A Tafel with
+       every field free is still a Tafel, and a blank laminated one is a thing
+       people make. */
+    const open = activeCollection();
+    const board = kind() === 'tafel' && open ? boardOf(open) : null;
+    const chosen = board
+      ? placedIds(board).map((id) => byId.get(id)).filter((s): s is Sentence => Boolean(s))
+      : ids.map((id) => byId.get(id)).filter((s): s is Sentence => Boolean(s));
+    if ((chosen.length === 0 && !board) || !settings) return;
 
     openPrintDialog({
       sentences: chosen,
+      board: board ? { ...board, cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)) } : null,
       collectionName: activeCollection()?.name ?? 'bildhaft',
       /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
          layout says. Strips are a shape for a sentence: a strip of one symbol

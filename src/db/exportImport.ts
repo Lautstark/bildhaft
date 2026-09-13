@@ -1,7 +1,7 @@
 import {
-  BACKUP_FORMAT, BACKUP_VERSION, EXPORT_FORMAT, EXPORT_VERSION,
-  type BackupExport, type Collection, type CollectionExport, type Override,
-  type OwnImage, type OwnImageExport, type Sentence,
+  BACKUP_FORMAT, BACKUP_VERSION, COLLECTION_KINDS, EXPORT_FORMAT, EXPORT_VERSION,
+  type BackupExport, type Board, type Collection, type CollectionExport, type CollectionKind,
+  type Override, type OwnImage, type OwnImageExport, type Sentence,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
@@ -240,10 +240,15 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   const collectionId = newId();
   const imageIds = await restoreImages(parsed.ownImages);
 
-  const sentences: Sentence[] = parsed.sentences.map((s) => remapImages(
-    { ...s, id: newId(), collectionId, createdAt: s.createdAt ?? now, updatedAt: now },
-    imageIds,
-  ));
+  const sentenceIds = new Map<string, string>();
+  const sentences: Sentence[] = parsed.sentences.map((s) => {
+    const id = newId();
+    sentenceIds.set(s.id, id);
+    return remapImages(
+      { ...s, id, collectionId, createdAt: s.createdAt ?? now, updatedAt: now },
+      imageIds,
+    );
+  });
 
   const collection: Collection = {
     id: collectionId,
@@ -254,6 +259,13 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
        a correction to be findable at all. */
     ...(source.language === 'de' || source.language === 'en'
       ? { language: source.language } : {}),
+    /* The template, and a Tafel's grid with it, are what the material *is*;
+       a Tafel that arrived as a list of rows would be a different thing from
+       what was sent. The grid names cards by id and the ids are fresh here, so
+       it is carried through the same map the rows went through. */
+    ...(source.kind && (COLLECTION_KINDS as readonly string[]).includes(source.kind)
+      ? { kind: source.kind as CollectionKind } : {}),
+    ...(source.board ? { board: remapBoard(source.board, sentenceIds) } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -278,6 +290,15 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   return { collection, collectionCount: 1, sentenceCount: sentences.length, overrideCount };
 }
 
+/** A board's fields pointing at the fresh ids its cards were given. */
+function remapBoard(board: Board, ids: Map<string, string>): Board {
+  return {
+    cols: board.cols,
+    rows: board.rows,
+    cells: (board.cells ?? []).map((cell) => (cell ? ids.get(cell) ?? null : null)),
+  };
+}
+
 /** Restores a full backup. Like a single import, it only ever adds. */
 async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   const sourceCollections = parsed.collections ?? [];
@@ -297,6 +318,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
 
   const byCollection = new Map(collections.map((c) => [c.id, c]));
   const sentences: Sentence[] = [];
+  const sentenceIds = new Map<string, string>();
   const imageIds = await restoreImages(parsed.ownImages);
 
   for (const source of parsed.sentences ?? []) {
@@ -309,8 +331,13 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
       createdAt: source.createdAt ?? now,
       updatedAt: now,
     }, imageIds);
+    sentenceIds.set(source.id, sentence.id);
     sentences.push(sentence);
     byCollection.get(target)!.sentenceIds.push(sentence.id);
+  }
+  // A Tafel's fields name their cards by id, and every id above is new.
+  for (const collection of collections) {
+    if (collection.board) collection.board = remapBoard(collection.board, sentenceIds);
   }
 
   const db = await getDB();

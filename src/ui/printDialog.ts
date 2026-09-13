@@ -4,7 +4,7 @@ import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import {
   applyPageSetup, applyPlan, clearPageSetup, METACOM_COPYRIGHT, PAGE_MARGIN_MM, paperLabel,
-  paperSize, planPages, printSheet, PX_PER_MM,
+  paperSize, planPages, printSheet, PX_PER_MM, type PrintBoard,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { LOCALE, t } from '../i18n/index.ts';
@@ -16,6 +16,12 @@ const DEFAULT_CARD_BACKGROUND = '#fff3bf';
 
 export interface PrintOptions {
   sentences: Sentence[];
+  /**
+   * A Tafel, when this is one. Its grid is the Sammlung's and not a print
+   * setting, so the controls that would change the layout or the grid are not
+   * offered — the paper, the margins and the frames still are.
+   */
+  board?: PrintBoard | null;
   collectionName: string;
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
@@ -93,9 +99,11 @@ export function openPrintDialog(options: PrintOptions): void {
     on: { click: () => void run() } });
 
   const dialog = openDialog({
-    title: options.sentences.length === 1
-      ? t('ui.print_row_title')
-      : t('ui.print_collection_title', { n: options.sentences.length }),
+    title: options.board
+      ? t('ui.print_board_title', { cols: options.board.cols, rows: options.board.rows })
+      : options.sentences.length === 1
+        ? t('ui.print_row_title')
+        : t('ui.print_collection_title', { n: options.sentences.length }),
     wide: true,
     body: [el('div', { class: 'print-layout' }, controls, frame)],
     footer: [
@@ -253,9 +261,10 @@ export function openPrintDialog(options: PrintOptions): void {
 
   function paint(): void {
     const gridded = settings.layout === 'sheet' && settings.sheetFit === 'grid';
+    const fixed = Boolean(options.board);
 
     fill(controls,
-      el('div', { class: 'opt' },
+      fixed ? null : el('div', { class: 'opt' },
         el('label', { text: t('ui.layout') }),
         segmented([
           { label: t('ui.layout_strip'), active: settings.layout === 'strip', onPick: () => set('layout', 'strip') },
@@ -279,7 +288,7 @@ export function openPrintDialog(options: PrintOptions): void {
             onPick: () => set('orientation', 'landscape') },
         ], { marginTop: '6px' }),
       ),
-      settings.layout === 'sheet' ? el('div', { class: 'opt' },
+      settings.layout === 'sheet' && !fixed ? el('div', { class: 'opt' },
         el('label', { text: t('ui.card_size') }),
         segmented([
           { label: t('ui.in_millimetres'), active: !gridded, onPick: () => set('sheetFit', 'size') },
@@ -289,7 +298,8 @@ export function openPrintDialog(options: PrintOptions): void {
           ? t('ui.grid_note')
           : t('ui.fixed_note') }),
       ) : null,
-      gridded ? el('div', { class: 'opt' },
+      fixed ? el('div', { class: 'opt' }, cardSize)
+      : gridded ? el('div', { class: 'opt' },
         el('div', { class: 'opt--pair' },
           numberOpt('opt-cols', t('ui.columns'), settings.gridCols, 1, 12, 1, 4, '', null,
             (next) => set('gridCols', Math.round(next))),
@@ -369,6 +379,7 @@ export function openPrintDialog(options: PrintOptions): void {
 
     const build = () => printSheet({
       sentences: options.sentences,
+      board: options.board,
       settings,
       provider: options.provider,
       attribution: options.attribution,

@@ -101,6 +101,24 @@ export function templateArt(kind: CollectionKind): SVGElement {
     return svg;
   }
 
+  /* A grid with a card in some fields and not in others: the free field is
+     what the tile has to show, because it is what this template is for. */
+  if (kind === 'tafel') {
+    add('rect', { class: 'tpl__ink', x: 22, y: 5, width: 88, height: 36, rx: 3 });
+    const filled = new Set([0, 1, 3, 5, 6]);
+    for (let row = 0; row < 2; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        const i = row * 4 + col;
+        add('rect', {
+          class: filled.has(i) ? 'tpl__fill' : 'tpl__ink',
+          x: 26 + col * 21, y: 9 + row * 15, width: 17, height: 11, rx: 2,
+          ...(filled.has(i) ? {} : { 'stroke-dasharray': '2 2' }),
+        });
+      }
+    }
+    return svg;
+  }
+
   /* Three sheets that only mean anything together, so the tile draws all three:
      the board with its cart, the cards to cut, and the sheet they live on. */
   if (kind === 'einkaufsliste') {

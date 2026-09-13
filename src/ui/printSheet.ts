@@ -311,8 +311,21 @@ export function applyPlan(sheet: HTMLElement, plan: SheetPlan): void {
   sheet.classList.add('ps-sheet--paged');
 }
 
+/**
+ * A Tafel as it goes to paper: the grid, with the card lying in each field or
+ * nothing. Resolved to the cards themselves rather than to ids, because the
+ * sheet does not know the Sammlung — only what to draw where.
+ */
+export interface PrintBoard {
+  cols: number;
+  rows: number;
+  cells: (Sentence | null)[];
+}
+
 export interface SheetOptions {
   sentences: Sentence[];
+  /** Set for a Tafel, and then it decides the page; `sentences` are the cards on it. */
+  board?: PrintBoard | null;
   settings: PrintSettings;
   provider: ProviderId;
   /** Mandatory for ARASAAC; printed at the foot of the output. */
@@ -328,7 +341,7 @@ export interface SheetOptions {
  * function, so what the preview shows is what the printer produces.
  */
 export function printSheet(options: SheetOptions): HTMLElement {
-  const { sentences, settings, provider, attribution, copyright, collectionName } = options;
+  const { sentences, board, settings, provider, attribution, copyright, collectionName } = options;
 
   const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
   const page = printableArea(settings.paper, settings.orientation);
@@ -367,11 +380,13 @@ export function printSheet(options: SheetOptions): HTMLElement {
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
   if (title) sheet.appendChild(el('h1', { class: 'ps-title', text: title }));
 
-  if (settings.layout === 'einkaufsliste') {
+  const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
+    + (title ? TITLE_ALLOWANCE_MM : 0);
+  if (board) {
+    sheet.appendChild(boardSheet(board, settings, provider, reserve));
+  } else if (settings.layout === 'einkaufsliste') {
     for (const node of einkaufsliste(sentences, settings, provider)) sheet.appendChild(node);
   } else if (settings.layout === 'sheet') {
-    const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
-      + (title ? TITLE_ALLOWANCE_MM : 0);
     for (const node of cardSheet(sentences, settings, provider, reserve)) sheet.appendChild(node);
   } else {
     for (const node of strips(sentences, settings, provider)) sheet.appendChild(node);
@@ -475,6 +490,38 @@ function cardSheet(
     }, ...chunk.map((slot) => card(slot, settings, provider, true))));
   }
   return pages;
+}
+
+/* ---------------------------------------------------------------- Tafel ---- */
+
+/**
+ * A Tafel: one grid page, every field drawn whether or not a card lies in it.
+ *
+ * The free field is the point. On the wall it is where somebody decided
+ * nothing goes, and on paper it is an empty cell of the same size as the
+ * others, with the same cut line — so a laminated board has a place that
+ * *is* free rather than a hole where the grid stopped early. A card sheet
+ * cannot say that: it flows its cards and a gap is just the end.
+ *
+ * One page and never more: the grid is the Sammlung's own size, and a Tafel
+ * that needed a second sheet would be two Tafeln.
+ */
+function boardSheet(
+  board: PrintBoard, settings: PrintSettings, provider: ProviderId, reserveMm = 0,
+): HTMLElement {
+  const page = printableArea(settings.paper, settings.orientation);
+  return el('div', {
+    class: 'ps-grid ps-tafel',
+    style: {
+      '--cols': String(board.cols),
+      '--cell-h': `${((page.height - reserveMm) / board.rows).toFixed(3)}mm`,
+    },
+  }, ...board.cells.map((sentence) => {
+    const slot = sentence?.slots[0];
+    return slot
+      ? card(slot, settings, provider, true)
+      : el('div', { class: 'ps-card ps-card--fill ps-card--empty', attrs: { 'aria-hidden': 'true' } });
+  }));
 }
 
 /* ------------------------------------------------------- Einkaufsliste ---- */

@@ -234,6 +234,12 @@
   padding-top: 0.8mm;
 }
 
+/* A Tafel's free field: a cell with nothing in it, cut line and all, so the
+   laminated board has a place that is free rather than a hole where the grid
+   ended. It is the same box a card is, which is what keeps the two the same
+   size. */
+.ps-card--empty { background: transparent; }
+
 /*
  * At the foot of the page, always — `margin-top: auto` in the page's column.
  *
