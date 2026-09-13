@@ -250,3 +250,48 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
   await expect(page.locator('.word:not(.word--add)')).toHaveCount(1);
   await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
 });
+
+/**
+ * A colour behind a group of fields, the way a Symboltafel sets its
+ * feelings or its colours apart: one rounded block, cards white on it.
+ * Held on screen and on paper, because the two draw it from one answer and
+ * a group that is a block on screen and a row of tiles on paper is the
+ * printout nobody asked for.
+ */
+test('fields of a Tafel can be coloured as a group, on screen and on paper', async ({ page }) => {
+  await showSidebar(page);
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: /^Tafel/ }).click();
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill('Rot');
+  await bar.press('Enter');
+  await page.getByRole('button', { name: '„Rot“ ins erste freie Feld legen' }).click();
+
+  const cells = page.locator('.board .cell');
+  // Yellow in hand: two fields side by side, one with the card and one free.
+  await page.getByRole('button', { name: 'Gelb' }).click();
+  await cells.nth(0).click();
+  await cells.nth(1).click();
+  await expect(page.locator('.cell--zoned')).toHaveCount(2);
+  // The brush took the click; the card's picker did not open.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // One block: the shared corners square, the outer ones round.
+  await expect(cells.nth(0)).toHaveCSS('border-top-right-radius', '0px');
+  await expect(cells.nth(0)).toHaveCSS('border-top-left-radius', '12px');
+  await expect(cells.nth(1)).toHaveCSS('border-top-left-radius', '0px');
+  // The brush put down, a click on a field is a click on the card again.
+  await page.keyboard.press('Escape');
+  await cells.nth(2).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.cell--zoned')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  const printed = page.locator('.preview-frame .ps-tafel .ps-card');
+  await expect(printed.nth(0)).toHaveCSS('background-color', 'rgb(255, 243, 191)');
+  await expect(printed.nth(1)).toHaveCSS('background-color', 'rgb(255, 243, 191)');
+  await expect(printed.nth(2)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(printed.nth(0)).toHaveCSS('border-top-right-radius', '0px');
+  // The card stays white on its colour.
+  await expect(printed.nth(0).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+});

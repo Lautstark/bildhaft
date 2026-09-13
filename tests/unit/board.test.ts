@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardOf, firstFree, placedIds, placeOn, resizeBoard, takeOff } from '../../src/core/board.ts';
+import { boardOf, firstFree, paintZone, placedIds, placeOn, resizeBoard, takeOff, zoneCorners } from '../../src/core/board.ts';
 import type { Board } from '../../src/core/types.ts';
 
 /**
@@ -15,7 +15,7 @@ const grid = (cols: number, rows: number, ...placed: [string, number][]): Board 
 
 describe('a Tafel that has not been sized', () => {
   it('is 4 × 3 and every field free', () => {
-    expect(boardOf({})).toEqual(grid(4, 3));
+    expect(boardOf({})).toEqual({ ...grid(4, 3), zones: Array(12).fill(null) });
   });
 
   it('is made whole when the record does not add up', () => {
@@ -81,5 +81,41 @@ describe('the grid at another size', () => {
 
   it('will not be wider than twelve or narrower than one', () => {
     expect(resizeBoard(grid(2, 2), 40, 0)).toMatchObject({ cols: 12, rows: 1 });
+  });
+});
+
+/**
+ * A colour behind a group of fields. It belongs to the field, not the card:
+ * the block says „the colours go here" and stays when a card moves. What is
+ * held is that painting never touches a card, that a smaller grid keeps the
+ * colours of the fields it keeps, and that a block is rounded only where it
+ * ends — the one calculation a screen and a sheet both draw from.
+ */
+describe('a colour behind fields', () => {
+  it('paints the field and leaves the card in it alone', () => {
+    const board = placeOn(grid(2, 2), 'a', 1);
+    const next = paintZone(board, 1, '#fff3bf');
+    expect(next.zones).toEqual([null, '#fff3bf', null, null]);
+    expect(next.cells).toEqual(board.cells);
+    expect(paintZone(next, 1, '#fff3bf')).toBe(next);
+    expect(paintZone(next, 1, null).zones).toEqual([null, null, null, null]);
+  });
+
+  it('keeps its colours through a resize, like the cards', () => {
+    const painted = paintZone(paintZone(grid(3, 2), 0, 'y'), 2, 'y');
+    expect(resizeBoard(painted, 2, 2).zones).toEqual(['y', null, null, null]);
+  });
+
+  it('rounds a block only at its own corners', () => {
+    // y y .
+    // y . .
+    let board = grid(3, 2);
+    for (const i of [0, 1, 3]) board = paintZone(board, i, 'y');
+    expect(zoneCorners(board, 0, 'R')).toBe('R 0 0 0');
+    expect(zoneCorners(board, 1, 'R')).toBe('0 R R 0');
+    expect(zoneCorners(board, 3, 'R')).toBe('0 0 R R');
+    expect(zoneCorners(board, 2, 'R')).toBe('0');
+    // A different colour beside it is an end, not a neighbour.
+    expect(zoneCorners(paintZone(board, 2, 'g'), 1, 'R')).toBe('0 R R 0');
   });
 });

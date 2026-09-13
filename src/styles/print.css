@@ -239,6 +239,9 @@
    ended. It is the same box a card is, which is what keeps the two the same
    size. */
 .ps-card--empty { background: transparent; }
+/* A Tafel field's colour: the whole cell, so neighbours of one colour join.
+   After the rules above, because the empty cell's rule would win otherwise. */
+.ps-tafel .ps-card { background: var(--zone, transparent); }
 
 /*
  * At the foot of the page, always — `margin-top: auto` in the page's column.

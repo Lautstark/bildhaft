@@ -1064,6 +1064,19 @@ kbd {
 .board-head { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
 .board-head label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); }
 .board-head__n { width: 4.5em; padding: 4px 6px; }
+.zones { display: inline-flex; align-items: center; gap: 5px; margin-left: 12px; color: var(--text-dim); }
+.zone-swatch {
+  width: 22px; height: 22px;
+  padding: 0; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 50%;
+  background: var(--zone);
+}
+.zone-swatch--none {
+  background: transparent;
+  background-image: linear-gradient(135deg, transparent 45%, var(--text-dim) 45%, var(--text-dim) 55%, transparent 55%);
+}
+.zone-swatch:hover { border-color: var(--text-dim); }
+.zone-swatch--on { outline: 2px solid var(--accent); outline-offset: 2px; }
 .board {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
@@ -1082,13 +1095,27 @@ kbd {
   min-height: 96px;
   display: grid;
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--zone, var(--surface));
   border: 1px solid var(--line);
 }
+/* A field's colour is paper-pale and drawn on a dark screen as it is on
+   paper. The ring is half the grid's gap, so two coloured neighbours meet in
+   the middle of it and a group reads as one block — which the corners,
+   rounded only where the block ends, say too. The card on it is white, as it
+   will be on paper. */
+.cell--zoned { color: #222; border-color: transparent; box-shadow: 0 0 0 4px var(--zone); }
+.cell--zoned .word { background: #fff; color: #222; }
+.cell--zoned .word__name { color: #222; }
+.cell--zoned .cell__add { color: #6b6b6b; }
+.cell--zoned .cell__add:hover { background: rgba(255, 255, 255, .4); }
+.cell--zoned .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
 /* Free on purpose. Dashed and on the ground, the way every empty place in this
    app is drawn — and no darker than that, or a Tafel with ten free fields
    would read as a Tafel with ten mistakes. */
-.cell--free { background: transparent; border-style: dashed; }
+.cell--free { background: var(--zone, transparent); border-style: dashed; }
+/* With a colour in hand, every field is a thing to paint. */
+.board--painting .cell, .board--painting .cell * { cursor: cell; }
+.board--painting .cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
 .cell--over, .tray--over { outline: 2px solid var(--accent); outline-offset: -2px; }
 .cell .board-card, .cell .word { height: 100%; }
 .cell .word { min-width: 0; border: 0; }

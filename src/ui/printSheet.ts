@@ -2,6 +2,7 @@ import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot,
 } from '../core/types.ts';
 import { sentenceCaption, slotCaption } from '../core/types.ts';
+import { zoneCorners } from '../core/board.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
 import { t } from '../i18n/index.ts';
@@ -320,6 +321,8 @@ export interface PrintBoard {
   cols: number;
   rows: number;
   cells: (Sentence | null)[];
+  /** A colour behind each field, or nothing — see `Board.zones`. */
+  zones?: (string | null)[];
 }
 
 export interface SheetOptions {
@@ -516,11 +519,27 @@ function boardSheet(
       '--cols': String(board.cols),
       '--cell-h': `${((page.height - reserveMm) / board.rows).toFixed(3)}mm`,
     },
-  }, ...board.cells.map((sentence) => {
+  }, ...board.cells.map((sentence, index) => {
     const slot = sentence?.slots[0];
-    return slot
-      ? card(slot, settings, provider, true)
+    /* The field's colour goes on the whole cell, gap included, rather than
+       inside the frame where the card's own background goes: a Tafel is
+       laminated whole, and a group is meant to read as one block — rounded
+       where the block ends and square where it goes on. The card on it is
+       white unless a background was asked for, because a picture straight on
+       the colour is a card that has disappeared into its group. */
+    const zone = board.zones?.[index];
+    const onZone = zone && settings.cardBackground === null
+      ? { ...settings, cardBackground: '#fff' } : settings;
+    const node = slot
+      ? card(slot, onZone, provider, true)
       : el('div', { class: 'ps-card ps-card--fill ps-card--empty', attrs: { 'aria-hidden': 'true' } });
+    if (zone) {
+      node.style.setProperty('--zone', zone);
+      // The frame reads its colour from the sheet; this card says white instead.
+      if (onZone !== settings) node.style.setProperty('--card-bg', '#fff');
+      node.style.borderRadius = zoneCorners({ cols: board.cols, rows: board.rows, cells: [], zones: board.zones }, index, '3mm');
+    }
+    return node;
   }));
 }
 

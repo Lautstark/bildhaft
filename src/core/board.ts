@@ -27,7 +27,8 @@ export function boardOf(collection: Pick<Collection, 'board'>): Board {
   const cols = clampSide(stored.cols);
   const rows = clampSide(stored.rows);
   const cells = Array.from({ length: cols * rows }, (_, i) => stored.cells[i] ?? null);
-  return { cols, rows, cells };
+  const zones = Array.from({ length: cols * rows }, (_, i) => stored.zones?.[i] ?? null);
+  return { cols, rows, cells, zones };
 }
 
 function clampSide(n: number): number {
@@ -42,12 +43,23 @@ function clampSide(n: number): number {
 export function resizeBoard(board: Board, cols: number, rows: number): Board {
   const next = { cols: clampSide(cols), rows: clampSide(rows) };
   const cells: (string | null)[] = Array(next.cols * next.rows).fill(null);
+  const zones: (string | null)[] = Array(next.cols * next.rows).fill(null);
   for (let r = 0; r < Math.min(board.rows, next.rows); r += 1) {
     for (let c = 0; c < Math.min(board.cols, next.cols); c += 1) {
       cells[r * next.cols + c] = board.cells[r * board.cols + c] ?? null;
+      zones[r * next.cols + c] = board.zones?.[r * board.cols + c] ?? null;
     }
   }
-  return { ...next, cells };
+  return { ...next, cells, zones };
+}
+
+/** This field in that colour, or bare again with `null`. The card in it is not touched. */
+export function paintZone(board: Board, index: number, colour: string | null): Board {
+  if (index < 0 || index >= board.cells.length) return board;
+  const zones = Array.from({ length: board.cells.length }, (_, i) => board.zones?.[i] ?? null);
+  if (zones[index] === colour) return board;
+  zones[index] = colour;
+  return { ...board, zones };
 }
 
 /**
@@ -72,6 +84,26 @@ export function placeOn(board: Board, id: string, index: number): Board {
 export function takeOff(board: Board, id: string): Board {
   if (!board.cells.includes(id)) return board;
   return { ...board, cells: board.cells.map((cell) => (cell === id ? null : cell)) };
+}
+
+/**
+ * Which corners of a coloured field are the corners of its block.
+ *
+ * A group is fields of one colour side by side, and it should look like one
+ * rounded block rather than a row of rounded fields: a corner is rounded only
+ * where the block ends — no neighbour of the same colour on either side of
+ * it. Written as a CSS border-radius, top-left first, for the field to wear.
+ */
+export function zoneCorners(board: Board, index: number, radius: string): string {
+  const zone = board.zones?.[index];
+  if (!zone) return '0';
+  const col = index % board.cols;
+  const row = Math.floor(index / board.cols);
+  const same = (c: number, r: number): boolean =>
+    c >= 0 && c < board.cols && r >= 0 && r < board.rows
+    && board.zones?.[r * board.cols + c] === zone;
+  const corner = (dc: number, dr: number) => (same(col + dc, row) || same(col, row + dr) ? '0' : radius);
+  return [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)].join(' ');
 }
 
 /** The first free field, or -1 when there is none. */

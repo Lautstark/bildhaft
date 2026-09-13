@@ -15,7 +15,22 @@
  */
 
 import type { Board, Sentence } from '../core/types.ts';
-import { firstFree, MAX_BOARD_SIDE } from '../core/board.ts';
+import { firstFree, MAX_BOARD_SIDE, zoneCorners } from '../core/board.ts';
+
+/**
+ * The colours a field can be. Pale on purpose: they go *behind* a symbol on
+ * paper, where a strong colour would fight the picture and eat the toner. Six
+ * is enough to tell groups apart — colours, animals, people, things to do —
+ * and few enough to pick without a dialog.
+ */
+export const ZONE_COLOURS: { colour: string; name: string }[] = [
+  { colour: '#fff3bf', name: 'ui.zone_yellow' },
+  { colour: '#d3f9d8', name: 'ui.zone_green' },
+  { colour: '#d0ebff', name: 'ui.zone_blue' },
+  { colour: '#ffdeeb', name: 'ui.zone_pink' },
+  { colour: '#ffe8cc', name: 'ui.zone_orange' },
+  { colour: '#e9ecef', name: 'ui.zone_grey' },
+];
 import { el } from './dom.ts';
 import { t } from '../i18n/index.ts';
 
@@ -28,6 +43,8 @@ export interface BoardHandlers {
   /** A card that does not exist yet, made straight into this field. */
   onNewCardAt: (index: number) => void;
   onNewCard: () => void;
+  /** This field in that colour, or bare again. */
+  onPaint: (index: number, colour: string | null) => void;
 }
 
 export interface BoardState {
@@ -49,6 +66,15 @@ const MIME = 'text/plain';
 
 export function boardView(handlers: BoardHandlers): BoardView {
   let dragging: string | null = null;
+  /*
+   * The colour in hand, while there is one. A brush rather than a dialog per
+   * field: a group is five or eight fields, and painting them is pick once,
+   * click each. While a colour is in hand a click on a field paints it and
+   * does nothing else — not the picture, not the „+" — and the brush is put
+   * down by clicking its swatch again or pressing Escape. `undefined` is no
+   * brush; `null` is the eraser.
+   */
+  let brush: string | null | undefined;
 
   const sideInput = (label: string, onInput: (n: number) => void): HTMLInputElement => {
     const input = el('input', {
@@ -62,11 +88,31 @@ export function boardView(handlers: BoardHandlers): BoardView {
   let rows = 0;
   const colsInput = sideInput(t('ui.columns'), (n) => handlers.onResize(n, rows));
   const rowsInput = sideInput(t('ui.rows'), (n) => handlers.onResize(cols, n));
+  const swatches = el('div', { class: 'zones', attrs: { role: 'group', 'aria-label': t('ui.zone_colour') } });
+  const paintSwatches = () => {
+    const one = (colour: string | null, label: string, cls: string) => el('button', {
+      class: `zone-swatch ${cls}${brush === colour ? ' zone-swatch--on' : ''}`,
+      style: colour ? { '--zone': colour } : {},
+      attrs: { type: 'button', 'aria-label': label, 'aria-pressed': String(brush === colour) },
+      on: { click: () => { brush = brush === colour ? undefined : colour; paintSwatches(); grid.classList.toggle('board--painting', brush !== undefined); } },
+    });
+    swatches.replaceChildren(
+      el('span', { class: 'small', text: t('ui.zone_colour') }),
+      ...ZONE_COLOURS.map(({ colour, name }) => one(colour, t(name), '')),
+      one(null, t('ui.zone_none'), 'zone-swatch--none'));
+  };
+  paintSwatches();
   const head = el('div', { class: 'board-head' },
     el('label', { class: 'small', text: t('ui.columns') }, colsInput),
     el('span', { class: 'faint', text: '×', attrs: { 'aria-hidden': 'true' } }),
-    el('label', { class: 'small', text: t('ui.rows') }, rowsInput));
+    el('label', { class: 'small', text: t('ui.rows') }, rowsInput),
+    swatches);
   const grid = el('div', { class: 'board', attrs: { role: 'list' } });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && brush !== undefined && grid.isConnected) {
+      brush = undefined; paintSwatches(); grid.classList.remove('board--painting');
+    }
+  });
   const tray = el('div', { class: 'tray' });
 
   /* Refreshed rather than assigned: a render lands on every keystroke in the
@@ -133,11 +179,21 @@ export function boardView(handlers: BoardHandlers): BoardView {
     const cells: HTMLElement[] = [];
     board.cells.forEach((id, index) => {
       const card = id ? cards.get(id) : undefined;
+      const zone = board.zones?.[index] ?? null;
       const cell = el('div', {
-        class: `cell${card ? '' : ' cell--free'}`,
+        class: `cell${card ? '' : ' cell--free'}${zone ? ' cell--zoned' : ''}`,
+        style: zone ? { '--zone': zone, borderRadius: zoneCorners(board, index, '12px') } : {},
         attrs: { role: 'listitem', 'aria-label': t('ui.board_field', { n: index + 1 }) },
       });
       target(cell, 'cell--over', (dropId) => handlers.onPlace(dropId, index));
+      /* With a colour in hand the click is the brush, whatever it landed on.
+         Captured, so the picture and the „+" underneath never hear it. */
+      cell.addEventListener('click', (event) => {
+        if (brush === undefined) return;
+        event.stopPropagation();
+        event.preventDefault();
+        handlers.onPaint(index, brush);
+      }, true);
       if (card && id) {
         const wrap = el('div', { class: 'board-card' },
           card,

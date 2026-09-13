@@ -294,6 +294,14 @@ export interface Board {
   cols: number;
   rows: number;
   cells: (string | null)[];
+  /**
+   * A colour behind each field, or nothing. Row-major like `cells`, and a
+   * property of the field rather than of the card in it: the colour marks a
+   * *place* on the Tafel — „the colours go here" — and stays when the card
+   * moves. Painted behind the card and its gap, so neighbouring fields of
+   * one colour read as one block. Absent means every field is bare.
+   */
+  zones?: (string | null)[];
 }
 
 /**
