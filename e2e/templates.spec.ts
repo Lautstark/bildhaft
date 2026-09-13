@@ -214,3 +214,39 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await expect(cells.nth(2).locator('.word__name')).toHaveText('Wort5');
   await expect(cells.nth(4).locator('.word__name')).toHaveText('Wort3');
 });
+
+/**
+ * A „+" pressed and thought better of leaves nothing behind.
+ *
+ * It used to leave a blank card: the picker closed without a choice took the
+ * card's only slot away and kept the record, so a card with no picture, no
+ * word and nothing to open sat in the tray or the field, and its × asked
+ * „Zeile löschen — „“ wird entfernt" of anybody who tried to get rid of it.
+ * On a Tafel every free field is a large „+", so this was pressed a lot.
+ */
+test('a Tafel field or tray „+" closed without a choice leaves no card', async ({ page }) => {
+  await showSidebar(page);
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: /^Tafel/ }).click();
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill('Apfel');
+  await bar.press('Enter');
+  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
+
+  // In a field: the picker opens on a card lying there, and closing it takes
+  // the card away again and leaves the field free.
+  await page.getByRole('button', { name: 'Neue Karte in Feld 3' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.board .cell').nth(2)).toHaveClass(/cell--free/);
+  await expect(page.locator('.word:not(.word--add)')).toHaveCount(1);
+
+  // In the tray: the same.
+  await page.getByRole('button', { name: 'Neue Karte', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.word:not(.word--add)')).toHaveCount(1);
+  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
+});

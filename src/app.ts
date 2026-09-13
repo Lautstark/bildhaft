@@ -1621,6 +1621,22 @@ export function mountApp(root: HTMLElement): void {
     if (!picker) return;
     const { sentenceId, slotId } = picker;
     picker = null;
+    /* A card is its one slot. Take that away and what is left is a record
+       with no picture, no word and nothing to open — which is what the „+"
+       left behind whenever its picker was closed without a choice: a blank
+       card whose only working control was its ×, and a „Zeile löschen: „“
+       wird entfernt" for anybody who pressed it. There is nothing in it to
+       lose, so it goes without being asked about, and its field on a Tafel
+       goes free with it. A row keeps its other slots as before. */
+    const sentence = sentences.find((s) => s.id === sentenceId);
+    const left = sentence?.slots.filter((sl) => sl.id !== slotId) ?? [];
+    if (sentence && left.length === 0 && !sentence.rawInput.trim()) {
+      await deleteSentence(sentence.id);
+      sentences = sentences.filter((s) => s.id !== sentence.id);
+      if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
+      render();
+      return;
+    }
     await mutateSlots(sentenceId, (slots) => slots.filter((sl) => sl.id !== slotId));
   }
 
