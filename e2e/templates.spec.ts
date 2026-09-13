@@ -168,3 +168,49 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // The grid is the Sammlung's, so the dialog does not offer to change it.
   await expect(page.getByLabel('Spalten')).toHaveCount(1);
 });
+
+/**
+ * The drag that stopped working after the first one.
+ *
+ * Not a bug in the drag: the first card dropped made every row of the grid
+ * as tall as a card, the tray went below the fold, and the second card was
+ * dragged from where it could not be seen — a page does not scroll under a
+ * drag in any useful way. So the tray is a dock at the foot of the window and
+ * a field with a card in it is barely taller than one without. Held at the
+ * suite's ordinary window size on purpose, with a Tafel as full as a real one:
+ * the failure only shows when the grid is taller than the screen.
+ */
+test('every card of a full Tafel can be dragged from the tray, one after the other', async ({ page }) => {
+  await showSidebar(page);
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: /^Tafel/ }).click();
+
+  const names = Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`);
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill(names.join('\n'));
+  await bar.press('Enter');
+  await expect(page.locator('.tray .word__name')).toHaveCount(24);
+  await page.getByLabel('Spalten').fill('6');
+  await page.getByLabel('Zeilen').fill('4');
+  const cells = page.locator('.board .cell');
+  await expect(cells).toHaveCount(24);
+
+  const viewport = page.viewportSize()!;
+  for (const [i, name] of names.entries()) {
+    const card = page.locator('.tray .board-card')
+      .filter({ has: page.locator('.word__name', { hasText: new RegExp(`^${name}$`) }) });
+    // The tray is on screen before every drag, however tall the grid has grown.
+    const tray = await page.locator('.tray').boundingBox();
+    expect(tray!.y + tray!.height).toBeLessThanOrEqual(viewport.height + 1);
+    await card.locator('.word__pic').dragTo(cells.nth(i));
+    await expect(cells.nth(i).locator('.word__name')).toHaveText(name);
+  }
+  await expect(page.locator('.tray .word__name')).toHaveCount(0);
+
+  // Back out by dragging onto the tray, and a swap between two full fields.
+  await cells.nth(0).locator('.board-card').dragTo(page.locator('.tray'));
+  await expect(page.locator('.tray .word__name')).toHaveText(['Wort1']);
+  await cells.nth(2).locator('.board-card').dragTo(cells.nth(4));
+  await expect(cells.nth(2).locator('.word__name')).toHaveText('Wort5');
+  await expect(cells.nth(4).locator('.word__name')).toHaveText('Wort3');
+});

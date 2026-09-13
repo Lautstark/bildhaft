@@ -39,6 +39,21 @@ export function wordCard(
      word the source had nothing for. Dashed and asking, which is the same thing
      an unresolved slot says in a row. */
   const shown = slot ? symbolIdFor(slot, provider) : null;
+  const open = () => slot && handlers.onOpenSlot(slot.id);
+  /* A div playing a button, and the same one `.slot` in a row is, for the same
+     reason: on a Tafel the card is dragged, and Chrome will not start a drag
+     from inside a real <button>. It did start one from the picture, because an
+     image is draggable on its own — so a pictured card dragged when the
+     pointer was on the picture and refused when it was a few pixels off, on
+     the button's padding, and a card still asking for its picture never
+     dragged at all. The keyboard keeps what a button gave it: Enter and Space. */
+  const pressable = {
+    role: 'button',
+    tabindex: 0,
+  };
+  const keys = (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+  };
   const picture = shown
     ? (() => {
       const view = symbolView({
@@ -48,16 +63,16 @@ export function wordCard(
         onUnreadable: handlers.onUnreadableSymbol,
       });
       views.push(view);
-      return el('button', {
+      return el('div', {
         class: 'word__pic',
-        attrs: { type: 'button', 'aria-label': t('ui.change_picture_for', { word: caption }) },
-        on: { click: () => slot && handlers.onOpenSlot(slot.id) },
+        attrs: { ...pressable, 'aria-label': t('ui.change_picture_for', { word: caption }) },
+        on: { click: open, keydown: keys },
       }, view.node);
     })()
-    : el('button', {
+    : el('div', {
       class: 'word__pic word__pic--asking', text: '?',
-      attrs: { type: 'button', 'aria-label': t('ui.pick_picture_for', { word: caption || '…' }) },
-      on: { click: () => slot && handlers.onOpenSlot(slot.id) },
+      attrs: { ...pressable, 'aria-label': t('ui.pick_picture_for', { word: caption || '…' }) },
+      on: { click: open, keydown: keys },
     });
 
   const node = el('div', { class: 'word' },

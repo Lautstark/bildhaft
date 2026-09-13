@@ -1092,6 +1092,12 @@ kbd {
 .cell--over, .tray--over { outline: 2px solid var(--accent); outline-offset: -2px; }
 .cell .board-card, .cell .word { height: 100%; }
 .cell .word { min-width: 0; border: 0; }
+/* The picture in a field is capped, so a field with a card is not much taller
+   than one without. Without the cap a field was as wide as its column and the
+   picture square to it: the first card dropped made every row of a 4 × 3 grid
+   170px tall and pushed the tray below the fold, and the second card could
+   not be dragged from where it could not be seen. */
+.cell .word__pic { width: auto; max-width: 100%; height: 84px; aspect-ratio: 1; margin: 0 auto; }
 .cell__add {
   display: grid; place-items: center;
   font: inherit; font-size: 24px;
@@ -1102,6 +1108,11 @@ kbd {
 .cell__add:hover { color: var(--accent-strong); background: var(--surface); }
 
 .board-card { position: relative; cursor: grab; }
+/* The card is what is dragged, not the picture in it: an image is a drag
+   source of its own, and a drag that starts on it carries the bare picture
+   as its ghost while one that starts beside it carries the card. Firefox
+   does not know this property and drags the image, which also works. */
+.board-card img { -webkit-user-drag: none; user-select: none; }
 .board-card:active { cursor: grabbing; }
 .board-card--dragging { opacity: .35; }
 /* The move for a keyboard, where a mouse has the drag. Beside the delete cross
@@ -1124,7 +1135,32 @@ kbd {
 .board-card__move:hover { color: var(--accent-strong); border-color: currentColor; }
 .board-card__move[disabled] { cursor: default; opacity: 0; }
 
-.tray { display: flex; flex-direction: column; gap: 10px; }
+/* The tray is a dock: it stays at the foot of the window while the grid
+   scrolls, so a card is always within reach of the field it is going to — a
+   drag cannot scroll the page in any useful way, and a tray that had scrolled
+   off with the board was a tray nobody could drag from. One row, scrolling
+   sideways, so twenty-four waiting cards do not take the window. */
+.tray {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex; flex-direction: column; gap: 8px;
+  margin: 0 -8px;
+  padding: 8px 8px 10px;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
 .tray__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
 .tray__head b { font-size: 13px; }
-.tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius-md); }
+.tray__wall {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 124px;
+  grid-template-columns: none;
+  overflow-x: auto;
+  min-height: 60px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  scrollbar-width: thin;
+}
+.tray__wall .word--add { min-height: 0; }

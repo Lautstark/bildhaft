@@ -110,7 +110,14 @@ export function boardView(handlers: BoardHandlers): BoardView {
       event.preventDefault();
       const id = dropped(event);
       clear();
-      if (id) onDrop(id);
+      /* A tick later, not now. The drop repaints the board, and the repaint
+         takes the dragged card's wrapper out of the page — and Chrome, when the
+         source of a drag is removed while the drop is still being handled,
+         never fires dragend and never starts another drag on that page. The
+         first drag worked and every one after it did nothing, which is the
+         bug this comment is here for. Deferred by a task, the drag is over
+         before the page changes. */
+      if (id) setTimeout(() => onDrop(id), 0);
     });
   };
 
