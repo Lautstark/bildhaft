@@ -611,7 +611,11 @@ export function openSettings(options: SettingsOptions): void {
       store.node,
       el('hr', { class: 'hair' }),
       el('p', { class: 'sub', text: t('ui.keep_out_in') }),
-      el('div', { class: 'notice', style: { marginBottom: '14px' }, html:
+      /* .explainer and not .notice: components.css reserves .notice for the
+         outcome of an action just taken, and this is standing prose about what
+         a backup is. It looks exactly as it did under the old local .notice —
+         same plate, same type — see app.css on the rename. */
+      el('div', { class: 'explainer', style: { marginBottom: '14px' }, html:
         t('ui.backup_note') }),
       /* Only where there is no store folder. With one, the copies already go
          beside the work, and a second picker here would be the same offer under a

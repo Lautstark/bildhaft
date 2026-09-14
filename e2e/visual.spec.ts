@@ -1,6 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+/* Only the section at the foot of this file needs it: those are the tests that
+   put a row on the page, and a row means a symbol lookup. The settings shots
+   above never translate anything. */
+import { mockArasaac } from './arasaac-mock.ts';
 
 /*
  * Before pictures of the settings dialog, taken so that a move of CSS can be
@@ -313,4 +317,127 @@ test('the „Alles löschen" panel, unfolded', async ({ page }) => {
   await expect(panel).toHaveScreenshot('delete-everything-panel.png', {
     mask: dynamic(page),
   });
+});
+
+/* ==========================================================================
+ *
+ * The surfaces app.css drew alone, and nothing photographed.
+ *
+ * Everything above is the settings dialog, because that is what the CSS move of
+ * 2026-09-14 was about. These four are here for the pass after it, which went
+ * through the seven rules `node node_modules/@lautstark/design/shadows.js`
+ * reported and asked of each one whether it was still drawing anything.
+ *
+ * Four of them turned out to be real and kept — `.title-input`, `.sheet > .body`,
+ * `.toast` and `.words .empty` — each adding a declaration or two that
+ * components.css does not have. `.sheet > .body` is in every shot above. The
+ * other three were on no baseline at all, which is the condition this whole file
+ * exists to complain about: a rule nobody photographs can be deleted, or can
+ * quietly stop applying, and the suite stays green either way. The reasoning
+ * moved into app.css beside each rule; the pictures are here.
+ *
+ * The file's subject is therefore wider than its header says: it was "the
+ * settings surfaces", and it is now "the surfaces whose drawing this product
+ * still owns". The guard, the viewport and the snapshot directory are shared
+ * with the four above deliberately — `.github/workflows/baselines.yml` records
+ * `e2e/visual.spec.ts` and hands back `visual.spec.ts-snapshots/*-linux.png`, so
+ * a second file would have been a second thing to wire up and remember.
+ * ========================================================================== */
+
+/** A Sammlung with one row in it, named so that no date reaches a picture. */
+async function oneRow(page: Page, name: string): Promise<void> {
+  await mockArasaac(page);
+  await page.goto('/');
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  const input = page.getByLabel('Satz eingeben');
+  await input.fill('Ich möchte schlafen');
+  await input.press('Enter');
+  await expect(page.locator('.row')).toHaveCount(1);
+
+  /* „Sammlung vom {date}" is what a new one is called, and a date in a
+     committed picture is a picture that goes stale overnight. Renamed to a
+     fixed string, then blurred, so no caret is in the frame either. */
+  const title = page.locator('.title-input');
+  await title.fill(name);
+  await title.blur();
+}
+
+/*
+ * The toast, which is the reason this section exists.
+ *
+ * It is `position: fixed` at the foot of the screen, it carries a message for
+ * 3.2 seconds and then empties itself, and it is on no other baseline in this
+ * repository — announce.spec.ts asserts that it is a live region and that it
+ * measures 0x0 while empty, which are the two properties that have nothing to
+ * do with how it looks. app.css places it; components.css draws the pill. This
+ * is the only picture of either.
+ *
+ * The export is the path announce.spec.ts uses to make one, and „Sammlung
+ * exportiert." is a constant in the bundle rather than anything about the
+ * machine, so the words are in the picture rather than masked.
+ */
+test('the toast, carrying a message', async ({ page }) => {
+  await oneRow(page, 'Am Morgen');
+
+  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await download;
+
+  const toast = page.locator('.toast');
+  await expect(toast).toHaveText('Sammlung exportiert.');
+  await expect(toast).toHaveScreenshot('toast.png');
+});
+
+/*
+ * The footer, whose rule is now `footer.footer`.
+ *
+ * A licence obligation — the ARASAAC attribution is why this element exists at
+ * all — drawn by components.css for its type, colour and centring and by
+ * app.css for the 840px column it stands in. Nothing had ever looked at it.
+ */
+test('the page footer', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  const footer = page.locator('footer.footer');
+  await expect(footer).toBeVisible();
+  await expect(footer).toHaveScreenshot('footer.png');
+});
+
+/*
+ * The Wortschatz with nothing in it: components.css's taught empty state —
+ * dashed box, 34px of padding, a bold line and a small one — plus the one
+ * declaration app.css adds, `grid-column: 1 / -1`, which is what makes it span
+ * the wall instead of standing in the grid's first cell at one card's width.
+ * The shot is of `.words` rather than the box, because the span is the point
+ * and a picture of the box alone could not show it.
+ */
+test('the Wortschatz, empty', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  const show = page.getByRole('button', { name: 'Seitenleiste einblenden' });
+  if (await show.count()) await show.click();
+  await page.locator('button.collections__item')
+    .filter({ hasText: 'Alle Wörter' }).first().click();
+
+  const wall = page.locator('.words');
+  await expect(wall.locator('.empty')).toBeVisible();
+  await expect(wall).toHaveScreenshot('wortschatz-empty.png');
+});
+
+/*
+ * The head of an open Sammlung, for `.title-input`.
+ *
+ * The field that does not look like one until it is asked to: components.css
+ * draws its type, its padding and the border that appears on hover, and app.css
+ * pulls it 8px left so the name sits over the rows below it rather than indented
+ * from them, and tightens its tracking. Neither declaration is visible in any
+ * assertion — rowname.spec.ts is about what renaming writes, not where the text
+ * sits — so an 8px shift was a thing this suite could not have noticed.
+ */
+test('the head of a Sammlung', async ({ page }) => {
+  await oneRow(page, 'Am Morgen');
+  const head = page.locator('.collection-head');
+  await expect(head.locator('.title-input')).toHaveValue('Am Morgen');
+  await expect(head).toHaveScreenshot('collection-head.png');
 });

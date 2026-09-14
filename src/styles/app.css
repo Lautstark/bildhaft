@@ -272,7 +272,21 @@ kbd {
 /* The field itself is components.css's now - this product's 17px and 650 are
    what it took as the shared value. What is left here is the two things that
    are this page's: the negative margin that lines the text up with the rows
-   below it, and the tighter tracking the wordmark uses. */
+   below it, and the tighter tracking the wordmark uses.
+ *
+ * shadows .title-input: those two declarations, and nothing else. Read against
+ * components.css line by line, the shared rule's flex, min-width, font, size,
+ * weight, padding, border, radius, background and colour all reach the page —
+ * measured on the live field, not assumed. The only value taken back is the
+ * left half of the shared `margin: 0`, which is the whole point of the -8px.
+ *
+ * Bare, and staying bare. Both fields carrying this class are the <input> at
+ * the head of a view — a Sammlung's name in the top bar (app.ts) and a tag's in
+ * the Wortschatz (wortschatz.ts) — and both want these two declarations, so
+ * there is no one place to aim at. `input.title-input` would quiet the tool
+ * while aiming at nothing, since every .title-input here is already an input;
+ * that is dodging the count rather than answering it. e2e/visual.spec.ts
+ * photographs the head of a Sammlung, so an 8px shift is now caught. */
 .title-input { margin-left: -8px; letter-spacing: -.015em; }
 
 /* ------------------------------------------------------------------ rows */
@@ -672,7 +686,47 @@ kbd {
    heading carries the state, so the card's separate name-plus-tag row and its
    accent outline had nothing left to do. */
 
-.notice {
+/*
+ * The quiet plate a standing explanation sits on.
+ *
+ * This was `.notice`, and it was the one rule in this file genuinely keeping a
+ * shared drawing off the page. Written in this repository's first commit, long
+ * before components.css had a `.notice` at all: a grey plate, with
+ * `.notice--accent` beside it for the loud version. The family later settled
+ * `.notice` as the outcome line — accent-soft ground, accent-strong ink, 14px —
+ * which is the same treatment `.notice--accent` had been. From that day this
+ * file, loading second, drew every notice in bildhaft grey and the shared rule
+ * reached nothing. Measured before the change: surface-2 ground, text-dim ink,
+ * 13px, 11px/13px padding, every line of it this file's.
+ *
+ * Renamed rather than deleted, because the element wearing it is not a notice.
+ * components.css is explicit that a .notice is "the outcome of an action just
+ * taken"; bildhaft's only own use of the class is ui.backup_note, a paragraph
+ * explaining what a backup is, which is standing prose and never an outcome.
+ * Deleting the rule outright would have handed a permanent explainer the plate
+ * the system reserves for "here is what just happened".
+ *
+ * Which leaves `.notice` to components.css, unshadowed — and it had two real
+ * users here all along, both of them package markup wearing this file's grey:
+ *
+ *   the METACOM licence      @lautstark/bildquelle/metacom-panel emits the
+ *                            licence paragraph as `.notice`, and components.css
+ *                            claims it by name beside `.metacom-panel`:
+ *                            "`.notice` for the licence, `.notice.bad` for the
+ *                            state that has to be acted on". It is accent-soft
+ *                            with accent-strong ink at 14px now, three lines
+ *                            where it was two, and e2e/visual.spec.ts's
+ *                            metacom-panel.png is re-recorded for it.
+ *
+ *   the „zweimal" line       @lautstark/sicherung/ablage-panel's `.notice bad`,
+ *                            which had the shared red from `.notice.bad` but
+ *                            this file's 13px and 11px/13px underneath it.
+ *                            14px and 11px/14px now.
+ *
+ * `.notice--accent` went with it: emitted nowhere in this product's markup, and
+ * exactly what the shared `.notice` now draws.
+ */
+.explainer {
   padding: 11px 13px;
   border-radius: var(--radius-sm);
   background: var(--surface-2);
@@ -680,7 +734,6 @@ kbd {
   line-height: 1.55;
   color: var(--text-dim);
 }
-.notice--accent { background: var(--accent-soft); color: var(--accent-strong); }
 
 .stopword-area {
   width: 100%;
@@ -696,14 +749,43 @@ kbd {
 /* Type, colour and centring come from components.css; the 840px column and
    the compact padding are bildhaft's. Kept compact because the ARASAAC
    attribution is a licence requirement and must stay visible without costing
-   a third of the viewport. */
-.footer {
+   a third of the viewport.
+
+   `footer.footer` rather than `.footer`, aimed the way `dialog.sheet` is: this
+   is the page's one landmark footer, the element the rule was always about, and
+   naming it says so. Of the three declarations only `padding` is also in the
+   shared rule — the 840px column and the auto margins are this page's, and the
+   narrow-screen copy below hands even the padding back to the shared
+   14px 16px 20px. e2e/visual.spec.ts photographs it now. */
+footer.footer {
   max-width: 840px;
   margin: 0 auto;
   padding: 14px 32px 18px;
 }
 
-/* The pill itself is components.css's .toast; where it sits is bildhaft's. */
+/*
+ * The pill itself is components.css's .toast; where it sits is bildhaft's.
+ *
+ * shadows .toast: placement, and only placement. Position, the two offsets, the
+ * stacking and the centring transform — components.css sets none of the five.
+ * The fill, the ink, the pill radius, the padding, the type and the shadow all
+ * arrive from the shared rule, measured arriving on a toast holding a real
+ * message. Nothing to delete, and nothing to aim at: the toast is a bare <div>
+ * mounted once with the app (app.ts), so there is no element name to hang the
+ * selector on the way `dialog.sheet` and `footer.footer` have one.
+ *
+ * `position: fixed` blockifies the shared `display: inline-block` to `block`.
+ * That is the cascade doing what it should rather than this file overriding
+ * anything, but it is the one shared value the rule changes, so it is said out
+ * loud.
+ *
+ * `.toast:empty` used to be repeated below this, byte for byte as
+ * components.css now writes it — background, box-shadow and padding all off.
+ * The shared file carries the rule and the long explanation of why a live
+ * region has to stay in the tree and draw nothing, so the copy here was saying
+ * the same thing twice and is gone. e2e/announce.spec.ts is what holds it: it
+ * asserts the empty toast measures 0x0 with a transparent fill.
+ */
 .toast {
   position: fixed;
   left: 50%;
@@ -711,19 +793,6 @@ kbd {
   z-index: 60;
   transform: translateX(-50%);
 }
-
-/* The toast is a live region and is never removed from the page — see notify()
-   in app.ts — so it has to be invisible while it has nothing to say. Not
-   [hidden] and not display:none: both take it out of the accessibility tree,
-   which is precisely the arrangement that made every message here silent.
-   Stripped of its fill and padding an empty inline-block draws nothing and
-   measures 0x0, and it is out of flow besides.
-
-   This belongs in components.css beside the .toast it is undoing — the same
-   file already carries `.toast[hidden] { display: none }`, which is the same
-   trap one step further along. It is here rather than there because moving it
-   is a design release, and it is bildhaft that is silent today. */
-.toast:empty { background: none; box-shadow: none; padding: 0; }
 
 .spinner {
   display: inline-block;
@@ -786,7 +855,11 @@ kbd {
   .sheet { max-height: 92vh; max-height: 92dvh; }
   .print-layout { grid-template-columns: 1fr; }
   .preview-frame { height: 46vh; height: 46dvh; }
-  .footer { padding: 14px 16px 20px; }
+  /* Aimed with the base rule above, and it has to be: shadows.js skips only the
+     FIRST rule inside a media block — the one whose chunk still carries the
+     `@media (...)` text — and reads every rule after it. A bare `.footer` here
+     would have gone on being counted with the base rule already narrowed. */
+  footer.footer { padding: 14px 16px 20px; }
 
   /* The dialog footer's summary line duplicates the fields directly above it and
      only squeezes the buttons on a narrow screen. */
@@ -857,9 +930,20 @@ kbd {
    markup; these are this product's tokens under them.
 
    The ordinary answer wears no red: the browser is a complete answer and not a
-   deficiency, and a warning here would argue with the sentence beside it. */
-.check { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
-.check input { flex: 0 0 auto; margin: 0; }
+   deficiency, and a warning here would argue with the sentence beside it.
+
+   `.check` and `.check input` stood here until they were read side by side with
+   components.css, which draws the same five and the same two declarations under
+   `.where-panel .check`. Two classes against this one's one, so the shared pair
+   was already winning every line — dead on specificity as well as identical in
+   value. ablage-panel.ts builds the consent checkbox inside the .where-panel
+   that same function builds, so there is no .check in this product the
+   package's selector does not already reach, and nothing here to keep.
+
+   Not a shadow, and it never was: shadows.js reads `.where-panel .check` as the
+   aimed rule it is, so `check` is not among the names it treats as shared and
+   this pair was never in its report. Plain duplication, removed on the measured
+   evidence rather than on the tool's say-so. */
 
 /* A heading inside a panel, for the half of a subject that is a handful of
    actions rather than a state. */
