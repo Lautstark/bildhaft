@@ -126,6 +126,8 @@ describe('where a block ends', () => {
     let board = paintZone(paintZone(grid(3, 1), 0, 'y'), 1, 'y');
     expect(zoneBox(board, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm' });
     expect(zoneBox(board, 1, '1mm', '3mm')).toEqual({ inset: '1mm 1mm 1mm 0', borderRadius: '0 3mm 3mm 0' });
+    // Reaching out where the block goes on, so neighbours overlap and leave no seam.
+    expect(zoneBox(board, 0, '1mm', '3mm', '-0.3mm')!.inset).toBe('1mm -0.3mm 1mm 1mm');
     expect(zoneBox(board, 2, '1mm', '3mm')).toBeNull();
   });
 });

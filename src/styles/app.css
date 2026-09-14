@@ -1119,7 +1119,7 @@ kbd {
    piece with no seam through it. */
 .cell {
   position: relative;
-  min-height: 96px;
+  min-height: 72px;
   display: grid;
   padding: 8px;
 }
@@ -1137,14 +1137,19 @@ kbd {
 .cell--free .cell__add:hover { color: var(--accent-strong); background: rgba(255, 255, 255, .5); }
 .cell--over { outline: 2px solid var(--accent); outline-offset: -6px; border-radius: 10px; }
 .tray--over { outline: 2px solid var(--accent); outline-offset: -2px; }
-.cell .board-card, .cell .word { height: 100%; }
-.cell .word { min-width: 0; }
+/* The card fills its field's content box and never more. `min-width: 0` on
+   the grid item, because its default of auto let a 96px picture plus padding
+   push the card out of a narrow field — seven columns in an 840px main made
+   the cards overlap and the blocks behind them vanish into slivers. */
+.cell .board-card { height: 100%; min-width: 0; }
+.cell .word { box-sizing: border-box; height: 100%; min-width: 0; padding: 6px; gap: 4px; }
 /* The picture in a field is capped, so a field with a card is not much taller
    than one without. Without the cap a field was as wide as its column and the
    picture square to it: the first card dropped made every row of a 4 × 3 grid
    170px tall and pushed the tray below the fold, and the second card could
    not be dragged from where it could not be seen. */
-.cell .word__pic { width: auto; max-width: 100%; height: 96px; aspect-ratio: 1; margin: 0 auto; }
+.cell .word__pic { width: min(100%, 96px); height: auto; aspect-ratio: 1; margin: 0 auto; }
+.cell .word__name { font-size: 12px; text-align: center; }
 .cell__add {
   display: grid; place-items: center;
   font: inherit; font-size: 24px;

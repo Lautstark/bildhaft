@@ -125,11 +125,18 @@ export function zoneEdges(
   };
 }
 
-/** The zone layer's inset and corners, as CSS, for a cell that is `px` wide of gutter. */
-export function zoneBox(board: Board, index: number, halfGutter: string, radius: string): { inset: string; borderRadius: string } | null {
+/**
+ * The colour layer's inset and corners, as CSS. A side where the block ends
+ * steps in by half a gutter; a side where it goes on reaches *out* by a hair
+ * (`overlap`), so two neighbouring layers overlap instead of meeting edge to
+ * edge — which, scaled in a preview, drew a white seam through every block.
+ */
+export function zoneBox(
+  board: Board, index: number, halfGutter: string, radius: string, overlap = '0',
+): { inset: string; borderRadius: string } | null {
   const edges = zoneEdges(board, index);
   if (!edges) return null;
-  const side = (exposed: boolean) => (exposed ? halfGutter : '0');
+  const side = (exposed: boolean) => (exposed ? halfGutter : overlap);
   return {
     inset: `${side(edges.top)} ${side(edges.right)} ${side(edges.bottom)} ${side(edges.left)}`,
     borderRadius: zoneCorners(board, index, radius),

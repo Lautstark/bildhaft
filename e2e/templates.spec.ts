@@ -205,6 +205,15 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
     await card.locator('.word__pic').dragTo(cells.nth(i));
     await expect(cells.nth(i).locator('.word__name')).toHaveText(name);
   }
+  // Every card stays inside its field, with the field's air around it: a
+  // narrow field used to let the card push out over its neighbours.
+  for (let i = 0; i < names.length; i += 1) {
+    const cell = (await cells.nth(i).boundingBox())!;
+    const card = (await cells.nth(i).locator('.word').boundingBox())!;
+    expect(card.x).toBeGreaterThanOrEqual(cell.x + 7);
+    expect(card.x + card.width).toBeLessThanOrEqual(cell.x + cell.width - 7);
+    expect(card.y + card.height).toBeLessThanOrEqual(cell.y + cell.height - 7);
+  }
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
 
   // Back out by dragging onto the tray, and a swap between two full fields.
@@ -304,7 +313,9 @@ test('fields of a Tafel can be coloured as a group, on screen and on paper', asy
   await expect(zone(0)).toHaveCSS('border-top-right-radius', '0px');
   await expect(zone(0)).toHaveCSS('border-top-left-radius', '12px');
   await expect(zone(1)).toHaveCSS('border-top-left-radius', '0px');
-  await expect(zone(0)).toHaveCSS('right', '0px');
+  // Where the block goes on, the layer reaches a hair past its field, so the
+  // two layers overlap and no seam shows between them.
+  await expect(zone(0)).toHaveCSS('right', '-1px');
   await expect(zone(0)).toHaveCSS('left', '4px');
 
   // One drag across three fields colours all three: down the right edge,
@@ -344,7 +355,9 @@ test('fields of a Tafel can be coloured as a group, on screen and on paper', asy
   const box = await printed.nth(0).locator('.ps-block').boundingBox();
   const cell = await printed.nth(0).boundingBox();
   expect(box!.x).toBeGreaterThan(cell!.x);
-  expect(Math.round(box!.y + box!.height)).toBe(Math.round(cell!.y + cell!.height));
+  // Downwards the block goes on, so the layer reaches to the field's edge and a hair past it.
+  expect(box!.y + box!.height).toBeGreaterThanOrEqual(cell!.y + cell!.height - 0.5);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(cell!.y + cell!.height + 2);
   // The card stays white on its colour.
   await expect(printed.nth(0).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   // And the air around a card is the Tafel's own 4 mm, named as air, not as a cut.

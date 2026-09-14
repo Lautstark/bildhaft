@@ -539,7 +539,7 @@ function boardSheet(
       /* The colour is a layer under the card, stepped in by 1 mm where the
          block ends — half of a 2 mm rinne, so two blocks meet with a rinne
          between them and a block ends with air to the sheet. */
-      const box = zoneBox({ cols: board.cols, rows: board.rows, cells: [], zones: board.zones }, index, '1mm', '3mm');
+      const box = zoneBox({ cols: board.cols, rows: board.rows, cells: [], zones: board.zones }, index, '1mm', '3mm', '-0.3mm');
       if (box) node.prepend(el('div', { class: 'ps-block', style: { '--zone': zone, inset: box.inset, borderRadius: box.borderRadius } }));
     }
     return node;

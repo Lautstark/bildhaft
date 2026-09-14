@@ -226,7 +226,7 @@ export function boardView(handlers: BoardHandlers): BoardView {
       /* The colour is a layer under the card, stepped in by half a gutter
          where the block ends, so that the same rule draws it on paper — see
          boardSheet() in printSheet.ts, which reads the same zoneBox(). */
-      const box = zoneBox(board, index, '4px', '12px');
+      const box = zoneBox(board, index, '4px', '12px', '-1px');
       if (zone && box) {
         cell.appendChild(el('div', { class: 'cell__zone', style: { '--zone': zone, inset: box.inset, borderRadius: box.borderRadius } }));
       }
