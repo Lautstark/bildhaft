@@ -55,10 +55,20 @@ jobs:
         # the page - and it looks exactly like it worked, because the product
         # goes on rendering the way it always did.
         #
-        # Warning only while the four are being cleaned out. It becomes
-        # --strict once this repository reports none, which is the point of
-        # having it: the list is finite now and is meant to stay at zero.
-        run: node node_modules/@lautstark/design/shadows.js
+        # --strict, as the warning-only version said it would become once this
+        # repository reported none. It does: the four are cleaned out, and the
+        # three still listed each carry a reason beside the rule in app.css.
+        # The point of the check is that the list stays at zero, and only a
+        # failing build holds it there.
+        #
+        # This needs @lautstark/design v1.31.2 and would have been a trap
+        # before it. Until that release shadows.js read only the last part of a
+        # selector, so `.board-head > .btn` and `.sheet > .body` — rules aimed
+        # at one place, which its own header says are not shadows — counted as
+        # bare `.btn` and `.body`. Strict against that version would have
+        # failed this build over three correct rules, and the way out would
+        # have been writing reasons for shadows that do not exist.
+        run: node node_modules/@lautstark/design/shadows.js --strict
 
       - name: Typecheck and build
         run: npm run build
