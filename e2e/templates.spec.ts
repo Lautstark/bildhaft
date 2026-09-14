@@ -373,7 +373,16 @@ test('a group is made, drawn out, moved, recoloured and printed', async ({ page 
   expect(box!.y + box!.height).toBeLessThanOrEqual(cell!.y + cell!.height + 2);
   // The card stays white on its colour.
   await expect(printed.nth(6).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-  // And the air around a card is the Tafel's own 4 mm, named as air, not as a cut.
-  await expect(page.getByLabel('Luft um jede Karte')).toHaveValue('4');
+  // The air around a card is named as air, not as a cut, and comes from the
+  // field: four across an A4 is a roomy 5 mm. Set to 3 here, it is the Tafel's
+  // own and is there again the next time — not the 5 the paper would give.
+  const air = page.getByLabel('Luft um jede Karte');
+  await expect(air).toHaveValue('5');
+  await air.fill('3');
+  await expect(printed.nth(5).locator('.ps-block')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await expect(page.getByLabel('Luft um jede Karte')).toHaveValue('3');
 });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addGroup, boardOf, firstFree, groupsFromZones, placedIds, placeOn, removeGroup, resizeBoard, takeOff,
+  addGroup, boardOf, defaultAirMm, firstFree, groupsFromZones, placedIds, placeOn, removeGroup, resizeBoard, takeOff,
   updateGroup, zoneBox, zoneCorners, zoneMap, zonesOf,
 } from '../../src/core/board.ts';
 import type { Board } from '../../src/core/types.ts';
@@ -137,6 +137,20 @@ describe('a group on a Tafel', () => {
       { col: 2, row: 1, cols: 1, rows: 1, colour: y },
     ]);
     expect(boardOf({ board: { cols: 3, rows: 2, cells: [], zones: [y, y, y, null, null, y] } }).groups).toEqual(groups);
+  });
+});
+
+describe('the air around a card', () => {
+  it('follows the field: less on a crowded sheet, more on a roomy one, never absurd', () => {
+    expect(defaultAirMm(27)).toBe(3);   // seven across an A5
+    expect(defaultAirMm(47.5)).toBe(5); // four across an A4
+    expect(defaultAirMm(12)).toBe(2);
+    expect(defaultAirMm(90)).toBe(5);
+    expect(defaultAirMm(NaN)).toBe(4);
+  });
+  it('is the Tafel\'s own once set, and read back whole', () => {
+    expect(boardOf({ board: { cols: 2, rows: 2, cells: [], airMm: 3 } }).airMm).toBe(3);
+    expect(boardOf({ board: { cols: 2, rows: 2, cells: [] } })).not.toHaveProperty('airMm');
   });
 });
 

@@ -304,6 +304,15 @@ export interface Board {
    */
   groups?: BoardGroup[];
   /**
+   * The air around each card on paper, in millimetres: the space between
+   * cards, and how much of a group's colour shows around a card. On the
+   * Tafel rather than in the print settings, because it is a fact about this
+   * sheet — 4 mm is right on A4 and a third of the card on a crowded A5 —
+   * and is set in the print dialog for this Tafel. Absent means „from the
+   * size of a field", see `defaultAirMm()`.
+   */
+  airMm?: number;
+  /**
    * The older form, one colour per field, written by builds before groups
    * existed. Read once by `boardOf()` and turned into groups; never written
    * again.

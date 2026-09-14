@@ -2,7 +2,8 @@ import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
 import { COLLECTION_KINDS, kindOf, sentenceCaption } from './core/types.ts';
-import { addGroup, boardOf, placedIds, placeOn, removeGroup, resizeBoard, takeOff, updateGroup, zonesOf } from './core/board.ts';
+import { addGroup, boardOf, defaultAirMm, placedIds, placeOn, removeGroup, resizeBoard, takeOff, updateGroup, zonesOf } from './core/board.ts';
+import { printableArea } from './ui/printSheet.ts';
 import type { Board, CollectionKind } from './core/types.ts';
 import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { setSymbolLanguage } from '@lautstark/bildquelle';
@@ -1869,13 +1870,16 @@ export function mountApp(root: HTMLElement): void {
     if (kind() === 'tafel') {
       const open = activeCollection();
       const board = open ? boardOf(open) : boardOf({});
-      /* And 4 mm of air around each card rather than the cutting margin, which
-         on a Tafel is the same number under a different name: with 2 mm a
-         block of colour showed as a hairline around its cards. Still a control
-         in the dialog, for this print. */
+      /* And the air around each card rather than the cutting margin, which on
+         a Tafel is the same number under a different name. The Tafel's own,
+         when it has one; otherwise from the size of a field on this paper, so
+         a crowded A5 gets less than a roomy A4. Set in the dialog, it is
+         written back to the Tafel — see openPrint. */
+      const page = printableArea(print.paper, print.orientation);
+      const field = Math.min(page.width / board.cols, page.height / board.rows);
       return {
         ...print, layout: 'sheet', sheetFit: 'grid', gridCols: board.cols, gridRows: board.rows,
-        cutMarginMm: Math.max(print.cutMarginMm, 4),
+        cutMarginMm: board.airMm ?? defaultAirMm(field),
       };
     }
     if (kind() === 'einkaufsliste') {
@@ -1926,7 +1930,13 @@ export function mountApp(root: HTMLElement): void {
          Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
          because cutting sentences into cards is a thing people actually do. */
       settings: printFor(settings.print),
-      onChange: (print: PrintSettings) => { if (settings) persistSettings({ ...settings, print }); },
+      onChange: (print: PrintSettings) => {
+        if (settings) persistSettings({ ...settings, print });
+        /* The air is the Tafel's: what is set here for this Tafel is kept on it. */
+        if (board && print.cutMarginMm !== boardOf(open!).airMm && print.cutMarginMm !== printFor(settings!.print).cutMarginMm) {
+          void writeBoard((b) => ({ ...b, airMm: print.cutMarginMm }));
+        }
+      },
       provider: providerId(),
       attribution: provider().attribution,
       onClose: () => undefined,
