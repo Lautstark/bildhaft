@@ -295,13 +295,29 @@ export interface Board {
   rows: number;
   cells: (string | null)[];
   /**
-   * A colour behind each field, or nothing. Row-major like `cells`, and a
-   * property of the field rather than of the card in it: the colour marks a
-   * *place* on the Tafel — „the colours go here" — and stays when the card
-   * moves. Painted behind the card and its gap, so neighbouring fields of
-   * one colour read as one block. Absent means every field is bare.
+   * The groups: a rectangle of fields each, with a colour behind it. What a
+   * Symboltafel sets apart — the colours, the feelings, the game words — is
+   * a block of colour behind a *group of fields*, and the group is the thing
+   * somebody makes, moves and resizes; the colour of any one field follows
+   * from it. Two groups of one colour that touch draw as one block, which is
+   * how an L is made. Absent means no groups.
+   */
+  groups?: BoardGroup[];
+  /**
+   * The older form, one colour per field, written by builds before groups
+   * existed. Read once by `boardOf()` and turned into groups; never written
+   * again.
    */
   zones?: (string | null)[];
+}
+
+/** One group on a Tafel: `cols × rows` fields from (`col`, `row`), in a colour. */
+export interface BoardGroup {
+  col: number;
+  row: number;
+  cols: number;
+  rows: number;
+  colour: string;
 }
 
 /**

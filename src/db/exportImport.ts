@@ -293,8 +293,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
 /** A board's fields pointing at the fresh ids its cards were given. */
 function remapBoard(board: Board, ids: Map<string, string>): Board {
   return {
-    cols: board.cols,
-    rows: board.rows,
+    ...board,
     cells: (board.cells ?? []).map((cell) => (cell ? ids.get(cell) ?? null : null)),
   };
 }

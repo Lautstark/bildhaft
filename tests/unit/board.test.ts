@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { boardOf, firstFree, paintZone, placedIds, placeOn, resizeBoard, takeOff, zoneBox, zoneCorners } from '../../src/core/board.ts';
+import {
+  addGroup, boardOf, firstFree, groupsFromZones, placedIds, placeOn, removeGroup, resizeBoard, takeOff,
+  updateGroup, zoneBox, zoneCorners, zoneMap, zonesOf,
+} from '../../src/core/board.ts';
 import type { Board } from '../../src/core/types.ts';
 
 /**
@@ -15,7 +18,7 @@ const grid = (cols: number, rows: number, ...placed: [string, number][]): Board 
 
 describe('a Tafel that has not been sized', () => {
   it('is 4 × 3 and every field free', () => {
-    expect(boardOf({})).toEqual({ ...grid(4, 3), zones: Array(12).fill(null) });
+    expect(boardOf({})).toEqual({ ...grid(4, 3), groups: [] });
   });
 
   it('is made whole when the record does not add up', () => {
@@ -85,49 +88,94 @@ describe('the grid at another size', () => {
 });
 
 /**
- * A colour behind a group of fields. It belongs to the field, not the card:
- * the block says „the colours go here" and stays when a card moves. What is
- * held is that painting never touches a card, that a smaller grid keeps the
- * colours of the fields it keeps, and that a block is rounded only where it
- * ends — the one calculation a screen and a sheet both draw from.
+ * A group: a rectangle of fields with a colour behind it. What is held is
+ * that a group stays on the grid however it is moved or drawn out, that a
+ * smaller grid cuts it rather than losing it, that the older colour-per-field
+ * records come back as groups, and where a block's corners are rounded — the
+ * one calculation a screen and a sheet both draw from.
  */
-describe('a colour behind fields', () => {
-  it('paints the field and leaves the card in it alone', () => {
-    const board = placeOn(grid(2, 2), 'a', 1);
-    const next = paintZone(board, 1, '#fff3bf');
-    expect(next.zones).toEqual([null, '#fff3bf', null, null]);
-    expect(next.cells).toEqual(board.cells);
-    expect(paintZone(next, 1, '#fff3bf')).toBe(next);
-    expect(paintZone(next, 1, null).zones).toEqual([null, null, null, null]);
+const y = '#fff1b8';
+const b = '#d6e9fb';
+
+describe('a group on a Tafel', () => {
+  it('is made two by two on the first fields no group covers', () => {
+    const one = addGroup(grid(4, 3), y);
+    expect(one.groups).toEqual([{ col: 0, row: 0, cols: 2, rows: 2, colour: y }]);
+    const two = addGroup(one, b);
+    expect(two.groups![1]).toEqual({ col: 2, row: 0, cols: 2, rows: 2, colour: b });
+    // A grid too small for two by two gets what fits.
+    expect(addGroup(grid(1, 1), y).groups).toEqual([{ col: 0, row: 0, cols: 1, rows: 1, colour: y }]);
   });
 
-  it('keeps its colours through a resize, like the cards', () => {
-    const painted = paintZone(paintZone(grid(3, 2), 0, 'y'), 2, 'y');
-    expect(resizeBoard(painted, 2, 2).zones).toEqual(['y', null, null, null]);
+  it('is moved and drawn out, and kept on the grid', () => {
+    const one = addGroup(grid(4, 3), y);
+    expect(updateGroup(one, 0, { col: 3, row: 2 }).groups![0]).toMatchObject({ col: 3, row: 2, cols: 1, rows: 1 });
+    expect(updateGroup(one, 0, { col: -2, cols: 9, rows: 0 }).groups![0]).toMatchObject({ col: 0, cols: 4, rows: 1 });
+    expect(updateGroup(one, 0, { colour: b }).groups![0].colour).toBe(b);
+    expect(updateGroup(one, 0, {})).toBe(one);
+    expect(updateGroup(one, 5, { col: 1 })).toBe(one);
+    expect(removeGroup(one, 0).groups).toEqual([]);
   });
 
-  it('rounds a block only at its own corners', () => {
-    // y y .
-    // y . .
-    let board = grid(3, 2);
-    for (const i of [0, 1, 3]) board = paintZone(board, i, 'y');
-    expect(zoneCorners(board, 0, 'R')).toBe('R 0 0 0');
-    expect(zoneCorners(board, 1, 'R')).toBe('0 R R 0');
-    expect(zoneCorners(board, 3, 'R')).toBe('0 0 R R');
-    expect(zoneCorners(board, 2, 'R')).toBe('0');
-    // A different colour beside it is an end, not a neighbour.
-    expect(zoneCorners(paintZone(board, 2, 'g'), 1, 'R')).toBe('0 R R 0');
+  it('is cut by a smaller grid and gone when nothing is left', () => {
+    const one = updateGroup(addGroup(grid(4, 3), y), 0, { col: 2, row: 1, cols: 2, rows: 2 });
+    expect(resizeBoard(one, 3, 3).groups![0]).toMatchObject({ col: 2, row: 1, cols: 1, rows: 2 });
+    expect(resizeBoard(one, 2, 3).groups).toEqual([]);
+  });
+
+  it('colours the fields it covers, the last group over a field deciding', () => {
+    const two = updateGroup(addGroup(addGroup(grid(3, 1), y), b), 1, { col: 1, row: 0, cols: 1, rows: 1 });
+    expect(zonesOf(two)).toEqual([y, b, null]);
+  });
+
+  it('reads the older colour-per-field record as the largest rectangles', () => {
+    // g g g      the L of one colour the real board wore
+    // . . g
+    const groups = groupsFromZones([y, y, y, null, null, y], 3, 2, 3, 2);
+    expect(groups).toEqual([
+      { col: 0, row: 0, cols: 3, rows: 1, colour: y },
+      { col: 2, row: 1, cols: 1, rows: 1, colour: y },
+    ]);
+    expect(boardOf({ board: { cols: 3, rows: 2, cells: [], zones: [y, y, y, null, null, y] } }).groups).toEqual(groups);
   });
 });
 
 describe('where a block ends', () => {
-  it('steps in by half a gutter on its own sides only', () => {
+  const map = (cols: number, rows: number, zones: (string | null)[]) => ({ cols, rows, zones });
+
+  it('rounds a block only at its own corners, and only against paper', () => {
     // y y .
-    let board = paintZone(paintZone(grid(3, 1), 0, 'y'), 1, 'y');
-    expect(zoneBox(board, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm' });
-    expect(zoneBox(board, 1, '1mm', '3mm')).toEqual({ inset: '1mm 1mm 1mm 0', borderRadius: '0 3mm 3mm 0' });
-    // Reaching out where the block goes on, so neighbours overlap and leave no seam.
-    expect(zoneBox(board, 0, '1mm', '3mm', '-0.3mm')!.inset).toBe('1mm -0.3mm 1mm 1mm');
-    expect(zoneBox(board, 2, '1mm', '3mm')).toBeNull();
+    // y . .
+    const m = map(3, 2, [y, y, null, y, null, null]);
+    expect(zoneCorners(m, 0, 'R')).toBe('R 0 0 0');
+    expect(zoneCorners(m, 1, 'R')).toBe('0 R R 0');
+    expect(zoneCorners(m, 3, 'R')).toBe('0 0 R R');
+    expect(zoneCorners(m, 2, 'R')).toBe('0');
+  });
+
+  it('keeps a corner square in the crook of another block', () => {
+    // g g g      the real board: the grey L over the blue, where a rounded
+    // b b g      blue corner left a notch against the grey's straight edge
+    const g = '#e9ecef';
+    const m = map(3, 2, [g, g, g, b, b, g]);
+    // Blue's top-right corner sits in grey's crook: square. Its bottom-right
+    // meets the edge of the sheet, which is paper: round. Blue's left field
+    // has the sheet's edge on its left, so both its left corners are round —
+    // two blocks stacked at an edge face each other with rounded corners.
+    expect(zoneCorners(m, 4, 'R')).toBe('0 0 R 0');
+    expect(zoneCorners(m, 3, 'R')).toBe('R 0 0 R');
+    // Grey's own corners against the sheet's edges stay round — including the
+    // ones that face blue along an edge.
+    expect(zoneCorners(m, 0, 'R')).toBe('R 0 0 R');
+    expect(zoneCorners(m, 5, 'R')).toBe('0 0 R R');
+  });
+
+  it('steps in by half a gutter on its own sides only, and reaches out where it goes on', () => {
+    const m = map(3, 1, [y, y, null]);
+    expect(zoneBox(m, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm' });
+    expect(zoneBox(m, 1, '1mm', '3mm')).toEqual({ inset: '1mm 1mm 1mm 0', borderRadius: '0 3mm 3mm 0' });
+    expect(zoneBox(m, 2, '1mm', '3mm')).toBeNull();
+    expect(zoneBox(m, 0, '1mm', '3mm', '-0.3mm')!.inset).toBe('1mm -0.3mm 1mm 1mm');
+    expect(zoneMap(addGroup(grid(2, 1), y)).zones).toEqual([y, y]);
   });
 });

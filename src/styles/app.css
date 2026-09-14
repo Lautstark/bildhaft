@@ -1067,33 +1067,65 @@ kbd {
 .board-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; padding: 0 4px; }
 .board-head label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); }
 .board-head__n { width: 4.5em; padding: 4px 6px; }
-/* The colours, picked up and dragged onto the fields like a card. */
-.zones { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; color: var(--text-dim); }
-.zones__hint { flex-basis: 100%; text-align: right; }
-.zone-swatch {
-  display: inline-block; box-sizing: border-box;
-  width: 22px; height: 22px;
-  cursor: grab;
-  border: 1px solid var(--line); border-radius: 50%;
+/* „+ Gruppe", at the head's right edge. */
+.board-head > .btn { margin-left: auto; }
+
+/* A group: a layer over its fields that lets every press through to the
+   cards, carrying the two things that take one — the badge at its top left
+   and the corner at its bottom right. */
+.group { position: relative; pointer-events: none; z-index: 1; }
+.group--open { z-index: 3; }
+.group__badge {
+  position: absolute; top: 2px; left: 2px;
+  width: 22px; height: 22px; padding: 0;
+  pointer-events: auto; cursor: grab;
+  border: 2px solid #fff; border-radius: 50%;
+  background: var(--zone);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.group__badge:active { cursor: grabbing; }
+.group__badge:focus-visible, .group--open .group__badge { outline: 2px solid var(--accent); outline-offset: 1px; }
+.group__corner {
+  position: absolute; right: 1px; bottom: 1px;
+  width: 16px; height: 16px;
+  pointer-events: auto; cursor: nwse-resize;
+  border-right: 3px solid #8a8a8a; border-bottom: 3px solid #8a8a8a;
+  border-bottom-right-radius: 5px;
+  opacity: .55;
+}
+.group__corner:hover, .group__corner:focus-visible { opacity: 1; border-color: var(--accent); outline: none; }
+/* The badge's menu: the colours in a row, one of one's own, and the way out. */
+.group-menu {
+  position: absolute; top: 28px; left: 2px;
+  pointer-events: auto;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+.group-menu__row { display: flex; align-items: center; gap: 6px; }
+.group-menu__swatch {
+  width: 24px; height: 24px; padding: 0; cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, .15); border-radius: 50%;
   background: var(--zone);
 }
-.zone-swatch:active, .zone-swatch--flying { cursor: grabbing; }
-.zone-swatch--flying { opacity: .5; }
-/* A colour of one's own: the „+" opens the browser's picker, and the colour
-   it gives becomes one more swatch to drag. */
-.zone-picker {
+.group-menu__swatch:hover { border-color: var(--text-dim); }
+.group-menu__swatch--on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.group-menu__pick {
   position: relative; display: inline-grid; place-items: center;
-  width: 22px; height: 22px; cursor: pointer;
+  width: 24px; height: 24px; cursor: pointer;
   border: 1px dashed var(--line); border-radius: 50%;
-  color: var(--text-dim); font-size: 15px; line-height: 1;
+  color: var(--text-dim); font-size: 13px; line-height: 1;
 }
-.zone-picker:hover { border-color: var(--text-dim); color: var(--text); }
-.zone-picker__input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.group-menu__pick:hover { border-color: var(--text-dim); color: var(--text); }
+.group-menu__own { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.group-menu__remove { align-self: flex-start; font-size: 12px; color: var(--danger, var(--text-dim)); }
 .zone-swatch--none {
   background: transparent;
   background-image: linear-gradient(135deg, transparent 45%, var(--text-dim) 45%, var(--text-dim) 55%, transparent 55%);
 }
-.zone-swatch:hover, .zone-swatch:focus-visible { border-color: var(--text-dim); outline: 2px solid var(--accent); outline-offset: 2px; }
 .board {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));

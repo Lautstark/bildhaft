@@ -2,7 +2,7 @@ import type {
   AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
 } from './core/types.ts';
 import { COLLECTION_KINDS, kindOf, sentenceCaption } from './core/types.ts';
-import { boardOf, paintZone, placedIds, placeOn, resizeBoard, takeOff } from './core/board.ts';
+import { addGroup, boardOf, placedIds, placeOn, removeGroup, resizeBoard, takeOff, updateGroup, zonesOf } from './core/board.ts';
 import type { Board, CollectionKind } from './core/types.ts';
 import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { setSymbolLanguage } from '@lautstark/bildquelle';
@@ -633,7 +633,9 @@ export function mountApp(root: HTMLElement): void {
     onTakeOff: (id) => void writeBoard((board) => takeOff(board, id)),
     onNewCardAt: (index) => void handleNewCard(index),
     onNewCard: () => void handleNewCard(),
-    onPaint: (index, colour) => void writeBoard((board) => paintZone(board, index, colour)),
+    onAddGroup: (colour) => void writeBoard((board) => addGroup(board, colour)),
+    onGroup: (index, patch) => void writeBoard((board) => updateGroup(board, index, patch)),
+    onRemoveGroup: (index) => void writeBoard((board) => removeGroup(board, index)),
   });
 
   function renderBoard(): void {
@@ -1911,7 +1913,7 @@ export function mountApp(root: HTMLElement): void {
     openPrintDialog({
       sentences: chosen,
       board: board ? {
-        cols: board.cols, rows: board.rows, zones: board.zones,
+        cols: board.cols, rows: board.rows, zones: zonesOf(board),
         cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)),
       } : null,
       collectionName: activeCollection()?.name ?? 'bildhaft',
