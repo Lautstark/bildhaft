@@ -416,21 +416,24 @@ kbd {
    components.css. What stays here is plumbing the shared skeleton deliberately
    leaves per product: the backdrop weight, the scroll, and the two widths. */
 .sheet::backdrop { background: rgba(22, 20, 17, .38); backdrop-filter: blur(3px); }
+/* shadows .sheet: the column, and only the column. components.css does not say
+   how a sheet stacks its head, body and foot, and `.sheet > .body` below needs
+   a flex parent to scroll against while the other two stay put.
+   
+   Everything else that stood here is gone, and it had been winning: width,
+   max-width, max-height, margin and padding were all set again in this file,
+   which loads after components.css. `max-width: 600px` is why a dialog asking
+   for the 900px `panels` width opened at 600 anyway, and `margin: auto` is why
+   it went on centring itself after the package started anchoring it. The
+   shared drawing of .sheet had not reached this product since the day it
+   shipped, and nothing looked wrong, because the sheet went on looking exactly
+   as it always had.
+   
+   `node node_modules/@lautstark/design/shadows.js` is what finds this. */
 .sheet {
   display: flex;
   flex-direction: column;
-  /* A <dialog> is width:fit-content and max-width:calc(100% - 6px - 2em) by UA
-     rule, so it needs telling. The 48px is what .overlay's 24px padding used to
-     hold off each side; without it a sheet on a phone touches both edges. */
-  width: calc(100% - 48px);
-  max-width: 600px;
-  max-height: min(88vh, 800px);
-  /* Margin, not place-items on a parent that no longer exists: auto on all four
-     sides is how a top-layer dialog centres itself. */
-  margin: auto;
-  padding: 22px;
 }
-.sheet.wide { max-width: min(100% - 48px, 1060px); }
 
 .sheet > .head h2 { flex: 1; }
 /* Outlines draw outside the box, and this region scrolls, so it needs room for

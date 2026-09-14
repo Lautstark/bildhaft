@@ -117,6 +117,13 @@ export function openSettings(options: SettingsOptions): void {
 
   const dialog = openDialog({
     title: t('ui.settings'),
+    /* A column of panels, so 900px rather than 600. Three products showed this
+       same column at 600 and wochenwerk at 900, and wochenwerk was the only one
+       with a reason written down: 900px is where a line of German stops being
+       comfortable, and a column of panels is not a grid of cards. See
+       design/docs/conventions.md 4.14. printDialog.ts keeps `wide` - it is the
+       grid of cards that reason excludes. */
+    panels: true,
     body: [langPanel, arasaacPanel, metacomPanel, wordsPanel, themePanel,
       dataPanel, dangerPanel].map((p) => p.node),
     onClose: () => {
