@@ -1,5 +1,5 @@
 import type { Collection, Sentence } from '../core/types.ts';
-import { sentenceCaption } from '../core/types.ts';
+import { kindOf, sentenceCaption } from '../core/types.ts';
 import { drawCollections } from '@lautstark/design/collections';
 import { el, fill } from './dom.ts';
 import { icons, logo } from './logo.ts';
@@ -217,6 +217,12 @@ export function sidebar(handlers: SidebarHandlers): {
         id: collection.id,
         name: collection.name,
         count: state.counts[collection.id] ?? 0,
+        /* What it is, under what it is called. Eleven Sammlungen in a list
+           look alike, and which of them is the Tafel and which the strips
+           is a question the list can answer without being opened. Every
+           row says it, the Satzstreifen too — a line that only some rows
+           have reads as a warning on those. */
+        subtitle: t(`ui.template_${kindOf(collection)}`),
       })),
       /* Nothing is open down here while the Wortschatz is showing. Two rows
          lit in two sections would say both are, and one of them is only the

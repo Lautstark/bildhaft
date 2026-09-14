@@ -120,6 +120,8 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   const tile = page.getByRole('button', { name: /^Tafel/ });
   await tile.click();
   await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  // And the sidebar says so under the name, where eleven look-alike rows are told apart.
+  await expect(page.locator('.sidebar .collections [aria-current]')).toContainText('Tafel');
 
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel\nBanane');
