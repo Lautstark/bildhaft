@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardOf, firstFree, paintZone, placedIds, placeOn, resizeBoard, takeOff, zoneCorners } from '../../src/core/board.ts';
+import { boardOf, firstFree, paintZone, placedIds, placeOn, resizeBoard, takeOff, zoneBox, zoneCorners } from '../../src/core/board.ts';
 import type { Board } from '../../src/core/types.ts';
 
 /**
@@ -117,5 +117,15 @@ describe('a colour behind fields', () => {
     expect(zoneCorners(board, 2, 'R')).toBe('0');
     // A different colour beside it is an end, not a neighbour.
     expect(zoneCorners(paintZone(board, 2, 'g'), 1, 'R')).toBe('0 R R 0');
+  });
+});
+
+describe('where a block ends', () => {
+  it('steps in by half a gutter on its own sides only', () => {
+    // y y .
+    let board = paintZone(paintZone(grid(3, 1), 0, 'y'), 1, 'y');
+    expect(zoneBox(board, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm' });
+    expect(zoneBox(board, 1, '1mm', '3mm')).toEqual({ inset: '1mm 1mm 1mm 0', borderRadius: '0 3mm 3mm 0' });
+    expect(zoneBox(board, 2, '1mm', '3mm')).toBeNull();
   });
 });

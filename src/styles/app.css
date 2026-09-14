@@ -1061,22 +1061,36 @@ kbd {
    fields are the same size as each other and as nothing else, because that is
    what a grid is; a card dropped into one takes the field's size. */
 .rows--tafel { gap: 18px; }
-.board-head { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
+.board-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; padding: 0 4px; }
 .board-head label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); }
 .board-head__n { width: 4.5em; padding: 4px 6px; }
-.zones { display: inline-flex; align-items: center; gap: 5px; margin-left: 12px; color: var(--text-dim); }
+/* The colours, picked up and dragged onto the fields like a card. */
+.zones { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; color: var(--text-dim); }
+.zones__hint { flex-basis: 100%; text-align: right; }
 .zone-swatch {
+  display: inline-block; box-sizing: border-box;
   width: 22px; height: 22px;
-  padding: 0; cursor: pointer;
+  cursor: grab;
   border: 1px solid var(--line); border-radius: 50%;
   background: var(--zone);
 }
+.zone-swatch:active, .zone-swatch--flying { cursor: grabbing; }
+.zone-swatch--flying { opacity: .5; }
+/* A colour of one's own: the „+" opens the browser's picker, and the colour
+   it gives becomes one more swatch to drag. */
+.zone-picker {
+  position: relative; display: inline-grid; place-items: center;
+  width: 22px; height: 22px; cursor: pointer;
+  border: 1px dashed var(--line); border-radius: 50%;
+  color: var(--text-dim); font-size: 15px; line-height: 1;
+}
+.zone-picker:hover { border-color: var(--text-dim); color: var(--text); }
+.zone-picker__input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .zone-swatch--none {
   background: transparent;
   background-image: linear-gradient(135deg, transparent 45%, var(--text-dim) 45%, var(--text-dim) 55%, transparent 55%);
 }
-.zone-swatch:hover { border-color: var(--text-dim); }
-.zone-swatch--on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.zone-swatch:hover, .zone-swatch:focus-visible { border-color: var(--text-dim); outline: 2px solid var(--accent); outline-offset: 2px; }
 .board {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
@@ -1084,47 +1098,50 @@ kbd {
      on screen as on paper, or the grid stops looking like one the moment the
      first card lands. */
   grid-auto-rows: 1fr;
-  gap: 8px;
-  padding: 8px;
+  gap: 0;
+  padding: 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: var(--surface-2);
+  /* Paper, in both themes, on purpose: the Tafel is the one thing on this
+     screen that is a preview of a sheet, and a block of colour that is pale
+     on paper has to be pale here, with white cards on it, or what is seen is
+     not what is printed. The chrome around it stays the app's. */
+  background: #f4f3ef;
+  color: #222;
+  position: relative;
+  z-index: 0;
 }
+/* A field: the card and the air around it. No gap between fields — the air
+   is the cell's padding, so a block of colour under two neighbours is one
+   piece with no seam through it. */
 .cell {
   position: relative;
   min-height: 96px;
   display: grid;
-  border-radius: var(--radius-md);
-  background: var(--zone, var(--surface));
-  border: 1px solid var(--line);
+  padding: 8px;
 }
-/* A field's colour is paper-pale and drawn on a dark screen as it is on
-   paper. The ring is half the grid's gap, so two coloured neighbours meet in
-   the middle of it and a group reads as one block — which the corners,
-   rounded only where the block ends, say too. The card on it is white, as it
-   will be on paper. */
-.cell--zoned { color: #222; border-color: transparent; box-shadow: 0 0 0 4px var(--zone); }
-.cell--zoned .word { background: #fff; color: #222; }
-.cell--zoned .word__name { color: #222; }
-.cell--zoned .cell__add { color: #6b6b6b; }
-.cell--zoned .cell__add:hover { background: rgba(255, 255, 255, .4); }
-.cell--zoned .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
+/* The block of colour, under the card. Its inset and corners come from
+   zoneBox(): stepped in by half a gutter where the block ends, rounded only
+   there, square where a neighbour of the same colour goes on. */
+.cell__zone { position: absolute; z-index: -1; background: var(--zone); }
+.cell .word { background: #fff; color: #222; border: 1px solid #dcdcdc; border-radius: 6px; }
+.cell .word__name { color: #222; }
+.cell .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
 /* Free on purpose. Dashed and on the ground, the way every empty place in this
    app is drawn — and no darker than that, or a Tafel with ten free fields
    would read as a Tafel with ten mistakes. */
-.cell--free { background: var(--zone, transparent); border-style: dashed; }
-/* With a colour in hand, every field is a thing to paint. */
-.board--painting .cell, .board--painting .cell * { cursor: cell; }
-.board--painting .cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
-.cell--over, .tray--over { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cell--free .cell__add { border: 1px dashed #c9c9c9; border-radius: 6px; color: #9a9a9a; }
+.cell--free .cell__add:hover { color: var(--accent-strong); background: rgba(255, 255, 255, .5); }
+.cell--over { outline: 2px solid var(--accent); outline-offset: -6px; border-radius: 10px; }
+.tray--over { outline: 2px solid var(--accent); outline-offset: -2px; }
 .cell .board-card, .cell .word { height: 100%; }
-.cell .word { min-width: 0; border: 0; }
+.cell .word { min-width: 0; }
 /* The picture in a field is capped, so a field with a card is not much taller
    than one without. Without the cap a field was as wide as its column and the
    picture square to it: the first card dropped made every row of a 4 × 3 grid
    170px tall and pushed the tray below the fold, and the second card could
    not be dragged from where it could not be seen. */
-.cell .word__pic { width: auto; max-width: 100%; height: 84px; aspect-ratio: 1; margin: 0 auto; }
+.cell .word__pic { width: auto; max-width: 100%; height: 96px; aspect-ratio: 1; margin: 0 auto; }
 .cell__add {
   display: grid; place-items: center;
   font: inherit; font-size: 24px;
@@ -1132,7 +1149,7 @@ kbd {
   cursor: pointer;
   background: none; border: 0; border-radius: inherit;
 }
-.cell__add:hover { color: var(--accent-strong); background: var(--surface); }
+.cell__add:hover { color: var(--accent-strong); }
 
 .board-card { position: relative; cursor: grab; }
 /* The card is what is dragged, not the picture in it: an image is a drag
@@ -1162,32 +1179,11 @@ kbd {
 .board-card__move:hover { color: var(--accent-strong); border-color: currentColor; }
 .board-card__move[disabled] { cursor: default; opacity: 0; }
 
-/* The tray is a dock: it stays at the foot of the window while the grid
-   scrolls, so a card is always within reach of the field it is going to — a
-   drag cannot scroll the page in any useful way, and a tray that had scrolled
-   off with the board was a tray nobody could drag from. One row, scrolling
-   sideways, so twenty-four waiting cards do not take the window. */
-.tray {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  display: flex; flex-direction: column; gap: 8px;
-  margin: 0 -8px;
-  padding: 8px 8px 10px;
-  background: var(--bg);
-  border-top: 1px solid var(--line);
-}
+/* The tray, under the Tafel. Not a dock: it was one for a while, pinned to
+   the foot of the window so a card was always within reach — and it took the
+   room the grid needed. The page scrolls instead, and a drag that has to
+   cross the fold scrolls it too, which browsers do at the edge. */
+.tray { display: flex; flex-direction: column; gap: 10px; }
 .tray__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
 .tray__head b { font-size: 13px; }
-.tray__wall {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 124px;
-  grid-template-columns: none;
-  overflow-x: auto;
-  min-height: 60px;
-  padding: 4px;
-  border-radius: var(--radius-md);
-  scrollbar-width: thin;
-}
-.tray__wall .word--add { min-height: 0; }
+.tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius-md); }

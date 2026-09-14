@@ -2,7 +2,7 @@ import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot,
 } from '../core/types.ts';
 import { sentenceCaption, slotCaption } from '../core/types.ts';
-import { zoneCorners } from '../core/board.ts';
+import { zoneBox } from '../core/board.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
 import { t } from '../i18n/index.ts';
@@ -534,10 +534,13 @@ function boardSheet(
       ? card(slot, onZone, provider, true)
       : el('div', { class: 'ps-card ps-card--fill ps-card--empty', attrs: { 'aria-hidden': 'true' } });
     if (zone) {
-      node.style.setProperty('--zone', zone);
       // The frame reads its colour from the sheet; this card says white instead.
       if (onZone !== settings) node.style.setProperty('--card-bg', '#fff');
-      node.style.borderRadius = zoneCorners({ cols: board.cols, rows: board.rows, cells: [], zones: board.zones }, index, '3mm');
+      /* The colour is a layer under the card, stepped in by 1 mm where the
+         block ends — half of a 2 mm rinne, so two blocks meet with a rinne
+         between them and a block ends with air to the sheet. */
+      const box = zoneBox({ cols: board.cols, rows: board.rows, cells: [], zones: board.zones }, index, '1mm', '3mm');
+      if (box) node.prepend(el('div', { class: 'ps-block', style: { '--zone': zone, inset: box.inset, borderRadius: box.borderRadius } }));
     }
     return node;
   }));

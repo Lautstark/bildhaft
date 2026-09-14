@@ -309,8 +309,11 @@ export function openPrintDialog(options: PrintOptions): void {
         cardSize,
       ) : numberOpt('opt-size', t('ui.symbol_size'), settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
         cardSize, (next) => set('symbolSizeMm', next)),
-      numberOpt('opt-cut', t('ui.cut_margin'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
-        t('ui.cut_margin_note'),
+      /* On a Tafel the same millimetres are not a cutting margin — nothing is
+         cut — but the air around a card, which is also how much of its block's
+         colour shows around it. Same number, honest name. */
+      numberOpt('opt-cut', t(fixed ? 'ui.card_air' : 'ui.cut_margin'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
+        t(fixed ? 'ui.card_air_note' : 'ui.cut_margin_note'),
         (next) => set('cutMarginMm', next)),
       el('div', { class: 'opt' },
         check(t('ui.print_label'), settings.showLabel, false, (next) => set('showLabel', next)),

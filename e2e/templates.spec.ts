@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
 import { translate } from './helpers.ts';
 
@@ -173,13 +173,17 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
  * The drag that stopped working after the first one.
  *
  * Not a bug in the drag: the first card dropped made every row of the grid
- * as tall as a card, the tray went below the fold, and the second card was
- * dragged from where it could not be seen — a page does not scroll under a
- * drag in any useful way. So the tray is a dock at the foot of the window and
- * a field with a card in it is barely taller than one without. Held at the
- * suite's ordinary window size on purpose, with a Tafel as full as a real one:
- * the failure only shows when the grid is taller than the screen.
+ * as tall as a card, so a field with a card in it is now barely taller than
+ * one without. Held with a Tafel as full as a real one, every card dragged
+ * in turn, because the failure only showed from the second drag on.
  */
+test.describe('a full Tafel', () => {
+  // The tray sits under the grid and the page scrolls; a drag across the
+  // fold is the browser's own edge-scrolling, which a test cannot hold. So
+  // the window is tall enough for the whole Tafel, and what is held is the
+  // drags themselves.
+  test.use({ viewport: { width: 1280, height: 1500 } });
+
 test('every card of a full Tafel can be dragged from the tray, one after the other', async ({ page }) => {
   await showSidebar(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
@@ -195,13 +199,9 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(24);
 
-  const viewport = page.viewportSize()!;
   for (const [i, name] of names.entries()) {
     const card = page.locator('.tray .board-card')
       .filter({ has: page.locator('.word__name', { hasText: new RegExp(`^${name}$`) }) });
-    // The tray is on screen before every drag, however tall the grid has grown.
-    const tray = await page.locator('.tray').boundingBox();
-    expect(tray!.y + tray!.height).toBeLessThanOrEqual(viewport.height + 1);
     await card.locator('.word__pic').dragTo(cells.nth(i));
     await expect(cells.nth(i).locator('.word__name')).toHaveText(name);
   }
@@ -213,6 +213,7 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await cells.nth(2).locator('.board-card').dragTo(cells.nth(4));
   await expect(cells.nth(2).locator('.word__name')).toHaveText('Wort5');
   await expect(cells.nth(4).locator('.word__name')).toHaveText('Wort3');
+});
 });
 
 /**
@@ -254,10 +255,18 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
 /**
  * A colour behind a group of fields, the way a Symboltafel sets its
  * feelings or its colours apart: one rounded block, cards white on it.
- * Held on screen and on paper, because the two draw it from one answer and
- * a group that is a block on screen and a row of tiles on paper is the
- * printout nobody asked for.
+ *
+ * The colour is dragged onto the fields like a card, and a drag across
+ * several fields colours them all. A drag rather than a mode, because a mode
+ * had to be left before a field could be filled or a card moved — and it was
+ * not, so with a colour chosen nothing else worked. Held on screen and on
+ * paper, because the two draw the block from one answer.
  */
+test.describe('colour on a Tafel', () => {
+  // Tall, for the same reason the full Tafel above is: the tray is under the
+  // grid, and the last drag here goes from one to the other.
+  test.use({ viewport: { width: 1280, height: 1500 } });
+
 test('fields of a Tafel can be coloured as a group, on screen and on paper', async ({ page }) => {
   await showSidebar(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
@@ -268,30 +277,77 @@ test('fields of a Tafel can be coloured as a group, on screen and on paper', asy
   await page.getByRole('button', { name: '„Rot“ ins erste freie Feld legen' }).click();
 
   const cells = page.locator('.board .cell');
-  // Yellow in hand: two fields side by side, one with the card and one free.
-  await page.getByRole('button', { name: 'Gelb' }).click();
-  await cells.nth(0).click();
-  await cells.nth(1).click();
+  /* Every drag here is the mouse itself, moved in steps, rather than
+     Playwright's dragTo(): a colour is applied on the way, on every field the
+     pointer crosses, and dragTo() jumps. It also stops working for the rest
+     of a test once a hand-driven drag has happened, which is its business. */
+  const drag = async (source: Locator, ...targets: Locator[]) => {
+    const from = (await source.boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    for (const target of targets) {
+      const to = (await target.boundingBox())!;
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
+    }
+    await page.mouse.up();
+  };
+  const yellow = page.getByRole('button', { name: 'Gelb' });
+  // Yellow onto two fields side by side, one with the card and one free — and
+  // straight down from the swatch, so no field on the way takes it too.
+  await drag(yellow, cells.nth(3), cells.nth(2), cells.nth(1), cells.nth(0));
+  await expect(page.locator('.cell--zoned')).toHaveCount(4);
+  await drag(page.getByRole('button', { name: 'Keine Farbe' }), cells.nth(3), cells.nth(2));
   await expect(page.locator('.cell--zoned')).toHaveCount(2);
-  // The brush took the click; the card's picker did not open.
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  // One block: the shared corners square, the outer ones round.
-  await expect(cells.nth(0)).toHaveCSS('border-top-right-radius', '0px');
-  await expect(cells.nth(0)).toHaveCSS('border-top-left-radius', '12px');
-  await expect(cells.nth(1)).toHaveCSS('border-top-left-radius', '0px');
-  // The brush put down, a click on a field is a click on the card again.
-  await page.keyboard.press('Escape');
-  await cells.nth(2).click();
+  // One block: the shared corners square, the outer ones round, and the
+  // block stepped in by half a gutter only where it ends.
+  const zone = (i: number) => cells.nth(i).locator('.cell__zone');
+  await expect(zone(0)).toHaveCSS('border-top-right-radius', '0px');
+  await expect(zone(0)).toHaveCSS('border-top-left-radius', '12px');
+  await expect(zone(1)).toHaveCSS('border-top-left-radius', '0px');
+  await expect(zone(0)).toHaveCSS('right', '0px');
+  await expect(zone(0)).toHaveCSS('left', '4px');
+
+  // One drag across three fields colours all three: down the right edge,
+  // then along the second row.
+  await drag(yellow, cells.nth(3), cells.nth(7), cells.nth(6), cells.nth(5), cells.nth(4));
+  await drag(page.getByRole('button', { name: 'Keine Farbe' }), cells.nth(3), cells.nth(7));
+  await expect(page.locator('.cell--zoned')).toHaveCount(5);
+
+  // The eraser takes a colour off the same way.
+  await drag(page.getByRole('button', { name: 'Keine Farbe' }), cells.nth(3), cells.nth(2), cells.nth(1));
+  await expect(page.locator('.cell--zoned')).toHaveCount(4);
+
+  // A colour of one's own becomes a swatch to drag.
+  await page.getByLabel('Eigene Farbe wählen').fill('#c8e6ff');
+  await drag(page.getByRole('button', { name: 'Eigene Farbe #c8e6ff' }), cells.nth(3), cells.nth(7), cells.nth(11), cells.nth(10), cells.nth(9), cells.nth(8));
+  await drag(page.getByRole('button', { name: 'Keine Farbe' }), cells.nth(3), cells.nth(7), cells.nth(11), cells.nth(10), cells.nth(9));
+  await expect(zone(8)).toHaveCSS('background-color', 'rgb(200, 230, 255)');
+  await expect(page.locator('.cell--zoned')).toHaveCount(5);
+
+  // Nothing was put into a mode: the „+" of a coloured free field still opens the picker.
+  await page.getByRole('button', { name: 'Neue Karte in Feld 5' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.cell--zoned')).toHaveCount(2);
+  await expect(page.locator('.cell--zoned')).toHaveCount(5);
+  // And a card is still dragged into a coloured field.
+  await page.getByLabel('Wörter hinzufügen').fill('Blau');
+  await page.getByLabel('Wörter hinzufügen').press('Enter');
+  await drag(page.locator('.tray .board-card').filter({ hasText: 'Blau' }).locator('.word__pic'), cells.nth(4));
+  await expect(cells.nth(4).locator('.word__name')).toHaveText('Blau');
 
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
   const printed = page.locator('.preview-frame .ps-tafel .ps-card');
-  await expect(printed.nth(0)).toHaveCSS('background-color', 'rgb(255, 243, 191)');
-  await expect(printed.nth(1)).toHaveCSS('background-color', 'rgb(255, 243, 191)');
-  await expect(printed.nth(2)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(printed.nth(0)).toHaveCSS('border-top-right-radius', '0px');
+  await expect(printed.nth(0).locator('.ps-block')).toHaveCSS('background-color', 'rgb(255, 241, 184)');
+  await expect(printed.nth(1).locator('.ps-block')).toHaveCount(0);
+  await expect(page.locator('.preview-frame .ps-block')).toHaveCount(5);
+  // The block steps in where it ends and not where it goes on, as on screen.
+  const box = await printed.nth(0).locator('.ps-block').boundingBox();
+  const cell = await printed.nth(0).boundingBox();
+  expect(box!.x).toBeGreaterThan(cell!.x);
+  expect(Math.round(box!.y + box!.height)).toBe(Math.round(cell!.y + cell!.height));
   // The card stays white on its colour.
   await expect(printed.nth(0).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  // And the air around a card is the Tafel's own 4 mm, named as air, not as a cut.
+  await expect(page.getByLabel('Luft um jede Karte')).toHaveValue('4');
+});
 });

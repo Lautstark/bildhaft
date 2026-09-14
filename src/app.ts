@@ -1867,7 +1867,14 @@ export function mountApp(root: HTMLElement): void {
     if (kind() === 'tafel') {
       const open = activeCollection();
       const board = open ? boardOf(open) : boardOf({});
-      return { ...print, layout: 'sheet', sheetFit: 'grid', gridCols: board.cols, gridRows: board.rows };
+      /* And 4 mm of air around each card rather than the cutting margin, which
+         on a Tafel is the same number under a different name: with 2 mm a
+         block of colour showed as a hairline around its cards. Still a control
+         in the dialog, for this print. */
+      return {
+        ...print, layout: 'sheet', sheetFit: 'grid', gridCols: board.cols, gridRows: board.rows,
+        cutMarginMm: Math.max(print.cutMarginMm, 4),
+      };
     }
     if (kind() === 'einkaufsliste') {
       return {

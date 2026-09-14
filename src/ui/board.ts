@@ -15,7 +15,7 @@
  */
 
 import type { Board, Sentence } from '../core/types.ts';
-import { firstFree, MAX_BOARD_SIDE, zoneCorners } from '../core/board.ts';
+import { firstFree, MAX_BOARD_SIDE, zoneBox } from '../core/board.ts';
 
 /**
  * The colours a field can be. Pale on purpose: they go *behind* a symbol on
@@ -24,12 +24,14 @@ import { firstFree, MAX_BOARD_SIDE, zoneCorners } from '../core/board.ts';
  * and few enough to pick without a dialog.
  */
 export const ZONE_COLOURS: { colour: string; name: string }[] = [
-  { colour: '#fff3bf', name: 'ui.zone_yellow' },
-  { colour: '#d3f9d8', name: 'ui.zone_green' },
-  { colour: '#d0ebff', name: 'ui.zone_blue' },
-  { colour: '#ffdeeb', name: 'ui.zone_pink' },
-  { colour: '#ffe8cc', name: 'ui.zone_orange' },
-  { colour: '#e9ecef', name: 'ui.zone_grey' },
+  { colour: '#fff1b8', name: 'ui.zone_yellow' },
+  { colour: '#d9f2d0', name: 'ui.zone_green' },
+  { colour: '#d6e9fb', name: 'ui.zone_blue' },
+  { colour: '#fbdde6', name: 'ui.zone_pink' },
+  { colour: '#ffe3c4', name: 'ui.zone_orange' },
+  /* Sand, not grey: grey on white paper reads as „nothing", or as a field
+     that is switched off. */
+  { colour: '#f1e6d3', name: 'ui.zone_sand' },
 ];
 import { el } from './dom.ts';
 import { t } from '../i18n/index.ts';
@@ -67,14 +69,17 @@ const MIME = 'text/plain';
 export function boardView(handlers: BoardHandlers): BoardView {
   let dragging: string | null = null;
   /*
-   * The colour in hand, while there is one. A brush rather than a dialog per
-   * field: a group is five or eight fields, and painting them is pick once,
-   * click each. While a colour is in hand a click on a field paints it and
-   * does nothing else — not the picture, not the „+" — and the brush is put
-   * down by clicking its swatch again or pressing Escape. `undefined` is no
-   * brush; `null` is the eraser.
+   * The colour being dragged, while one is: a swatch is picked up like a card
+   * and swept across the fields, and every field it crosses takes the colour
+   * — the eraser takes it away. `undefined` is no colour in flight; `null` is
+   * the eraser. A drag rather than a mode, because a mode had to be left
+   * before a field could be filled or a card dragged again, and it was not.
    */
-  let brush: string | null | undefined;
+  let colourInFlight: string | null | undefined;
+  /** A colour of the household's own, once one was picked. */
+  let custom: string | null = null;
+  /** The colour of every field as last drawn, so a drag can skip fields it already coloured. */
+  let zonesNow: (string | null)[] = [];
 
   const sideInput = (label: string, onInput: (n: number) => void): HTMLInputElement => {
     const input = el('input', {
@@ -90,16 +95,35 @@ export function boardView(handlers: BoardHandlers): BoardView {
   const rowsInput = sideInput(t('ui.rows'), (n) => handlers.onResize(cols, n));
   const swatches = el('div', { class: 'zones', attrs: { role: 'group', 'aria-label': t('ui.zone_colour') } });
   const paintSwatches = () => {
-    const one = (colour: string | null, label: string, cls: string) => el('button', {
-      class: `zone-swatch ${cls}${brush === colour ? ' zone-swatch--on' : ''}`,
-      style: colour ? { '--zone': colour } : {},
-      attrs: { type: 'button', 'aria-label': label, 'aria-pressed': String(brush === colour) },
-      on: { click: () => { brush = brush === colour ? undefined : colour; paintSwatches(); grid.classList.toggle('board--painting', brush !== undefined); } },
+    const one = (colour: string | null, label: string, cls = '') => {
+      const swatch = el('span', {
+        class: `zone-swatch ${cls}`,
+        style: colour ? { '--zone': colour } : {},
+        attrs: { role: 'button', tabindex: 0, draggable: 'true', 'aria-label': label, title: t('ui.zone_drag_hint') },
+      });
+      swatch.addEventListener('dragstart', (event) => {
+        colourInFlight = colour;
+        swatch.classList.add('zone-swatch--flying');
+        event.dataTransfer?.setData('text/plain', `zone:${colour ?? ''}`);
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
+      });
+      swatch.addEventListener('dragend', () => { colourInFlight = undefined; swatch.classList.remove('zone-swatch--flying'); clear(); });
+      return swatch;
+    };
+    /* A colour of one's own. The input is what the browser offers for
+       picking one; the swatch it fills is dragged like the others. */
+    const picker = el('input', {
+      class: 'zone-picker__input',
+      attrs: { type: 'color', value: custom ?? '#e6d7ff', 'aria-label': t('ui.zone_custom') },
+      on: { input: () => { custom = picker.value; paintSwatches(); } },
     });
     swatches.replaceChildren(
       el('span', { class: 'small', text: t('ui.zone_colour') }),
-      ...ZONE_COLOURS.map(({ colour, name }) => one(colour, t(name), '')),
-      one(null, t('ui.zone_none'), 'zone-swatch--none'));
+      ...ZONE_COLOURS.map(({ colour, name }) => one(colour, t(name))),
+      ...(custom ? [one(custom, t('ui.zone_custom_named', { colour: custom }))] : []),
+      el('label', { class: 'zone-picker', attrs: { title: t('ui.zone_custom') } }, picker, el('span', { attrs: { 'aria-hidden': 'true' }, text: '+' })),
+      one(null, t('ui.zone_none'), 'zone-swatch--none'),
+      el('span', { class: 'small faint zones__hint', text: t('ui.zone_drag_hint') }));
   };
   paintSwatches();
   const head = el('div', { class: 'board-head' },
@@ -108,11 +132,6 @@ export function boardView(handlers: BoardHandlers): BoardView {
     el('label', { class: 'small', text: t('ui.rows') }, rowsInput),
     swatches);
   const grid = el('div', { class: 'board', attrs: { role: 'list' } });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && brush !== undefined && grid.isConnected) {
-      brush = undefined; paintSwatches(); grid.classList.remove('board--painting');
-    }
-  });
   const tray = el('div', { class: 'tray' });
 
   /* Refreshed rather than assigned: a render lands on every keystroke in the
@@ -132,6 +151,13 @@ export function boardView(handlers: BoardHandlers): BoardView {
   const dropped = (event: DragEvent): string | null =>
     dragging ?? (event.dataTransfer?.getData(MIME) || null);
 
+  /** This field takes the colour being dragged, unless it has it already. */
+  const paint = (index: number) => {
+    if (colourInFlight === undefined || zonesNow[index] === colourInFlight) return;
+    zonesNow[index] = colourInFlight;
+    handlers.onPaint(index, colourInFlight);
+  };
+
   /** What every draggable card gets: the drag itself, and a class while it lasts. */
   const draggable = (node: HTMLElement, id: string) => {
     node.setAttribute('draggable', 'true');
@@ -145,15 +171,22 @@ export function boardView(handlers: BoardHandlers): BoardView {
   };
 
   /** A place a card can be dropped: a field, or the tray. */
-  const target = (node: HTMLElement, over: string, onDrop: (id: string) => void) => {
+  const target = (node: HTMLElement, over: string, onDrop: (id: string) => void, onColour?: () => void) => {
+    node.addEventListener('dragenter', () => { if (colourInFlight !== undefined) onColour?.(); });
     node.addEventListener('dragover', (event) => {
       event.preventDefault();
+      if (colourInFlight !== undefined) {
+        if (event.dataTransfer) event.dataTransfer.dropEffect = onColour ? 'copy' : 'none';
+        return;
+      }
       if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
       node.classList.add(over);
     });
     node.addEventListener('dragleave', () => node.classList.remove(over));
     node.addEventListener('drop', (event) => {
       event.preventDefault();
+      // A colour has already done its work on the way in.
+      if (colourInFlight !== undefined) { clear(); return; }
       const id = dropped(event);
       clear();
       /* A tick later, not now. The drop repaints the board, and the repaint
@@ -175,6 +208,12 @@ export function boardView(handlers: BoardHandlers): BoardView {
     refresh(rowsInput, rows);
 
     const byId = new Map(sentences.map((s) => [s.id, s]));
+    zonesNow = board.cells.map((_, i) => board.zones?.[i] ?? null);
+    if (!custom) {
+      const known = new Set(ZONE_COLOURS.map((z) => z.colour));
+      const worn = zonesNow.find((z) => z && !known.has(z));
+      if (worn) { custom = worn; paintSwatches(); }
+    }
     grid.style.setProperty('--cols', String(cols));
     const cells: HTMLElement[] = [];
     board.cells.forEach((id, index) => {
@@ -182,18 +221,17 @@ export function boardView(handlers: BoardHandlers): BoardView {
       const zone = board.zones?.[index] ?? null;
       const cell = el('div', {
         class: `cell${card ? '' : ' cell--free'}${zone ? ' cell--zoned' : ''}`,
-        style: zone ? { '--zone': zone, borderRadius: zoneCorners(board, index, '12px') } : {},
         attrs: { role: 'listitem', 'aria-label': t('ui.board_field', { n: index + 1 }) },
       });
-      target(cell, 'cell--over', (dropId) => handlers.onPlace(dropId, index));
-      /* With a colour in hand the click is the brush, whatever it landed on.
-         Captured, so the picture and the „+" underneath never hear it. */
-      cell.addEventListener('click', (event) => {
-        if (brush === undefined) return;
-        event.stopPropagation();
-        event.preventDefault();
-        handlers.onPaint(index, brush);
-      }, true);
+      /* The colour is a layer under the card, stepped in by half a gutter
+         where the block ends, so that the same rule draws it on paper — see
+         boardSheet() in printSheet.ts, which reads the same zoneBox(). */
+      const box = zoneBox(board, index, '4px', '12px');
+      if (zone && box) {
+        cell.appendChild(el('div', { class: 'cell__zone', style: { '--zone': zone, inset: box.inset, borderRadius: box.borderRadius } }));
+      }
+      target(cell, 'cell--over', (dropId) => handlers.onPlace(dropId, index), () => paint(index));
+
       if (card && id) {
         const wrap = el('div', { class: 'board-card' },
           card,

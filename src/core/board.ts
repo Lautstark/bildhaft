@@ -95,15 +95,45 @@ export function takeOff(board: Board, id: string): Board {
  * it. Written as a CSS border-radius, top-left first, for the field to wear.
  */
 export function zoneCorners(board: Board, index: number, radius: string): string {
+  const edges = zoneEdges(board, index);
+  if (!edges) return '0';
+  const { top, right, bottom, left } = edges;
+  const corner = (a: boolean, b: boolean) => (a && b ? radius : '0');
+  return [corner(top, left), corner(top, right), corner(bottom, right), corner(bottom, left)].join(' ');
+}
+
+/**
+ * Which sides of a coloured field are the sides of its block: no neighbour
+ * of the same colour beyond them. Null for a field with no colour. This is
+ * where the block's edge steps in by half a gutter — so two blocks always
+ * have a rinne between them and a block has air to the edge of the sheet —
+ * and the corners above are the sides taken in pairs.
+ */
+export function zoneEdges(
+  board: Board, index: number,
+): { top: boolean; right: boolean; bottom: boolean; left: boolean } | null {
   const zone = board.zones?.[index];
-  if (!zone) return '0';
+  if (!zone) return null;
   const col = index % board.cols;
   const row = Math.floor(index / board.cols);
   const same = (c: number, r: number): boolean =>
     c >= 0 && c < board.cols && r >= 0 && r < board.rows
     && board.zones?.[r * board.cols + c] === zone;
-  const corner = (dc: number, dr: number) => (same(col + dc, row) || same(col, row + dr) ? '0' : radius);
-  return [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)].join(' ');
+  return {
+    top: !same(col, row - 1), right: !same(col + 1, row),
+    bottom: !same(col, row + 1), left: !same(col - 1, row),
+  };
+}
+
+/** The zone layer's inset and corners, as CSS, for a cell that is `px` wide of gutter. */
+export function zoneBox(board: Board, index: number, halfGutter: string, radius: string): { inset: string; borderRadius: string } | null {
+  const edges = zoneEdges(board, index);
+  if (!edges) return null;
+  const side = (exposed: boolean) => (exposed ? halfGutter : '0');
+  return {
+    inset: `${side(edges.top)} ${side(edges.right)} ${side(edges.bottom)} ${side(edges.left)}`,
+    borderRadius: zoneCorners(board, index, radius),
+  };
 }
 
 /** The first free field, or -1 when there is none. */

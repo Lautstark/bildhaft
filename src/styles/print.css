@@ -239,9 +239,13 @@
    ended. It is the same box a card is, which is what keeps the two the same
    size. */
 .ps-card--empty { background: transparent; }
-/* A Tafel field's colour: the whole cell, so neighbours of one colour join.
-   After the rules above, because the empty cell's rule would win otherwise. */
-.ps-tafel .ps-card { background: var(--zone, transparent); }
+/* A Tafel field's colour: a layer under the card that fills the cell, gap
+   included, so neighbours of one colour join — inset by half a rinne where
+   the block ends (see boardSheet). The grid is a stacking context so the
+   layer can sit behind the card and still above the sheet's white. */
+.ps-tafel { position: relative; z-index: 0; }
+.ps-tafel .ps-card { position: relative; }
+.ps-block { position: absolute; z-index: -1; background: var(--zone); }
 
 /*
  * At the foot of the page, always — `margin-top: auto` in the page's column.
