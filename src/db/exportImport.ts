@@ -266,6 +266,8 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     ...(source.kind && (COLLECTION_KINDS as readonly string[]).includes(source.kind)
       ? { kind: source.kind as CollectionKind } : {}),
     ...(source.board ? { board: remapBoard(source.board, sentenceIds) } : {}),
+    // How it printed is part of what it is; the copyright choice is not in it.
+    ...(source.print ? { print: source.print } : {}),
     createdAt: now,
     updatedAt: now,
   };

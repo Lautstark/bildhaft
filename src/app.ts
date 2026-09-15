@@ -1885,6 +1885,28 @@ export function mountApp(root: HTMLElement): void {
    * material and not preferences, which is why the material carries them and
    * the global settings do not.
    */
+  /** What this Sammlung has set for its printing, written to it — everything but the household's copyright choice. */
+  async function keepPrint(print: PrintSettings): Promise<void> {
+    const open = activeCollection();
+    if (!open) return;
+    const { showCopyright: _copyright, ...own } = print;
+    if (JSON.stringify(open.print) === JSON.stringify(own)) return;
+    const next: Collection = { ...open, print: own, updatedAt: Date.now() };
+    collections = collections.map((c) => (c.id === next.id ? next : c));
+    await putCollection(next);
+  }
+
+  /**
+   * The settings a print of the open Sammlung starts from: the household's
+   * defaults, under what this Sammlung has set for itself, under what its
+   * template insists on. Whether the METACOM notice prints stays the
+   * household's whatever the Sammlung says.
+   */
+  function printBase(): PrintSettings {
+    const own = activeCollection()?.print ?? {};
+    return { ...settings!.print, ...own, showCopyright: settings!.print.showCopyright };
+  }
+
   function printFor(print: PrintSettings): PrintSettings {
     /* A Tafel prints as the grid it is. Its columns and rows are the
        Sammlung's, not the dialog's — the dialog's are for a deck of cards
@@ -1893,15 +1915,15 @@ export function mountApp(root: HTMLElement): void {
       const open = activeCollection();
       const board = open ? boardOf(open) : boardOf({});
       /* And the air around each card rather than the cutting margin, which on
-         a Tafel is the same number under a different name. The Tafel's own,
-         when it has one; otherwise from the size of a field on this paper, so
-         a crowded A5 gets less than a roomy A4. Set in the dialog, it is
-         written back to the Tafel — see openPrint. */
+         a Tafel is the same number under a different name. What this Tafel
+         set for itself when it has; otherwise from the size of a field on
+         this paper, so a crowded A5 gets less than a roomy A4. */
       const page = printableArea(print.paper, print.orientation);
       const field = Math.min(page.width / board.cols, page.height / board.rows);
+      const own = open?.print?.cutMarginMm ?? board.airMm;
       return {
         ...print, layout: 'sheet', sheetFit: 'grid', gridCols: board.cols, gridRows: board.rows,
-        cutMarginMm: board.airMm ?? defaultAirMm(field),
+        cutMarginMm: own ?? defaultAirMm(field),
       };
     }
     if (kind() === 'einkaufsliste') {
@@ -1951,13 +1973,16 @@ export function mountApp(root: HTMLElement): void {
 
          Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
          because cutting sentences into cards is a thing people actually do. */
-      settings: printFor(settings.print),
+      kind: kind(),
+      settings: printFor(printBase()),
       onChange: (print: PrintSettings) => {
-        if (settings) persistSettings({ ...settings, print });
-        /* The air is the Tafel's: what is set here for this Tafel is kept on it. */
-        if (board && print.cutMarginMm !== boardOf(open!).airMm && print.cutMarginMm !== printFor(settings!.print).cutMarginMm) {
-          void writeBoard((b) => ({ ...b, airMm: print.cutMarginMm }));
-        }
+        if (!settings) return;
+        /* Twice, on purpose. The household's defaults follow along, so the
+           next Sammlung starts from what was last wanted; and the Sammlung
+           keeps its own, so this one prints tomorrow as it printed today,
+           whatever was set elsewhere in between. */
+        persistSettings({ ...settings, print });
+        void keepPrint(print);
       },
       provider: providerId(),
       attribution: provider().attribution,

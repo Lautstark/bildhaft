@@ -1,4 +1,4 @@
-import type { PrintSettings, ProviderId, Sentence } from '../core/types.ts';
+import type { CollectionKind, PrintSettings, ProviderId, Sentence } from '../core/types.ts';
 import { symbolIdsIn } from '../core/types.ts';
 import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
@@ -16,6 +16,13 @@ const DEFAULT_CARD_BACKGROUND = '#fff3bf';
 
 export interface PrintOptions {
   sentences: Sentence[];
+  /**
+   * Which template is printing. It decides which options are offered at all:
+   * a strip has a frame around the sentence and a card sheet has cut lines,
+   * and an option that cannot mean anything for this material is not shown
+   * greyed out — it is not shown.
+   */
+  kind: CollectionKind;
   /**
    * A Tafel, when this is one. Its grid is the Sammlung's and not a print
    * setting, so the controls that would change the layout or the grid are not
@@ -260,21 +267,33 @@ export function openPrintDialog(options: PrintOptions): void {
   }
 
   function paint(): void {
-    const gridded = settings.layout === 'sheet' && settings.sheetFit === 'grid';
-    const fixed = Boolean(options.board);
+    /*
+     * What this material can be asked. Four templates, four lists — and a
+     * Satzstreifen-Sammlung has two, because its rows print either as strips
+     * or cut into cards, and those are different papers.
+     */
+    const kind = options.kind;
+    const strip = kind === 'satzstreifen' && settings.layout === 'strip';
+    const cards = kind === 'wortkarten' || (kind === 'satzstreifen' && settings.layout === 'sheet');
+    const board = kind === 'tafel';
+    const list = kind === 'einkaufsliste';
+    const gridded = cards && settings.sheetFit === 'grid';
+    const framed = settings.cardBorderMm > 0 || (strip && settings.stripFrame);
+
+    const opt = (...children: (HTMLElement | null)[]) => el('div', { class: 'opt' }, ...children);
 
     fill(controls,
-      fixed ? null : el('div', { class: 'opt' },
+      kind === 'satzstreifen' ? opt(
         el('label', { text: t('ui.layout') }),
         segmented([
-          { label: t('ui.layout_strip'), active: settings.layout === 'strip', onPick: () => set('layout', 'strip') },
-          { label: t('ui.layout_sheet'), active: settings.layout === 'sheet', onPick: () => set('layout', 'sheet') },
+          { label: t('ui.layout_strip'), active: strip, onPick: () => set('layout', 'strip') },
+          { label: t('ui.layout_sheet'), active: !strip, onPick: () => set('layout', 'sheet') },
         ]),
-        el('span', { class: 'small faint', text: settings.layout === 'strip'
-          ? t('ui.layout_strip_note')
-          : t('ui.layout_sheet_note') }),
-      ),
-      el('div', { class: 'opt' },
+        el('span', { class: 'small faint', text: strip ? t('ui.layout_strip_note') : t('ui.layout_sheet_note') }),
+      ) : null,
+
+      /* The Einkaufsliste is a material with its own paper; the rest choose. */
+      list ? null : opt(
         el('label', { text: t('ui.paper') }),
         segmented([
           { label: 'A5', active: settings.paper === 'a5', onPick: () => set('paper', 'a5') },
@@ -288,18 +307,18 @@ export function openPrintDialog(options: PrintOptions): void {
             onPick: () => set('orientation', 'landscape') },
         ], { marginTop: '6px' }),
       ),
-      settings.layout === 'sheet' && !fixed ? el('div', { class: 'opt' },
+
+      /* How big. Cards: in millimetres or as a grid. Strips: the symbol. A
+         Tafel: its grid is its own, so only what the scissors would leave. */
+      cards ? opt(
         el('label', { text: t('ui.card_size') }),
         segmented([
           { label: t('ui.in_millimetres'), active: !gridded, onPick: () => set('sheetFit', 'size') },
           { label: t('ui.grid'), active: gridded, onPick: () => set('sheetFit', 'grid') },
         ]),
-        el('span', { class: 'small faint', text: gridded
-          ? t('ui.grid_note')
-          : t('ui.fixed_note') }),
+        el('span', { class: 'small faint', text: gridded ? t('ui.grid_note') : t('ui.fixed_note') }),
       ) : null,
-      fixed ? el('div', { class: 'opt' }, cardSize)
-      : gridded ? el('div', { class: 'opt' },
+      cards && gridded ? opt(
         el('div', { class: 'opt--pair' },
           numberOpt('opt-cols', t('ui.columns'), settings.gridCols, 1, 12, 1, 4, '', null,
             (next) => set('gridCols', Math.round(next))),
@@ -307,15 +326,25 @@ export function openPrintDialog(options: PrintOptions): void {
             (next) => set('gridRows', Math.round(next))),
         ),
         cardSize,
-      ) : numberOpt('opt-size', t('ui.symbol_size'), settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
-        cardSize, (next) => set('symbolSizeMm', next)),
-      /* On a Tafel the same millimetres are not a cutting margin — nothing is
-         cut — but the air around a card, which is also how much of its block's
-         colour shows around it. Same number, honest name. */
-      numberOpt('opt-cut', t(fixed ? 'ui.card_air' : 'ui.cut_margin'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
-        t(fixed ? 'ui.card_air_note' : 'ui.cut_margin_note'),
-        (next) => set('cutMarginMm', next)),
-      el('div', { class: 'opt' },
+      ) : null,
+      (cards && !gridded) || strip
+        ? numberOpt('opt-size', t('ui.symbol_size'), settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
+            cardSize, (next) => set('symbolSizeMm', next))
+        : null,
+      board ? opt(cardSize) : null,
+
+      /* The same millimetres, named for what they are on this material: a
+         cutting margin where scissors go, air where nothing is cut. */
+      cards || strip
+        ? numberOpt('opt-cut', t('ui.cut_margin'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
+            t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))
+        : null,
+      board
+        ? numberOpt('opt-cut', t('ui.card_air'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
+            t('ui.card_air_note'), (next) => set('cutMarginMm', next))
+        : null,
+
+      list ? null : opt(
         check(t('ui.print_label'), settings.showLabel, false, (next) => set('showLabel', next)),
         settings.showLabel ? segmented([
           { label: t('ui.label_below'), active: settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
@@ -326,19 +355,21 @@ export function openPrintDialog(options: PrintOptions): void {
               (next) => set('labelSizePt', next))
           : null,
       ),
-      el('div', { class: 'opt' },
+
+      opt(
         el('label', { text: t('ui.frame_colour') }),
         check(t('ui.frame_each'), settings.cardBorderMm > 0, false,
           (next) => set('cardBorderMm', next ? 0.5 : 0)),
-        check(t('ui.frame_strip'), settings.stripFrame, settings.layout === 'sheet',
-          (next) => set('stripFrame', next)),
+        /* A frame around the whole sentence is a strip's alone: a card sheet
+           has no sentence to frame and a Tafel is one sheet already. */
+        strip ? check(t('ui.frame_strip'), settings.stripFrame, false, (next) => set('stripFrame', next)) : null,
         /*
          * Corners and colour belong to whichever frame is switched on — both
          * are drawn with the same pen. Thickness is the card frame's alone: the
          * strip takes its own from that number when there is one, and a line
          * thin enough to cut along when there is not.
          */
-        settings.cardBorderMm > 0 || settings.stripFrame ? el('div', { class: 'opt--pair' },
+        framed ? el('div', { class: 'opt--pair' },
           settings.cardBorderMm > 0
             ? numberOpt('opt-border', t('ui.thickness'), settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null,
                 (next) => set('cardBorderMm', next))
@@ -353,28 +384,29 @@ export function openPrintDialog(options: PrintOptions): void {
         settings.cardBackground !== null
           ? colorOpt('opt-bg', t('ui.colour'), settings.cardBackground, (next) => set('cardBackground', next))
           : null,
-        el('span', { class: 'small faint',
-          text: t('ui.background_note') }),
+        el('span', { class: 'small faint', text: t('ui.background_note') }),
       ),
-      el('div', { class: 'opt' },
-        check(t('ui.cut_lines'), settings.showCutLines, false, (next) => set('showCutLines', next)),
-        check(t('ui.sentence_above'), settings.showSentenceText, settings.layout === 'sheet',
-          (next) => set('showSentenceText', next)),
-        check(t('ui.one_per_page'), settings.onePerPage, settings.layout === 'sheet',
-          (next) => set('onePerPage', next)),
-        check(t('ui.collection_title'), settings.showCollectionTitle, false,
+
+      opt(
+        /* Cut lines where something is cut: a card sheet, the list's cards. */
+        cards || list
+          ? check(t('ui.cut_lines'), settings.showCutLines, false, (next) => set('showCutLines', next))
+          : null,
+        strip ? check(t('ui.sentence_above'), settings.showSentenceText, false, (next) => set('showSentenceText', next)) : null,
+        strip ? check(t('ui.one_per_page'), settings.onePerPage, false, (next) => set('onePerPage', next)) : null,
+        list ? null : check(t('ui.collection_title'), settings.showCollectionTitle, false,
           (next) => set('showCollectionTitle', next)),
       ),
+
       /*
        * METACOM only. ARASAAC's attribution is a licence condition and prints
        * whether anyone asks for it or not, so offering to switch it off would
        * be offering something bildhaft will not do.
        */
-      options.provider === 'metacom' ? el('div', { class: 'opt' },
+      options.provider === 'metacom' ? opt(
         check(t('ui.print_copyright'), settings.showCopyright, false,
           (next) => set('showCopyright', next)),
-        el('span', { class: 'small faint',
-          text: t('ui.copyright_note', { notice: METACOM_COPYRIGHT }) }),
+        el('span', { class: 'small faint', text: t('ui.copyright_note', { notice: METACOM_COPYRIGHT }) }),
       ) : null,
     );
 

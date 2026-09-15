@@ -297,7 +297,8 @@ test('a strip frame encloses the sentence text and the symbols', async ({ page }
  */
 test('the strip frame is offered only for strips', async ({ page }) => {
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
-  await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toBeDisabled();
+  // Not greyed out: an option that means nothing on a card sheet is not there.
+  await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(0);
 });
 
 test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {

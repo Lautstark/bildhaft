@@ -278,6 +278,18 @@ export interface Collection {
    */
   board?: Board;
 
+  /**
+   * How this Sammlung prints: paper, margins, frames, colours, labels — what
+   * was set in the print dialog *for this material*. On the Sammlung rather
+   * than in the settings, because a Tafel's paper is a fact about the Tafel
+   * and a deck's cutting margin about the deck; one global answer made every
+   * change in one Sammlung a change in all of them. Partial: only what was
+   * set here, over the household's defaults. `showCopyright` never lands
+   * here — whether the METACOM notice prints is the household's, not the
+   * sheet's.
+   */
+  print?: Partial<PrintSettings>;
+
   createdAt: number;
   updatedAt: number;
 }
