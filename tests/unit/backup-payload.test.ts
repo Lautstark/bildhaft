@@ -28,14 +28,14 @@ describe('what the standing backup is handed', () => {
    * The wiring, asserted against the source.
    *
    * A behavioural test cannot catch the failure that matters here. If somebody
-   * changes app.ts to hand Sicherung a raw dump of the database — or anything
+   * changes app/backup.ts to hand Sicherung a raw dump of the database — or anything
    * other than the audited export — every other test in this repo still
    * passes, and the backup keeps working. It would simply also be shipping
    * METACOM filenames to Dropbox. So the constructor call itself is the thing
    * under test.
    */
   it('is constructed with exportEverything and nothing else', () => {
-    const source = readFileSync(new URL('../../src/app.ts', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('../../src/app/backup.ts', import.meta.url), 'utf8');
     /*
      * Balanced, not `[^)]*`. That shorter pattern stopped at the first `)` in
      * the call — which from 2026-08-28 is the one closing `(produced)` in an

@@ -1,191 +1,84 @@
-import type {
-  AppSettings, Candidate, Collection, PrintSettings, ProviderId, Sentence, Slot,
-} from './core/types.ts';
-import { COLLECTION_KINDS, kindOf, sentenceCaption } from './core/types.ts';
-import { addGroup, boardOf, defaultAirMm, placedIds, placeOn, removeGroup, resizeBoard, takeOff, updateGroup, zonesOf } from './core/board.ts';
-import { TimedOut, withTimeout } from './core/timeout.ts';
-import { printableArea } from './ui/printSheet.ts';
-import type { Board, CollectionKind } from './core/types.ts';
-import { wanted } from '@lautstark/werkzeuge/sammlung';
-import { setSymbolLanguage } from '@lautstark/bildquelle';
-import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
-import { LANG, t } from './i18n/index.ts';
-
-import { buildSlots, buildWordSlot, refreshSlotChoices, resolveSlotsForProvider } from './core/match.ts';
-import { getProvider, metacom, MetacomProvider } from '@lautstark/bildquelle';
+import { metacom } from '@lautstark/bildquelle';
+import { announcer } from '@lautstark/design/toast';
+import { t } from './i18n/index.ts';
 import { isBlockedByOtherTab, onBlockedChange, takeMigrationNote } from './db/db.ts';
 import {
-  clearEverything, countSentences, createCollection, deleteCollectionDeep,
-  deleteSentence, findByNormalized, libraryTotals, listCollections, listSentences,
-  loadSettings, newId, overrideMap, pruneOwnImages, putOverride, putOwnImage,
-  listOverrides,
-  onChanged, putCollection, putSentence, renameCollection, saveCollectionProvider,
-  saveSettings,
-  searchSentences,
-  pullFromFolder,
+  createCollection, listCollections, loadSettings, pullFromFolder,
 } from './db/repo.ts';
-import {
-  downloadCollectionExport, downloadJson, exportCollection, exportEverything,
-  importCollectionFile,
-} from './db/exportImport.ts';
-import { Sicherung } from '@lautstark/sicherung';
-import {
-  ablage, adopted, folderName, moveWortschatz, restoreFolder, watchFolder, wipeReaches,
-} from './db/folder.ts';
-import { renameField } from '@lautstark/design/rename';
-import { announcer } from '@lautstark/design/toast';
-import { el, fill, toggleClass } from './ui/dom.ts';
+import { ablage, adopted, moveWortschatz, restoreFolder, watchFolder } from './db/folder.ts';
+import { el, fill, place, toggleClass } from './ui/dom.ts';
 import { footer, sidebar, topBar } from './ui/chrome.ts';
 import { composer } from './ui/composer.ts';
 import { wortschatzView as makeWortschatz } from './ui/wortschatz.ts';
-import { templateArt, wordCard, type WordCardView } from './ui/wordCard.ts';
-import { boardView } from './ui/board.ts';
-import { confirmDialog, openDialog } from './ui/dialog.ts';
-import { sourceStatusLine } from './ui/symbolSources.ts';
 import { icons, logo } from './ui/logo.ts';
-import { actionMenu } from './ui/menu.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
-import { openCollectionSource } from './ui/collectionSource.ts';
-import { openPrintDialog } from './ui/printDialog.ts';
-import { openSettings } from './ui/settingsDialog.ts';
 import { offerRescue } from './ui/rescue.ts';
-import { openSlotPicker } from './ui/slotPicker.ts';
-import { sentenceRow, type RowView } from './ui/row.ts';
 import { resetSymbolResolution } from './ui/symbols.ts';
+
+import { freshState, activeCollection, followsDefault, holdsWords, provider, providerId } from './app/state.ts';
+import type { Ctx } from './app/context.ts';
+import { standingBackup } from './app/backup.ts';
+import { banners } from './app/banners.ts';
+import { collectionHead } from './app/head.ts';
+import { material } from './app/material.ts';
+import { editing } from './app/editing.ts';
+import { composing } from './app/composing.ts';
+import { collections } from './app/collections.ts';
+import { settings } from './app/settings.ts';
+import { words } from './app/words.ts';
+import { printing } from './app/print.ts';
 
 /** Matches the `max-width: 820px` breakpoint used throughout the stylesheet. */
 const MOBILE_QUERY = '(max-width: 820px)';
 
+/**
+ * The page, assembled.
+ *
+ * What is here is the shell and the one paint: the sidebar, the rail, the
+ * top bar, the toast, `render()`, and boot. What each part of the page *does*
+ * lives under `src/app/` — one module per concern, each a factory over the
+ * shared `Ctx` in `app/context.ts`, which says how they reach each other.
+ * This file used to hold all of it, at two thousand lines.
+ */
 export function mountApp(root: HTMLElement): void {
-  /* ------------------------------------------------------------ state --- */
-
-  let settings: AppSettings | null = null;
-  let collections: Collection[] = [];
-  let counts: Record<string, number> = {};
-  let activeId: string | null = null;
-  /* Which of the two nouns the main area is showing. `null` is a Sammlung —
-     `activeId` stays put while the Wortschatz is open, so leaving it comes
-     back to the same one. adr/0002 has why there are two. */
-  let wortschatz: { tag: string | null } | null = null;
-  /** What the sidebar's Wortschatz rows count. Read with the Sammlungen. */
-  let wordCount = 0;
-  let tagRows: { name: string; count: number }[] = [];
-  let sentences: Sentence[] = [];
-
-  let draft = '';
-  let reuse: Sentence | null = null;
-  let busy = false;
-  /** How long a lookup or a store write may take before the page stops waiting for it. */
-  const LOOKUP_MS = 20_000;
-  const STORE_MS = 10_000;
-  /* How far a pasted text has got. Null for a single line, whose spinner in the
-     composer is the whole story — see handleSubmit. */
-  let batch: { done: number; total: number } | null = null;
-
-  let query = '';
-  let results: Sentence[] = [];
-
-  let picker: { sentenceId: string; slotId: string } | null = null;
-
-  /*
-   * Mobile navigation is deliberately NOT the persisted desktop preference.
-   * Sharing one flag meant a sidebar left open on desktop loaded open on the
-   * phone — and, when left closed, hid the only control that could reopen it.
-   */
   const mobileQuery = window.matchMedia(MOBILE_QUERY);
-  let isMobile = mobileQuery.matches;
-  let mobileNavOpen = false;
+  const s = freshState(mobileQuery.matches);
 
-  // A stale tab holding an older database version blocks the upgrade here, which
-  // would otherwise present as symbols stuck loading with no explanation.
-  let dbBlocked = false;
-
-  /*
-   * A METACOM folder grant is per site and per browsing session. The index is
-   * cached, so the source can report itself ready while every actual file read
-   * is refused — the app looks fine and every symbol is blank. Counting
-   * unreadable symbols catches that, where asking the provider does not.
-   */
-  let unreadable = 0;
-  /*
-   * False until the first restore attempt finishes. Restoring is asynchronous,
-   * so the source reports itself unready for a moment on every single load —
-   * judging it before then flashed the warning on screen and took it away again.
-   */
-  let sourceSettled = false;
-
-  /**
-   * The source the rows on screen were last resolved against, so that a change
-   * of source can be told from a redraw. Boot sets it to what the first paint
-   * actually draws with; syncProvider() below is the only other writer.
-   */
-  let previousProvider: ProviderId = 'arasaac';
-
-  const activeCollection = () => collections.find((c) => c.id === activeId) ?? null;
-  /** The template the open Sammlung is drawn and typed as. */
-  const kind = (): CollectionKind => {
-    const open = activeCollection();
-    return open ? kindOf(open) : 'satzstreifen';
-  };
-  /* Zwei Vorlagen halten Wörter und teilen sich deshalb alles, was Wörter
-     angeht: die Kachelwand, die Leiste, den Zähler. Was sie unterscheidet, ist
-     einzig, was hinten aus dem Drucker kommt. */
-  const holdsWords = () => kind() !== 'satzstreifen';
-
-  /**
-   * The symbol source the page is drawing in: the open collection's own answer,
-   * or the default it follows when it has none.
-   *
-   * One function, because everything that shows a symbol already asked this one
-   * — the rows, the picker, the print sheet, the banners, the pipeline that
-   * fills a new sentence's slots. Moving the answer onto the collection is
-   * therefore this line and nothing else, which is what keeps the page from
-   * naming one source and rendering another.
-   *
-   * bildhaft opens exactly one collection at a time — `activeId` is one id, the
-   * sidebar is handed `open: [activeId]`, and boot makes one when the library is
-   * empty — so there is no case where "the collection you are in" is ambiguous.
-   * That is why there is no `nextCollection()` here as there is in mitreden,
-   * where two Sammlungen can be open at once and the answer has to be *none*.
-   * The `?? settings` arm still earns its place: it is what a collection with no
-   * answer of its own reads, which is most of them.
-   */
-  const providerId = (): ProviderId =>
-    activeCollection()?.provider ?? settings?.activeProvider ?? 'arasaac';
-  const provider = () => getProvider(providerId());
-  /** True while the open collection is following the default rather than answering. */
-  const followsDefault = () => !activeCollection()?.provider;
+  /* Built in stages; see the header of app/context.ts for why the cast is
+     honest. Nothing below calls a member of `ctx` until an event arrives, and
+     by then every member is there. */
+  const ctx = { s } as Ctx;
 
   /* ------------------------------------------------------------ chrome --- */
 
   const loading = el('div', { class: 'loading-state' }, el('span', { class: 'spinner' }));
 
   const sidebarView = sidebar({
-    onSelect: (id) => { wortschatz = null; setActive(id); query = ''; closeNavOnMobile(); render(); },
-    onNew: () => { wortschatz = null; void handleNewCollection(); closeNavOnMobile(); },
+    onSelect: (id) => { s.wortschatz = null; ctx.setActive(id); s.query = ''; closeNavOnMobile(); render(); },
+    onNew: () => { s.wortschatz = null; void ctx.handleNewCollection(); closeNavOnMobile(); },
     onWords: (tag) => {
-      wortschatz = { tag };
-      query = '';
+      s.wortschatz = { tag };
+      s.query = '';
       wortschatzView.open(tag);
       closeNavOnMobile();
       render();
     },
-    onNewTag: () => { void handleNewTag(); closeNavOnMobile(); },
-    onSearchChange: (value) => { query = value; scheduleSearch(); render(); },
+    onNewTag: () => { void wordsPart.handleNewTag(); closeNavOnMobile(); },
+    onSearchChange: (value) => { s.query = value; ctx.scheduleSearch(); render(); },
     onOpenResult: (sentence) => {
-      setActive(sentence.collectionId);
-      query = '';
+      ctx.setActive(sentence.collectionId);
+      s.query = '';
       closeNavOnMobile();
       render();
     },
-    onOpenSettings: () => { openAppSettings(); closeNavOnMobile(); render(); },
+    onOpenSettings: () => { ctx.openAppSettings(); closeNavOnMobile(); render(); },
     onCollapse: () => toggleSidebar(),
   });
 
   const scrim = el('button', {
     class: 'scrim',
     attrs: { type: 'button', 'aria-label': t('ui.close_menu') },
-    on: { click: () => { mobileNavOpen = false; render(); } },
+    on: { click: () => { s.mobileNavOpen = false; render(); } },
   });
 
   const rail = el('div', { class: 'rail' },
@@ -204,256 +97,28 @@ export function mountApp(root: HTMLElement): void {
      the source in force, a way to write settings, a way to say something —
      and nothing about the shell it sits in. */
   const wortschatzView = makeWortschatz({
-    provider,
-    providerId,
-    pinned: () => settings?.pinnedTags ?? [],
+    provider: () => provider(s),
+    providerId: () => providerId(s),
+    pinned: () => s.settings?.pinnedTags ?? [],
     onPinned: (tags: string[]) => {
-      if (settings) persistSettings({ ...settings, pinnedTags: tags });
+      if (s.settings) ctx.persistSettings({ ...s.settings, pinnedTags: tags });
     },
-    onChanged: () => { void refreshCollections(); },
-    onLens: (tag: string | null) => { wortschatz = { tag }; render(); },
+    onChanged: () => { void ctx.refreshCollections(); },
+    onLens: (tag: string | null) => { s.wortschatz = { tag }; render(); },
     notify: (message: string) => notify(message),
   });
 
   const composerView = composer({
-    onChange: (value) => { draft = value; scheduleReuseLookup(); render(); },
-    onSubmit: () => void handleSubmit(),
-    onReuse: () => void handleReuse(),
+    onChange: (value) => { s.draft = value; composingPart.scheduleReuseLookup(); render(); },
+    onSubmit: () => void composingPart.handleSubmit(),
+    onReuse: () => void composingPart.handleReuse(),
   });
-
-  /* Which Sammlung a pending rename is for, captured on the keystroke rather
-     than read when the write runs. Switching blurs the field and so writes
-     first, which makes the two the same in practice — but the debounce is the
-     one path where they could differ, and the id is free to capture. */
-  let renaming: string | null = null;
-
-  const titleInput = el('input', {
-    class: 'title-input',
-    attrs: { 'aria-label': t('ui.collection_name'), placeholder: t('ui.collection_name') },
-    on: {
-      /* The live echo, and only that: the name in the sidebar row and the top
-         bar follow each keystroke. Writing it is design/rename's, on its own
-         listener — which is why that package binds with addEventListener rather
-         than taking the property, so the two can share one field. */
-      input: () => {
-        if (!activeId) return;
-        renaming = activeId;
-        const name = titleInput.value;
-        collections = collections.map((c) => (c.id === activeId ? { ...c, name } : c));
-        render();
-      },
-    },
-  });
-
-  /* Debounced while typing, written on blur and on Enter, and never written
-     when the value has not moved — which this copy did on every visit to the
-     field, because its blur flushed unconditionally. */
-  const titleField = renameField(titleInput, (typed) => {
-    if (!renaming) return undefined;
-    return renameCollection(renaming, typed);
-  });
-
-  const rowCount = el('span', { class: 'small faint', style: { whiteSpace: 'nowrap' } });
-
-  const printAll = el('button', {
-    class: 'btn quiet sm',
-    text: t('ui.print'),
-    attrs: { type: 'button' },
-    on: { click: () => openPrint(sentences.map((s) => s.id)) },
-  });
-
-  const collectionHead = el('div', { class: 'collection-head' },
-    titleInput, rowCount, printAll,
-    /* §3.6's order: the export first, what this Sammlung is set to under it,
-       the delete last. The middle item is not an act on the Sammlung and that
-       is the point — the menu holds what a Sammlung *is* as well as what can be
-       done to it, because both are answered by which Sammlung it sits beside. */
-    actionMenu(t('ui.collection_actions'), (add) => {
-      /* First, because it is the one thing in here that puts something *in*;
-         the rest act on what is already there or on what the Sammlung is.
-         And absent rather than greyed while the Wortschatz is empty — the same
-         answer „+ Neuer Tag" gets in the sidebar, and here it has a second
-         reason: a disabled item in the first position is one the arrow keys
-         have to step over on the way in, which e2e/menu.spec.ts holds the
-         menu to. Nothing to pour is nothing to offer. */
-      if (wordCount > 0) add(t('ui.add_wortschatz'), () => void openWortschatzSheet());
-      add(t('ui.export_collection'), () => void handleExport(),
-        { disabled: sentences.length === 0 });
-      add(t('ui.symbol_source_menu'), () => openSourceSheet());
-      add(t('ui.delete_collection'), () => void confirmDeleteCollection(), { danger: true });
-    }),
-  );
-
-  const rowsHost = el('div', { class: 'rows' });
-  /* Refilled rather than fixed: an empty Sammlung is where the template is
-     still an open question, and that is the only place it can be asked. */
-  const emptyState = el('div', { class: 'empty' });
-
-  /* The region the banners are drawn into — see the banners block below for
-     why it is a region and they are not. Mounted here, once, and never taken
-     out again; it sits where the banners used to be inserted, above the
-     composer. Empty it is a block with no content and costs no room. */
-  const bannerHost = el('div', { class: 'banners', attrs: { role: 'status' } });
-
-  const inner = el('div', { class: 'main__inner' },
-    bannerHost, composerView.node, collectionHead, rowsHost);
 
   const footerView = footer({
     onAbout: () => openAbout(() => undefined),
     onImpressum: () => openImpressum(() => undefined),
     onDatenschutz: () => openDatenschutz(() => undefined),
   });
-
-  const main = el('main', { class: 'main' }, topBarView.node, inner, footerView.node);
-  const appRoot = el('div', { class: 'app', attrs: { id: 'app-root' } });
-
-  // Printable DOM lives outside #app-root, which @media print hides.
-  const printRoot = el('div', { attrs: { id: 'print-root' } });
-
-  fill(root, loading, printRoot);
-
-  /* ----------------------------------------------------------- banners --- */
-
-  /*
-   * The banners live inside one permanent region rather than being live regions
-   * themselves, and that is the same rule the toast is under (conventions.md
-   * §3.8): a reader announces a change in something it was already watching.
-   *
-   * busyBanner used to carry role="status" itself, and the render set its text
-   * and *then* inserted the node — so it entered the accessibility tree already
-   * carrying the message and announced nothing, every time. The role read as
-   * correct in the markup and in review, which is exactly how the toast's
-   * version of this survived as long as it did.
-   *
-   * So the region is this host, mounted once below, and what changes is which
-   * banner is inside it. An addition to a live region's subtree is a change,
-   * which is what makes this work where the old arrangement could not. The
-   * banners themselves carry no role: two regions nested inside each other
-   * would announce twice.
-   */
-  const busyMessage = el('span', { style: { flex: '1' } });
-  const busyBanner = el('div', { class: 'banner banner--busy' },
-    el('span', { class: 'spinner' }), busyMessage);
-
-  const unusableMessage = el('span', { style: { flex: '1' } });
-  const regrant = el('button', {
-    class: 'btn sm primary',
-    text: t('ui.confirm_access'),
-    attrs: { type: 'button' },
-    on: {
-      click: async () => {
-        // Both need the click: re-granting and re-picking are gated on a user
-        // gesture and cannot happen on load.
-        const ok = await metacom.requestPermission().catch(() => false);
-        if (!ok && MetacomProvider.supportsPersistentPicker) {
-          await metacom.pickDirectory().catch(() => undefined);
-        }
-        // Re-granting alone changes nothing on screen: the symbols already gave
-        // up and nothing about them has changed.
-        resetSymbolResolution('metacom');
-        unreadable = 0;
-        render();
-      },
-    },
-  });
-  const unusableBanner = el('div', { class: 'banner', attrs: { role: 'alert' } },
-    unusableMessage, regrant,
-    el('button', { class: 'btn sm', text: t('ui.settings'),
-      attrs: { type: 'button' }, on: { click: () => openAppSettings() } }),
-  );
-
-  const blockedBanner = el('div', { class: 'banner', attrs: { role: 'alert' }, text:
-    t('ui.blocked_by_tab') });
-
-  let bannerSignature = '';
-
-  function renderBanners(): void {
-    /*
-     * Indexing a real METACOM folder walks tens of thousands of files and takes
-     * seconds. The source is not ready during that, but it is not broken either —
-     * showing the warning through it left the user looking at an unchanged alarm
-     * with no sign that the folder they just picked was being read.
-     */
-    const status = metacom.status();
-    const sourceBusy = providerId() === 'metacom' && status.kind === 'loading';
-    /*
-     * A pasted text, and how far through it we are.
-     *
-     * It shares the source's banner rather than getting one of its own: both
-     * are the same sentence — something is working, wait — and the region below
-     * shows one banner per kind. A single line does not raise it at all; its
-     * spinner in the composer is over before there is anything to report, and a
-     * banner that appears and vanishes within a second is noise.
-     */
-    const translating = batch !== null;
-    /*
-     * The active source cannot answer. For METACOM this is the normal state
-     * after anything that resets a browser's per-site permissions — a new
-     * address, cleared site data — because the folder grant is scoped to the
-     * site, not to the app. Without this the only signal was "(nicht bereit)"
-     * in grey next to the composer, while every row showed broken symbols and
-     * offered nothing to click.
-     */
-    const sourceUnusable = sourceSettled && !sourceBusy
-      && (!provider().isReady() || (providerId() === 'metacom' && unreadable >= 3));
-
-    /* The source's own words win: a folder being read is why nothing is being
-       looked up yet, which is the more useful half of the same wait. */
-    if (status.kind === 'loading') busyMessage.textContent = sourceStatusLine(status);
-    else if (batch) {
-      busyMessage.textContent =
-        t('ui.translating_lines', { n: Math.min(batch.done + 1, batch.total), total: batch.total });
-    } else busyMessage.textContent = t('ui.one_moment');
-    unusableMessage.textContent = providerId() === 'metacom'
-      ? metacomWanted(status.kind === 'needs-setup' && status.code === 'no-folder')
-      : t('ui.source_unavailable');
-    toggleVisible(regrant, providerId() === 'metacom');
-
-    const wanted: [string, HTMLElement][] = [];
-    if (sourceBusy || translating) wanted.push(['busy', busyBanner]);
-    if (sourceUnusable) wanted.push(['unusable', unusableBanner]);
-    if (dbBlocked) wanted.push(['blocked', blockedBanner]);
-
-    // Re-inserting an unchanged banner would restart its spinner animation.
-    const signature = wanted.map(([key]) => key).join('|');
-    if (signature === bannerSignature) return;
-    bannerSignature = signature;
-
-    // Into the region rather than into the page: the host stays, the contents
-    // change. `replaceChildren` with the wanted set keeps the signature guard
-    // above meaningful — an unchanged set returns before this line, so a
-    // spinner that is still spinning is never restarted.
-    bannerHost.replaceChildren(...wanted.map(([, node]) => node));
-  }
-
-  /**
-   * The sentence for "METACOM is what this page is drawing in, and it cannot
-   * draw". Which of the two it is matters, and so does who asked.
-   *
-   * bildhaft never quietly renders one source when another was asked for — the
-   * page says the source is unavailable and shows nothing rather than filling
-   * the rows with ARASAAC pictures under a collection that asked for METACOM.
-   * A silent fall-back is the failure vorlaut met from the other side, where a
-   * package baked pictures nobody had chosen.
-   *
-   * `noFolder` is the state that only became reachable when the source moved
-   * onto the collection: restoring a backup onto a machine that has no METACOM
-   * folder brings collections that ask for one. Confirming access is no use
-   * there — nothing has been mislaid — so it says what is actually missing and
-   * where the way out is.
-   */
-  function metacomWanted(noFolder: boolean): string {
-    const own = !followsDefault();
-    if (noFolder) {
-      return `${t(own ? 'ui.metacom_missing_own' : 'ui.metacom_missing_default')} `
-        + t('ui.metacom_missing_fix');
-    }
-    return t('ui.metacom_unreadable');
-  }
-
-  function toggleVisible(node: HTMLElement, on: boolean): void {
-    node.style.display = on ? '' : 'none';
-  }
 
   /* ------------------------------------------------------------- toast --- */
 
@@ -489,389 +154,124 @@ export function mountApp(root: HTMLElement): void {
   // go quiet. vorlaut has both verbs on one line and mitreden uses neither.
   const notify = (message: string): void => { line.rests(message); };
 
-  /* -------------------------------------------------------------- rows --- */
+  /* ------------------------------------------------------------- parts --- */
 
-  const rowViews = new Map<string, { view: RowView; sentence: Sentence }>();
-  const cardViews = new Map<string, { view: WordCardView; sentence: Sentence }>();
+  const backup = standingBackup();
 
-  /**
-   * Whether these two records differ in the name and in nothing else.
-   *
-   * By reference where it can be, because `handleRename` is the only thing that
-   * makes the second from the first and it copies the rest across untouched. A
-   * field-by-field comparison would be a second description of the row, kept in
-   * step by hand; this asks the one question that matters — is anything the row
-   * draws from a different object than it was.
-   */
-  const renamedOnly = (before: Sentence, after: Sentence): boolean =>
-    before.title !== after.title
-    && before.slots === after.slots
-    && before.rawInput === after.rawInput
-    && before.collectionId === after.collectionId;
+  ctx.render = render;
+  ctx.paintSidebar = paintSidebar;
+  ctx.notify = notify;
+  ctx.closeNavOnMobile = closeNavOnMobile;
 
-  function renderRows(): void {
-    if (kind() === 'tafel') { renderBoard(); return; }
-    if (holdsWords()) { renderCards(); return; }
-    for (const { view } of cardViews.values()) view.destroy();
-    cardViews.clear();
-    /* Back to rows, and said here rather than only in renderCards(). The host
-       is one node shared by both templates, so whichever draws into it has to
-       state its own layout — leaving the card grid on it turned every row of
-       the next Sammlung into a narrow column with its words stacked, which is
-       what happens when only one of two paths sets a thing. */
-    rowsHost.className = 'rows';
+  const bannersPart = banners(ctx);
+  const head = collectionHead(ctx);
+  const materialPart = material(ctx);
+  const composingPart = composing(ctx);
+  const wordsPart = words(ctx);
+  const collectionsPart = collections(ctx);
+  ctx.views = { focusName: head.focusName, words: wortschatzView };
+  Object.assign(ctx,
+    editing(ctx),
+    collectionsPart,
+    settings(ctx, backup),
+    printing(ctx),
+    { writeBoard: materialPart.writeBoard, handleNewCard: materialPart.handleNewCard },
+    { openWortschatzSheet: wordsPart.openWortschatzSheet },
+  );
 
-    if (sentences.length === 0) {
-      for (const { view } of rowViews.values()) view.destroy();
-      rowViews.clear();
-      rowsHost.replaceChildren();
-      if (rowsHost.isConnected) inner.replaceChild(emptyState, rowsHost);
-      return;
-    }
-    if (emptyState.isConnected) inner.replaceChild(rowsHost, emptyState);
+  const inner = el('div', { class: 'main__inner' },
+    bannersPart.host, composerView.node, head.node, materialPart.rowsHost);
 
-    const seen = new Set<string>();
-    const nodes: HTMLElement[] = [];
+  const main = el('main', { class: 'main' }, topBarView.node, inner, footerView.node);
+  const appRoot = el('div', { class: 'app', attrs: { id: 'app-root' } });
 
-    for (const sentence of sentences) {
-      seen.add(sentence.id);
-      const existing = rowViews.get(sentence.id);
-      // Rebuilding a row throws away its resolved symbols, so only rebuild when
-      // the sentence itself was replaced.
-      if (existing && existing.sentence === sentence) {
-        nodes.push(existing.view.node);
-        continue;
-      }
-      /* A rename is the one replacement that draws the same row — same symbols,
-         same order, same captions — and the one where a rebuild would be felt,
-         because the name is typed into the row itself. So the row takes the new
-         record instead of being made again from it. */
-      if (existing && renamedOnly(existing.sentence, sentence)) {
-        existing.view.rename(sentence);
-        rowViews.set(sentence.id, { view: existing.view, sentence });
-        nodes.push(existing.view.node);
-        continue;
-      }
-      existing?.view.destroy();
-      const view = sentenceRow(sentence, providerId(), {
-        onOpenSlot: (slotId) => openPicker(sentence.id, slotId),
-        onAddSlot: () => void handleAddSlot(sentence.id),
-        onReorder: (from, to) => void handleReorder(sentence.id, from, to),
-        onUnreadableSymbol: (id) => void noteUnreadable(id),
-        onPrint: () => openPrint([sentence.id]),
-        onDelete: () => void confirmDeleteSentence(sentence),
-        onRename: (title) => void handleRename(sentence.id, title),
-      });
-      rowViews.set(sentence.id, { view, sentence });
-      nodes.push(view.node);
-    }
+  // Printable DOM lives outside #app-root, which @media print hides.
+  const printRoot = el('div', { attrs: { id: 'print-root' } });
 
-    for (const [id, { view }] of rowViews) {
-      if (!seen.has(id)) { view.destroy(); rowViews.delete(id); }
-    }
-
-    place(rowsHost, nodes);
-  }
-
-  /**
-   * The wall a Wortkarten-Sammlung draws instead of rows.
-   *
-   * Kept in step the same way `renderRows` keeps its rows: a card is rebuilt
-   * only when the record behind it was replaced, because rebuilding one throws
-   * away a resolved symbol and the wall is where most of them are.
-   */
-  function renderCards(): void {
-    const nodes = [...syncCards().values()];
-
-    /* The empty card at the end. Typing is the fast way for ten words at once;
-       this is the way for the one that is missing, and for somebody who has no
-       word in mind and is looking for a picture. It opens the same picker every
-       other card does. */
-    nodes.push(el('button', {
-      class: 'word word--add', text: '+',
-      attrs: { type: 'button', 'aria-label': t('ui.new_card') },
-      on: { click: () => void handleNewCard() },
-    }));
-
-    rowsHost.className = 'rows words';
-    place(rowsHost, nodes);
-  }
-
-  /**
-   * One built card per sentence, kept across paints. Shared by the wall and
-   * the Tafel, which draw the same cards in different places.
-   */
-  function syncCards(): Map<string, HTMLElement> {
-    for (const { view } of rowViews.values()) view.destroy();
-    rowViews.clear();
-    const seen = new Set<string>();
-    const nodes = new Map<string, HTMLElement>();
-    for (const sentence of sentences) {
-      seen.add(sentence.id);
-      const existing = cardViews.get(sentence.id);
-      if (existing && existing.sentence === sentence) { nodes.set(sentence.id, existing.view.node); continue; }
-      existing?.view.destroy();
-      const view = wordCard(sentence, providerId(), {
-        onOpenSlot: (slotId) => openPicker(sentence.id, slotId),
-        onDelete: () => void confirmDeleteSentence(sentence),
-        onUnreadableSymbol: (id) => void noteUnreadable(id),
-      });
-      cardViews.set(sentence.id, { view, sentence });
-      nodes.set(sentence.id, view.node);
-    }
-    for (const [id, { view }] of cardViews) {
-      if (!seen.has(id)) { view.destroy(); cardViews.delete(id); }
-    }
-    return nodes;
-  }
-
-  /**
-   * The Tafel: the grid with its fields, and under it the cards not on it yet.
-   *
-   * Every new word lands in the tray. Typing ten words is one act and deciding
-   * where each one lies is another, done by hand afterwards — that is what a
-   * Tafel is, and why a field can stay free.
-   */
-  const tafel = boardView({
-    onResize: (cols, rows) => void writeBoard((board) => resizeBoard(board, cols, rows)),
-    onPlace: (id, index) => void writeBoard((board) => placeOn(board, id, index)),
-    onTakeOff: (id) => void writeBoard((board) => takeOff(board, id)),
-    onNewCardAt: (index) => void handleNewCard(index),
-    onNewCard: () => void handleNewCard(),
-    onAddGroup: (colour) => void writeBoard((board) => addGroup(board, colour)),
-    onGroup: (index, patch) => void writeBoard((board) => updateGroup(board, index, patch)),
-    onRemoveGroup: (index) => void writeBoard((board) => removeGroup(board, index)),
-  });
-
-  function renderBoard(): void {
-    const open = activeCollection();
-    if (!open) return;
-    tafel.render({ board: boardOf(open), sentences, cards: syncCards() });
-    rowsHost.className = 'rows rows--tafel';
-    place(rowsHost, [tafel.head, tafel.grid, tafel.tray]);
-  }
-
-  /** The open Tafel's grid, changed and written back. */
-  async function writeBoard(change: (board: Board) => Board): Promise<void> {
-    const open = activeCollection();
-    if (!open) return;
-    const current = boardOf(open);
-    const board = change(current);
-    // Every helper hands the same object back when there is nothing to do.
-    if (board === current) return;
-    const next: Collection = { ...open, board, updatedAt: Date.now() };
-    collections = collections.map((c) => (c.id === next.id ? next : c));
-    render();
-    await putCollection(next);
-  }
-
-  /**
-   * A card with no symbol yet, and the picker open on it. On a Tafel it can be
-   * made straight into a field, which is where the „+" in a free field leads.
-   */
-  async function handleNewCard(at?: number): Promise<void> {
-    const collectionId = activeId;
-    if (!collectionId) return;
-    const slot: Slot = {
-      id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
-    };
-    const sentence: Sentence = {
-      id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
-      collectionId, createdAt: Date.now(), updatedAt: Date.now(),
-    };
-    await putSentence(sentence);
-    sentences = [sentence, ...sentences];
-    if (at !== undefined) await writeBoard((board) => placeOn(board, sentence.id, at));
-    render();
-    openPicker(sentence.id, slot.id);
-  }
-
-  /**
-   * The two templates, offered while a Sammlung is still empty.
-   *
-   * Not a dialog before „+ Neue Sammlung": that would be a question in front of
-   * a blank page, and today the button makes one immediately (§1.5). So the
-   * Sammlung is made as a Satzstreifen — which is what bildhaft has always been
-   * and what somebody who touches nothing should get — and the choice stands in
-   * the empty state, where there is nothing yet to convert. Once a card or a
-   * row is in it, the tiles are gone and the answer is to make another one.
-   */
-  /** What an empty Sammlung says: what it is for, and which template it is. */
-  function paintEmpty(): void {
-    fill(emptyState,
-      el('b', { text: t('ui.empty_collection') }),
-      el('small', { text: t('ui.empty_collection_hint') }),
-      templateChoice(),
-      /* The second way to start, said once and where it is useful: an empty
-         Sammlung is exactly where somebody wants their own words poured in
-         rather than typed again. Afterwards it lives in the ⋯, because by then
-         the Sammlung has something in it and the wall is the thing to look at.
-         Absent rather than greyed while there is no Wortschatz to pour. */
-      wordCount === 0 ? null : el('p', { class: 'small muted', style: { marginTop: '14px' } },
-        el('button', { class: 'linklike', text: t('ui.add_wortschatz'),
-          attrs: { type: 'button' }, on: { click: () => void openWortschatzSheet() } })));
-  }
-
-  function templateChoice(): HTMLElement {
-    const tile = (which: CollectionKind) => el('button', {
-      class: `tpl ${kind() === which ? 'tpl--on' : ''}`,
-      attrs: { type: 'button', 'aria-pressed': String(kind() === which) },
-      on: { click: () => void chooseTemplate(which) },
-    },
-    el('span', { class: 'tpl__art-box' }, templateArt(which)),
-    el('span', {},
-      el('b', { text: t(`ui.template_${which}`) }),
-      el('small', { text: t(`ui.template_${which}_note`) })));
-
-    return el('div', { class: 'templates' }, ...COLLECTION_KINDS.map(tile));
-  }
-
-  async function chooseTemplate(which: CollectionKind): Promise<void> {
-    const open = activeCollection();
-    if (!open || kindOf(open) === which) return;
-    const next: Collection = { ...open, kind: which, updatedAt: Date.now() };
-    /* A Tafel is born with its grid, so the record says what it is from the
-       first paint; the other kinds have none and carry no field for one. */
-    if (which === 'tafel') next.board = boardOf(next);
-    else delete next.board;
-    collections = collections.map((c) => (c.id === next.id ? next : c));
-    render();
-    await putCollection(next);
-  }
-
-  /**
-   * Puts exactly these children in this parent, and does nothing at all when
-   * they are already there. Re-inserting an unchanged node blurs whatever inside
-   * it had focus, which turned typing a collection name into one character per
-   * click.
-   */
-  function place(parent: HTMLElement, children: HTMLElement[]): void {
-    const same = parent.childNodes.length === children.length
-      && children.every((child, i) => parent.childNodes[i] === child);
-    if (!same) parent.replaceChildren(...children);
-  }
+  fill(root, loading, printRoot);
 
   /* ------------------------------------------------------------ render --- */
 
   let lastSentenceCount = -1;
 
+  function paintSidebar(): void {
+    sidebarView.render({
+      collections: s.collections, counts: s.counts, activeId: s.activeId,
+      searchQuery: s.query, searchResults: s.results,
+      wordCount: s.wordCount, tags: s.tagRows,
+      openTag: s.wortschatz ? s.wortschatz.tag : undefined,
+    });
+  }
+
   function render(): void {
-    if (!settings) return;
+    if (!s.settings) return;
     // The toast goes in here, with the app, and stays for the life of the page:
     // this is the only call that sets root's children, and it runs once. It is
     // a sibling of appRoot rather than a child because appRoot's own children
-    // are replaced on every render (see place() below), and a live region that
-    // is swapped out between messages is the bug notify() documents.
+    // are replaced on every render (see place() in ui/dom.ts), and a live
+    // region that is swapped out between messages is the bug notify() documents.
     if (!appRoot.isConnected) fill(root, appRoot, printRoot, toast);
 
-    const sidebarOpen = isMobile ? mobileNavOpen : settings.sidebarOpen;
+    const sidebarOpen = s.isMobile ? s.mobileNavOpen : s.settings.sidebarOpen;
     toggleClass(appRoot, 'app--collapsed', !sidebarOpen);
-    toggleClass(appRoot, 'app--nav-open', isMobile && mobileNavOpen);
+    toggleClass(appRoot, 'app--nav-open', s.isMobile && s.mobileNavOpen);
 
     const children: HTMLElement[] = [sidebarView.node];
-    if (isMobile && mobileNavOpen) children.push(scrim);
+    if (s.isMobile && s.mobileNavOpen) children.push(scrim);
     if (!sidebarOpen) children.push(rail);
     children.push(main);
     place(appRoot, children);
 
-    sidebarView.render({
-      collections, counts, activeId, searchQuery: query, searchResults: results,
-      wordCount, tags: tagRows, openTag: wortschatz ? wortschatz.tag : undefined,
-    });
+    paintSidebar();
 
     /* The two nouns share `.main__inner` and never overlap: one of them has the
        composer, the head and the wall of things, and the other has its own
        three. Rebuilding the list rather than hiding it keeps the symbol
        subscriptions of whichever is off screen from being kept alive.
 
-       The last child is whichever of the two `renderRows` would put there, and
-       naming it here rather than letting that function swap it afterwards is
+       The last child is whichever of the two the material would put there, and
+       naming it here rather than letting that module swap it afterwards is
        the whole of it. Both used to manage this one slot with different ideas
-       of what belongs in it: this asked for `rowsHost`, `renderRows` replaced
+       of what belongs in it: this asked for `rowsHost`, the rows replaced
        it with `emptyState` a few lines later, and so on the next render
        `place` found a fourth child it had not put there, concluded the list
-       had changed and rebuilt all four. `collectionHead` went out with them,
+       had changed and rebuilt all four. The head went out with them,
        and with it the focus of anything inside it - which is why the name
        field of a new Sammlung was focused and then silently was not. */
-    if (sentences.length === 0) paintEmpty();
-    place(inner, wortschatz
-      ? [bannerHost, ...wortschatzView.parts]
-      : [bannerHost, composerView.node, collectionHead,
-         sentences.length === 0 ? emptyState : rowsHost]);
-    if (wortschatz) {
-      topBarView.setTitle(wortschatz.tag ?? t('ui.all_words'));
+    const empty = s.sentences.length === 0;
+    if (empty) materialPart.paintEmpty();
+    place(inner, s.wortschatz
+      ? [bannersPart.host, ...wortschatzView.parts]
+      : [bannersPart.host, composerView.node, head.node,
+         empty ? materialPart.emptyState : materialPart.rowsHost]);
+    if (s.wortschatz) {
+      topBarView.setTitle(s.wortschatz.tag ?? t('ui.all_words'));
       return;
     }
 
-    const collection = activeCollection();
+    const collection = activeCollection(s);
     topBarView.setTitle(collection?.name ?? 'bildhaft');
-    /* Through refresh() rather than by assigning. The value comparison this
-       used to be is not the same guard: it holds only because the input handler
-       above echoes each keystroke into `collections` first, so a render caused
-       by anything else — a store refresh landing mid-word — would compare
-       against the stored name and put it back over what is being typed.
-       refresh() declines on focus and on a pending keystroke instead. */
-    titleField.refresh(collection?.name ?? '');
+    head.render();
 
     composerView.render({
-      value: draft, busy, reuse,
-      providerName: provider().name,
-      providerReady: provider().isReady(),
+      value: s.draft, busy: s.busy, reuse: s.reuse,
+      providerName: provider(s).name,
+      providerReady: provider(s).isReady(),
       inCollection: Boolean(collection),
-      providerOwned: !followsDefault(),
-      words: holdsWords(),
+      providerOwned: !followsDefault(s),
+      words: holdsWords(s),
     });
 
-    rowCount.textContent = holdsWords()
-      ? (sentences.length === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: sentences.length }))
-      : sentences.length === 1
-        ? t('ui.n_rows_one')
-      : t('ui.n_rows', { n: sentences.length });
-    printAll.toggleAttribute('disabled', sentences.length === 0);
-    footerView.setAttribution(provider().attribution);
+    footerView.setAttribution(provider(s).attribution);
 
-    renderBanners();
-    renderRows();
+    bannersPart.render();
+    materialPart.render();
 
-    if (sentences.length !== lastSentenceCount) {
-      lastSentenceCount = sentences.length;
-      void refreshCollections();
+    if (s.sentences.length !== lastSentenceCount) {
+      lastSentenceCount = s.sentences.length;
+      void ctx.refreshCollections();
     }
   }
-
-  /* ------------------------------------------------------------ backup --- */
-
-  /*
-   * The standing backup. `exportEverything` is what it is handed and the only
-   * thing it is ever handed — that function is the audited artefact, carrying
-   * symbol references and the user's own pictures, and never an ARASAAC or
-   * METACOM pixel. A chosen folder may well sit inside Dropbox, so what goes
-   * in it leaves the machine; tests/unit/backup-payload.test.ts holds this wiring in
-   * place, and a failure there is a licensing problem rather than a bug.
-   */
-  const backup = new Sicherung({
-    app: 'bildhaft',
-    produce: exportEverything,
-    // Nothing in this browser. @lautstark/sicherung v1.3.0 holds a write that
-    // would put that over a folder holding the real thing, and this line is
-    // what tells it — the package knows nothing about collections or
-    // sentences, deliberately, and would have to be told their names to guess.
-    //
-    // This is the product it actually happened to: on 2026-08-28 the site
-    // moved to bildhaft.lautstark.tech, per-origin storage meant the new
-    // address opened empty, and bildhaft-aktuell.json went from three
-    // collections to zero. The dated copy from five days earlier is what was
-    // left. Overrides are not counted: they hang off collections and mean
-    // nothing without them.
-    looksEmpty: (produced) => {
-      const it = produced as { collections?: unknown[]; sentences?: unknown[] };
-      return it.collections?.length === 0 && it.sentences?.length === 0;
-    },
-  });
-
-  // Every write to the library, from anywhere, through the one notifier in
-  // repo.ts. Debounced inside Sicherung, so a burst of edits is one file.
-  onChanged(() => backup.schedule());
 
   /* -------------------------------------------------------------- boot --- */
 
@@ -893,21 +293,21 @@ export function mountApp(root: HTMLElement): void {
 
     const wanted = all.find((c) => c.id === loaded.lastCollectionId) ?? all[0];
 
-    settings = loaded;
+    s.settings = loaded;
     // Before anything resolves a symbol: the preference orders search results,
     // so a slot filled in ahead of it would be filled from the wrong rendering.
     metacom.preferRendering(loaded.metacomRendering);
-    collections = all;
+    s.collections = all;
     /* What the first paint draws with, recorded before setActive() can compare
        against it. Without this the initial guess is 'arasaac' and every load of
        a library whose source is METACOM would re-resolve and rewrite every
        sentence in the open collection — work that changes nothing. */
-    previousProvider = wanted.provider ?? loaded.activeProvider;
-    setActive(wanted.id);
+    s.previousProvider = wanted.provider ?? loaded.activeProvider;
+    ctx.setActive(wanted.id);
     render();
 
     // Only judge the symbol source once it has had its chance to come back.
-    metacom.restore().catch(() => undefined).finally(() => { sourceSettled = true; render(); });
+    metacom.restore().catch(() => undefined).finally(() => { s.sourceSettled = true; render(); });
 
     /* Where the work already lives in a folder, the dated copies go beside it.
        The store fills `<folder>/bildhaft/` and these are flat files above it, so
@@ -926,8 +326,8 @@ export function mountApp(root: HTMLElement): void {
        constantly, and all of those changes are ours. */
     void adopted().then((yes: boolean) => {
       if (yes) watchFolder(() => void pullFromFolder().then(() => {
-        void refreshCollections();
-        if (activeId) setActive(activeId);
+        void ctx.refreshCollections();
+        if (s.activeId) ctx.setActive(s.activeId);
       }));
     });
 
@@ -951,7 +351,7 @@ export function mountApp(root: HTMLElement): void {
 
     // Last, and after the first render: this may add a Sammlung and open it,
     // and notify() writes into a toast that render() is what mounts.
-    await openNamed();
+    await collectionsPart.openNamed();
   })().catch((error: unknown) => {
     /*
      * Boot had no catch at all until adr/0001, and the failure it was missing
@@ -993,1144 +393,27 @@ export function mountApp(root: HTMLElement): void {
     if (nowReady && !wasReady) {
       resetSymbolResolution('metacom');
       // Forget the old failures too, or the warning outlives the problem.
-      unreadable = 0;
+      s.unreadable = 0;
     }
     wasReady = nowReady;
     render();
   });
 
-  onBlockedChange(() => { dbBlocked = isBlockedByOtherTab(); render(); });
+  onBlockedChange(() => { s.dbBlocked = isBlockedByOtherTab(); render(); });
 
-  mobileQuery.addEventListener('change', () => { isMobile = mobileQuery.matches; render(); });
+  mobileQuery.addEventListener('change', () => { s.isMobile = mobileQuery.matches; render(); });
 
-  /* ------------------------------------------------------- persistence --- */
-
-  function persistSettings(next: AppSettings): void {
-    const renderingChanged = settings?.metacomRendering !== next.metacomRendering;
-    settings = next;
-    void saveSettings(next);
-    if (renderingChanged) {
-      metacom.preferRendering(next.metacomRendering);
-      void repointToRendering();
-    }
-    render();
-  }
-
-  /*
-   * A new preference is about every row already on screen, not only the next
-   * sentence: each slot holds the right symbol in the wrong rendering. Asking
-   * the source again is what moves them, and re-resolving the symbols is what
-   * makes the change visible — nothing about a slot's id changes on its own.
-   */
-  async function repointToRendering(): Promise<void> {
-    const collectionId = activeId;
-    if (!collectionId || providerId() !== 'metacom') return;
-
-    busy = true;
-    render();
-    try {
-      const overrides = await overrideMap('metacom');
-      const updated = await Promise.all((await listSentences(collectionId)).map(
-        async (sentence) => ({
-          ...sentence,
-          slots: await refreshSlotChoices(sentence.slots, getProvider('metacom'), overrides),
-        })));
-      for (const sentence of updated) await putSentence(sentence);
-      sentences = updated;
-      resetSymbolResolution('metacom');
-    } finally {
-      busy = false;
-      render();
-    }
-  }
-
-  function setActive(id: string): void {
-    /* Nothing from the last one stays on screen.
-     *
-     * The rows below are replaced when listSentences() answers, which for a
-     * local read is a frame — except where what follows is long, and after an
-     * import it is: the symbols of a Sammlung that has just arrived all have to
-     * be resolved. Until then the head carried the new name over the previous
-     * Sammlung's rows, which does not read as "loading", it reads as those rows
-     * being what this Sammlung contains. */
-    if (activeId !== id) sentences = [];
-    activeId = id;
-    /* The symbol search follows the Sammlung, not the page.
-     *
-     * main.ts sets this once from LANG, and that is right for a page somebody
-     * is writing in. It is wrong for a Sammlung that arrived from somewhere
-     * else: a German one opened by somebody reading the interface in English
-     * had „Zähne putzen" looked up at the English endpoint, which does not
-     * refuse an English word — it answers one — so every correction they tried
-     * to make found the wrong picture or none.
-     *
-     * The interface stays in the language they chose. bildquelle keys its cache
-     * and its in-flight map by language and passes the language down through a
-     * search rather than reading it again at the end, so moving this while the
-     * page is open is a thing that module was built for.
-     */
-    setSymbolLanguage(collections.find((c) => c.id === id)?.language ?? LANG);
-    if (settings && settings.lastCollectionId !== id) {
-      settings = { ...settings, lastCollectionId: id };
-      void saveSettings(settings);
-    }
-    void listSentences(id).then((loaded) => {
-      if (activeId !== id) return;
-      sentences = loaded;
-      unreadable = 0;
-      render();
-      /* Opening a collection can change the source, because the collection is
-         where the answer lives now. Its rows may never have been resolved
-         against that source, and an unresolved slot draws as an empty field
-         rather than as a symbol.
-
-         resolveOpen() and not syncProvider(), which is the fix: syncProvider
-         returns at once when the source has not moved — and a Sammlung that has
-         just arrived from somebody else has rows that were never resolved for
-         this source *whether or not it moved*. That is how an imported Sammlung
-         drawn in METACOM opened entirely blank for a reader on ARASAAC, and the
-         other way round. resolveSlotsForProvider leaves a slot alone once it has
-         a choice, so this costs nothing in the ordinary case. */
-      void resolveOpen();
-    });
-  }
-
-  async function refreshCollections(): Promise<void> {
-    const all = await listCollections();
-    const entries = await Promise.all(
-      all.map(async (c) => [c.id, await countSentences(c.id)] as const));
-    collections = all;
-    counts = Object.fromEntries(entries);
-
-    /* The Wortschatz counts come from the same pass, because they change for
-       the same reasons: a correction in a Sammlung files a word, and the row
-       above the Sammlungen has to say so without anybody opening it. */
-    const words = await listOverrides();
-    wordCount = words.length;
-    const held = new Map<string, number>();
-    for (const word of words) {
-      for (const tag of word.tags ?? []) {
-        held.set(tag.toLowerCase(), (held.get(tag.toLowerCase()) ?? 0) + 1);
-      }
-    }
-    tagRows = (settings?.pinnedTags ?? [])
-      .map((name) => ({ name, count: held.get(name.toLowerCase()) ?? 0 }));
-
-    sidebarView.render({
-      collections, counts, activeId, searchQuery: query, searchResults: results,
-      wordCount, tags: tagRows, openTag: wortschatz ? wortschatz.tag : undefined,
-    });
-  }
-
-  /**
-   * Pours words from the Wortschatz into the Sammlung that is open.
-   *
-   * This used to point the other way — „Sammlung daraus", standing in the
-   * Wortschatz and making a new one. That only ever served the rarer half of
-   * what people do with a pot of words. The commoner half is the Sammlung they
-   * already have open, half full, with a name and a template they chose: they
-   * want the Kita words *in it*, and then the Urlaub ones too, and then to keep
-   * typing. Which is also why this can be done again and again and the other
-   * could not.
-   *
-   * Copied, not referenced. A Sammlung printed and laminated in March does not
-   * change because somebody swapped Oma's photo in June — the same rule a
-   * written sentence is already under.
-   */
-  async function handleAddWords(lens: string | null): Promise<void> {
-    const collectionId = activeId;
-    if (!collectionId || !settings) return;
-
-    const fold = (word: string) => word.trim().toLowerCase();
-    const all = await listOverrides(providerId());
-    const wanted = lens === null
-      ? all
-      : all.filter((entry) => entry.tags?.some((tag) => fold(tag) === fold(lens)));
-
-    /* What is already in here, by the word rather than by the record. Adding
-       the same tag twice is a thing somebody does by accident, and a Sammlung
-       that answers it with a second Apfel is one they have to tidy by hand. */
-    const held = new Set(sentences.flatMap(
-      (sentence) => sentence.slots.map((slot) => fold(slot.sourceToken))));
-    const owed = wanted.filter((entry) => !held.has(fold(entry.token)));
-
-    if (owed.length === 0) { notify(t('ui.wortschatz_all_there')); return; }
-
-    const now = Date.now();
-    const made: Sentence[] = owed.map((entry, index) => ({
-      id: newId(),
-      normalizedInput: normalizeInput(entry.token),
-      rawInput: entry.token,
-      slots: [{
-        id: newId(),
-        sourceToken: entry.token,
-        concept: entry.token.toLowerCase(),
-        origin: 'override' as const,
-        choice: { [providerId()]: entry.symbolId },
-        candidates: {},
-        ...(entry.caption ? { label: entry.caption } : {}),
-      }],
-      collectionId,
-      createdAt: now - index,
-      updatedAt: now,
-    }));
-    await Promise.all(made.map((sentence) => putSentence(sentence)));
-
-    sentences = [...made, ...sentences];
-    await refreshCollections();
-    render();
-    notify(owed.length === 1
-      ? t('ui.n_words_added_one')
-      : t('ui.n_words_added', { n: owed.length }));
-  }
-
-  /**
-   * Which words: everything, or one tag.
-   *
-   * A sheet rather than a submenu, because the answer is a list with counts and
-   * a submenu of twenty tags is a menu somebody scrolls. Nothing is created
-   * here and nothing is chosen twice — one press adds, and the sheet closes.
-   */
-  async function openWortschatzSheet(): Promise<void> {
-    const all = await listOverrides(providerId());
-    const tally = new Map<string, { label: string; n: number }>();
-    for (const entry of all) {
-      for (const tag of entry.tags ?? []) {
-        const key = tag.toLowerCase();
-        const seen = tally.get(key);
-        if (seen) seen.n += 1;
-        else tally.set(key, { label: tag, n: 1 });
-      }
-    }
-
-    const row = (label: string, n: number, lens: string | null) => el('button', {
-      class: 'btn quiet wortschatz-pick',
-      attrs: { type: 'button', ...(n === 0 ? { disabled: true } : {}) },
-      on: { click: () => { sheet.close(); void handleAddWords(lens); } },
-    },
-    el('b', { text: label }),
-    el('span', { class: 'small faint', text: n === 1 ? t('ui.n_words_one') : t('ui.n_words', { n }) }));
-
-    const sheet = openDialog({
-      title: t('ui.add_wortschatz'),
-      body: [
-        el('p', { class: 'small muted', style: { marginTop: '0' }, text: t('ui.add_wortschatz_note') }),
-        el('div', { class: 'wortschatz-picks' },
-          row(t('ui.all_words'), all.length, null),
-          ...[...tally.values()]
-            .sort((a, b) => a.label.localeCompare(b.label))
-            .map((tag) => row(tag.label, tag.n, tag.label))),
-      ],
-      onClose: () => undefined,
-    });
-  }
-
-  /**
-   * Makes a tag and opens it, the way „+ Neue Sammlung" makes a Sammlung.  /**
-   * Makes a tag and opens it, the way „+ Neue Sammlung" makes a Sammlung.
-   *
-   * It exists the moment it is made, before it has a name anybody chose and
-   * before a single word carries it — which is what `pinnedTags` is for, and
-   * why the name is edited in the work head rather than asked for in a dialog
-   * (§1.5). The number is only there so that making three in a row does not
-   * produce three rows called the same thing.
-   */
-  async function handleNewTag(): Promise<void> {
-    if (!settings) return;
-    const taken = new Set(settings.pinnedTags.map((tag) => tag.toLowerCase()));
-    let name = t('ui.new_tag_name');
-    for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${t('ui.new_tag_name')} ${n}`;
-
-    persistSettings({ ...settings, pinnedTags: [...settings.pinnedTags, name] });
-    wortschatz = { tag: name };
-    query = '';
-    wortschatzView.open(name);
-    await refreshCollections();
-    render();
-    wortschatzView.nameIt();
-  }
-
-  /*
-   * The collection name auto-saves like everything else. Saving only on blur would
-   * lose the name if the tab is closed or reloaded while the field still has focus.
-   */
-  /* ------------------------------------------------- reuse suggestion --- */
-
-  let reuseTimer = 0;
-
-  function scheduleReuseLookup(): void {
-    window.clearTimeout(reuseTimer);
-    const normalized = normalizeInput(draft);
-    if (!normalized) {
-      reuse = null;
-      return;
-    }
-    reuseTimer = window.setTimeout(async () => {
-      const hits = await findByNormalized(normalized);
-      const hit = hits.find((h) => h.slots.length > 0) ?? null;
-      if (normalizeInput(draft) === normalized) { reuse = hit; render(); }
-    }, 320);
-  }
-
-  /* ------------------------------------------------------------ search --- */
-
-  let searchTimer = 0;
-
-  function scheduleSearch(): void {
-    window.clearTimeout(searchTimer);
-    if (!query.trim()) {
-      results = [];
-      return;
-    }
-    searchTimer = window.setTimeout(() => {
-      void searchSentences(query).then((hits) => { results = hits; render(); });
-    }, 200);
-  }
-
-  /* ------------------------------------------------------------ submit --- */
-
-  /**
-   * How many lines are translated at the same time.
-   *
-   * Four rather than all of them. A line is a chain of lookups — one per word,
-   * each waiting on the one before it — so a pasted song spent its whole time
-   * with a single request in flight and the page empty: 24 lines of a children's
-   * song took eight seconds against a 150 ms endpoint, and a picture book takes
-   * minutes. Four keeps four requests moving without turning a paste into a
-   * burst at a free public service, which is the same restraint the cache is
-   * there for.
-   */
-  const LINES_AT_ONCE = 4;
-
-  /**
-   * Puts a row where its age says it goes.
-   *
-   * The list is sorted newest first and translations no longer land in the
-   * order they were started, so a row cannot simply go on the front. createdAt
-   * is what fixes the order — it counts down through the batch — and reading it
-   * back here is what lets a line that finished early wait for its place.
-   */
-  function placeRow(sentence: Sentence): void {
-    const at = sentences.findIndex((s) => s.createdAt < sentence.createdAt);
-    sentences = at === -1
-      ? [...sentences, sentence]
-      : [...sentences.slice(0, at), sentence, ...sentences.slice(at)];
-  }
-
-  async function handleSubmit(): Promise<void> {
-    const raw = draft.trim();
-    const collectionId = activeId;
-    if (!raw || !settings || !collectionId || busy) return;
-
-    const lines = splitLines(raw);
-    if (lines.length === 0) return;
-
-    busy = true;
-    /*
-     * The box is emptied now, not at the end. A pasted text is the case where
-     * the wait is long enough to read as a hang, and a box still holding the
-     * words is the strongest sign nothing happened. Whatever fails to translate
-     * is put back below, so nothing is lost by clearing it early.
-     */
-    draft = '';
-    reuse = null;
-    batch = lines.length > 1 ? { done: 0, total: lines.length } : null;
-
-    const now = Date.now();
-    /*
-     * The lines still owed a row. A line is struck off the moment its row is
-     * written, so whatever is left at the end — a word the source could not be
-     * asked about, or a failure before the first line was even started — is
-     * exactly what goes back into the box.
-     */
-    const owed = [...lines];
-    let firstError: unknown = null;
-
-    try {
-      /* Inside the try, so that a paint that throws still hands the button
-         back — before, busy was set and render() called ahead of this block,
-         and one error in a paint left the button spinning for good. */
-      render();
-      const words = holdsWords();
-      const options = {
-        provider: provider(),
-        stopwords: new Set(settings.stopwords[LANG]),
-        overrides: await overrideMap(providerId()),
-      };
-
-      /*
-       * Each line is written and drawn as it comes back, rather than the whole
-       * batch appearing at the end. That is what a long text needed: the rows
-       * fill in from the top while the rest is still being looked up, and the
-       * first corrections can be made before the last line has arrived.
-       */
-      const translate = async (line: string, index: number): Promise<void> => {
-        try {
-          const sentence: Sentence = {
-            id: newId(),
-            normalizedInput: normalizeInput(line),
-            rawInput: line,
-            /* One card holds one thing, so on that template the whole line is
-               looked up as one word — „Kita Sonnenschein" is one card, and
-               „der" is not dropped for being a function word. */
-            /* With an end: a source that does not answer gives the line back
-               to the box with a word about it, rather than a button that spins
-               until the tab is closed. */
-            slots: await withTimeout(
-              words ? buildWordSlot(line, options).then((slot) => [slot]) : buildSlots(line, options),
-              LOOKUP_MS, t('ui.wait_source')),
-            collectionId,
-            /*
-             * Descending within the batch. The list is sorted newest first, so
-             * this is what keeps the lines in the order they were typed — which
-             * is also the order they get printed in.
-             */
-            createdAt: now - index,
-            updatedAt: now,
-          };
-          await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
-          delete owed[index];
-          if (activeId === collectionId) placeRow(sentence);
-        } catch (err) {
-          firstError ??= err;
-        }
-        if (batch) batch = { ...batch, done: batch.done + 1 };
-        render();
-      };
-
-      let next = 0;
-      await Promise.all(Array.from({ length: Math.min(LINES_AT_ONCE, lines.length) },
-        async () => {
-          while (next < lines.length) {
-            const index = next++;
-            await translate(lines[index], index);
-          }
-        }));
-    } catch (err) {
-      firstError ??= err;
-    } finally {
-      busy = false;
-      batch = null;
-      /* Back into the box, in the order they were written. A book whose tenth
-         line has no symbols must not take the ninety after it down with it. */
-      const left = [...owed].filter(Boolean);
-      if (left.length > 0) draft = left.join('\n');
-      if (firstError !== null) notify(sayWhy(firstError));
-      render();
-    }
-  }
-
-  async function handleReuse(): Promise<void> {
-    if (!reuse || !activeId) return;
-    const now = Date.now();
-    const sentence: Sentence = {
-      ...reuse,
-      id: newId(),
-      slots: reuse.slots.map((slot) => ({ ...slot, id: newId() })),
-      collectionId: activeId,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await putSentence(sentence);
-    sentences = [sentence, ...sentences];
-    draft = '';
-    reuse = null;
-    render();
-  }
-
-  /* ------------------------------------------------------- row editing --- */
-
-  /**
-   * One edit to a sentence at a time, in the order the edits were made.
-   *
-   * The picker can settle a field while an earlier edit to the same field is
-   * still being written — type a caption, then press a symbol — and a handler
-   * that read the store before the write in front of it had landed built its
-   * change on the slot as it was, putting the earlier edit back.
-   *
-   * Queueing rather than updating the store first, because "what the row shows
-   * has been written" is worth keeping: there is no undo here and no server to
-   * ask, so an edit that is visible but not yet saved is one a reload can eat.
-   * A failed write drops out of the queue and does not stall the ones behind it.
-   */
-  let writes: Promise<unknown> = Promise.resolve();
-
-  function queued<T>(fn: () => Promise<T>): Promise<T> {
-    const run = writes.then(fn, fn);
-    writes = run.catch(() => undefined);
-    return run;
-  }
-
-  async function updateSentence(next: Sentence): Promise<void> {
-    await putSentence(next);
-    sentences = sentences.map((s) => (s.id === next.id ? next : s));
-    render();
-  }
-
-  /**
-   * Names a row, or takes the name off it again.
-   *
-   * Trimming is decided here rather than in the bound field, which hands over
-   * exactly what was typed — bildhaft has somewhere to show an unnamed row, so
-   * an empty name is allowed and means the typed line.
-   */
-  function handleRename(sentenceId: string, title: string): Promise<void> {
-    return queued(async () => {
-      const sentence = sentences.find((s) => s.id === sentenceId);
-      if (!sentence) return;
-      const next = title.trim();
-      if (next === (sentence.title?.trim() ?? '')) return;
-      // Empty is stored as absent, so "never named" and "name cleared" stay
-      // the one state rather than two that read alike.
-      await updateSentence({ ...sentence, title: next || null });
-    });
-  }
-
-  /** Reads the sentence inside the queue, so it sees the edit before it. */
-  function mutateSlots(sentenceId: string, fn: (slots: Slot[]) => Slot[]): Promise<void> {
-    return queued(async () => {
-      const sentence = sentences.find((s) => s.id === sentenceId);
-      if (!sentence) return;
-      await updateSentence({ ...sentence, slots: fn(sentence.slots) });
-    });
-  }
-
-  function openPicker(sentenceId: string, slotId: string): void {
-    const slot = sentences.find((s) => s.id === sentenceId)?.slots.find((sl) => sl.id === slotId);
-    if (!slot) return;
-    picker = { sentenceId, slotId };
-    openSlotPicker(slot, providerId(), {
-      onChoose: (candidate) => void handleChoose(candidate),
-      onOwnImage: (picture, name) => void handleOwnImage(picture, name),
-      onClearOwnImage: () => void handleClearOwnImage(),
-      onNegate: (negated) => void handleNegate(negated),
-      onLabel: (label) => void handleLabel(label),
-      onRemove: () => void handleRemoveSlot(),
-      onClose: () => void handleClosePicker(),
-    });
-  }
-
-  async function handleChoose(candidate: Candidate): Promise<void> {
-    if (!picker) return;
-    // The field is settled now; which field it was has to be taken now too,
-    // because the work below waits its turn behind any edit still in flight.
-    const { sentenceId, slotId } = picker;
-    picker = null;
-
-    await queued(async () => {
-      const sentence = sentences.find((s) => s.id === sentenceId);
-      const slot = sentence?.slots.find((sl) => sl.id === slotId);
-      if (!sentence || !slot) return;
-
-      const isNew = !slot.concept;
-      const nextSlot: Slot = {
-        ...slot,
-        // A slot added by hand takes its word from the chosen symbol.
-        sourceToken: isNew ? candidate.label : slot.sourceToken,
-        concept: isNew ? candidate.label.toLowerCase() : slot.concept,
-        // Either way a human chose this, so say so. Leaving the pipeline's origin
-        // in place made the tooltip claim a lemma lookup had picked the symbol.
-        origin: 'manual',
-        choice: { ...slot.choice, [providerId()]: candidate.id },
-        candidates: {
-          ...slot.candidates,
-          [providerId()]: mergeCandidate(slot.candidates[providerId()] ?? [], candidate),
-        },
-      };
-
-      await updateSentence({
-        ...sentence,
-        slots: sentence.slots.map((sl) => (sl.id === slot.id ? nextSlot : sl)),
-      });
-
-      if (!isNew) {
-        // Remember the correction under both the typed word and the resolved concept,
-        // so it fires again whether the same surface form or a variant shows up.
-        const keys = new Set([slot.sourceToken.toLowerCase(), slot.concept.toLowerCase()]);
-        for (const key of keys) {
-          if (key.trim()) await putOverride(providerId(), key, candidate);
-        }
-      }
-    });
-  }
-
-  /*
-   * A picture of the user's own goes in whole: the bytes are copied into
-   * bildhaft, so the file it came from is free to move or disappear. The slot
-   * keeps whatever symbol it had underneath, and removing the picture later
-   * uncovers it rather than leaving an empty field.
-   */
-  async function handleOwnImage(picture: Blob, name: string): Promise<void> {
-    if (!picker) return;
-    const { sentenceId, slotId } = picker;
-    picker = null;
-
-    await queued(async () => {
-      const sentence = sentences.find((s) => s.id === sentenceId);
-      const slot = sentence?.slots.find((sl) => sl.id === slotId);
-      if (!sentence || !slot) return;
-
-      try {
-        const image = await putOwnImage(picture, name);
-        await updateSentence({
-          ...sentence,
-          slots: sentence.slots.map((sl) => (sl.id === slotId ? {
-            ...sl,
-            ownImage: image.id,
-            // A field added by hand takes its word from the file it was given.
-            sourceToken: sl.sourceToken || stemOf(name),
-            concept: sl.concept || stemOf(name).toLowerCase(),
-            origin: 'manual' as const,
-          } : sl)),
-        });
-        notify(t('ui.own_picture_saved'));
-      } catch {
-        notify(t('ui.own_picture_failed'));
-      }
-    });
-  }
-
-  async function handleClearOwnImage(): Promise<void> {
-    if (!picker) return;
-    const { sentenceId, slotId } = picker;
-    picker = null;
-    await mutateSlots(sentenceId, (slots) =>
-      slots.map((sl) => (sl.id === slotId ? { ...sl, ownImage: null } : sl)));
-    // The picture itself only goes once nothing points at it any more.
-    await pruneOwnImages();
-    resetSymbolResolution();
-  }
-
-  /*
-   * Unlike every other picker outcome this one leaves `picker` alone: crossing a
-   * symbol out does not settle the dialog, so the field it refers to has to
-   * still be the one the dialog is editing when the next toggle arrives.
-   */
-  async function handleNegate(negated: boolean): Promise<void> {
-    if (!picker) return;
-    const { sentenceId, slotId } = picker;
-    await mutateSlots(sentenceId, (slots) =>
-      slots.map((sl) => (sl.id === slotId ? { ...sl, negated } : sl)));
-  }
-
-  /*
-   * Like negation, a rewording leaves the dialog open, so `picker` stays put:
-   * the field being edited has to still be the one the next keystroke means.
-   *
-   * An empty field is stored as null rather than as '', because "" and "no
-   * wording of its own" are the same state and only one of them should be
-   * capable of being written to disk.
-   */
-  async function handleLabel(label: string): Promise<void> {
-    if (!picker) return;
-    const { sentenceId, slotId } = picker;
-    const next = label.trim() || null;
-    await mutateSlots(sentenceId, (slots) =>
-      slots.map((sl) => (sl.id === slotId ? { ...sl, label: next } : sl)));
-  }
-
-  async function handleRemoveSlot(): Promise<void> {
-    if (!picker) return;
-    const { sentenceId, slotId } = picker;
-    picker = null;
-    /* A card is its one slot. Take that away and what is left is a record
-       with no picture, no word and nothing to open — which is what the „+"
-       left behind whenever its picker was closed without a choice: a blank
-       card whose only working control was its ×, and a „Zeile löschen: „“
-       wird entfernt" for anybody who pressed it. There is nothing in it to
-       lose, so it goes without being asked about, and its field on a Tafel
-       goes free with it. A row keeps its other slots as before. */
-    const sentence = sentences.find((s) => s.id === sentenceId);
-    const left = sentence?.slots.filter((sl) => sl.id !== slotId) ?? [];
-    if (sentence && left.length === 0 && !sentence.rawInput.trim()) {
-      await deleteSentence(sentence.id);
-      sentences = sentences.filter((s) => s.id !== sentence.id);
-      if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
-      render();
-      return;
-    }
-    await mutateSlots(sentenceId, (slots) => slots.filter((sl) => sl.id !== slotId));
-  }
-
-  async function handleAddSlot(sentenceId: string): Promise<void> {
-    const slot: Slot = {
-      id: newId(),
-      sourceToken: '',
-      concept: '',
-      origin: 'manual',
-      choice: {},
-      candidates: {},
-    };
-    await mutateSlots(sentenceId, (slots) => [...slots, slot]);
-    openPicker(sentenceId, slot.id);
-  }
-
-  async function handleReorder(sentenceId: string, from: number, to: number): Promise<void> {
-    await mutateSlots(sentenceId, (slots) => {
-      const next = [...slots];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
-  }
-
-  /** Discard a hand-added slot the user never filled. */
-  async function handleClosePicker(): Promise<void> {
-    if (!picker) return;
-    const slot = sentences
-      .find((s) => s.id === picker!.sentenceId)
-      ?.slots.find((sl) => sl.id === picker!.slotId);
-    if (slot && !slot.concept) await handleRemoveSlot();
-    picker = null;
-  }
-
-  /* --------------------------------------------------- provider change --- */
-
-  async function syncProvider(): Promise<void> {
-    if (previousProvider === providerId()) return;
-    previousProvider = providerId();
-    await resolveOpen();
-  }
-
-  /**
-   * Fills in the symbol source this person actually uses, for every sentence in
-   * the open Sammlung.
-   *
-   * resolveSlotsForProvider() leaves a slot alone once it has a choice for that
-   * provider, so this is cheap where there is nothing to do and is the whole
-   * job where there is.
-   *
-   * **Two callers, and the second is why this is a function.** A provider change
-   * is the obvious one. The other is an import: a file carries the choices of
-   * whoever made it, and a Sammlung drawn in METACOM opened by somebody with
-   * ARASAAC — or the reverse — arrived entirely blank. Nothing was wrong with
-   * the file; every slot simply had no choice for the source in front of them,
-   * and nothing ever asked. That is the case this whole concept-and-choice shape
-   * exists for, and it was the one case not wired up.
-   */
-  async function resolveOpen(): Promise<void> {
-    const id = activeId;
-    if (!id) return;
-
-    /* Not `busy`. This runs every time a Sammlung is opened, and it used to
-       take the button while it ran — twenty-five rows checked and written
-       back before a word could be typed, and forever when one write did not
-       answer. It is housekeeping: it goes on in the background, and a row it
-       has not reached yet draws as it was. */
-    try {
-      const overrides = await overrideMap(providerId());
-      const current = await listSentences(id);
-      const updated = await Promise.all(current.map(async (sentence) => ({
-        ...sentence,
-        slots: await withTimeout(
-          resolveSlotsForProvider(sentence.slots, getProvider(providerId()), overrides),
-          LOOKUP_MS, t('ui.wait_source')),
-      })));
-      // Only what actually changed is written back; the rest was already right.
-      for (const [i, sentence] of updated.entries()) {
-        if (sentence.slots !== current[i]!.slots) await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
-      }
-      if (activeId === id) { sentences = updated; render(); }
-    } catch (err) {
-      notify(sayWhy(err));
-    }
-  }
-
-  /** What went wrong, in words the person can act on. */
-  function sayWhy(err: unknown): string {
-    if (err instanceof TimedOut) return t('ui.gave_up_waiting', { what: err.what });
-    return err instanceof Error ? err.message : t('ui.translate_failed');
-  }
-
-  /* ----------------------------------------------------------- actions --- */
-
-  async function handleNewCollection(): Promise<void> {
-    const created = await createCollection();
-    await refreshCollections();
-    sentences = [];
-    setActive(created.id);
-    render();
-
-    /* Straight into the name, selected: the first keystroke replaces the date
-     * it was given. conventions.md §1.5, and the selecting is the half of it
-     * that was missing here — the name was invented and then left as a chore to
-     * delete, which is the difference between a suggestion and a default.
-     *
-     * After render(), because that is what puts the new name in the field, and
-     * it does it through refresh() like every other assignment. refresh()
-     * declines while the field has focus, and it does not have it here: the
-     * press that got us here took focus to the button in the sidebar. So the
-     * order is render, then take it. */
-    titleInput.focus();
-    titleInput.select();
-  }
-
-  async function handleExport(): Promise<void> {
-    const collection = activeCollection();
-    if (!collection) return;
-    downloadCollectionExport(await exportCollection(collection));
-    notify(t('ui.collection_exported'));
-  }
-
-  /**
-   * A Sammlung the address names.
-   *
-   *     …/bildhaft/?sammlung=saetze-zum-drucken
-   *
-   * A link on <https://lautstark.tech/sammlungen/> lands somebody here with the
-   * sentences already in front of them. The reading half — the parameter, the
-   * id check, the fetch — is `@lautstark/werkzeuge/sammlung`, shared with
-   * vorlaut and mitreden: the address names an entry and never a URL, because a
-   * parameter holding an address turns a link into „fetch whatever this says
-   * and import it", and what gets imported is read to a child.
-   *
-   * There is no check here that the file is ours. handleImport() hands it to
-   * importCollectionFile(), which refuses anything that is not a bildhaft file
-   * by name — one refusal, in the words the file picker already uses.
-   *
-   * Never rejects: this runs in boot, where a rejection would be read as the
-   * page having failed to open.
-   */
-  async function openNamed(here?: string): Promise<void> {
-    const asked = here === undefined ? await wanted() : await wanted(here);
-    switch (asked.kind) {
-      case 'none':
-        return;
-      case 'unknown':
-        notify(t('ui.shelf_unknown'));
-        return;
-      case 'offline':
-        notify(t('ui.shelf_offline', { error: asked.error.message }));
-        return;
-      case 'file':
-        // The same path „Sammlung einlesen" takes, down to the toast it writes
-        // and the collection it opens afterwards.
-        await handleImport(asked.file);
-    }
-  }
-
-  async function handleImport(file: File): Promise<void> {
-    try {
-      const result = await importCollectionFile(file);
-      await refreshCollections();
-      // setActive() resolves what it opens against the source in front of the
-      // reader, which is what a file from somebody else needs.
-      setActive(result.collection.id);
-      // Built from parts rather than from one sentence per shape: the three
-      // facts are independently present or absent, and a key per combination
-      // is eight keys in two languages for one line of a toast.
-      notify([
-        result.collectionCount > 1
-          ? t('ui.n_collections', { n: result.collectionCount }) : null,
-        result.sentenceCount === 1
-          ? t('ui.import_done_one') : t('ui.import_done', { n: result.sentenceCount }),
-        result.overrideCount > 0
-          ? t('ui.n_overrides', { n: result.overrideCount }) : null,
-      ].filter(Boolean).join(' · '));
-    } catch (err) {
-      notify(err instanceof Error ? err.message : t('ui.file_unreadable'));
-    }
-  }
-
-  async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
-    const ok = await confirmDialog({
-      title: t('ui.delete_row_title'),
-      body: t('ui.row_will_be_removed', { text: sentenceCaption(sentence) }),
-      confirmLabel: t('ui.delete'),
-      danger: true,
-    });
-    if (!ok) return;
-    await deleteSentence(sentence.id);
-    sentences = sentences.filter((s) => s.id !== sentence.id);
-    /* Its field on a Tafel is freed with it. The board tolerates an id it
-       cannot find — it draws the field free — but a record that names a card
-       which no longer exists is a record that lies. */
-    if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
-    render();
-  }
-
-  async function confirmDeleteCollection(): Promise<void> {
-    const collection = activeCollection();
-    if (!collection) return;
-    const count = sentences.length;
-    const ok = await confirmDialog({
-      title: t('ui.delete_collection'),
-      // The confirmation names the collection and the row count, deliberately.
-      body: t('ui.collection_will_be_deleted', { name: collection.name, n: count }),
-      confirmLabel: count === 1 ? t('ui.delete_n_rows_one') : t('ui.delete_n_rows', { n: count }),
-      danger: true,
-    });
-    if (!ok) return;
-
-    await deleteCollectionDeep(collection.id);
-    const remaining = (await listCollections()).filter((c) => c.id !== collection.id);
-    await refreshCollections();
-    if (remaining[0]) { sentences = []; setActive(remaining[0].id); render(); }
-    else await handleNewCollection();
-  }
-
-  /**
-   * The print settings a template opens on.
-   *
-   * A Wortkarten-Sammlung opens on the card sheet, and only there: a strip of
-   * one symbol is a card with the wrong margins, so the remembered layout in
-   * that case is the other template's setting arriving in this one. A
-   * Satzstreifen-Sammlung keeps whatever was chosen, because cutting sentences
-   * into cards is a thing people do.
-   *
-   * An Einkaufsliste opens on itself, and brings its own millimetres with it.
-   * Fifteen zones beside fifteen more on one sheet is only possible at 20 mm,
-   * measured rather than chosen — and a 3 mm laminating margin, because 5 mm
-   * around a 20 mm card is a third of the card. Those are facts about this
-   * material and not preferences, which is why the material carries them and
-   * the global settings do not.
-   */
-  /** What this Sammlung has set for its printing, written to it — everything but the household's copyright choice. */
-  async function keepPrint(print: PrintSettings): Promise<void> {
-    const open = activeCollection();
-    if (!open) return;
-    const { showCopyright: _copyright, ...own } = print;
-    if (JSON.stringify(open.print) === JSON.stringify(own)) return;
-    const next: Collection = { ...open, print: own, updatedAt: Date.now() };
-    collections = collections.map((c) => (c.id === next.id ? next : c));
-    await putCollection(next);
-  }
-
-  /**
-   * The settings a print of the open Sammlung starts from: the household's
-   * defaults, under what this Sammlung has set for itself, under what its
-   * template insists on. Whether the METACOM notice prints stays the
-   * household's whatever the Sammlung says.
-   */
-  function printBase(): PrintSettings {
-    const own = activeCollection()?.print ?? {};
-    return { ...settings!.print, ...own, showCopyright: settings!.print.showCopyright };
-  }
-
-  function printFor(print: PrintSettings): PrintSettings {
-    /* A Tafel prints as the grid it is. Its columns and rows are the
-       Sammlung's, not the dialog's — the dialog's are for a deck of cards
-       that is being asked to *become* a grid at print time. */
-    if (kind() === 'tafel') {
-      const open = activeCollection();
-      const board = open ? boardOf(open) : boardOf({});
-      /* And the air around each card rather than the cutting margin, which on
-         a Tafel is the same number under a different name. What this Tafel
-         set for itself when it has; otherwise from the size of a field on
-         this paper, so a crowded A5 gets less than a roomy A4. */
-      const page = printableArea(print.paper, print.orientation);
-      const field = Math.min(page.width / board.cols, page.height / board.rows);
-      const own = open?.print?.cutMarginMm ?? board.airMm;
-      return {
-        ...print, layout: 'sheet', sheetFit: 'grid', gridCols: board.cols, gridRows: board.rows,
-        cutMarginMm: own ?? defaultAirMm(field),
-      };
-    }
-    if (kind() === 'einkaufsliste') {
-      return {
-        ...print,
-        layout: 'einkaufsliste',
-        paper: 'a4',
-        orientation: 'landscape',
-        symbolSizeMm: 20,
-        cutMarginMm: 3,
-        showLabel: true,
-        showCollectionTitle: true,
-      };
-    }
-    if (kind() === 'wortkarten' && print.layout !== 'sheet') {
-      return { ...print, layout: 'sheet' };
-    }
-    return print;
-  }
-
-  function openPrint(ids: string[]): void {
-    const byId = new Map(sentences.map((s) => [s.id, s]));
-    /* A Tafel prints whole and in its own order: the fields, free ones
-       included, and nothing from the tray. What is asked for is ignored on
-       purpose — there is no such thing as printing half a Tafel. A Tafel with
-       every field free is still a Tafel, and a blank laminated one is a thing
-       people make. */
-    const open = activeCollection();
-    const board = kind() === 'tafel' && open ? boardOf(open) : null;
-    const chosen = board
-      ? placedIds(board).map((id) => byId.get(id)).filter((s): s is Sentence => Boolean(s))
-      : ids.map((id) => byId.get(id)).filter((s): s is Sentence => Boolean(s));
-    if ((chosen.length === 0 && !board) || !settings) return;
-
-    openPrintDialog({
-      sentences: chosen,
-      board: board ? {
-        cols: board.cols, rows: board.rows, zones: zonesOf(board),
-        cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)),
-      } : null,
-      collectionName: activeCollection()?.name ?? 'bildhaft',
-      /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
-         layout says. Strips are a shape for a sentence: a strip of one symbol
-         is a card with the wrong margins, so the stored preference here is not
-         a preference, it is the other template's setting arriving in this one.
-         The control is still there and still changes it for this print.
-
-         Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
-         because cutting sentences into cards is a thing people actually do. */
-      kind: kind(),
-      settings: printFor(printBase()),
-      onChange: (print: PrintSettings) => {
-        if (!settings) return;
-        /* Twice, on purpose. The household's defaults follow along, so the
-           next Sammlung starts from what was last wanted; and the Sammlung
-           keeps its own, so this one prints tomorrow as it printed today,
-           whatever was set elsewhere in between. */
-        persistSettings({ ...settings, print });
-        void keepPrint(print);
-      },
-      provider: providerId(),
-      attribution: provider().attribution,
-      onClose: () => undefined,
-    });
-  }
-
-  /**
-   * The Sammlung's own sheet. Nothing is confirmed and nothing is saved on the
-   * way out: each press is written through, the rows behind are re-resolved
-   * against the new source, and the page says what just happened to them.
-   */
-  function openSourceSheet(): void {
-    const collection = activeCollection();
-    if (!collection || !settings) return;
-    openCollectionSource({
-      collection,
-      rowCount: sentences.length,
-      fallback: settings.activeProvider,
-      onPick: (choice) => handlePickSource(collection.id, choice),
-    });
-  }
-
-  async function handlePickSource(id: string, choice: ProviderId | null): Promise<void> {
-    await saveCollectionProvider(id, choice);
-    /* Read back rather than patched in place: `provider` is absent for "follow
-       the default", and an object carrying `provider: undefined` is a different
-       thing from one without the key when it is written out again. */
-    await refreshCollections();
-    if (activeId !== id) { render(); return; }
-
-    render();
-    // The same re-resolution a change of default runs, for the same reason: a
-    // slot that has never been resolved against this source has no symbol under
-    // it, and would draw as an empty field rather than as a picture.
-    await syncProvider();
-
-    const named = getProvider(providerId()).name;
-    notify(choice === null
-      ? t('ui.collection_follows_default', { name: collectionName(id), source: named })
-      : t('ui.collection_uses_source', { name: collectionName(id), source: named }));
-  }
-
-  const collectionName = (id: string) =>
-    collections.find((c) => c.id === id)?.name ?? t('ui.collection');
-
-  function openAppSettings(): void {
-    if (!settings) return;
-    openSettings({
-      settings,
-      onChange: persistSettings,
-      onProviderChanged: () => { void syncProvider(); render(); },
-      onFolderChanged: () => { void refreshCollections(); if (activeId) setActive(activeId); },
-      openCollectionProvider: () => activeCollection()?.provider ?? null,
-      onNotify: notify,
-      onExportAll: async () => {
-        downloadJson(await exportEverything(), LANG === 'de' ? 'sicherung' : 'backup');
-        notify(t('ui.backup_exported'));
-      },
-      backup,
-      onImport: (file) => void handleImport(file),
-      onClearAll: () => void confirmClearAll(),
-      onClose: () => render(),
-    });
-  }
-
-  /* How far this goes depends on where the work lives, and the difference is not
-     a nicety: with a folder as the store, clearEverything() removes the files, so
-     it removes them on every device the household has. With the folder out of
-     reach it is refused — a wipe there empties this browser, leaves the folder
-     whole, and hands everything back on the next start. */
-  async function confirmClearAll(): Promise<void> {
-    const reach = wipeReaches();
-    const folder = folderName();
-
-    if (reach === 'unreachable') {
-      const sheet = openDialog({
-        title: t('ui.clear_all_blocked_title'),
-        body: [t('ui.clear_all_blocked', { folder })],
-        footer: [el('button', {
-          class: 'btn primary', text: t('ui.understood'),
-          attrs: { type: 'button' }, on: { click: () => sheet.close() },
-        })],
-      });
-      return;
-    }
-
-    const totals = await libraryTotals();
-    const ok = await confirmDialog({
-      title: t('ui.delete_all_button'),
-      body:
-        t('ui.clear_all_body', {
-          collections: totals.collections, sentences: totals.sentences,
-          entries: totals.overrides,
-        }) + (reach === 'folder' ? t('ui.clear_all_reach', { folder }) : ''),
-      confirmLabel: t('ui.delete_everything'),
-      danger: true,
-      /* The one act in this product that asks for a word. It empties the library
-         on every device the household has; design.md §4.3 says this is what the
-         friction is for, and that spending it anywhere else is what breaks it. */
-      requireTyping: t('ui.clear_all_word'),
-      typingLabel: t('ui.clear_all_type'),
-    });
-    if (!ok) return;
-
-    await clearEverything();
-    const fresh = await createCollection();
-    await refreshCollections();
-    sentences = [];
-    setActive(fresh.id);
-    notify(t('ui.all_data_deleted'));
-    render();
-  }
-
-  /* --------------------------------------------------------- unreadable --- */
-
-  async function noteUnreadable(id: string): Promise<void> {
-    if (providerId() !== 'metacom') return;
-    /*
-     * A symbol the current folder simply does not contain is missing, not
-     * unreadable — that is the ordinary result of pointing at a differently
-     * organised folder, and it must not be reported as the folder being
-     * unreadable. Only count symbols the index still knows about.
-     */
-    const known = await metacom.labelFor(id).catch(() => null);
-    if (known) { unreadable += 1; render(); }
-  }
+  /* --------------------------------------------------------------- nav --- */
 
   /** On mobile the panel overlays the content, so acting on it should dismiss it. */
   function closeNavOnMobile(): void {
-    if (isMobile) mobileNavOpen = false;
+    if (s.isMobile) s.mobileNavOpen = false;
   }
 
   function toggleSidebar(): void {
-    if (!settings) return;
-    if (isMobile) mobileNavOpen = !mobileNavOpen;
-    else persistSettings({ ...settings, sidebarOpen: !settings.sidebarOpen });
+    if (!s.settings) return;
+    if (s.isMobile) s.mobileNavOpen = !s.mobileNavOpen;
+    else ctx.persistSettings({ ...s.settings, sidebarOpen: !s.settings.sidebarOpen });
     render();
   }
-}
-
-/** "Bente-Sommer 2026.jpg" -> "Bente-Sommer 2026". The filename is the only label a photo has. */
-function stemOf(filename: string): string {
-  return filename.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || t('ui.picture');
-}
-
-function mergeCandidate(candidates: Candidate[], candidate: Candidate): Candidate[] {
-  if (candidates.some((c) => c.id === candidate.id)) return candidates;
-  // Keep a manually searched pick in the list so it stays offered next time.
-  return [candidate, ...candidates].slice(0, 8);
 }
