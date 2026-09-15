@@ -112,8 +112,8 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // somebody as a dotted identifier in their Wortschatz.
   { prefix: 'ui.topic_', from: TOPICS, where: 'ui/wortschatz.ts' },
   // The templates a Sammlung can be, named on the tiles in its empty state.
-  { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app.ts' },
-  { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app.ts' },
+  { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app/material.ts' },
+  { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/material.ts' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

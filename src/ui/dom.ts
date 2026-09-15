@@ -37,3 +37,15 @@
 
 export { el, fill, svg, toggleClass, byId } from '@lautstark/werkzeuge/dom';
 export type { Props } from '@lautstark/werkzeuge/dom';
+
+/**
+ * Puts exactly these children in this parent, and does nothing at all when
+ * they are already there. Re-inserting an unchanged node blurs whatever inside
+ * it had focus, which turned typing a collection name into one character per
+ * click.
+ */
+export function place(parent: HTMLElement, children: HTMLElement[]): void {
+  const same = parent.childNodes.length === children.length
+    && children.every((child, i) => parent.childNodes[i] === child);
+  if (!same) parent.replaceChildren(...children);
+}
