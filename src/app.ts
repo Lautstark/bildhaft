@@ -3,6 +3,7 @@ import type {
 } from './core/types.ts';
 import { COLLECTION_KINDS, kindOf, sentenceCaption } from './core/types.ts';
 import { addGroup, boardOf, defaultAirMm, placedIds, placeOn, removeGroup, resizeBoard, takeOff, updateGroup, zonesOf } from './core/board.ts';
+import { TimedOut, withTimeout } from './core/timeout.ts';
 import { printableArea } from './ui/printSheet.ts';
 import type { Board, CollectionKind } from './core/types.ts';
 import { wanted } from '@lautstark/werkzeuge/sammlung';
@@ -74,6 +75,9 @@ export function mountApp(root: HTMLElement): void {
   let draft = '';
   let reuse: Sentence | null = null;
   let busy = false;
+  /** How long a lookup or a store write may take before the page stops waiting for it. */
+  const LOOKUP_MS = 20_000;
+  const STORE_MS = 10_000;
   /* How far a pasted text has got. Null for a single line, whose spinner in the
      composer is the whole story — see handleSubmit. */
   let batch: { done: number; total: number } | null = null;
@@ -1331,7 +1335,6 @@ export function mountApp(root: HTMLElement): void {
     draft = '';
     reuse = null;
     batch = lines.length > 1 ? { done: 0, total: lines.length } : null;
-    render();
 
     const now = Date.now();
     /*
@@ -1344,6 +1347,10 @@ export function mountApp(root: HTMLElement): void {
     let firstError: unknown = null;
 
     try {
+      /* Inside the try, so that a paint that throws still hands the button
+         back — before, busy was set and render() called ahead of this block,
+         and one error in a paint left the button spinning for good. */
+      render();
       const words = holdsWords();
       const options = {
         provider: provider(),
@@ -1366,9 +1373,12 @@ export function mountApp(root: HTMLElement): void {
             /* One card holds one thing, so on that template the whole line is
                looked up as one word — „Kita Sonnenschein" is one card, and
                „der" is not dropped for being a function word. */
-            slots: words
-              ? [await buildWordSlot(line, options)]
-              : await buildSlots(line, options),
+            /* With an end: a source that does not answer gives the line back
+               to the box with a word about it, rather than a button that spins
+               until the tab is closed. */
+            slots: await withTimeout(
+              words ? buildWordSlot(line, options).then((slot) => [slot]) : buildSlots(line, options),
+              LOOKUP_MS, t('ui.wait_source')),
             collectionId,
             /*
              * Descending within the batch. The list is sorted newest first, so
@@ -1378,7 +1388,7 @@ export function mountApp(root: HTMLElement): void {
             createdAt: now - index,
             updatedAt: now,
           };
-          await putSentence(sentence);
+          await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
           delete owed[index];
           if (activeId === collectionId) placeRow(sentence);
         } catch (err) {
@@ -1405,9 +1415,7 @@ export function mountApp(root: HTMLElement): void {
          line has no symbols must not take the ninety after it down with it. */
       const left = [...owed].filter(Boolean);
       if (left.length > 0) draft = left.join('\n');
-      if (firstError !== null) {
-        notify(firstError instanceof Error ? firstError.message : t('ui.translate_failed'));
-      }
+      if (firstError !== null) notify(sayWhy(firstError));
       render();
     }
   }
@@ -1701,23 +1709,37 @@ export function mountApp(root: HTMLElement): void {
    * exists for, and it was the one case not wired up.
    */
   async function resolveOpen(): Promise<void> {
-    if (!activeId) return;
+    const id = activeId;
+    if (!id) return;
 
-    busy = true;
-    render();
+    /* Not `busy`. This runs every time a Sammlung is opened, and it used to
+       take the button while it ran — twenty-five rows checked and written
+       back before a word could be typed, and forever when one write did not
+       answer. It is housekeeping: it goes on in the background, and a row it
+       has not reached yet draws as it was. */
     try {
       const overrides = await overrideMap(providerId());
-      const current = await listSentences(activeId);
+      const current = await listSentences(id);
       const updated = await Promise.all(current.map(async (sentence) => ({
         ...sentence,
-        slots: await resolveSlotsForProvider(sentence.slots, getProvider(providerId()), overrides),
+        slots: await withTimeout(
+          resolveSlotsForProvider(sentence.slots, getProvider(providerId()), overrides),
+          LOOKUP_MS, t('ui.wait_source')),
       })));
-      for (const sentence of updated) await putSentence(sentence);
-      sentences = updated;
-    } finally {
-      busy = false;
-      render();
+      // Only what actually changed is written back; the rest was already right.
+      for (const [i, sentence] of updated.entries()) {
+        if (sentence.slots !== current[i]!.slots) await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
+      }
+      if (activeId === id) { sentences = updated; render(); }
+    } catch (err) {
+      notify(sayWhy(err));
     }
+  }
+
+  /** What went wrong, in words the person can act on. */
+  function sayWhy(err: unknown): string {
+    if (err instanceof TimedOut) return t('ui.gave_up_waiting', { what: err.what });
+    return err instanceof Error ? err.message : t('ui.translate_failed');
   }
 
   /* ----------------------------------------------------------- actions --- */
