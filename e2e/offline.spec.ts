@@ -65,6 +65,10 @@ const ALLOWED = new Map([
   ['raw.github.com', "jszip's licence, in its banner"],
   ['stuartk.com', "jszip's author, in its banner"],
   ['www.w3.org', 'the SVG and XML namespaces'],
+  // Never fetched: a documentation link inside the error message of rolldown's
+  // CommonJS interop helper, which vite 8 emits into every bundle. Nothing is
+  // requested from it; the test below that opens the page sees this origin only.
+  ['rolldown.rs', "a documentation link in vite's bundler runtime"],
 ]);
 
 /**
