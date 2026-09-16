@@ -377,7 +377,24 @@ async function writeSentence(sentence: Sentence): Promise<void> {
      a second of disk before the row on screen is allowed to change, on every
      single edit, growing with the library. What changed is known here. */
   await fileSentence(kept);
-  if (listed) await fileCollection(listed);
+  if (listed) await fileCollection(await freshest(db, listed));
+}
+
+/**
+ * The record as the store has it now, not as this transaction saw it.
+ *
+ * A Sammlung is written from more than one place: a card dragged on a Tafel
+ * writes the board while a sentence written beside it appends an id to the same
+ * record. The snapshot taken inside a transaction is old the moment the
+ * transaction closes, and filing it would put the folder's copy back to the
+ * board from before the drag — the previous code never noticed because it
+ * mirrored the whole kind afterwards, reading each record fresh. Reading one
+ * record back costs nothing next to that.
+ */
+async function freshest(
+  db: Awaited<ReturnType<typeof getDB>>, fallback: Collection,
+): Promise<Collection> {
+  return (await db.get('collections', fallback.id)) ?? fallback;
 }
 
 export async function deleteSentence(id: string): Promise<void> {
@@ -405,7 +422,7 @@ async function removeSentence(id: string): Promise<void> {
   }
   await tx.done;
   await unfile('saetze', id);
-  if (shortened) await fileCollection(shortened);
+  if (shortened) await fileCollection(await freshest(db, shortened));
 }
 
 /**
