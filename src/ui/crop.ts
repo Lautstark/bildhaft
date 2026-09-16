@@ -1,6 +1,3 @@
-import { el } from './dom.ts';
-import { t } from '../i18n/index.ts';
-
 /**
  * Cutting a picture of the user's own down to a square, before it is stored.
  *
@@ -37,11 +34,11 @@ import { t } from '../i18n/index.ts';
  * cut off: somebody moving a face into the middle needs to see the shoulder that
  * is leaving, not only the part that stays.
  */
-const FRAME = 0.84;
-const MARGIN = (1 - FRAME) / 2 * 100;
+export const FRAME = 0.84;
+export const MARGIN = (1 - FRAME) / 2 * 100;
 
 /** How far the slider goes in. Four times is a face out of a group photo. */
-const CLOSEST = 4;
+export const CLOSEST = 4;
 
 /**
  * What the square is written as.
@@ -59,20 +56,20 @@ const JPEG_QUALITY = 0.92;
 const typeFor = (source: string): string =>
   source === 'image/jpeg' || source === 'image/jpg' ? 'image/jpeg' : 'image/png';
 
-/** A picture waiting to be cut, and the elements that show it. */
-export interface Cropper {
-  /** The square box. Goes wherever the crop is shown. */
-  box: HTMLElement;
-  /** The zoom slider, to go under it. */
-  zoom: HTMLElement;
-  /** The chosen square, as an image file. */
-  cut: () => Promise<Blob>;
-  /** Lets go of what the picture was loaded from. Every way out calls it. */
-  close: () => void;
+/** A picture that is worth asking about, and what it measures. */
+export interface Loaded {
+  /** The object URL the crop draws from. Let go of by `close()`. */
+  url: string;
+  wide: number;
+  high: number;
+  /** The name the file arrived under, kept so the square can be named after it. */
+  name: string;
+  close(): void;
 }
 
 /**
- * Loads a file and hands back the crop, or `null` when there is nothing to ask.
+ * Loads a file and says whether there is a square to ask about, or `null` when
+ * there is nothing to ask.
  *
  * Two silences, both meaning "keep the file exactly as it is", because that is
  * what happened before this step existed and neither is worth a sentence:
@@ -83,7 +80,7 @@ export interface Cropper {
  * - the browser could not read a size off it — an SVG with no intrinsic size, or
  *   a file that is not a picture at all.
  */
-export async function cropSquare(file: Blob): Promise<Cropper | null> {
+export async function cropSquare(file: Blob, name: string): Promise<Loaded | null> {
   const url = URL.createObjectURL(file);
   const picture = new Image();
   picture.src = url;
@@ -103,185 +100,57 @@ export async function cropSquare(file: Blob): Promise<Cropper | null> {
     return null;
   }
 
-  const full = Math.min(wide, high);
-  let side = full;
-  let x = (wide - full) / 2;
-  let y = (high - full) / 2;
+  return { url, wide, high, name, close: () => URL.revokeObjectURL(url) };
+}
 
-  const clamp = (): void => {
-    side = Math.min(side, full);
-    x = Math.min(Math.max(x, 0), wide - side);
-    y = Math.min(Math.max(y, 0), high - side);
-  };
-
+/**
+ * Cuts the chosen square out of a loaded picture, at the picture's own
+ * resolution. See `typeFor` above for why the format follows the source rather
+ * than always being PNG.
+ */
+export async function cutSquare(
+  picture: HTMLImageElement, at: { x: number; y: number; side: number }, type: string,
+): Promise<Blob> {
+  const out = Math.max(1, Math.round(at.side));
+  const canvas = document.createElement('canvas');
+  canvas.width = out;
+  canvas.height = out;
   /*
-   * Where the picture sits, in percentages of the box. `scale` is how much of the
-   * box's width one source pixel takes: the square is FRAME of the box, so a
-   * picture `wide` pixels across is `wide * scale` of it. The offsets put source
-   * pixel (x, y) on the frame's top left corner, MARGIN in from both edges.
-   * Height follows the width, and the box being square is what makes a
-   * percentage of it mean the same vertically.
-   */
-  const place = (): void => {
-    const scale = FRAME * 100 / side;
-    picture.style.width = `${wide * scale}%`;
-    picture.style.left = `${MARGIN - x * scale}%`;
-    picture.style.top = `${MARGIN - y * scale}%`;
-  };
-
-  picture.alt = '';
-  picture.className = 'crop__img';
-  picture.draggable = false;
-
-  const box = el('div', {
-    class: 'crop',
-    // Focusable, because the arrow keys below are the only way to move the
-    // square without a pointer, and named, because it is a control rather than
-    // a picture being shown.
-    attrs: { tabindex: 0, role: 'group', 'aria-label': t('ui.crop_title') },
-  }, picture, el('div', { class: 'crop__frame' }));
-
-  const slider = el('input', {
-    class: 'crop__zoom',
-    attrs: {
-      type: 'range', min: 100, max: CLOSEST * 100, step: 1, value: 100,
-      'aria-label': t('ui.zoom_in'),
-    },
-    on: {
-      input: () => {
-        /*
-         * About the square's own centre, not its corner. A corner is one line
-         * shorter and sends whatever has just been centred sliding off towards
-         * the bottom right, so the slider would undo every drag before it.
-         */
-        const factor = Number(slider.value) / 100;
-        const midX = x + side / 2;
-        const midY = y + side / 2;
-        side = full / factor;
-        x = midX - side / 2;
-        y = midY - side / 2;
-        clamp();
-        place();
-      },
-    },
-  });
-
-  /*
-   * Dragging. Pointer events with capture, so a finger or a pen works and a drag
-   * that leaves the box follows the pointer instead of stopping at the edge.
+   * Display P3, not the default sRGB.
    *
-   * The box is measured here rather than earlier: it is inside a dialog laid out
-   * as it opens, and a width read while building is the width of nothing yet.
-   * FRAME is in the conversion because a source pixel is measured against the
-   * square, not against the box around it.
-   */
-  let dragging = 0;
-  box.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 && event.pointerType === 'mouse') return;
-    const perPixel = side / (box.clientWidth * FRAME);
-    const fromX = event.clientX;
-    const fromY = event.clientY;
-    const wasX = x;
-    const wasY = y;
-    dragging = event.pointerId;
-    box.setPointerCapture(dragging);
-
-    const move = (moved: PointerEvent): void => {
-      if (moved.pointerId !== dragging) return;
-      // Backwards on purpose: dragging the picture right shows more of its left
-      // side, so the square being kept moves left.
-      x = wasX - (moved.clientX - fromX) * perPixel;
-      y = wasY - (moved.clientY - fromY) * perPixel;
-      clamp();
-      place();
-    };
-    const stop = (ended: PointerEvent): void => {
-      if (ended.pointerId !== dragging) return;
-      dragging = 0;
-      box.removeEventListener('pointermove', move);
-      box.removeEventListener('pointerup', stop);
-      box.removeEventListener('pointercancel', stop);
-    };
-    box.addEventListener('pointermove', move);
-    box.addEventListener('pointerup', stop);
-    box.addEventListener('pointercancel', stop);
-  });
-
-  /*
-   * The keyboard. The step is a share of the square rather than a count of source
-   * pixels, so an arrow moves the same visible amount on a 400px scan and on a
-   * 4000px photograph.
+   * A 2d canvas is sRGB unless it is asked otherwise, and drawImage() colour
+   * manages into whatever the canvas is — so every colour the photograph had
+   * outside sRGB was clamped on the way in, and the square came out of here
+   * duller than the picture that went into it. On a phone that is most of
+   * what makes a photograph look like anything: skies, skin, a red coat.
+   * Measured before this line existed: a P3 red of (254, 0, 0) was stored as
+   * (235, 50, 36).
    *
-   * Zoom is not here: the slider is a native range and already answers the arrow
-   * keys when it has focus. Two sets of zoom keys would be two answers to one
-   * question — and Enter is the dialog's, which is why only the four are taken.
+   * It only ever showed on some pictures, which is what made it hard to
+   * believe — a photograph that is already square never reaches this
+   * function and keeps its own bytes untouched.
+   *
+   * Safe the other way round too: an sRGB source converts into P3 exactly,
+   * and comes back out tagged, so nothing that looked right starts looking
+   * different. A browser that does not know the option ignores it and gives
+   * the sRGB context it always gave.
    */
-  box.addEventListener('keydown', (event) => {
-    const step = side * 0.04;
-    if (event.key === 'ArrowLeft') x -= step;
-    else if (event.key === 'ArrowRight') x += step;
-    else if (event.key === 'ArrowUp') y -= step;
-    else if (event.key === 'ArrowDown') y += step;
-    else return;
-    event.preventDefault();
-    // And stopped, or the picker's own Enter/key handling sees a keystroke that
-    // was meant for the picture.
-    event.stopPropagation();
-    clamp();
-    place();
-  });
-
-  place();
-
-  return {
-    box,
-    zoom: el('div', { class: 'crop__row' }, slider),
-    cut: async (): Promise<Blob> => {
-      // At the picture's own resolution. See typeFor() above for why the format
-      // follows the source rather than always being PNG.
-      const out = Math.max(1, Math.round(side));
-      const canvas = el('canvas');
-      canvas.width = out;
-      canvas.height = out;
-      /*
-       * Display P3, not the default sRGB.
-       *
-       * A 2d canvas is sRGB unless it is asked otherwise, and drawImage() colour
-       * manages into whatever the canvas is — so every colour the photograph had
-       * outside sRGB was clamped on the way in, and the square came out of here
-       * duller than the picture that went into it. On a phone that is most of
-       * what makes a photograph look like anything: skies, skin, a red coat.
-       * Measured before this line existed: a P3 red of (254, 0, 0) was stored as
-       * (235, 50, 36).
-       *
-       * It only ever showed on some pictures, which is what made it hard to
-       * believe — a photograph that is already square never reaches this
-       * function and keeps its own bytes untouched.
-       *
-       * Safe the other way round too: an sRGB source converts into P3 exactly,
-       * and comes back out tagged, so nothing that looked right starts looking
-       * different. A browser that does not know the option ignores it and gives
-       * the sRGB context it always gave.
-       */
-      const context = canvas.getContext('2d', { colorSpace: 'display-p3' });
-      if (!context) throw new Error('this browser gave no 2d canvas to cut a picture on');
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = 'high';
-      context.drawImage(picture, x, y, side, side, 0, 0, out, out);
-      const type = typeFor(file.type);
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, type, type === 'image/jpeg' ? JPEG_QUALITY : undefined));
-      if (!blob) throw new Error('this browser would not encode the picture');
-      return blob;
-    },
-    close: () => URL.revokeObjectURL(url),
-  };
+  const context = canvas.getContext('2d', { colorSpace: 'display-p3' });
+  if (!context) throw new Error('this browser gave no 2d canvas to cut a picture on');
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(picture, at.x, at.y, at.side, at.side, 0, 0, out, out);
+  const wanted = typeFor(type);
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, wanted, wanted === 'image/jpeg' ? JPEG_QUALITY : undefined));
+  if (!blob) throw new Error('this browser would not encode the picture');
+  return blob;
 }
 
 /**
  * What a cropped file is called.
  *
- * The bytes are one bildhaft has just drawn, so the chosen name's extension is
+ * The bytes are ones bildhaft has just drawn, so the chosen name's extension is
  * no longer necessarily true of them. The name is shown to a person picking a
  * picture out of their library, so it stays recognisably theirs; only the
  * extension follows what was actually written.

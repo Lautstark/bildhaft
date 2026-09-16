@@ -1,23 +1,8 @@
 {
+  "extends": "@lautstark/toolchain/tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
     "types": ["vite/client", "node"]
   },
-  "//": "The suites are checked too, not just src. They were outside this list until 2026-08-28, so `npm run typecheck` never read a line of them and vitest and Playwright only ever transpiled them.",
+  "//": "The suites are checked too, not just src. They were outside this list until 2026-08-28, so `npm run typecheck` never read a line of them and vitest and Playwright only ever transpiled them. The compiler options the four products had written out identically are @lautstark/toolchain's now.",
   "include": ["src", "tests", "e2e"]
 }

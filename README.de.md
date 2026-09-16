@@ -289,8 +289,12 @@ sich die Geschwisterprodukte teilen.
 ### Technische Rahmenbedingungen
 
 - Statisches Bundle, ausgeliefert über GitHub Pages. Kein serverseitiger Code.
-- Kein UI-Framework. Die Oberfläche entsteht in reinem TypeScript direkt im DOM
-  (`src/ui/dom.ts`) — ein Framework hat hier nur noch Elemente erzeugt.
+- Svelte 5 mit Runes, und zwar die ganze Oberfläche, nicht Teile davon. Bis zum
+  16.09.2026 war es reines TypeScript direkt im DOM — der Einwand war, ein
+  Framework würde hier nur noch Elemente erzeugen, und tatsächlich getan hat
+  der Code etwas anderes: die Elemente von Hand im Takt halten, und genau das
+  ging immer wieder schief. Der Kern bleibt unberührt, die geteilten Panels
+  bleiben reines DOM. adr/0003.
 - SPA-Routing über die `404.html`-Kopie, weil GitHub Pages keine Rewrites kann.
 - **Kein Code, der `SharedArrayBuffer` braucht.** GitHub Pages kann die
   COOP/COEP-Header nicht setzen. Deshalb in v1 **keine** Transformer- oder

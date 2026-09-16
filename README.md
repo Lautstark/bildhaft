@@ -280,8 +280,12 @@ shared with the sibling products.
 ### Constraints
 
 - Static bundle, served from GitHub Pages. No server-side code.
-- No UI framework. The screen is built from plain TypeScript over the DOM
-  (`src/ui/dom.ts`), because a framework was only ever creating elements here.
+- Svelte 5, with runes, and the whole screen rather than parts of it. It was
+  plain TypeScript over the DOM until 2026-09-16 — the objection was that a
+  framework would only ever be creating elements here, and what it was actually
+  doing was keeping them in step by hand, which is the code that kept being
+  wrong. The core is untouched by the move and the shared panels are still
+  plain DOM. adr/0003.
 - SPA routing via the `404.html` copy trick, because GitHub Pages has no rewrites.
 - **No code that needs `SharedArrayBuffer`.** GitHub Pages cannot set the COOP/COEP
   headers, so v1 has no in-browser transformer or ONNX models; matching is lexical.

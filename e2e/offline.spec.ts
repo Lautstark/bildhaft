@@ -69,6 +69,11 @@ const ALLOWED = new Map([
   // CommonJS interop helper, which vite 8 emits into every bundle. Nothing is
   // requested from it; the test below that opens the page sees this origin only.
   ['rolldown.rs', "a documentation link in vite's bundler runtime"],
+  // Never fetched: Svelte's runtime errors carry a link to the page explaining
+  // each one, so the compiled bundle names the host in a string it would only
+  // ever print to the console. Same shape as rolldown.rs above, and the test
+  // below that opens the page still sees this origin and no other.
+  ['svelte.dev', "a documentation link in Svelte's runtime error messages"],
 ]);
 
 /**

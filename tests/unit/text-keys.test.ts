@@ -42,11 +42,16 @@ import { COLLECTION_KINDS } from '../../src/core/types.ts';
 
 const SRC = fileURLToPath(new URL('../../src', import.meta.url));
 
+/* `.svelte` as well as `.ts` since the rendering moved to components: a label
+   is now most often written in markup — `{t('ui.print')}` inside an element —
+   and a scanner that read only the modules would have called almost every key
+   in the table dead. The match below is on the quoted string and not on a call,
+   so it finds one in a component exactly as it finds one in a module. adr/0003. */
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return sources(path);
-    return path.endsWith('.ts') ? [path] : [];
+    return path.endsWith('.ts') || path.endsWith('.svelte') ? [path] : [];
   });
 }
 
@@ -102,7 +107,7 @@ function asked(): Ask[] {
  * copy of it.
  */
 const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
-  { prefix: 'ui.origin_', from: SLOT_ORIGINS, where: 'ui/row.ts' },
+  { prefix: 'ui.origin_', from: SLOT_ORIGINS, where: 'ui/Row.svelte' },
   // The sentence for a source that cannot answer. Ours since bildquelle 2.0.0
   // stopped shipping German ones; the codes come from the package, so a new
   // state arrives here rather than as a blank line on the settings card.
@@ -110,10 +115,10 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // The themes a source's own categories are mapped onto. `TOPICS` is a real
   // array in core/tags.ts so a twelfth theme fails here rather than reaching
   // somebody as a dotted identifier in their Wortschatz.
-  { prefix: 'ui.topic_', from: TOPICS, where: 'ui/wortschatz.ts' },
+  { prefix: 'ui.topic_', from: TOPICS, where: 'ui/Wortschatz.svelte' },
   // The templates a Sammlung can be, named on the tiles in its empty state.
-  { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app/material.ts' },
-  { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/material.ts' },
+  { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app/Material.svelte' },
+  { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/Material.svelte' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));
