@@ -4,7 +4,7 @@ import { el, fill } from './dom.ts';
 import { openDialog } from './dialog.ts';
 import {
   applyPageSetup, applyPlan, clearPageSetup, METACOM_COPYRIGHT, PAGE_MARGIN_MM, paperLabel,
-  paperSize, planPages, printSheet, PX_PER_MM, type PrintBoard,
+  paperSize, planPages, printableArea, printSheet, PX_PER_MM, type PrintBoard,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { LOCALE, t } from '../i18n/index.ts';
@@ -190,9 +190,21 @@ export function openPrintDialog(options: PrintOptions): void {
    * height cannot be worked out: a word that wraps to a second line makes its
    * card taller, and that taller card is the one the deck has to be cut to — so
    * the largest card is what gets reported, not the first.
+   *
+   * When the card is what was typed, the card is not news — the symbol left
+   * inside it is, and so is how many of them a sheet of paper comes to. Same
+   * element, same measuring, the other half of the same sentence.
    */
   function paintCardSize(): void {
     const cards = sheetHolder.querySelectorAll<HTMLElement>('.ps-card');
+    cardSize.classList.remove('opt__warn');
+    if (cards.length === 0) { cardSize.textContent = ''; return; }
+
+    if (settings.sheetFit === 'card' && settings.layout === 'sheet') {
+      paintSymbolLeft();
+      return;
+    }
+
     let width = 0;
     let height = 0;
     for (const node of cards) {
@@ -200,16 +212,57 @@ export function openPrintDialog(options: PrintOptions): void {
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
     }
-    cardSize.textContent = cards.length === 0 ? '' : t('ui.card_to_cut')
+    cardSize.textContent = t('ui.card_to_cut')
       + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
+  }
+
+  /**
+   * What a card of the size somebody typed leaves for the symbol, and how many
+   * such cards this paper takes.
+   *
+   * The symbol is measured, and it is the shorter side of the box the picture
+   * is given: symbols are square, so that is the edge a ruler will find on the
+   * printed one.
+   *
+   * How many fit is the paper's answer rather than this printout's — the paper
+   * divided by the card, not the cards that happen to exist today. It is asked
+   * while a deck is being planned, and "2 per page" because the Sammlung holds
+   * two words would be a fact about the wrong thing. A collection title takes
+   * its room off the first page only, and is not counted here for the same
+   * reason.
+   */
+  function paintSymbolLeft(): void {
+    const page = printableArea(settings.paper, settings.orientation);
+    const height = settings.cardHeightMm ?? settings.cardWidthMm;
+    const cols = Math.floor(page.width / settings.cardWidthMm);
+    const rows = Math.floor(page.height / height);
+    if (cols < 1 || rows < 1) {
+      cardSize.classList.add('opt__warn');
+      cardSize.textContent = t('ui.card_too_big');
+      return;
+    }
+
+    let symbol = 0;
+    for (const node of sheetHolder.querySelectorAll<HTMLElement>('.ps-card__img')) {
+      const box = borderBox(node);
+      symbol = Math.max(symbol, Math.min(box.width, box.height));
+    }
+
+    cardSize.textContent = t('ui.card_readout', {
+      mm: mmText(symbol / PX_PER_MM), cols, rows, n: cols * rows,
+    });
   }
 
   function paintFooter(): void {
     const paper = `${paperLabel(settings.paper)} ${
       settings.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait')}`;
-    const cards = settings.layout === 'sheet' && settings.sheetFit === 'grid'
+    const sheetFit = settings.layout === 'sheet' ? settings.sheetFit : 'size';
+    const cards = sheetFit === 'grid'
       ? t('ui.grid_meta', { cols: settings.gridCols, rows: settings.gridRows })
-      : t('ui.symbol_size_meta', { mm: settings.symbolSizeMm });
+      : sheetFit === 'card'
+        ? t('ui.cards_meta', {
+            w: settings.cardWidthMm, h: settings.cardHeightMm ?? settings.cardWidthMm })
+        : t('ui.symbol_size_meta', { mm: settings.symbolSizeMm });
     // How much paper this is, said before the paper is used rather than after.
     const pages = t(pageCount === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pageCount });
     meta.textContent =
@@ -235,6 +288,39 @@ export function openPrintDialog(options: PrintOptions): void {
       el('label', { text: label, attrs: { for: id } }),
       el('div', { class: 'opt__row' }, input, el('span', { class: 'opt__unit', text: unit })),
       typeof hint === 'string' ? el('span', { class: 'small faint', text: hint }) : hint,
+    );
+  }
+
+  /**
+   * The same field as numberOpt, except that empty is an answer.
+   *
+   * It is the card's height, where empty means "as wide as it is tall" — and
+   * empty has to survive being typed through: clearing the box to type 8 must
+   * not turn the card square for the one repaint in between, so nothing is
+   * reported until the field either holds a number or has been left.
+   */
+  function optionalNumberOpt(
+    id: string, label: string, value: number | null, min: number, max: number,
+    unit: string, hint: string, onInput: (next: number | null) => void,
+  ): HTMLElement {
+    const input = el('input', {
+      class: 'field',
+      attrs: {
+        id, type: 'number', min, max, step: 1, value: value === null ? '' : String(value),
+        placeholder: mmText(settings.cardWidthMm), 'aria-label': label,
+      },
+      on: {
+        input: () => {
+          if (input.value.trim() === '') return;
+          onInput(clamp(input.valueAsNumber, min, max, min));
+        },
+        change: () => { if (input.value.trim() === '') onInput(null); },
+      },
+    });
+    return el('div', { class: 'opt' },
+      el('label', { text: label, attrs: { for: id } }),
+      el('div', { class: 'opt__row' }, input, el('span', { class: 'opt__unit', text: unit })),
+      el('span', { class: 'small faint', text: hint }),
     );
   }
 
@@ -278,6 +364,8 @@ export function openPrintDialog(options: PrintOptions): void {
     const board = kind === 'tafel';
     const list = kind === 'einkaufsliste';
     const gridded = cards && settings.sheetFit === 'grid';
+    /* The card named in millimetres, which only a card sheet can be asked. */
+    const exact = cards && settings.sheetFit === 'card';
     const framed = settings.cardBorderMm > 0 || (strip && settings.stripFrame);
 
     const opt = (...children: (HTMLElement | null)[]) => el('div', { class: 'opt' }, ...children);
@@ -308,15 +396,30 @@ export function openPrintDialog(options: PrintOptions): void {
         ], { marginTop: '6px' }),
       ),
 
-      /* How big. Cards: in millimetres or as a grid. Strips: the symbol. A
-         Tafel: its grid is its own, so only what the scissors would leave. */
+      /* How big. Cards: the symbol, the card itself, or a grid. Strips: the
+         symbol. A Tafel: its grid is its own, so only what the scissors would
+         leave. The three are one question — which number do you have? — so they
+         sit under one heading that names none of them. */
       cards ? opt(
-        el('label', { text: t('ui.card_size') }),
+        el('label', { text: t('ui.size') }),
         segmented([
-          { label: t('ui.in_millimetres'), active: !gridded, onPick: () => set('sheetFit', 'size') },
+          { label: t('ui.fit_symbol'), active: !gridded && !exact, onPick: () => set('sheetFit', 'size') },
+          { label: t('ui.fit_card'), active: exact, onPick: () => set('sheetFit', 'card') },
           { label: t('ui.grid'), active: gridded, onPick: () => set('sheetFit', 'grid') },
         ]),
-        el('span', { class: 'small faint', text: gridded ? t('ui.grid_note') : t('ui.fixed_note') }),
+        el('span', { class: 'small faint',
+          text: gridded ? t('ui.grid_note') : exact ? t('ui.card_note') : t('ui.fixed_note') }),
+      ) : null,
+      /* Breite and Höhe, and the height may be left empty: a square card is the
+         usual one, and typing 60 twice is one chance in two to mistype it. */
+      exact ? opt(
+        el('div', { class: 'opt--pair' },
+          numberOpt('opt-card-w', t('ui.card_width'), settings.cardWidthMm, 15, 300, 1, 60, 'mm',
+            null, (next) => set('cardWidthMm', next)),
+          optionalNumberOpt('opt-card-h', t('ui.card_height'), settings.cardHeightMm, 15, 300,
+            'mm', t('ui.card_height_hint'), (next) => set('cardHeightMm', next)),
+        ),
+        cardSize,
       ) : null,
       cards && gridded ? opt(
         el('div', { class: 'opt--pair' },
@@ -327,7 +430,7 @@ export function openPrintDialog(options: PrintOptions): void {
         ),
         cardSize,
       ) : null,
-      (cards && !gridded) || strip
+      (cards && !gridded && !exact) || strip
         ? numberOpt('opt-size', t('ui.symbol_size'), settings.symbolSizeMm, 10, 120, 1, 40, 'mm',
             cardSize, (next) => set('symbolSizeMm', next))
         : null,
@@ -335,9 +438,13 @@ export function openPrintDialog(options: PrintOptions): void {
 
       /* The same millimetres, named for what they are on this material: a
          cutting margin where scissors go, air where nothing is cut. */
+      /* Same millimetres, opposite direction: against a symbol size they are
+         added around the card, against a card size they are taken out of it —
+         so the note says which, where the number is. */
       cards || strip
         ? numberOpt('opt-cut', t('ui.cut_margin'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',
-            t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))
+            exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'),
+            (next) => set('cutMarginMm', next))
         : null,
       board
         ? numberOpt('opt-cut', t('ui.card_air'), settings.cutMarginMm, 0, 20, 0.5, 3, 'mm',

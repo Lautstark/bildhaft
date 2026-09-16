@@ -81,6 +81,73 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 128,9 mm.');
 });
 
+/*
+ * The card size is the other direction of the same question, and the one an
+ * existing board asks: 60 x 90 typed in has to come off the printer as 60 x 90
+ * measured, whatever is inside it. So this checks the card a ruler finds rather
+ * than the readout — the readout is what the other tests above hold to the
+ * card, and here the card is the thing that was promised.
+ */
+test('a card size is the card, cut line to cut line', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Karte', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
+  await page.getByRole('spinbutton', { name: 'Höhe' }).fill('90');
+
+  const card = page.locator('.preview-frame .ps-card').first();
+  const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
+  await expect.poll(async () => mm((await box()).w)).toBeCloseTo(60, 0);
+  expect(mm((await box()).h)).toBeCloseTo(90, 0);
+
+  // And the printable copy is the same card, not just the on-screen one.
+  const printed = page.locator('#print-root .ps-card').first();
+  expect(mm(await printed.evaluate((el: HTMLElement) =>
+    parseFloat(getComputedStyle(el).width)))).toBeCloseTo(60, 0);
+
+  /*
+   * The cut margin changes sides here. Against a symbol size it is added around
+   * the card; against a card size there is nothing to add it to, so it comes
+   * out of the symbol and the card keeps the size it was given.
+   */
+  const symbol = () => page.locator('.preview-frame .ps-card__img').first()
+    .evaluate((el: HTMLElement) => el.offsetHeight);
+  const roomy = await symbol();
+  await page.getByLabel('Schneiderand').fill('12');
+  await expect.poll(symbol).toBeLessThan(roomy);
+  expect(mm((await box()).w)).toBeCloseTo(60, 0);
+  expect(mm((await box()).h)).toBeCloseTo(90, 0);
+});
+
+/* A square card is the usual one, and typing 60 twice is one chance in two to
+   mistype it — so an empty height is an answer rather than a missing one. */
+test('an empty height means as high as it is wide', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Karte', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Breite' }).fill('55');
+  await page.getByRole('spinbutton', { name: 'Höhe' }).fill('');
+  await page.getByRole('spinbutton', { name: 'Höhe' }).blur();
+
+  const card = page.locator('.preview-frame .ps-card').first();
+  await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
+    .toBeCloseTo(55, 0);
+  await expect(page.getByRole('spinbutton', { name: 'Höhe' })).toHaveAttribute('placeholder', '55');
+});
+
+/*
+ * Said, not silently worked around. A card bigger than the paper could be shrunk
+ * to fit, and then the one number the person came here to fix would be the one
+ * number the printout does not honour.
+ */
+test('says so when the card does not fit the paper', async ({ page }) => {
+  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await page.getByRole('button', { name: 'Karte', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
+  await expect(page.getByText(/^Symbol \d/)).toBeVisible();
+
+  await page.getByRole('spinbutton', { name: 'Breite' }).fill('200');
+  await expect(page.getByText('Diese Karte passt nicht auf das Papier.')).toBeVisible();
+});
+
 test('card sheet collapses duplicate symbols', async ({ page }) => {
   const strip = await page.locator('.preview-frame .ps-card').count();
   await page.getByRole('button', { name: 'Kartenblatt' }).click();

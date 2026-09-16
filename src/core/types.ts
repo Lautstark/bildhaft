@@ -467,8 +467,17 @@ export type Orientation = 'portrait' | 'landscape';
  * adding one is a row in the table in printSheet.ts and nothing more.
  */
 export type PaperSize = 'a5' | 'a4' | 'a3';
-/** How a card sheet decides how big a card is. */
-export type SheetFit = 'size' | 'grid';
+/**
+ * How a card sheet decides how big a card is.
+ *
+ * Three ways of saying one thing, because three different questions lead here.
+ * 'size' names the picture and lets the card come out however it comes out;
+ * 'card' names the card and lets the picture come out however it comes out —
+ * which is the question somebody asks who has a board, a fan or a laminating
+ * pouch already, and a millimetre to match; 'grid' names neither and fills the
+ * page with exactly as many cards as were asked for.
+ */
+export type SheetFit = 'size' | 'card' | 'grid';
 
 export interface PrintSettings {
   /** Symbol edge length in millimetres. People match existing boards. */
@@ -483,11 +492,23 @@ export interface PrintSettings {
   /** The long way round — the shape most communication boards are. */
   orientation: Orientation;
   /**
-   * Card sheets only. 'size' keeps symbolSizeMm and lets the cards flow; 'grid'
-   * ignores it and fits exactly gridCols x gridRows onto every page, which is
-   * how a board is specified: "a 4x3 board", never "a 38mm board".
+   * Card sheets only. 'size' keeps symbolSizeMm and lets the cards flow; 'card'
+   * keeps the card's own millimetres instead and the symbol takes what is left;
+   * 'grid' ignores both and fits exactly gridCols x gridRows onto every page,
+   * which is how a board is specified: "a 4x3 board", never "a 38mm board".
    */
   sheetFit: SheetFit;
+  /** The card itself, edge to edge, for sheetFit 'card'. What a ruler finds. */
+  cardWidthMm: number;
+  /**
+   * The card's height, or null for "as high as it is wide".
+   *
+   * Optional because a square card is the usual one and asking for the same
+   * number twice is asking for the second one to be wrong. Null rather than a
+   * copy of the width, so a card that was meant to be square stays square when
+   * the width is changed.
+   */
+  cardHeightMm: number | null;
   gridCols: number;
   gridRows: number;
   showCutLines: boolean;
@@ -547,6 +568,8 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   paper: 'a4',
   orientation: 'portrait',
   sheetFit: 'size',
+  cardWidthMm: 60,
+  cardHeightMm: null,
   gridCols: 4,
   gridRows: 3,
   showCutLines: true,

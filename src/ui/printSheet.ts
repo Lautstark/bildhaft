@@ -357,6 +357,10 @@ export function printSheet(options: SheetOptions): HTMLElement {
       // Every printed size derives from these, so millimetres stay millimetres.
       '--sym': `${settings.symbolSizeMm}mm`,
       '--cut': `${settings.cutMarginMm}mm`,
+      /* The card as a ruler finds it, for the fit that names that instead of
+         the symbol. A missing height is a square card — see cardHeightMm. */
+      '--card-w': `${settings.cardWidthMm}mm`,
+      '--card-h': `${settings.cardHeightMm ?? settings.cardWidthMm}mm`,
       '--label': `${settings.labelSizePt}pt`,
       // The sheet sizes itself from these, so the paper is set in exactly one place.
       '--page-w': `${page.width}mm`,
@@ -440,10 +444,12 @@ function strips(sentences: Sentence[], settings: PrintSettings, provider: Provid
  * Card sheet: individual cards for cutting up and laminating.
  * Duplicates are collapsed — a deck needs one card per symbol, not one per use.
  *
- * Two ways to size them. By size, the cards keep their millimetres and flow.
- * By grid, the page is divided into exactly as many cells as were asked for and
- * the cards take whatever size that leaves — which is how boards are actually
- * specified, and the only way to fill a page edge to edge on purpose.
+ * Three ways to size them. By symbol size and by card size the cards keep their
+ * millimetres and flow, and only the number that was named differs — the
+ * picture in the one case, the card a ruler finds in the other. By grid the page
+ * is divided into exactly as many cells as were asked for and the cards take
+ * whatever size that leaves — which is how boards are actually specified, and
+ * the only way to fill a page edge to edge on purpose.
  */
 function cardSheet(
   sentences: Sentence[], settings: PrintSettings, provider: ProviderId, reserveMm = 0,
@@ -467,8 +473,13 @@ function cardSheet(
     }
   }
 
+  /* Both flowing fits: the cards keep their millimetres and wrap, and where
+     the millimetres came from — the symbol or the card — is the card's own
+     business. planPages() cuts the one row that comes back into lines. */
   if (settings.sheetFit !== 'grid') {
-    return [el('div', { class: 'ps-row' }, ...cards.map((slot) => card(slot, settings, provider)))];
+    const shape = settings.sheetFit === 'card' ? 'exact' : 'symbol';
+    return [el('div', { class: 'ps-row' },
+      ...cards.map((slot) => card(slot, settings, provider, shape)))];
   }
 
   const cols = Math.max(1, Math.round(settings.gridCols));
@@ -492,7 +503,7 @@ function cardSheet(
         '--cols': String(cols),
         '--cell-h': `${((page.height - reserveMm) / rows).toFixed(3)}mm`,
       },
-    }, ...chunk.map((slot) => card(slot, settings, provider, true))));
+    }, ...chunk.map((slot) => card(slot, settings, provider, 'cell'))));
   }
   return pages;
 }
@@ -534,7 +545,7 @@ function boardSheet(
     const onZone = style?.fill && settings.cardBackground === null
       ? { ...settings, cardBackground: '#fff' } : settings;
     const node = slot
-      ? card(slot, onZone, provider, true)
+      ? card(slot, onZone, provider, 'cell')
       : el('div', { class: 'ps-card ps-card--fill ps-card--empty', attrs: { 'aria-hidden': 'true' } });
     if (zone) {
       // The frame reads its colour from the sheet; this card says white instead.
@@ -719,8 +730,17 @@ function isFramed(settings: PrintSettings): boolean {
   return settings.cardBorderMm > 0 || settings.cardBackground !== null;
 }
 
+/**
+ * What decides a card's box: the symbol inside it ('symbol'), the grid cell
+ * around it ('cell'), or the millimetres somebody named ('exact'). The last two
+ * are the same card — a box whose size comes from outside and a symbol that
+ * takes what the cut margin and the label leave — and differ only in where the
+ * box's size comes from.
+ */
+type CardShape = 'symbol' | 'cell' | 'exact';
+
 function card(
-  slot: Slot, settings: PrintSettings, provider: ProviderId, fill = false,
+  slot: Slot, settings: PrintSettings, provider: ProviderId, shape: CardShape = 'symbol',
 ): HTMLElement {
   const id = symbolIdFor(slot, provider);
   const label = slotCaption(slot);
@@ -763,8 +783,11 @@ function card(
    */
   const framed = isFramed(settings);
 
+  const sized = shape === 'cell' ? ' ps-card--fill'
+    : shape === 'exact' ? ' ps-card--fill ps-card--exact' : '';
+
   return el('div', { class: `ps-card${settings.labelPosition === 'above' ? ' ps-card--label-above' : ''}`
-      + (fill ? ' ps-card--fill' : '') + (framed ? ' ps-card--framed' : '') },
+      + sized + (framed ? ' ps-card--framed' : '') },
     ...(framed ? [el('div', { class: 'ps-card__frame' }, ...contents)] : contents),
   );
 }

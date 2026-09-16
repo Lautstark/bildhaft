@@ -208,19 +208,29 @@
    still allowed to spill into the cut margin, which is where long words go. */
 .ps-card--framed .ps-card__label { width: 100%; }
 
-/* A card that takes its size from its grid cell instead of from --sym. It has
-   to sit after the sized card above: same specificity, so order decides. */
+/* A card that takes its size from outside itself instead of from --sym: a grid
+   cell, or the millimetres somebody typed. It has to sit after the sized card
+   above: same specificity, so order decides. */
 .ps-card--fill {
   width: auto;
   height: 100%;
   gap: 0;
 }
-.ps-card--fill .ps-card__frame {
+/* The card a ruler was held against. What was typed is the box, cut line to cut
+   line — so the cut margin and any frame come off the symbol rather than being
+   added around it, which is the whole point of naming the card instead of the
+   picture. After --fill, whose auto width it overrides, and after --framed,
+   which would otherwise grow it. */
+.ps-card--exact {
+  width: var(--card-w);
+  height: var(--card-h);
+}
+.ps-card--fill .ps-card__frame, .ps-card--exact .ps-card__frame {
   width: 100%;
   height: 100%;
   gap: 0;
 }
-.ps-card--fill .ps-card__img {
+.ps-card--fill .ps-card__img, .ps-card--exact .ps-card__img {
   width: 100%;
   height: auto;
   /* min-height:0 is what lets the box actually shrink to the cell; without it a
@@ -228,7 +238,7 @@
   flex: 1 1 auto;
   min-height: 0;
 }
-.ps-card--fill .ps-card__label {
+.ps-card--fill .ps-card__label, .ps-card--exact .ps-card__label {
   width: 100%;
   flex: 0 0 auto;
   padding-top: 0.8mm;
