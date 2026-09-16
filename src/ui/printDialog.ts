@@ -142,6 +142,20 @@ export function openPrintDialog(options: PrintOptions): void {
     paint();
   }
 
+  /**
+   * The same, for a control that is still being held.
+   *
+   * The sheet follows, the controls stay. `set` replaces every control in the
+   * panel, which is right for a press and wrong for a drag — the node being
+   * dragged goes with them, and with it the colour picker hanging off it. So a
+   * swatch writes through this, and what it changes is only ever the paper.
+   */
+  function setLive<K extends keyof PrintSettings>(key: K, value: PrintSettings[K]): void {
+    settings = { ...settings, [key]: value };
+    options.onChange(settings);
+    drawSheet();
+  }
+
   /*
    * The browser's own preview appears too late to iterate on, so the real A4
    * sheet is scaled down to fit the panel. Measured rather than hard-coded,
@@ -377,12 +391,12 @@ export function openPrintDialog(options: PrintOptions): void {
           numberOpt('opt-radius', t('ui.corners'), settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null,
             (next) => set('cardRadiusMm', next)),
           colorOpt('opt-border-color', t('ui.colour'), settings.cardBorderColor,
-            (next) => set('cardBorderColor', next)),
+            (next) => setLive('cardBorderColor', next)),
         ) : null,
         check(t('ui.background_colour'), settings.cardBackground !== null, false,
           (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null)),
         settings.cardBackground !== null
-          ? colorOpt('opt-bg', t('ui.colour'), settings.cardBackground, (next) => set('cardBackground', next))
+          ? colorOpt('opt-bg', t('ui.colour'), settings.cardBackground, (next) => setLive('cardBackground', next))
           : null,
         el('span', { class: 'small faint', text: t('ui.background_note') }),
       ),
@@ -410,6 +424,19 @@ export function openPrintDialog(options: PrintOptions): void {
       ) : null,
     );
 
+    drawSheet();
+  }
+
+  /**
+   * The paper half of `paint`, on its own.
+   *
+   * Because one control must be able to move the sheet without the controls
+   * being rebuilt under the hand that is moving it: a colour swatch fires
+   * `input` continuously while the picker is open, and a rebuilt `<input
+   * type="color"` is a picker the browser closes. That is the whole of
+   * „der Color Picker schliesst sich immer wieder".
+   */
+  function drawSheet(): void {
     applyPageSetup(settings.paper, settings.orientation);
 
     const build = () => printSheet({
