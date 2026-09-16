@@ -307,14 +307,16 @@ export interface Board {
   rows: number;
   cells: (string | null)[];
   /**
-   * The groups: a rectangle of fields each, with a colour behind it. What a
-   * Symboltafel sets apart — the colours, the feelings, the game words — is
-   * a block of colour behind a *group of fields*, and the group is the thing
-   * somebody makes, moves and resizes; the colour of any one field follows
-   * from it. Two groups of one colour that touch draw as one block, which is
-   * how an L is made. Absent means no groups.
+   * Which group each field is in, or nothing. Row-major like `cells`, and a
+   * property of the field rather than of the card in it: the group marks a
+   * *place* on the Tafel — „the colours go here" — and stays when the card
+   * moves. Fields of one group side by side draw as one block, and that
+   * block is what a Symboltafel sets a group apart with. The entry is the
+   * key into `styles`. Absent means every field is bare.
    */
-  groups?: BoardGroup[];
+  zones?: (string | null)[];
+  /** What each group looks like, by the key `zones` holds. */
+  styles?: Record<string, ZoneStyle>;
   /**
    * The air around each card on paper, in millimetres: the space between
    * cards, and how much of a group's colour shows around a card. On the
@@ -325,11 +327,25 @@ export interface Board {
    */
   airMm?: number;
   /**
-   * The older form, one colour per field, written by builds before groups
-   * existed. Read once by `boardOf()` and turned into groups; never written
-   * again.
+   * An older form, groups as rectangles, written for one day in September
+   * 2026. Read once by `boardOf()` into a group per field with the colour as
+   * its key and its fill; never written again.
    */
-  zones?: (string | null)[];
+  groups?: BoardGroup[];
+}
+
+/**
+ * How a group is drawn. Each part on its own and none required: a name as a
+ * small shield on the block's top left edge, a frame around the block, a
+ * colour behind it. A group with none of the three is no group — see
+ * `setZone()`, which takes it off the board.
+ */
+export interface ZoneStyle {
+  name?: string;
+  /** The frame's colour, CSS. */
+  frame?: string;
+  /** The colour behind the fields, CSS. */
+  fill?: string;
 }
 
 /** One group on a Tafel: `cols × rows` fields from (`col`, `row`), in a colour. */

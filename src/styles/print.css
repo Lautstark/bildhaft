@@ -245,7 +245,18 @@
    layer can sit behind the card and still above the sheet's white. */
 .ps-tafel { position: relative; z-index: 0; }
 .ps-tafel .ps-card { position: relative; }
-.ps-block { position: absolute; z-index: -1; background: var(--zone); }
+.ps-block { position: absolute; z-index: -1; box-sizing: border-box; background: var(--zone); border: 0 solid transparent; }
+.ps-joint { position: absolute; z-index: -1; background-repeat: no-repeat; }
+/* The group's name, a shield on the frame's top left edge, over the card.
+   Above the field's top so that it straddles the frame line like a label
+   pinned to the edge of a box; the field's own 1 mm inset leaves it room. */
+.ps-shield {
+  position: absolute; z-index: 2; top: -0.4mm; left: 3.5mm;
+  max-width: calc(100% - 7mm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0.2mm 2mm; border-radius: 3mm;
+  background: var(--shield); color: #fff;
+  font-size: 7.5pt; font-weight: 700; line-height: 1.4; letter-spacing: 0.01em;
+}
 
 /*
  * At the foot of the page, always — `margin-top: auto` in the page's column.

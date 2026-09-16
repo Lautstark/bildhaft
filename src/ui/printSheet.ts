@@ -1,8 +1,8 @@
 import type {
-  Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot,
+  Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, ZoneStyle,
 } from '../core/types.ts';
 import { sentenceCaption, slotCaption } from '../core/types.ts';
-import { zoneBox } from '../core/board.ts';
+import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
 import { el } from './dom.ts';
 import { negationCross } from './logo.ts';
 import { t } from '../i18n/index.ts';
@@ -321,8 +321,10 @@ export interface PrintBoard {
   cols: number;
   rows: number;
   cells: (Sentence | null)[];
-  /** The colour behind each field, or nothing — `zonesOf()` the board's groups. */
+  /** The group of each field, or nothing — `zonesOf()` the board. */
   zones?: (string | null)[];
+  /** How each group is drawn — `stylesOf()` the board. */
+  styles?: Record<string, ZoneStyle>;
 }
 
 export interface SheetOptions {
@@ -528,7 +530,8 @@ function boardSheet(
        white unless a background was asked for, because a picture straight on
        the colour is a card that has disappeared into its group. */
     const zone = board.zones?.[index];
-    const onZone = zone && settings.cardBackground === null
+    const style = zone ? board.styles?.[zone] : undefined;
+    const onZone = style?.fill && settings.cardBackground === null
       ? { ...settings, cardBackground: '#fff' } : settings;
     const node = slot
       ? card(slot, onZone, provider, true)
@@ -536,11 +539,40 @@ function boardSheet(
     if (zone) {
       // The frame reads its colour from the sheet; this card says white instead.
       if (onZone !== settings) node.style.setProperty('--card-bg', '#fff');
-      /* The colour is a layer under the card, stepped in by 1 mm where the
+      /* The group is a layer under the card, stepped in by 1 mm where the
          block ends — half of a 2 mm rinne, so two blocks meet with a rinne
-         between them and a block ends with air to the sheet. */
-      const box = zoneBox({ cols: board.cols, rows: board.rows, zones: board.zones ?? [] }, index, '1mm', '3mm', '-0.3mm');
-      if (box) node.prepend(el('div', { class: 'ps-block', style: { '--zone': zone, inset: box.inset, borderRadius: box.borderRadius } }));
+         between them and a block ends with air to the sheet. Its frame runs
+         along those same ends and nowhere else. */
+      const map = { cols: board.cols, rows: board.rows, zones: board.zones ?? [], styles: board.styles ?? {} };
+      const box = zoneBox(map, index, '1mm', '3mm', '-0.3mm');
+      if (box) {
+        node.prepend(el('div', {
+          class: 'ps-block',
+          style: {
+            '--zone': style?.fill ?? 'transparent', inset: box.inset, borderRadius: box.borderRadius,
+            borderColor: style?.frame ?? 'transparent', borderWidth: style?.frame ? zoneBorder(map, index, '0.6mm') ?? '0' : '0',
+            clipPath: box.clipPath ?? '',
+          },
+        }));
+        // The frame carried round the block's inner corners at this field — see zoneJoint().
+        if (style?.frame) {
+          for (const corner of box.crooks) {
+            const j = zoneJoint(corner, '1mm', '-0.3mm', '0.6mm');
+            node.prepend(el('div', {
+              class: 'ps-joint',
+              style: {
+                ...j.position, width: j.size, height: j.size,
+                backgroundImage: `linear-gradient(${style.frame}, ${style.frame}), linear-gradient(${style.frame}, ${style.frame})`,
+                backgroundPosition: `${j.x} 0, 0 ${j.y}`, backgroundSize: `0.6mm 100%, 100% 0.6mm`,
+              },
+            }));
+          }
+        }
+      }
+      /* The name, as a shield on the block's top left edge, on the first field of the group. */
+      if (style?.name && labelField(map, zone) === index) {
+        node.appendChild(el('div', { class: 'ps-shield', text: style.name, style: { '--shield': labelColour(style) } }));
+      }
     }
     return node;
   }));

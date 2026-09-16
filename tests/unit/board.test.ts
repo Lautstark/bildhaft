@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addGroup, boardOf, defaultAirMm, firstFree, groupsFromZones, placedIds, placeOn, removeGroup, resizeBoard, takeOff,
-  updateGroup, zoneBox, zoneCorners, zoneMap, zonesOf,
+  blockAt, boardOf, defaultAirMm, dissolveZone, firstFree, labelColour, labelField, newZoneId, placedIds, placeOn,
+  resizeBoard, setZone, shade, stylesOf, takeOff, zoneBorder, zoneBox, zoneClip, zoneCorners, zoneCrooks, zoneJoint, zoneMap, zonesOf,
 } from '../../src/core/board.ts';
 import type { Board } from '../../src/core/types.ts';
 
@@ -18,7 +18,7 @@ const grid = (cols: number, rows: number, ...placed: [string, number][]): Board 
 
 describe('a Tafel that has not been sized', () => {
   it('is 4 × 3 and every field free', () => {
-    expect(boardOf({})).toEqual({ ...grid(4, 3), groups: [] });
+    expect(boardOf({})).toEqual({ ...grid(4, 3), zones: Array(12).fill(null), styles: {} });
   });
 
   it('is made whole when the record does not add up', () => {
@@ -88,55 +88,99 @@ describe('the grid at another size', () => {
 });
 
 /**
- * A group: a rectangle of fields with a colour behind it. What is held is
- * that a group stays on the grid however it is moved or drawn out, that a
- * smaller grid cuts it rather than losing it, that the older colour-per-field
- * records come back as groups, and where a block's corners are rounded — the
- * one calculation a screen and a sheet both draw from.
+ * A colour behind fields. It belongs to the field, not the card: the block
+ * says „the colours go here" and stays when a card moves. What is held is
+ * that painting never touches a card, that a smaller grid keeps the colours
+ * of the fields it keeps, that the block a field belongs to is what touches
+ * it in its colour, and that the rectangles of one September day are read
+ * back as the fields they covered.
  */
 const y = '#fff1b8';
 const b = '#d6e9fb';
 
-describe('a group on a Tafel', () => {
-  it('is made two by two on the first fields no group covers', () => {
-    const one = addGroup(grid(4, 3), y);
-    expect(one.groups).toEqual([{ col: 0, row: 0, cols: 2, rows: 2, colour: y }]);
-    const two = addGroup(one, b);
-    expect(two.groups![1]).toEqual({ col: 2, row: 0, cols: 2, rows: 2, colour: b });
-    // A grid too small for two by two gets what fits.
-    expect(addGroup(grid(1, 1), y).groups).toEqual([{ col: 0, row: 0, cols: 1, rows: 1, colour: y }]);
+/** Fields into a group with a fill, the way one September build wrote it: the colour as the key. */
+const paint = (board: Board, indices: number[], colour: string) => setZone(board, indices, colour, { fill: colour });
+
+describe('a group on fields', () => {
+  it('takes the fields into the group and leaves the cards alone', () => {
+    const board = placeOn(grid(2, 2), 'a', 1);
+    const next = setZone(board, [1, 3], 'g1', { fill: y, name: ' Farben ' });
+    expect(next.zones).toEqual([null, 'g1', null, 'g1']);
+    expect(next.styles).toEqual({ g1: { fill: y, name: 'Farben' } });
+    expect(next.cells).toEqual(board.cells);
+    // The same again is nothing; a field outside the grid is nothing.
+    expect(setZone(next, [1], 'g1', { fill: y, name: 'Farben' })).toBe(next);
+    expect(setZone(next, [99], 'g1', { fill: y, name: 'Farben' })).toBe(next);
   });
 
-  it('is moved and drawn out, and kept on the grid', () => {
-    const one = addGroup(grid(4, 3), y);
-    expect(updateGroup(one, 0, { col: 3, row: 2 }).groups![0]).toMatchObject({ col: 3, row: 2, cols: 1, rows: 1 });
-    expect(updateGroup(one, 0, { col: -2, cols: 9, rows: 0 }).groups![0]).toMatchObject({ col: 0, cols: 4, rows: 1 });
-    expect(updateGroup(one, 0, { colour: b }).groups![0].colour).toBe(b);
-    expect(updateGroup(one, 0, {})).toBe(one);
-    expect(updateGroup(one, 5, { col: 1 })).toBe(one);
-    expect(removeGroup(one, 0).groups).toEqual([]);
+  it('is gone when its style draws nothing, or when it is dissolved', () => {
+    const next = setZone(grid(2, 2), [1, 3], 'g1', { frame: b });
+    expect(setZone(next, [1, 3], 'g1', {}).zones).toEqual([null, null, null, null]);
+    expect(setZone(next, [1, 3], 'g1', { name: '  ' }).styles).toEqual({});
+    expect(dissolveZone(next, 'g1').zones).toEqual([null, null, null, null]);
+    expect(dissolveZone(next, 'g1').styles).toEqual({});
+    expect(dissolveZone(next, 'g9')).toBe(next);
   });
 
-  it('is cut by a smaller grid and gone when nothing is left', () => {
-    const one = updateGroup(addGroup(grid(4, 3), y), 0, { col: 2, row: 1, cols: 2, rows: 2 });
-    expect(resizeBoard(one, 3, 3).groups![0]).toMatchObject({ col: 2, row: 1, cols: 1, rows: 2 });
-    expect(resizeBoard(one, 2, 3).groups).toEqual([]);
+  it('lets a field leave one group for another, and forgets a group nobody is in', () => {
+    const two = setZone(setZone(grid(3, 1), [0, 1], 'g1', { fill: y }), [1, 2], 'g2', { frame: b });
+    expect(two.zones).toEqual(['g1', 'g2', 'g2']);
+    const gone = setZone(two, [0], 'g2', { frame: b });
+    expect(gone.zones).toEqual(['g2', 'g2', 'g2']);
+    expect(gone.styles).toEqual({ g2: { frame: b } });
   });
 
-  it('colours the fields it covers, the last group over a field deciding', () => {
-    const two = updateGroup(addGroup(addGroup(grid(3, 1), y), b), 1, { col: 1, row: 0, cols: 1, rows: 1 });
-    expect(zonesOf(two)).toEqual([y, b, null]);
+  it('names a group no other has', () => {
+    expect(newZoneId(grid(2, 1))).toBe('g1');
+    expect(newZoneId(setZone(grid(2, 1), [0], 'g1', { fill: y }))).toBe('g2');
+    expect(newZoneId({ zones: ['g1', 'g3'], styles: { g2: {} } })).toBe('g4');
   });
 
-  it('reads the older colour-per-field record as the largest rectangles', () => {
-    // g g g      the L of one colour the real board wore
-    // . . g
-    const groups = groupsFromZones([y, y, y, null, null, y], 3, 2, 3, 2);
-    expect(groups).toEqual([
-      { col: 0, row: 0, cols: 3, rows: 1, colour: y },
-      { col: 2, row: 1, cols: 1, rows: 1, colour: y },
-    ]);
-    expect(boardOf({ board: { cols: 3, rows: 2, cells: [], zones: [y, y, y, null, null, y] } }).groups).toEqual(groups);
+  it('keeps its groups through a resize, like the cards', () => {
+    const painted = setZone(grid(3, 2), [0, 2], 'g1', { fill: y });
+    const smaller = resizeBoard(painted, 2, 2);
+    expect(smaller.zones).toEqual(['g1', null, null, null]);
+    expect(smaller.styles).toEqual({ g1: { fill: y } });
+    // A group whose every field fell off the edge is forgotten with them.
+    expect(resizeBoard(setZone(grid(3, 1), [2], 'g1', { fill: y }), 2, 1).styles).toEqual({});
+  });
+
+  it('knows the block a field belongs to', () => {
+    // y y .      a block is what touches over a side, not a corner
+    // . y b
+    const m = zoneMap(paint(paint(grid(3, 2), [0, 1, 4], y), [5], b));
+    expect(blockAt(m, 4)).toEqual([0, 1, 4]);
+    expect(blockAt(m, 5)).toEqual([5]);
+    expect(blockAt(m, 2)).toEqual([]);
+  });
+
+  it('reads the rectangles of the older form as groups with that colour behind them', () => {
+    const groups = [{ col: 0, row: 0, cols: 3, rows: 1, colour: y }, { col: 2, row: 1, cols: 1, rows: 1, colour: y }];
+    const read = boardOf({ board: { cols: 3, rows: 2, cells: [], groups } });
+    expect(read.zones).toEqual([y, y, y, null, null, y]);
+    expect(read.styles).toEqual({ [y]: { fill: y } });
+    expect(zonesOf({ cols: 2, rows: 1, groups: [{ col: 1, row: 0, cols: 5, rows: 5, colour: b }] })).toEqual([null, b]);
+    // And writes back fields, never rectangles.
+    expect(setZone(read, [3], 'g1', { fill: b })).not.toHaveProperty('groups');
+  });
+
+  it('reads a colour per field, the form between, as a group with that fill', () => {
+    const read = boardOf({ board: { cols: 2, rows: 1, cells: [], zones: [y, null] } });
+    expect(stylesOf(read)).toEqual({ [y]: { fill: y } });
+    // A key that is neither a colour nor styled is a group that draws nothing.
+    expect(stylesOf({ cols: 1, rows: 1, zones: ['g7'] })).toEqual({ g7: {} });
+  });
+
+  it('writes its name on its first field, in its frame\'s colour or a darker fill', () => {
+    const m = zoneMap(setZone(grid(2, 2), [1, 2, 3], 'g1', { fill: '#fff1b3', name: 'Farben' }));
+    expect(labelField(m, 'g1')).toBe(1);
+    expect(labelField(m, 'g2')).toBe(-1);
+    expect(labelColour({ frame: '#f0b323', fill: '#fff1b3' })).toBe('#f0b323');
+    expect(labelColour({ fill: '#fff1b3' })).toBe(shade('#fff1b3'));
+    expect(labelColour({ name: 'allein' })).toBe('#666');
+    expect(shade('#ffffff')).toBe('rgb(140, 140, 140)');
+    expect(shade('#fff')).toBe('rgb(140, 140, 140)');
+    expect(shade('tomato')).toBe('tomato');
   });
 });
 
@@ -155,7 +199,7 @@ describe('the air around a card', () => {
 });
 
 describe('where a block ends', () => {
-  const map = (cols: number, rows: number, zones: (string | null)[]) => ({ cols, rows, zones });
+  const map = (cols: number, rows: number, zones: (string | null)[]) => ({ cols, rows, zones, styles: {} });
 
   it('rounds a block only at its own corners, and only against paper', () => {
     // y y .
@@ -186,10 +230,42 @@ describe('where a block ends', () => {
 
   it('steps in by half a gutter on its own sides only, and reaches out where it goes on', () => {
     const m = map(3, 1, [y, y, null]);
-    expect(zoneBox(m, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm' });
-    expect(zoneBox(m, 1, '1mm', '3mm')).toEqual({ inset: '1mm 1mm 1mm 0', borderRadius: '0 3mm 3mm 0' });
+    expect(zoneBox(m, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm', clipPath: null, crooks: [] });
+    expect(zoneBox(m, 1, '1mm', '3mm')).toEqual({ inset: '1mm 1mm 1mm 0', borderRadius: '0 3mm 3mm 0', clipPath: null, crooks: [] });
     expect(zoneBox(m, 2, '1mm', '3mm')).toBeNull();
     expect(zoneBox(m, 0, '1mm', '3mm', '-0.3mm')!.inset).toBe('1mm -0.3mm 1mm 1mm');
-    expect(zoneMap(addGroup(grid(2, 1), y)).zones).toEqual([y, y]);
+    expect(zoneMap(paint(grid(2, 1), [0, 1], y)).zones).toEqual([y, y]);
+  });
+
+  it('turns an inner corner at the field across it: cut back there, and the frame carried round', () => {
+    // . y      an L: the block turns at the bottom-right field, whose
+    // y y      top-left corner is the crook
+    const m = map(2, 2, [null, y, y, y]);
+    expect(zoneCrooks(m, 3)).toEqual(['tl']);
+    expect(zoneCrooks(m, 1)).toEqual([]);
+    expect(zoneCrooks(m, 0)).toEqual([]);
+    expect(zoneBox(m, 3, '4px', '12px', '-2px')!.clipPath)
+      .toBe('polygon(calc(4px - (-2px)) 0, 100% 0, 100% 100%, 0 100%, 0 calc(4px - (-2px)), calc(4px - (-2px)) calc(4px - (-2px)))');
+    expect(zoneBox(m, 1, '4px', '12px', '-2px')!.clipPath).toBeNull();
+    // A U, open at the top: the block turns at both ends of the bottom row, not in its middle.
+    const u = map(3, 2, [y, null, y, y, y, y]);
+    expect(zoneCrooks(u, 3)).toEqual(['tr']);
+    expect(zoneCrooks(u, 5)).toEqual(['tl']);
+    expect(zoneCrooks(u, 4)).toEqual([]);
+    expect(zoneClip(['tl', 'tr'], 'K')).toBe('polygon(K 0, calc(100% - K) 0, calc(100% - K) K, 100% K, 100% 100%, 0 100%, 0 K, K K)');
+    // The joint sits in the corner, reaching out by the overlap, its strips where the neighbours' frames arrive.
+    expect(zoneJoint('tl', '4px', '-2px', '2px')).toEqual({
+      position: { top: '-2px', left: '-2px' }, size: 'calc(calc(4px - (-2px)) + 2px)', x: 'calc(4px - (-2px))', y: 'calc(4px - (-2px))',
+    });
+    expect(zoneJoint('br', '4px', '-2px', '2px').position).toEqual({ bottom: '-2px', right: '-2px' });
+    expect(zoneJoint('br', '4px', '-2px', '2px')).toMatchObject({ x: '0', y: '0' });
+    expect(zoneJoint('tr', '4px', '-2px', '2px')).toMatchObject({ x: '0', y: 'calc(4px - (-2px))' });
+  });
+
+  it('runs its frame along its own sides only', () => {
+    const m = map(3, 1, [y, y, null]);
+    expect(zoneBorder(m, 0, '2px')).toBe('2px 0 2px 2px');
+    expect(zoneBorder(m, 1, '2px')).toBe('2px 2px 2px 0');
+    expect(zoneBorder(m, 2, '2px')).toBeNull();
   });
 });

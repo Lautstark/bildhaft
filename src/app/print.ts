@@ -1,5 +1,5 @@
 import type { Board, Collection, CollectionKind, PrintSettings, Sentence } from '../core/types.ts';
-import { boardOf, defaultAirMm, placedIds, zonesOf } from '../core/board.ts';
+import { boardOf, defaultAirMm, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { putCollection } from '../db/repo.ts';
 import { openPrintDialog } from '../ui/printDialog.ts';
 import { printableArea } from '../ui/printSheet.ts';
@@ -108,7 +108,7 @@ export function printing(ctx: Ctx): Pick<Ctx, 'openPrint'> {
       sentences: chosen,
       kind: kind(s),
       board: board ? {
-        cols: board.cols, rows: board.rows, zones: zonesOf(board),
+        cols: board.cols, rows: board.rows, zones: zonesOf(board), styles: stylesOf(board),
         cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)),
       } : null,
       collectionName: open?.name ?? 'bildhaft',

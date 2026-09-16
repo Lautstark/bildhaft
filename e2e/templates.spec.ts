@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
 import { translate } from './helpers.ts';
 
@@ -113,6 +113,9 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
  * a sheet of cards, and each is a card silently gone when it fails.
  */
 test('a Tafel takes its cards by dragging, and prints its free fields', async ({ page }) => {
+  // Tall enough for the tray under a Tafel of square tiles to be on screen:
+  // a drag that starts off screen is not a drag.
+  await page.setViewportSize({ width: 1280, height: 1100 });
   await showSidebar(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
@@ -273,20 +276,20 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
  * not, so with a colour chosen nothing else worked. Held on screen and on
  * paper, because the two draw the block from one answer.
  */
-test.describe('groups on a Tafel', () => {
+test.describe('colour on a Tafel', () => {
   // Tall, for the same reason the full Tafel above is: the tray is under the
   // grid, and one drag here goes from one to the other.
   test.use({ viewport: { width: 1280, height: 1500 } });
 
 /**
- * A group: a rectangle of fields with a colour behind it, the way a
- * Symboltafel sets its feelings or its colours apart. Made with one press,
- * drawn out by its corner, moved by its badge, recoloured or removed from the
- * badge's menu — and drawn as one rounded block, cards white on it, on
- * screen and on paper from one answer. Nothing here is a mode: the „+" of a
- * field and the dragging of cards work throughout.
+ * A colour behind a group of fields, made the way cells in a table are
+ * coloured: mark the fields, press a colour. A press on a field's air marks
+ * it, a press held and moved frames several, a press on a coloured field
+ * marks its whole block. Nothing is a mode and nothing sits on a card: the
+ * „+" of a field and the dragging of cards work throughout. Held on screen
+ * and on paper, because the two draw the block from one answer.
  */
-test('a group is made, drawn out, moved, recoloured and printed', async ({ page }) => {
+test('fields are marked and grouped, on screen and on paper', async ({ page }) => {
   await showSidebar(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await page.getByRole('button', { name: /^Tafel/ }).click();
@@ -297,92 +300,136 @@ test('a group is made, drawn out, moved, recoloured and printed', async ({ page 
 
   const cells = page.locator('.board .cell');
   const zoned = page.locator('.cell--zoned');
-  const drag = async (source: Locator, target: Locator) => {
-    const from = (await source.boundingBox())!;
-    const to = (await target.boundingBox())!;
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
-    await page.mouse.up();
-  };
+  const marked = page.locator('.cell--selected');
+  const panel = page.getByRole('group', { name: 'Markierte Felder' });
+  /** The tile of a field: its top-left corner, off the card and off the „+". */
+  const tile = async (i: number) => { const b = (await cells.nth(i).boundingBox())!; return { x: b.x + 5, y: b.y + 5 }; };
+  const pressTile = async (i: number) => { const p = await tile(i); await page.mouse.click(p.x, p.y); };
 
-  // One press: a group, two by two, at the top left.
-  await page.getByRole('button', { name: '+ Gruppe' }).click();
-  await expect(zoned).toHaveCount(4);
-  for (const i of [0, 1, 4, 5]) await expect(cells.nth(i)).toHaveClass(/cell--zoned/);
-  // One block: shared corners square, outer ones round, stepped in only where it ends.
+  // Two presses on the tiles mark two fields; the panel says so.
+  await pressTile(0);
+  await pressTile(1);
+  await expect(marked).toHaveCount(2);
+  await expect(panel).toContainText('2 Felder');
+  // The press on the tile did not open the card's picker.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // A background: the fields are a group on the spot, the marks stay for the next choice.
+  await page.getByRole('button', { name: 'Hintergrund Gelb' }).click();
+  await expect(zoned).toHaveCount(2);
+  await expect(marked).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Hintergrund Gelb' })).toHaveAttribute('aria-pressed', 'true');
+  // One block: the shared corners square, the outer ones round, stepped in only where it ends.
   const zone = (i: number) => cells.nth(i).locator('.cell__zone');
   await expect(zone(0)).toHaveCSS('border-top-left-radius', '12px');
   await expect(zone(0)).toHaveCSS('border-top-right-radius', '0px');
   await expect(zone(0)).toHaveCSS('left', '4px');
-  await expect(zone(0)).toHaveCSS('right', '-1px');
+  await expect(zone(0)).toHaveCSS('right', '-2px');
+  await expect(zone(0)).toHaveCSS('background-color', 'rgb(255, 241, 179)');
+  // A frame, along the block's own sides only; and a name, as a shield on the first field.
+  await page.getByRole('button', { name: 'Rahmen Gelb' }).click();
+  await expect(zone(0)).toHaveCSS('border-left-width', '2px');
+  await expect(zone(0)).toHaveCSS('border-right-width', '0px');
+  await expect(zone(1)).toHaveCSS('border-right-width', '2px');
+  await page.getByLabel('Name', { exact: true }).fill('Farben');
+  await page.getByLabel('Name', { exact: true }).press('Enter');
+  await expect(cells.nth(0).locator('.cell__shield')).toHaveText('Farben');
+  await expect(cells.nth(1).locator('.cell__shield')).toHaveCount(0);
+  // „Kein" takes the frame off again and leaves the rest.
+  await page.getByRole('button', { name: 'Rahmen: Kein' }).click();
+  await expect(zone(0)).toHaveCSS('border-left-width', '0px');
+  await expect(cells.nth(0).locator('.cell__shield')).toHaveText('Farben');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(marked).toHaveCount(0);
+  await expect(panel).toHaveCount(0);
 
-  // Drawn out by its corner to three by two.
-  const corner = page.getByRole('button', { name: 'Gruppe 1 aufziehen' });
-  await drag(corner, cells.nth(6));
+  // A frame drawn across three fields marks all three; a frame alone is a group too.
+  const from = await tile(4);
+  const to = (await cells.nth(6).boundingBox())!;
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width - 5, to.y + to.height - 5, { steps: 10 });
+  await page.mouse.up();
+  await expect(marked).toHaveCount(3);
+  await page.getByRole('button', { name: 'Rahmen Grün' }).click();
+  await expect(zoned).toHaveCount(5);
+  await expect(zone(5)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  // One more field under the first makes it an L. At the inner corner the
+  // field the block turns at is cut back and carries the frame round.
+  await pressTile(8);
+  await expect(marked).toHaveCount(4);
+  await page.getByRole('button', { name: 'Hintergrund Grün' }).click();
   await expect(zoned).toHaveCount(6);
-  await expect(cells.nth(6)).toHaveClass(/cell--zoned/);
+  await expect(zone(4)).toHaveCSS('clip-path', /polygon/);
+  await expect(cells.nth(4).locator('.cell__joint')).toHaveCount(1);
+  await expect(cells.nth(5).locator('.cell__joint')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(marked).toHaveCount(0);
 
-  // Moved by its badge one field right and one down.
-  const badge = page.getByRole('button', { name: 'Gruppe 1: verschieben, Farbe wählen' });
-  await drag(badge, cells.nth(5));
-  await expect(zoned).toHaveCount(6);
-  for (const i of [5, 6, 7, 9, 10, 11]) await expect(cells.nth(i)).toHaveClass(/cell--zoned/);
-  await expect(cells.nth(0)).not.toHaveClass(/cell--zoned/);
+  // A press on a grouped field marks its whole block and shows its group; „Gruppe entfernen" takes it away.
+  await pressTile(5);
+  await expect(marked).toHaveCount(4);
+  await expect(page.getByRole('button', { name: 'Rahmen Grün' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Gruppe entfernen' }).click();
+  await expect(zoned).toHaveCount(2);
+  await expect(marked).toHaveCount(0);
 
-  // Recoloured from the badge's menu, blue; then a colour of one's own.
-  await badge.click();
-  await page.getByRole('button', { name: 'Blau' }).click();
-  await expect(zone(5)).toHaveCSS('background-color', 'rgb(214, 233, 251)');
-  await badge.click();
-  await page.getByLabel('Eigene Farbe wählen').fill('#c8e6ff');
-  await expect(zone(5)).toHaveCSS('background-color', 'rgb(200, 230, 255)');
-  await expect(page.getByRole('group', { name: 'Gruppe 1' })).toHaveCount(0);
+  // A colour of one's own, and Escape puts a selection down.
+  await pressTile(8);
+  await page.getByLabel('Eigene Farbe: Hintergrund').fill('#c8e6ff');
+  await expect(zone(8)).toHaveCSS('background-color', 'rgb(200, 230, 255)');
+  await page.keyboard.press('Escape');
+  await pressTile(9);
+  await expect(marked).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(marked).toHaveCount(0);
 
-  // A second group lands on the first fields no group covers — the top left,
-  // one field of it over the first group — and the keyboard moves it.
-  await page.getByRole('button', { name: '+ Gruppe' }).click();
-  await expect(zoned).toHaveCount(9);
-  await page.getByRole('button', { name: 'Gruppe 2: verschieben, Farbe wählen' }).focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(cells.nth(0)).not.toHaveClass(/cell--zoned/);
-  await expect(cells.nth(2)).toHaveClass(/cell--zoned/);
-  await page.keyboard.press('Delete');
-  await expect(zoned).toHaveCount(6);
+  // From the keyboard: Space marks a field, Shift with an arrow marks the neighbour too.
+  await cells.nth(10).focus();
+  await page.keyboard.press(' ');
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(marked).toHaveCount(2);
+  await page.getByRole('button', { name: 'Hintergrund Rosa' }).click();
+  await expect(zoned).toHaveCount(5);
+  await page.keyboard.press('Escape');
 
   // Nothing was put into a mode: a free field's „+" still opens the picker,
-  // and a card is still dragged into a coloured field.
-  await page.getByRole('button', { name: 'Neue Karte in Feld 7' }).click();
+  // and a card is still dragged into a grouped field.
+  await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByLabel('Wörter hinzufügen').fill('Blau');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
-  await drag(page.locator('.tray .board-card').filter({ hasText: 'Blau' }).locator('.word__pic'), cells.nth(6));
-  await expect(cells.nth(6).locator('.word__name')).toHaveText('Blau');
+  const card = page.locator('.tray .board-card').filter({ hasText: 'Blau' }).locator('.word__pic');
+  const c = (await card.boundingBox())!;
+  const d = (await cells.nth(1).boundingBox())!;
+  await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(cells.nth(1).locator('.word__name')).toHaveText('Blau');
 
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
   const printed = page.locator('.preview-frame .ps-tafel .ps-card');
-  await expect(page.locator('.preview-frame .ps-block')).toHaveCount(6);
-  await expect(printed.nth(5).locator('.ps-block')).toHaveCSS('background-color', 'rgb(200, 230, 255)');
-  await expect(printed.nth(0).locator('.ps-block')).toHaveCount(0);
+  await expect(page.locator('.preview-frame .ps-block')).toHaveCount(5);
+  await expect(printed.nth(0).locator('.ps-block')).toHaveCSS('background-color', 'rgb(255, 241, 179)');
+  await expect(printed.nth(8).locator('.ps-block')).toHaveCSS('background-color', 'rgb(200, 230, 255)');
+  // The name goes to paper with it, once, on the block's first field.
+  await expect(page.locator('.preview-frame .ps-shield')).toHaveText(['Farben']);
   // The block steps in where it ends and not where it goes on, as on screen.
-  const box = await printed.nth(5).locator('.ps-block').boundingBox();
-  const cell = await printed.nth(5).boundingBox();
+  const box = await printed.nth(0).locator('.ps-block').boundingBox();
+  const cell = await printed.nth(0).boundingBox();
   expect(box!.x).toBeGreaterThan(cell!.x);
-  expect(box!.y + box!.height).toBeGreaterThanOrEqual(cell!.y + cell!.height - 0.5);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(cell!.y + cell!.height + 2);
+  expect(box!.x + box!.width).toBeGreaterThan(cell!.x + cell!.width);
   // The card stays white on its colour.
-  await expect(printed.nth(6).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-  // The air around a card is named as air, not as a cut, and comes from the
-  // field: four across an A4 is a roomy 5 mm. Set to 3 here, it is the Tafel's
-  // own and is there again the next time — not the 5 the paper would give.
-  const air = page.getByLabel('Luft um jede Karte');
-  await expect(air).toHaveValue('5');
-  await air.fill('3');
-  await expect(printed.nth(5).locator('.ps-block')).toHaveCount(1);
+  await expect(printed.nth(0).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  // The air around a card is named as air, comes from the field, and is the Tafel's own once set.
+  const airInput = page.getByLabel('Rand um jede Karte');
+  await expect(airInput).toHaveValue('5');
+  await airInput.fill('3');
+  await expect(printed.nth(0).locator('.ps-block')).toHaveCount(1);
   await page.getByRole('button', { name: 'Schließen', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
-  await expect(page.getByLabel('Luft um jede Karte')).toHaveValue('3');
+  await expect(page.getByLabel('Rand um jede Karte')).toHaveValue('3');
 });
 });

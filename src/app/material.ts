@@ -1,8 +1,6 @@
 import type { Board, Collection, CollectionKind, Sentence, Slot } from '../core/types.ts';
 import { COLLECTION_KINDS, kindOf } from '../core/types.ts';
-import {
-  addGroup, boardOf, placeOn, removeGroup, resizeBoard, takeOff, updateGroup,
-} from '../core/board.ts';
+import { boardOf, dissolveZone, placeOn, resizeBoard, setZone, takeOff } from '../core/board.ts';
 import { newId, putCollection, putSentence } from '../db/repo.ts';
 import { t } from '../i18n/index.ts';
 import { el, fill, place } from '../ui/dom.ts';
@@ -175,9 +173,8 @@ export function material(ctx: Ctx): {
     onTakeOff: (id) => void writeBoard((board) => takeOff(board, id)),
     onNewCardAt: (index) => void handleNewCard(index),
     onNewCard: () => void handleNewCard(),
-    onAddGroup: (colour) => void writeBoard((board) => addGroup(board, colour)),
-    onGroup: (index, patch) => void writeBoard((board) => updateGroup(board, index, patch)),
-    onRemoveGroup: (index) => void writeBoard((board) => removeGroup(board, index)),
+    onGroup: (indices, id, style) => void writeBoard((board) => setZone(board, indices, id, style)),
+    onDissolve: (id) => void writeBoard((board) => dissolveZone(board, id)),
   });
 
   function renderBoard(): void {

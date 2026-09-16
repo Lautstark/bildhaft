@@ -1,6 +1,5 @@
 /**
- * The Tafel on screen: a grid of fields, its groups, and under it the cards
- * not yet on it.
+ * The Tafel on screen: a grid of fields, and under it the cards not yet on it.
  *
  * Two places for one set of cards. The composer puts every new word into the
  * tray, because typing ten words is fast and deciding where each one goes is
@@ -8,12 +7,14 @@
  * from field to field (they swap), or back into the tray. A field left free is
  * left free on paper too.
  *
- * A group is a rectangle of fields with a colour behind it — the thing a
- * Symboltafel sets its colours or its feelings apart with. It is made with
- * one press, moved by its badge, drawn out by its corner, and recoloured or
- * removed from the badge's menu. Groups are not painted field by field: that
- * was tried, and painting a group of eight is eight acts where making one
- * group is one — and the brush it needed got in the way of everything else.
+ * A group is fields that lie together, drawn apart from the rest — what a
+ * Symboltafel sets its colours or its feelings apart with. A group has a
+ * name on its edge, a frame around it and a colour behind it, each on its
+ * own and none required. It is made the way cells in a table are coloured:
+ * the fields are marked, then a panel offers the three, and each choice goes
+ * straight onto the Tafel. A field is marked by a press on its tile around
+ * the card; the card itself keeps its own presses. Nothing here is a mode
+ * and nothing sits on a card.
  *
  * The cards themselves are the wall's cards — `wordCard()` — handed in already
  * built and cached by the caller, for the reason the wall caches them: a card
@@ -21,26 +22,27 @@
  * every paint.
  */
 
-import type { Board, BoardGroup, Sentence } from '../core/types.ts';
-import { firstFree, MAX_BOARD_SIDE, updateGroup, zoneBox, zoneMap } from '../core/board.ts';
+import type { Board, Sentence, ZoneStyle } from '../core/types.ts';
+import { blockAt, firstFree, labelColour, labelField, MAX_BOARD_SIDE, newZoneId, zoneBorder, zoneBox, zoneJoint, zoneMap } from '../core/board.ts';
 import { el } from './dom.ts';
 import { t } from '../i18n/index.ts';
 
 /**
- * The colours a group can be. Pale on purpose: they go *behind* a symbol on
- * paper, where a strong colour would fight the picture and eat the toner. Six
- * is enough to tell groups apart and few enough to pick at a glance; the
- * seventh is whichever the household wants.
+ * The eight hues a group can be, each in two strengths: `frame` strong enough
+ * to be a line, `fill` pale enough for a white card to stay a white card on
+ * it, and for the toner. Frame and fill are picked apart — a yellow frame on
+ * a blue ground is allowed — but the hues are the same eight in both rows,
+ * so that the two rows read as one palette.
  */
-export const ZONE_COLOURS: { colour: string; name: string }[] = [
-  { colour: '#fff1b8', name: 'ui.zone_yellow' },
-  { colour: '#d9f2d0', name: 'ui.zone_green' },
-  { colour: '#d6e9fb', name: 'ui.zone_blue' },
-  { colour: '#fbdde6', name: 'ui.zone_pink' },
-  { colour: '#ffe3c4', name: 'ui.zone_orange' },
-  /* Sand, not grey: grey on white paper reads as „nothing", or as a field
-     that is switched off. */
-  { colour: '#f1e6d3', name: 'ui.zone_sand' },
+export const ZONE_COLOURS: { frame: string; fill: string; name: string }[] = [
+  { frame: '#f0b323', fill: '#fff1b3', name: 'ui.zone_yellow' },
+  { frame: '#4caf50', fill: '#d8f2d2', name: 'ui.zone_green' },
+  { frame: '#3f88e0', fill: '#d8e9fc', name: 'ui.zone_blue' },
+  { frame: '#e35d8f', fill: '#fddfe9', name: 'ui.zone_pink' },
+  { frame: '#f0862b', fill: '#ffe3c9', name: 'ui.zone_orange' },
+  { frame: '#9366d6', fill: '#eadffb', name: 'ui.zone_purple' },
+  { frame: '#23ada0', fill: '#d3f2ee', name: 'ui.zone_teal' },
+  { frame: '#dd4a44', fill: '#fbdad8', name: 'ui.zone_red' },
 ];
 
 export interface BoardHandlers {
@@ -52,11 +54,10 @@ export interface BoardHandlers {
   /** A card that does not exist yet, made straight into this field. */
   onNewCardAt: (index: number) => void;
   onNewCard: () => void;
-  /** A new group, in this colour. */
-  onAddGroup: (colour: string) => void;
-  /** This group, changed: moved, drawn out, or recoloured. */
-  onGroup: (index: number, patch: Partial<BoardGroup>) => void;
-  onRemoveGroup: (index: number) => void;
+  /** These fields into that group, drawn like this. */
+  onGroup: (indices: number[], id: string, style: ZoneStyle) => void;
+  /** The group gone: its fields bare. */
+  onDissolve: (id: string) => void;
 }
 
 export interface BoardState {
@@ -75,16 +76,23 @@ export interface BoardView {
 }
 
 const MIME = 'text/plain';
+/** How far the pointer has to travel before a press on the air is a frame and not a click. */
+const DRAG_THRESHOLD = 6;
 
 export function boardView(handlers: BoardHandlers): BoardView {
   let dragging: string | null = null;
-  /** What was last drawn, so a group being dragged can be redrawn without the store. */
+  /** What was last drawn, so the selection can be redrawn without the store. */
   let current: BoardState | null = null;
-  /** The grid's children, kept apart: a grab rebuilds the fields under it and must keep its own node. */
-  let cellNodes: HTMLElement[] = [];
-  let overlayNodes: HTMLElement[] = [];
-  /** Which group's menu is open, if any. */
-  let menuFor: number | null = null;
+  /** The marked fields, by index. Kept until „Fertig" or Escape. */
+  let selected = new Set<number>();
+  /**
+   * The group the panel is changing: the one the marked fields are all in,
+   * or one made on the first choice for fields that were in none. Reset with
+   * the selection.
+   */
+  let editing: string | null = null;
+  /** The panel, one node while the selection lasts, so typing a name is not interrupted by a repaint. */
+  let panel: HTMLElement | null = null;
 
   const sideInput = (label: string, onInput: (n: number) => void): HTMLInputElement => {
     const input = el('input', {
@@ -98,23 +106,10 @@ export function boardView(handlers: BoardHandlers): BoardView {
   let rows = 0;
   const colsInput = sideInput(t('ui.columns'), (n) => handlers.onResize(n, rows));
   const rowsInput = sideInput(t('ui.rows'), (n) => handlers.onResize(cols, n));
-  /* A new group takes the palette colour the board has fewest of, so five
-     groups made in a row come out in five colours without anybody choosing. */
-  const nextColour = (): string => {
-    const used = (current?.board.groups ?? []).map((g) => g.colour);
-    const counts = ZONE_COLOURS.map((z) => used.filter((u) => u === z.colour).length);
-    return ZONE_COLOURS[counts.indexOf(Math.min(...counts))]!.colour;
-  };
-  const addGroup = el('button', {
-    class: 'btn quiet sm', text: t('ui.group_add'),
-    attrs: { type: 'button' },
-    on: { click: () => handlers.onAddGroup(nextColour()) },
-  });
   const head = el('div', { class: 'board-head' },
     el('label', { class: 'small', text: t('ui.columns') }, colsInput),
     el('span', { class: 'faint', text: '×', attrs: { 'aria-hidden': 'true' } }),
-    el('label', { class: 'small', text: t('ui.rows') }, rowsInput),
-    addGroup);
+    el('label', { class: 'small', text: t('ui.rows') }, rowsInput));
   const grid = el('div', { class: 'board', attrs: { role: 'list' } });
   const tray = el('div', { class: 'tray' });
 
@@ -170,129 +165,293 @@ export function boardView(handlers: BoardHandlers): BoardView {
     });
   };
 
-  /** The field under a point on the page, as column and row, clamped to the grid. */
-  const fieldAt = (x: number, y: number): { col: number; row: number } => {
-    const first = grid.querySelector<HTMLElement>('.cell')?.getBoundingClientRect();
-    const last = [...grid.querySelectorAll<HTMLElement>('.cell')].at(-1)?.getBoundingClientRect();
-    if (!first || !last) return { col: 0, row: 0 };
-    const width = (last.right - first.left) / cols;
-    const height = (last.bottom - first.top) / rows;
-    return {
-      col: Math.min(cols - 1, Math.max(0, Math.floor((x - first.left) / width))),
-      row: Math.min(rows - 1, Math.max(0, Math.floor((y - first.top) / height))),
-    };
+  /* ------------------------------------------------------- the selection --- */
+
+  const cellNodes = (): HTMLElement[] => [...grid.querySelectorAll<HTMLElement>('.cell')];
+
+  /** Which fields a frame on the page touches. */
+  const fieldsUnder = (a: { x: number; y: number }, b: { x: number; y: number }): number[] => {
+    const left = Math.min(a.x, b.x); const right = Math.max(a.x, b.x);
+    const top = Math.min(a.y, b.y); const bottom = Math.max(a.y, b.y);
+    const hit: number[] = [];
+    cellNodes().forEach((cell, index) => {
+      const r = cell.getBoundingClientRect();
+      if (r.right > left && r.left < right && r.bottom > top && r.top < bottom) hit.push(index);
+    });
+    return hit;
+  };
+
+  /* The group being edited is kept while the marks change: a field pressed
+     into the selection while the panel is open joins that group on the next
+     choice, which is how a group grows. It is let go only when none of its
+     fields is marked any more — see paintSelection(). */
+  const setSelection = (next: Iterable<number>) => {
+    selected = new Set(next);
+    if (current) paintSelection();
   };
 
   /**
-   * A pointer on a group's badge or corner: down, move, up. Moving redraws
-   * the grid from a changed copy without touching the store; up writes the
-   * change once, or, when nothing moved, opens the badge's menu.
+   * A press on a field's air. Alone it marks the field, or unmarks it; on a
+   * coloured field with nothing marked yet it marks the whole block, so a
+   * group is changed as one. Held and moved, it draws a frame instead, and
+   * every field the frame touches is marked when it is let go.
    */
-  const grab = (node: HTMLElement, overlay: HTMLElement, index: number, change: (g: BoardGroup, at: { col: number; row: number }) => Partial<BoardGroup>, onTap?: () => void) => {
-    node.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || !current) return;
-      event.preventDefault();
-      event.stopPropagation();
-      node.setPointerCapture(event.pointerId);
-      const group = current.board.groups?.[index];
-      if (!group) return;
-      let patch: Partial<BoardGroup> | null = null;
-      let last = '';
-      const move = (e: PointerEvent) => {
-        const at = fieldAt(e.clientX, e.clientY);
-        const next = change(group, at);
-        const key = JSON.stringify(next);
-        if (key === last) return;
-        last = key;
-        patch = next;
-        /* The fields are redrawn from the changed copy and this overlay is
-           moved; the other overlays and this node stay as they are, because
-           a node that is replaced mid-drag takes the pointer capture with it
-           and the drag ends in silence. */
-        const preview = updateGroup(current!.board, index, next);
-        paintCells({ ...current!, board: preview });
-        place(overlay, preview.groups![index]!);
-      };
-      const up = () => {
-        node.removeEventListener('pointermove', move);
-        node.removeEventListener('pointerup', up);
-        node.removeEventListener('pointercancel', up);
-        if (patch) handlers.onGroup(index, patch);
-        else onTap?.();
-      };
-      node.addEventListener('pointermove', move);
-      node.addEventListener('pointerup', up);
-      node.addEventListener('pointercancel', up);
-    });
+  const pressAir = (event: PointerEvent, index: number) => {
+    if (event.button !== 0 || !current) return;
+    if ((event.target as HTMLElement).closest('.board-card, .cell__add, .group-panel')) return;
+    event.preventDefault();
+    const start = { x: event.clientX, y: event.clientY };
+    let frame: HTMLElement | null = null;
+    const gridBox = () => grid.getBoundingClientRect();
+    const move = (e: PointerEvent) => {
+      const here = { x: e.clientX, y: e.clientY };
+      if (!frame) {
+        if (Math.hypot(here.x - start.x, here.y - start.y) < DRAG_THRESHOLD) return;
+        frame = el('div', { class: 'board__frame' });
+        grid.appendChild(frame);
+        grid.setPointerCapture(e.pointerId);
+      }
+      const g = gridBox();
+      Object.assign(frame.style, {
+        left: `${Math.min(start.x, here.x) - g.left}px`, top: `${Math.min(start.y, here.y) - g.top}px`,
+        width: `${Math.abs(here.x - start.x)}px`, height: `${Math.abs(here.y - start.y)}px`,
+      });
+      const hit = new Set(fieldsUnder(start, here));
+      cellNodes().forEach((cell, i) => cell.classList.toggle('cell--framed', hit.has(i)));
+    };
+    const up = (e: PointerEvent) => {
+      grid.removeEventListener('pointermove', move);
+      grid.removeEventListener('pointerup', up);
+      grid.removeEventListener('pointercancel', up);
+      cellNodes().forEach((cell) => cell.classList.remove('cell--framed'));
+      if (frame) {
+        frame.remove();
+        const hit = fieldsUnder(start, { x: e.clientX, y: e.clientY });
+        setSelection(new Set([...selected, ...hit]));
+        return;
+      }
+      const map = zoneMap(current!.board);
+      if (selected.has(index)) { selected.delete(index); setSelection(selected); return; }
+      if (selected.size === 0 && map.zones[index]) { setSelection(blockAt(map, index)); return; }
+      setSelection([...selected, index]);
+    };
+    grid.addEventListener('pointermove', move);
+    grid.addEventListener('pointerup', up);
+    grid.addEventListener('pointercancel', up);
   };
 
-  /** The badge's menu: the colours, one of one's own, and the way out. */
-  const menu = (index: number, group: BoardGroup): HTMLElement => {
-    const swatch = (colour: string, label: string) => el('button', {
-      class: `group-menu__swatch${group.colour === colour ? ' group-menu__swatch--on' : ''}`,
-      style: { '--zone': colour },
-      attrs: { type: 'button', 'aria-label': label, 'aria-pressed': String(group.colour === colour) },
-      on: { click: () => { menuFor = null; handlers.onGroup(index, { colour }); } },
+  /* ----------------------------------------------------------- the panel --- */
+
+  /** The style the panel is showing: the group's, or nothing yet. */
+  const styleNow = (): ZoneStyle => (editing && current ? zoneMap(current.board).styles[editing] ?? {} : {});
+
+  /**
+   * One choice in the panel. The marked fields join the group being edited —
+   * or a new one, on the first choice — and the group takes the style, whole.
+   * Nothing waits for „Fertig": the Tafel is the preview.
+   */
+  const choose = (patch: Partial<ZoneStyle>) => {
+    if (!current) return;
+    const style = { ...styleNow(), ...patch };
+    if (!editing) editing = newZoneId(current.board);
+    handlers.onGroup([...selected], editing, style);
+  };
+
+  /**
+   * The panel over the marked fields: how many, and the three things a group
+   * can have — a name, a frame, a colour behind — each with „Kein" first,
+   * each taking effect on the spot. „Gruppe entfernen" takes all three away;
+   * „Fertig" only puts the marks down.
+   */
+  const groupPanel = (): HTMLElement => {
+    const style = styleNow();
+    const count = el('span', { class: 'group-panel__count' });
+    const name = el('input', {
+      class: 'field group-panel__name',
+      attrs: { type: 'text', placeholder: t('ui.group_name_none'), 'aria-label': t('ui.group_name'), maxlength: 40 },
     });
-    const own = el('input', {
-      class: 'group-menu__own',
-      attrs: { type: 'color', value: group.colour, 'aria-label': t('ui.zone_custom') },
-      on: { change: () => { menuFor = null; handlers.onGroup(index, { colour: own.value }); } },
-    });
-    return el('div', { class: 'group-menu', attrs: { role: 'group', 'aria-label': t('ui.group_menu', { n: index + 1 }) },
-      on: { pointerdown: (e) => e.stopPropagation() } },
-      el('div', { class: 'group-menu__row' },
-        ...ZONE_COLOURS.map(({ colour, name }) => swatch(colour, t(name))),
-        el('label', { class: 'group-menu__pick', attrs: { title: t('ui.zone_custom') } }, own, el('span', { text: '…', attrs: { 'aria-hidden': 'true' } }))),
-      el('button', {
-        class: 'linklike group-menu__remove', text: t('ui.group_remove'),
-        attrs: { type: 'button' },
-        on: { click: () => { menuFor = null; handlers.onRemoveGroup(index); } },
+    name.value = style.name ?? '';
+    /* Written when the typing pauses, and on leaving the field: every
+       keystroke straight to the store would be a write and a repaint each. */
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const flush = () => {
+      if (pending) { clearTimeout(pending); pending = null; }
+      if (name.value.trim() !== (styleNow().name ?? '')) choose({ name: name.value.trim() || undefined });
+    };
+    name.addEventListener('input', () => { if (pending) clearTimeout(pending); pending = setTimeout(flush, 400); });
+    name.addEventListener('blur', flush);
+    name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); flush(); } });
+
+    const row = (what: string, key: 'frame' | 'fill', ownStart: string) => {
+      const chosen = style[key];
+      const none = el('button', {
+        class: `group-panel__swatch group-panel__swatch--none${chosen ? '' : ' group-panel__swatch--on'}`,
+        attrs: { type: 'button', 'aria-label': `${what}: ${t('ui.none')}`, 'aria-pressed': String(!chosen) },
+        on: { click: () => choose({ [key]: undefined }) },
+      });
+      const swatches = ZONE_COLOURS.map((c) => el('button', {
+        class: `group-panel__swatch${chosen === c[key] ? ' group-panel__swatch--on' : ''}`,
+        style: { '--c': c[key] },
+        attrs: { type: 'button', 'aria-label': t('ui.colour_for', { what, colour: t(c.name) }), 'aria-pressed': String(chosen === c[key]) },
+        on: { click: () => choose({ [key]: c[key] }) },
       }));
+      const own = el('input', {
+        class: 'group-panel__own',
+        attrs: { type: 'color', value: chosen ?? ownStart, 'aria-label': t('ui.own_colour_for', { what }) },
+        on: { change: () => choose({ [key]: own.value }) },
+      });
+      const isOwn = Boolean(chosen) && !ZONE_COLOURS.some((c) => c[key] === chosen);
+      return [
+        el('span', { class: 'group-panel__label', text: what }),
+        el('div', { class: 'group-panel__row', attrs: { role: 'group', 'aria-label': what } },
+          none, ...swatches,
+          el('label', { class: `group-panel__wheel${isOwn ? ' group-panel__swatch--on' : ''}`, attrs: { title: t('ui.own_colour_for', { what }) } }, own)),
+      ];
+    };
+
+    const node = el('div', { class: 'group-panel', attrs: { role: 'group', 'aria-label': t('ui.selection') },
+      on: { pointerdown: (e) => e.stopPropagation() } },
+      el('div', { class: 'group-panel__head' }, count,
+        el('button', { class: 'group-panel__done', text: t('ui.done'), attrs: { type: 'button' }, on: { click: () => { flush(); setSelection([]); } } })),
+      el('span', { class: 'group-panel__label', text: t('ui.group_name') }), name,
+      ...row(t('ui.group_frame'), 'frame', '#3f88e0'),
+      ...row(t('ui.group_fill'), 'fill', '#d8e9fc'),
+      el('div', { class: 'group-panel__foot' },
+        el('button', {
+          class: 'group-panel__remove', text: t('ui.remove_group'), attrs: { type: 'button' },
+          on: { click: () => { const id = editing; setSelection([]); if (id) handlers.onDissolve(id); } },
+        })));
+    node.querySelector('.group-panel__count')!.textContent = selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size });
+    return node;
   };
 
-  /* The menu closes on a press anywhere else, and on Escape. */
-  document.addEventListener('pointerdown', (event) => {
-    if (menuFor === null || !current) return;
-    if ((event.target as HTMLElement).closest('.group__badge, .group-menu')) return;
-    menuFor = null;
-    paintGroups(current);
-  });
+  /**
+   * The panel as the board now is: the count, and which swatch is pressed.
+   * Refreshed rather than rebuilt, for the name being typed — see `refresh`.
+   */
+  const refreshPanel = () => {
+    if (!panel) return;
+    const style = styleNow();
+    panel.querySelector('.group-panel__count')!.textContent = selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size });
+    const name = panel.querySelector<HTMLInputElement>('.group-panel__name')!;
+    if (document.activeElement !== name && name.value.trim() !== (style.name ?? '')) name.value = style.name ?? '';
+    panel.querySelectorAll<HTMLElement>('.group-panel__row').forEach((row, i) => {
+      const key = i === 0 ? 'frame' : 'fill';
+      const chosen = style[key];
+      let ownOn = Boolean(chosen);
+      row.querySelectorAll<HTMLElement>('.group-panel__swatch').forEach((sw) => {
+        const c = sw.style.getPropertyValue('--c') || undefined;
+        const on = c ? c === chosen : !chosen;
+        if (on && c) ownOn = false;
+        sw.classList.toggle('group-panel__swatch--on', on);
+        sw.setAttribute('aria-pressed', String(on));
+      });
+      row.querySelector('.group-panel__wheel')?.classList.toggle('group-panel__swatch--on', ownOn);
+    });
+    panel.querySelector<HTMLButtonElement>('.group-panel__remove')!.disabled = !editing;
+  };
+
+  /**
+   * The marks on the fields, and the panel in the head row above the grid.
+   * There rather than floating over the fields: a bar over the first row
+   * covered the very tiles the next press was meant for.
+   */
+  function paintSelection(): void {
+    cellNodes().forEach((cell, i) => {
+      cell.classList.toggle('cell--selected', selected.has(i));
+      cell.setAttribute('aria-selected', String(selected.has(i)));
+    });
+    if (selected.size === 0) { panel?.remove(); panel = null; editing = null; return; }
+    /* The group the marks are in, when they are all in one: the panel then
+       shows and changes that group rather than starting a new one. A group
+       being edited is kept as long as one of its fields is still marked. */
+    if (current) {
+      const zones = zoneMap(current.board).zones;
+      const ids = new Set([...selected].map((i) => zones[i]));
+      if (editing && !ids.has(editing)) editing = null;
+      if (!editing && ids.size === 1) editing = [...ids][0];
+    }
+    if (!panel) { panel = groupPanel(); head.appendChild(panel); }
+    refreshPanel();
+  }
+
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && menuFor !== null && current) { menuFor = null; paintGroups(current); }
+    if (event.key === 'Escape' && selected.size > 0) setSelection([]);
   });
 
-  /** Where an overlay lies: over its group's fields. */
-  const place = (overlay: HTMLElement, group: BoardGroup) => {
-    overlay.style.gridColumn = `${group.col + 1} / span ${group.cols}`;
-    overlay.style.gridRow = `${group.row + 1} / span ${group.rows}`;
+  /* Keys on a field: Space marks it, Shift with an arrow marks the neighbour too. */
+  const keysOn = (cell: HTMLElement, index: number) => {
+    cell.addEventListener('keydown', (event) => {
+      if (event.target !== cell) return;
+      if (event.key === ' ') { event.preventDefault(); selected.has(index) ? selected.delete(index) : selected.add(index); setSelection(selected); return; }
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[event.key];
+      if (step === undefined) return;
+      const next = index + step;
+      if (next < 0 || next >= cols * rows) return;
+      if ((step === -1 && index % cols === 0) || (step === 1 && next % cols === 0)) return;
+      event.preventDefault();
+      if (event.shiftKey) setSelection([...selected, index, next]);
+      cellNodes()[next]?.focus();
+    });
   };
 
-  /** The fields, drawn afresh. In place, one for one, when the grid already has them. */
-  function paintCells(state: BoardState): void {
+  function render(state: BoardState): void {
+    current = state;
     const { board, sentences, cards } = state;
+    cols = board.cols;
+    rows = board.rows;
+    refresh(colsInput, cols);
+    refresh(rowsInput, rows);
+    selected = new Set([...selected].filter((i) => i < board.cells.length));
+
     const byId = new Map(sentences.map((s) => [s.id, s]));
     const map = zoneMap(board);
-    grid.style.setProperty('--cols', String(board.cols));
+    grid.style.setProperty('--cols', String(cols));
     const nodes: HTMLElement[] = [];
     board.cells.forEach((id, index) => {
       const card = id ? cards.get(id) : undefined;
       const zone = map.zones[index];
       const cell = el('div', {
         class: `cell${card ? '' : ' cell--free'}${zone ? ' cell--zoned' : ''}`,
-        /* Placed by hand rather than flowing, so a group can be placed over
-           the same fields: auto-placement would step around it. */
-        style: { gridColumn: String((index % board.cols) + 1), gridRow: String(Math.floor(index / board.cols) + 1) },
-        attrs: { role: 'listitem', 'aria-label': t('ui.board_field', { n: index + 1 }) },
+        attrs: { role: 'listitem', tabindex: 0, 'aria-label': t('ui.board_field', { n: index + 1 }), 'aria-selected': 'false' },
       });
       /* The colour is a layer under the card, stepped in by half a gutter
          where the block ends, so that the same rule draws it on paper — see
          boardSheet() in printSheet.ts, which reads the same zoneBox(). */
-      const box = zoneBox(map, index, '4px', '12px', '-1px');
+      const box = zoneBox(map, index, '4px', '12px', '-2px');
+      const style = zone ? map.styles[zone] : undefined;
       if (zone && box) {
-        cell.appendChild(el('div', { class: 'cell__zone', style: { '--zone': zone, inset: box.inset, borderRadius: box.borderRadius } }));
+        cell.appendChild(el('div', {
+          class: 'cell__zone',
+          style: {
+            '--zone': style?.fill ?? 'transparent', inset: box.inset, borderRadius: box.borderRadius,
+            borderColor: style?.frame ?? 'transparent', borderWidth: style?.frame ? zoneBorder(map, index, '2px') ?? '0' : '0',
+            clipPath: box.clipPath ?? '',
+          },
+        }));
+        /* Where the block turns an inner corner at this field, the frame is
+           carried round it here — see zoneJoint(). */
+        if (style?.frame) {
+          for (const corner of box.crooks) {
+            const j = zoneJoint(corner, '4px', '-2px', '2px');
+            cell.appendChild(el('div', {
+              class: 'cell__joint',
+              style: {
+                ...j.position, width: j.size, height: j.size,
+                backgroundImage: `linear-gradient(${style.frame}, ${style.frame}), linear-gradient(${style.frame}, ${style.frame})`,
+                backgroundPosition: `${j.x} 0, 0 ${j.y}`, backgroundSize: `2px 100%, 100% 2px`,
+              },
+            }));
+          }
+        }
+        // The name, a shield on the block's top left edge, on the group's first field.
+        if (style?.name && labelField(map, zone) === index) {
+          cell.appendChild(el('div', { class: 'cell__shield', text: style.name, style: { '--shield': labelColour(style) } }));
+        }
       }
       target(cell, 'cell--over', (dropId) => handlers.onPlace(dropId, index));
+      cell.addEventListener('pointerdown', (event) => pressAir(event, index));
+      keysOn(cell, index);
 
       if (card && id) {
         const wrap = el('div', { class: 'board-card' },
@@ -316,75 +475,8 @@ export function boardView(handlers: BoardHandlers): BoardView {
       }
       nodes.push(cell);
     });
-    const inPlace = cellNodes.length === nodes.length && cellNodes.every((n) => n.parentNode === grid);
-    if (inPlace) cellNodes.forEach((old, i) => old.replaceWith(nodes[i]!));
-    else { for (const old of cellNodes) old.remove(); grid.prepend(...nodes); }
-    cellNodes = nodes;
-  }
-
-  /** The groups, laid over their fields. The layer itself lets every press
-      through to the cards; only the badge and the corner take one. */
-  function paintGroups(state: BoardState): void {
-    const { board } = state;
-    /* Whichever badge had the keyboard keeps it: an arrow key moves the group,
-       the board is redrawn, and the next arrow must still find its badge. */
-    const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.group__badge')?.dataset.group;
-    const nodes: HTMLElement[] = [];
-    (board.groups ?? []).forEach((group, index) => {
-      const badge = el('button', {
-        class: 'group__badge',
-        style: { '--zone': group.colour },
-        attrs: { type: 'button', 'data-group': String(index), 'aria-label': t('ui.group_badge', { n: index + 1 }), 'aria-expanded': String(menuFor === index) },
-        on: {
-          keydown: (event: KeyboardEvent) => {
-            const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
-            if (step) {
-              event.preventDefault();
-              handlers.onGroup(index, event.shiftKey
-                ? { cols: group.cols + step[0]!, rows: group.rows + step[1]! }
-                : { col: group.col + step[0]!, row: group.row + step[1]! });
-            } else if (event.key === 'Delete' || event.key === 'Backspace') {
-              event.preventDefault();
-              handlers.onRemoveGroup(index);
-            }
-          },
-        },
-      });
-      const corner = el('span', {
-        class: 'group__corner',
-        attrs: { role: 'button', tabindex: 0, 'aria-label': t('ui.group_corner', { n: index + 1 }) },
-      });
-      const overlay = el('div', { class: `group${menuFor === index ? ' group--open' : ''}` },
-        badge, corner, menuFor === index ? menu(index, group) : null);
-      place(overlay, group);
-      grab(badge, overlay, index, (_g, at) => ({ col: at.col, row: at.row }), () => {
-        menuFor = menuFor === index ? null : index;
-        paintGroups(current!);
-      });
-      grab(corner, overlay, index, (g, at) => ({ cols: at.col - g.col + 1, rows: at.row - g.row + 1 }));
-      nodes.push(overlay);
-    });
-    for (const old of overlayNodes) old.remove();
-    grid.append(...nodes);
-    overlayNodes = nodes;
-    const keep = menuFor !== null ? String(menuFor) : focused;
-    if (keep !== undefined) grid.querySelector<HTMLElement>(`.group__badge[data-group="${keep}"]`)?.focus();
-  }
-
-  function paintGrid(state: BoardState): void {
-    paintCells(state);
-    paintGroups(state);
-  }
-
-  function render(state: BoardState): void {
-    current = state;
-    const { board, sentences, cards } = state;
-    cols = board.cols;
-    rows = board.rows;
-    refresh(colsInput, cols);
-    refresh(rowsInput, rows);
-    if (menuFor !== null && !(board.groups ?? [])[menuFor]) menuFor = null;
-    paintGrid(state);
+    grid.replaceChildren(...nodes);
+    paintSelection();
 
     const placed = new Set(board.cells);
     const waiting = sentences.filter((s) => !placed.has(s.id));

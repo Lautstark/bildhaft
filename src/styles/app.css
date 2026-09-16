@@ -1151,98 +1151,128 @@ footer.footer {
 .board-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; padding: 0 4px; }
 .board-head label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); }
 .board-head__n { width: 4.5em; padding: 4px 6px; }
-/* „+ Gruppe", at the head's right edge. */
-.board-head > .btn { margin-left: auto; }
-
-/* A group: a layer over its fields that lets every press through to the
-   cards, carrying the two things that take one — the badge at its top left
-   and the corner at its bottom right. */
-.group { position: relative; pointer-events: none; z-index: 1; }
-.group--open { z-index: 3; }
-.group__badge {
-  position: absolute; top: 2px; left: 2px;
-  width: 22px; height: 22px; padding: 0;
-  pointer-events: auto; cursor: grab;
-  border: 2px solid #fff; border-radius: 50%;
-  background: var(--zone);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+/* Marking fields. A press on a field's air marks it; the card in it keeps
+   its own presses, which is why the air is a little wider on a Tafel. */
+.cell { cursor: crosshair; }
+.cell .board-card { cursor: grab; }
+.cell .cell__add { cursor: pointer; }
+.cell:hover:not(:has(.board-card:hover, .cell__add:hover)) { box-shadow: inset 0 0 0 2px rgba(255, 107, 53, .55); }
+.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cell--framed { box-shadow: inset 0 0 0 2px rgba(255, 107, 53, .55); }
+.cell--selected { box-shadow: inset 0 0 0 3px var(--accent); }
+.cell--selected::after {
+  content: "✓"; position: absolute; top: 6px; right: 6px; z-index: 3;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
+  display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
 }
-.group__badge:active { cursor: grabbing; }
-.group__badge:focus-visible, .group--open .group__badge { outline: 2px solid var(--accent); outline-offset: 1px; }
-.group__corner {
-  position: absolute; right: 1px; bottom: 1px;
-  width: 16px; height: 16px;
-  pointer-events: auto; cursor: nwse-resize;
-  border-right: 3px solid #8a8a8a; border-bottom: 3px solid #8a8a8a;
-  border-bottom-right-radius: 5px;
-  opacity: .55;
-}
-.group__corner:hover, .group__corner:focus-visible { opacity: 1; border-color: var(--accent); outline: none; }
-/* The badge's menu: the colours in a row, one of one's own, and the way out. */
-.group-menu {
-  position: absolute; top: 28px; left: 2px;
-  pointer-events: auto;
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px;
+/* The frame while the pointer is drawn across fields. */
+.board__frame { position: absolute; z-index: 6; border: 2px solid var(--accent); background: rgba(255, 107, 53, .08); border-radius: 8px; pointer-events: none; }
+/* The panel over the marked fields, in the head row: how many, then the
+   three things a group can have, each row starting with „Kein". */
+.group-panel {
+  margin-left: auto;
+  display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center;
+  padding: 10px 14px 12px;
   background: var(--surface); color: var(--text);
-  border: 1px solid var(--line); border-radius: var(--radius-md);
+  border: 1px solid var(--line); border-radius: 14px;
   box-shadow: var(--shadow);
-  white-space: nowrap;
+  font-size: 13px;
+  cursor: default;
 }
-.group-menu__row { display: flex; align-items: center; gap: 6px; }
-.group-menu__swatch {
-  width: 24px; height: 24px; padding: 0; cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, .15); border-radius: 50%;
-  background: var(--zone);
-}
-.group-menu__swatch:hover { border-color: var(--text-dim); }
-.group-menu__swatch--on { outline: 2px solid var(--accent); outline-offset: 2px; }
-.group-menu__pick {
-  position: relative; display: inline-grid; place-items: center;
-  width: 24px; height: 24px; cursor: pointer;
-  border: 1px dashed var(--line); border-radius: 50%;
-  color: var(--text-dim); font-size: 13px; line-height: 1;
-}
-.group-menu__pick:hover { border-color: var(--text-dim); color: var(--text); }
-.group-menu__own { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.group-menu__remove { align-self: flex-start; font-size: 12px; color: var(--danger, var(--text-dim)); }
-.zone-swatch--none {
+.group-panel__head, .group-panel__foot { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.group-panel__head { justify-content: space-between; }
+.group-panel__foot { justify-content: flex-end; margin-top: 2px; }
+.group-panel__count { font-weight: 600; }
+.group-panel__label { color: var(--text-dim); }
+.group-panel__name { font: inherit; font-size: 13px; padding: 4px 8px; width: 100%; box-sizing: border-box; }
+.group-panel__row { display: flex; align-items: center; gap: 7px; }
+.group-panel__swatch { width: 22px; height: 22px; padding: 0; cursor: pointer; border: 1px solid rgba(0, 0, 0, .15); border-radius: 50%; background: var(--c); }
+.group-panel__swatch--none {
   background: transparent;
   background-image: linear-gradient(135deg, transparent 45%, var(--text-dim) 45%, var(--text-dim) 55%, transparent 55%);
+  border-color: var(--line);
 }
+.group-panel__swatch--on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.group-panel__swatch:hover, .group-panel__wheel:hover { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A colour of one's own: the wheel, with the browser's picker behind it. */
+.group-panel__wheel {
+  position: relative; display: block; width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+  background: conic-gradient(#f0b323, #4caf50, #3f88e0, #9366d6, #e35d8f, #f0862b, #f0b323);
+}
+.group-panel__wheel::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--surface); pointer-events: none; }
+.group-panel__own { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.group-panel__done, .group-panel__remove {
+  font: inherit; font-size: 13px; padding: 4px 10px; cursor: pointer; border-radius: 8px;
+  border: 1px solid var(--line); background: transparent; color: var(--text);
+}
+.group-panel__done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.group-panel__done:hover { filter: brightness(.95); }
+.group-panel__remove:hover { background: var(--surface-2); }
+.group-panel__remove[disabled] { opacity: .45; cursor: default; }
 .board {
   display: grid;
-  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  /* Tiles up to 170px, and the board only as wide as its tiles, in the middle
+     of the main column: a 2 × 2 Tafel is four hand-sized squares, not four
+     slabs across the whole screen, and a 12 × 12 one shrinks its tiles
+     equally until it fits. */
+  grid-template-columns: repeat(var(--cols), minmax(0, 170px));
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   /* Every row as tall as the tallest: a free field is the size of a full one,
      on screen as on paper, or the grid stops looking like one the moment the
      first card lands. */
   grid-auto-rows: 1fr;
-  gap: 0;
-  padding: 6px;
+  /* A seam between the fields, so that each field is a tile one can see and
+     press — the ground shows through here. Narrower than the block's inset
+     (4px in zoneBox below), and covered by a block that goes on across it. */
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   /* Paper, in both themes, on purpose: the Tafel is the one thing on this
      screen that is a preview of a sheet, and a block of colour that is pale
      on paper has to be pale here, with white cards on it, or what is seen is
-     not what is printed. The chrome around it stays the app's. */
-  background: #f4f3ef;
+     not what is printed. The chrome around it stays the app's. Darker than
+     the tiles by a step, which is what makes them tiles. */
+  background: #e4e1d9;
   color: #222;
   position: relative;
   z-index: 0;
 }
-/* A field: the card and the air around it. No gap between fields — the air
-   is the cell's padding, so a block of colour under two neighbours is one
-   piece with no seam through it. */
+/* A field: a tile, with the card in the middle of it and room around. The room
+   is the cell's padding, and it is what is pressed to mark the field — the
+   tile is drawn so that there is visibly something there to press. Square
+   while nothing is on it: a Tafel of free fields is a grid of squares, not a
+   ladder of slats. A card taller than that stretches every row with it. */
 .cell {
   position: relative;
-  min-height: 72px;
+  aspect-ratio: 1;
   display: grid;
-  padding: 8px;
+  padding: 12px;
+  background: #f6f5f1;
+  border-radius: 8px;
 }
+/* A coloured field paints nothing of its own: its block lies under it (in the
+   board's stacking context, below every cell), and a tile fill on top would
+   hide the block. */
+.cell--zoned { background: transparent; }
 /* The block of colour, under the card. Its inset and corners come from
    zoneBox(): stepped in by half a gutter where the block ends, rounded only
    there, square where a neighbour of the same colour goes on. */
-.cell__zone { position: absolute; z-index: -1; background: var(--zone); }
+.cell__zone { position: absolute; z-index: -1; box-sizing: border-box; background: var(--zone); border: 0 solid transparent; pointer-events: none; }
+/* The frame round an inner corner of the block: two strips, drawn as backgrounds — see zoneJoint(). */
+.cell__joint { position: absolute; z-index: -1; background-repeat: no-repeat; pointer-events: none; }
+/* The group's name, a shield on the frame's top left edge, over the card. */
+.cell__shield {
+  position: absolute; z-index: 3; top: -5px; left: 14px;
+  max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 1px 9px; border-radius: 999px;
+  background: var(--shield); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 1.5; letter-spacing: .02em;
+  pointer-events: none;
+}
 .cell .word { background: #fff; color: #222; border: 1px solid #dcdcdc; border-radius: 6px; }
 .cell .word__name { color: #222; }
 .cell .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
@@ -1257,14 +1287,12 @@ footer.footer {
    the grid item, because its default of auto let a 96px picture plus padding
    push the card out of a narrow field — seven columns in an 840px main made
    the cards overlap and the blocks behind them vanish into slivers. */
-.cell .board-card { height: 100%; min-width: 0; }
+.cell .board-card { height: 100%; min-width: 0; position: relative; z-index: 1; }
 .cell .word { box-sizing: border-box; height: 100%; min-width: 0; padding: 6px; gap: 4px; }
-/* The picture in a field is capped, so a field with a card is not much taller
-   than one without. Without the cap a field was as wide as its column and the
-   picture square to it: the first card dropped made every row of a 4 × 3 grid
-   170px tall and pushed the tray below the fold, and the second card could
-   not be dragged from where it could not be seen. */
-.cell .word__pic { width: min(100%, 96px); height: auto; aspect-ratio: 1; margin: 0 auto; }
+/* The picture takes the height the field leaves it and stays square, so a
+   card fills its tile at any grid size — three columns or twelve — rather
+   than sitting at one fixed size in the middle of whatever tile it got. */
+.cell .word__pic { flex: 1 1 0; min-height: 0; width: auto; height: auto; max-width: 100%; aspect-ratio: 1; margin: 0 auto; }
 .cell .word__name { font-size: 12px; text-align: center; }
 .cell__add {
   display: grid; place-items: center;
