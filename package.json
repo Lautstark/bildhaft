@@ -6,14 +6,14 @@
   "description": "Turn German sentences into AAC pictograms, correct them, and print them. Runs entirely in the browser.",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --force",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json --threshold error",
     "preflight": "node tools/installcheck.mjs",
     "test:e2e": "node tools/installcheck.mjs && npm run build && playwright test",
     "test:e2e:only": "playwright test",
@@ -27,11 +27,13 @@
     "idb": "^8.0.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@lautstark/toolchain": "github:Lautstark/toolchain#v1.0.0",
+    "@playwright/test": "1.62.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^22.20.1",
     "fake-indexeddb": "^6.0.0",
-    "typescript": "^5.7.2",
-    "vite": "^8.0.0",
-    "vitest": "^4.0.0"
-  }
+    "svelte": "^5.57.0",
+    "svelte-check": "^4.7.6"
+  },
+  "//playwright": "Playwright is bildhaft's own and one minor behind @lautstark/toolchain's ^1.63, which is why playwright.config.ts is written out here rather than extending the shared base. 1.63 ships Chromium 1243, whose renderer dies on this app's METACOM restore - reading a stored FileSystemDirectoryHandle back out of IndexedDB - on main's code as much as on this branch; and the visual baselines beside e2e/visual.spec.ts were recorded against the browser 1.62 ships, so the two have to move together with the baselines re-recorded. adr/0003."
 }

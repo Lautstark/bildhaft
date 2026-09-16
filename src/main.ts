@@ -1,4 +1,5 @@
-import { mountApp } from './app.ts';
+import { mount } from 'svelte';
+import App from './App.svelte';
 import { LANG } from './i18n/index.ts';
 import { setSymbolLanguage } from '@lautstark/bildquelle';
 import { initTheme } from '@lautstark/design/theme';
@@ -30,4 +31,4 @@ document.documentElement.lang = LANG;
  * that watches the request paths is what caught it happening again here. */
 setSymbolLanguage(LANG);
 
-mountApp(document.getElementById('root')!);
+mount(App, { target: document.getElementById('root')! });
