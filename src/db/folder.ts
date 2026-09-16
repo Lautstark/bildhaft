@@ -237,10 +237,19 @@ export const metacomInFolder = () => ablage.folderHolding('METACOM_Symbole');
    poll rather than a subscription, because a folder that syncs from elsewhere has
    nothing to notify with — the file simply differs the next time it is read. */
 export const watchFolder = (onChange: () => void) => {
-  const stop = [
-    ablage.watch(30_000, (found) => { if (found.length) onChange(); }),
-    shared.watch(30_000, (found) => { if (found.length) onChange(); }),
-  ];
+  const stop: (() => void)[] = [];
+  /* Primed before it is armed. A poll answers "what differs from the last
+     poll", and there has not been one: the first would report every file in
+     the folder as newly appeared and pull the whole library back over what is
+     on screen — thirty seconds into every session, taking any edit made in the
+     meantime with it. The priming read is what the watch would otherwise call
+     a change. */
+  void Promise.all([ablage.poll(), shared.poll()]).then(() => {
+    stop.push(
+      ablage.watch(30_000, (found) => { if (found.length) onChange(); }),
+      shared.watch(30_000, (found) => { if (found.length) onChange(); }),
+    );
+  }).catch(() => undefined);
   return () => { for (const end of stop) end(); };
 };
 

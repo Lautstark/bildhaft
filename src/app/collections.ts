@@ -5,6 +5,7 @@ import { resolveSlotsForProvider } from '../core/match.ts';
 import { withTimeout } from '../core/timeout.ts';
 import {
   clearEverything, countSentences, createCollection, deleteCollectionDeep,
+  isWriting, mark, writtenSince,
   libraryTotals, listCollections, listOverrides, listSentences, overrideMap,
   putSentence, saveCollectionProvider, saveSettings, searchSentences,
 } from '../db/repo.ts';
@@ -25,6 +26,19 @@ type Collections = Pick<Ctx,
   /** A Sammlung the address names; see the function. Never rejects. */
   openNamed(here?: string): Promise<void>;
 };
+
+/**
+ * What the store just answered, except where memory knows better.
+ *
+ * A record with a write still in the air is one the store has an older copy of,
+ * and refilling memory from the store in that window is precisely the jump back
+ * — the card returning to the tray, the name going blank, the symbol reverting.
+ * See `isWriting` in db/repo.ts for the window itself.
+ */
+const keepUnwritten = <T extends { id: string }>(held: T[], since: number) => (fresh: T): T =>
+  (isWriting(fresh.id) || writtenSince(fresh.id, since)
+    ? held.find((x) => x.id === fresh.id) ?? fresh
+    : fresh);
 
 /** Which Sammlung is open, what the sidebar lists, and what happens to a whole one. */
 export function collections(ctx: Ctx): Collections {
@@ -60,9 +74,10 @@ export function collections(ctx: Ctx): Collections {
       s.settings = { ...s.settings, lastCollectionId: id };
       void saveSettings(s.settings);
     }
+    const since = mark();
     void listSentences(id).then((loaded) => {
       if (s.activeId !== id) return;
-      s.sentences = loaded;
+      s.sentences = loaded.map(keepUnwritten(s.sentences, since));
       s.unreadable = 0;
       ctx.render();
       /* Opening a collection can change the source, because the collection is
@@ -82,10 +97,11 @@ export function collections(ctx: Ctx): Collections {
   }
 
   async function refreshCollections(): Promise<void> {
+    const since = mark();
     const all = await listCollections();
     const entries = await Promise.all(
       all.map(async (c) => [c.id, await countSentences(c.id)] as const));
-    s.collections = all;
+    s.collections = all.map(keepUnwritten(s.collections, since));
     s.counts = Object.fromEntries(entries);
 
     /* The Wortschatz counts come from the same pass, because they change for
@@ -151,6 +167,7 @@ export function collections(ctx: Ctx): Collections {
        back before a word could be typed, and forever when one write did not
        answer. It is housekeeping: it goes on in the background, and a row it
        has not reached yet draws as it was. */
+    const since = mark();
     try {
       const overrides = await overrideMap(providerId(s));
       const current = await listSentences(id);
@@ -160,11 +177,24 @@ export function collections(ctx: Ctx): Collections {
           resolveSlotsForProvider(sentence.slots, getProvider(providerId(s)), overrides),
           LOOKUP_MS, t('ui.wait_source')),
       })));
-      // Only what actually changed is written back; the rest was already right.
+      /* What the screen gets, settled before a single line of this is written
+         back. Asking afterwards would count this function's *own* writes as
+         somebody else's edit and hand the unresolved copy back — which is the
+         imported Sammlung drawing blank, the exact bug the write-back exists
+         to fix. */
+      const merged = updated.map(keepUnwritten(s.sentences, since));
+      if (s.activeId === id) { s.sentences = merged; ctx.render(); }
+
+      /* Only what actually changed is written back; the rest was already right.
+         And never over a record edited while this was running: the lookups
+         above are slow enough that a symbol picked in the meantime would be
+         overwritten by the copy this read before the pick. `merged` has
+         already made that judgement — a record memory kept is one this must
+         not file. */
       for (const [i, sentence] of updated.entries()) {
-        if (sentence.slots !== current[i]!.slots) await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
+        if (sentence.slots === current[i]!.slots || merged[i] !== sentence) continue;
+        await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
       }
-      if (s.activeId === id) { s.sentences = updated; ctx.render(); }
     } catch (err) {
       ctx.notify(sayWhy(err));
     }

@@ -63,7 +63,10 @@ export function settings(ctx: Ctx, backup: Sicherung): Pick<Ctx, 'persistSetting
       openCollectionProvider: () => activeCollection(s)?.provider ?? null,
       onNotify: ctx.notify,
       onExportAll: async () => {
-        downloadJson(await exportEverything(), LANG === 'de' ? 'sicherung' : 'backup');
+        /* Whole, always: a file somebody asked for by hand has to stand on
+           its own, wherever it is opened. The standing backup is the one that
+           leaves the bytes where the folder already has them. */
+        downloadJson(await exportEverything(true), LANG === 'de' ? 'sicherung' : 'backup');
         ctx.notify(t('ui.backup_exported'));
       },
       backup,

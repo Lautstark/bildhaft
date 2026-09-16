@@ -56,6 +56,9 @@ const READS = [
   'defaultCollectionName', 'listSentences', 'findByNormalized', 'searchSentences',
   'countSentences', 'libraryTotals', 'listOverrides', 'listAllOverrides', 'overrideMap',
   'getOwnImage', 'listOwnImages', 'newId', 'onChanged',
+  /* What the screen asks before it lets a store read replace what it holds.
+     They report on writes rather than making any — see `isWriting`. */
+  'isWriting', 'mark', 'writtenSince',
 ];
 
 describe('the change notifier', () => {
