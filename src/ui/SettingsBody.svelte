@@ -10,6 +10,7 @@
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
   import Panel from '@lautstark/design/svelte/Panel';
+  import Dropdown from '@lautstark/design/svelte/Dropdown';
   import { sourceFacts } from './symbolSources.ts';
   import { resetSymbolResolution } from './symbols.ts';
   import { ablage, isStore } from '../db/folder.ts';
@@ -266,6 +267,17 @@
 
   let metacomReady = $derived.by(() => { void status; return metacom.isReady(); });
 
+  /** What the rendering trigger says: the answer, not the question. The count
+   *  stays in the list, where it helps somebody choose between two folders that
+   *  hold the same pictures; on the trigger it would be a fact about a decision
+   *  already made. */
+  let renderingLabel = $derived(settings.metacomRendering ?? t('ui.no_preference'));
+
+  function prefer(name: string | null): void {
+    change({ ...settings, metacomRendering: name });
+    notify(name ? t('ui.rendering_preferred', { name }) : t('ui.rendering_cleared'));
+  }
+
   /* ------------------------------------------------- Funktionswörter --- */
 
   /*
@@ -439,8 +451,26 @@
   is a question the three products answer with three different models, so there
   was nothing to share. The rendering chooser: it is built out of this app's own
   `<select class="field">`, and sharing it would mean sharing a menu component,
-  which is @lautstark/design/menu's subject.
---><MetacomPanel {metacom} lang={panelLang} headline={(text) => { metacomHeadline = text; }} after={metacomActed} say={metacomSaid} />{#if fallback !== 'metacom' && metacomReady}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('metacom')}>{t('ui.use_as_default')}</button><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}{#if renderings.length >= 2}<div class="opt" style="margin-top:14px"><label for="opt-rendering">{t('ui.rendering')}</label><select class="field" id="opt-rendering" aria-label={t('ui.rendering')} value={settings.metacomRendering ?? ''} onchange={(event) => { const name = event.currentTarget.value; change({ ...settings, metacomRendering: name || null }); notify(name ? t('ui.rendering_preferred', { name }) : t('ui.rendering_cleared')); }}><option value="">{t('ui.no_preference')}</option>{#each renderings as rendering (rendering.segment)}<option value={rendering.segment}>{rendering.segment} · {t('ui.n_symbols', { n: rendering.count })}</option>{/each}</select><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
+  which is @lautstark/design/menu's subject. That second one no longer holds:
+  the menu component is shared now, and the chooser is `Dropdown` over it.
+--><MetacomPanel {metacom} lang={panelLang} headline={(text) => { metacomHeadline = text; }} after={metacomActed} say={metacomSaid} />{#if fallback !== 'metacom' && metacomReady}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('metacom')}>{t('ui.use_as_default')}</button><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}{#if renderings.length >= 2}<!--
+  Which rendering. A `<select>` until now, and conventions.md §6.10 is the rule
+  it broke: the open list of a `<select>` is drawn by the operating system and is
+  the one thing on this page that cannot follow the tokens — so the question was
+  asked in this family's shapes and answered in the platform's. It is
+  @lautstark/design/svelte/Dropdown now, and it is a set of alternatives rather
+  than a list of commands, so each item carries `checked` and the menu says which
+  one is in force instead of leaving that to be read off the drawing.
+
+  `aria-labelledby` pointing at the caption, and the caption is a `<span>`. A
+  `<label>` does not name a `<button>` — that is the latent defect §6.10 found in
+  the one call site that looked like a template — so the question has to be an
+  element the trigger points at.
+
+  `field` because this stands in a column of full-width fields and a trigger as
+  wide as the word on it would leave them reading as different kinds of thing;
+  `start` because the list hangs off a control at the left of the panel.
+--><div class="opt" style="margin-top:14px"><span class="opt__label" id="opt-rendering-label">{t('ui.rendering')}</span><Dropdown id="opt-rendering" field start labelledBy="opt-rendering-label" label={renderingLabel} build={(add) => { add(t('ui.no_preference'), () => prefer(null), { checked: settings.metacomRendering === null }); for (const rendering of renderings) add(`${rendering.segment} · ${t('ui.n_symbols', { n: rendering.count })}`, () => prefer(rendering.segment), { checked: settings.metacomRendering === rendering.segment }); }} /><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
   role=group rather than radiogroup: .segmented marks its choice with
   aria-pressed, which is the vocabulary the print dialog already uses, and a
   radiogroup whose children are not radios reads worse than a labelled group of

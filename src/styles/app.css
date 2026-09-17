@@ -636,8 +636,12 @@ kbd {
 }
 
 .opt { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-/* Field captions only — checkbox rows keep sentence case. */
-.opt > label:not(.opt__check) {
+/* Field captions only — checkbox rows keep sentence case.
+   `.opt__label` is the same caption where the control it names is not one a
+   `<label>` can name: the rendering chooser is a `<button>` that says what is
+   chosen, and it is pointed at this element by `aria-labelledby`. */
+.opt > label:not(.opt__check),
+.opt > .opt__label {
   font-size: 12px;
   font-weight: 650;
   letter-spacing: .02em;

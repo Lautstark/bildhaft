@@ -490,6 +490,23 @@ async function chooseTwoRenderings(page: Page): Promise<void> {
   }, { mit: MIT_TEXT, ohne: OHNE_TEXT });
 }
 
+/**
+ * Choosing a rendering.
+ *
+ * It was a `<select>` driven with `selectOption` until conventions.md §6.10 —
+ * a `<select>`'s open list is drawn by the operating system, which is the one
+ * thing on the page that cannot follow the tokens. What replaced it is this
+ * family's own dropdown: a button that says what is chosen, opening a menu of
+ * alternatives. So the two presses are what a person does, and the item is
+ * located by its role rather than by its text alone — `menuitemradio` is what
+ * says these are alternatives with one in force, and finding it under that role
+ * is the assertion that the set still announces itself as one.
+ */
+async function chooseRendering(page: Page, segment: string): Promise<void> {
+  await page.getByRole('button', { name: 'Darstellung' }).click();
+  await page.getByRole('menuitemradio', { name: new RegExp(`^${segment}`) }).click();
+}
+
 /** Every symbol in the first row, by the width that identifies its rendering. */
 async function renderingWidths(page: Page): Promise<number[]> {
   return page.locator('.row').first().locator('.slot img')
@@ -500,7 +517,7 @@ test('prefers one rendering, and brings existing rows with it', async ({ page })
   await openSymbolSettings(page);
   await chooseTwoRenderings(page);
 
-  await page.getByLabel('Darstellung').selectOption('PNG_ohne_Text');
+  await chooseRendering(page, 'PNG_ohne_Text');
   await page.getByLabel('Dialog schließen').click();
 
   await translate(page, 'Ich möchte einen Apfel essen');
@@ -509,7 +526,7 @@ test('prefers one rendering, and brings existing rows with it', async ({ page })
   // Switching afterwards has to move the rows that already exist, not just the
   // next sentence — every slot holds the right symbol in the wrong rendering.
   await openSymbolSettings(page);
-  await page.getByLabel('Darstellung').selectOption('PNG_mit_Text');
+  await chooseRendering(page, 'PNG_mit_Text');
   await page.getByLabel('Dialog schließen').click();
   await expect.poll(() => renderingWidths(page), { timeout: 10000 }).toEqual([1, 1, 1, 1]);
 });
