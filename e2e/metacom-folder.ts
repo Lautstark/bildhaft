@@ -66,9 +66,6 @@ export async function chooseFakeFolder(page: Page, folder: string = FOLDER): Pro
 
 /** Einstellungen, from the sidebar rather than from a banner that offers it too. */
 export async function openAppSettings(page: Page): Promise<void> {
-  // The sidebar starts collapsed, so its Einstellungen button is hidden.
-  const reveal = page.getByRole('button', { name: 'Seitenleiste einblenden' });
-  if (await reveal.isVisible().catch(() => false)) await reveal.click();
   await page.getByRole('complementary').getByRole('button', { name: 'Einstellungen' }).click();
 }
 

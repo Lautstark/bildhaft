@@ -34,8 +34,7 @@ test('a link naming a Sammlung opens it', async ({ page }) => {
   await page.goto('/?sammlung=vom-regal');
 
   // The Sammlung the file names, opened. The name field is what says which one
-  // is in front of you; the rail is what says it arrived at all.
-  await page.getByTitle('Seitenleiste einblenden').click();
+  // is in front of you; the row in the sidebar is what says it arrived at all.
   await expect(page.locator('.collections__name', { hasText: 'Vom Regal' })).toBeVisible();
   await expect(page.getByLabel('Name der Sammlung')).toHaveValue('Vom Regal');
 
@@ -92,6 +91,5 @@ test('a link naming a Sammlung that is not there says so, and adds nothing', asy
 
   await expect(page.getByText(/gibt es hier nicht|no such collection/i)).toBeVisible();
   // One Sammlung: the empty one every first visit starts with, and nothing else.
-  await page.getByTitle('Seitenleiste einblenden').click();
   await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(1);
 });

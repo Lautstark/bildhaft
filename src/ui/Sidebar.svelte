@@ -1,4 +1,28 @@
 <script lang="ts">
+  /**
+   * bildhaft's side of `@lautstark/design/svelte/Sidebar`. conventions.md §6.3.
+   *
+   * The component owns the `<aside>`, the brand row, the drawer's `✕`, the foot,
+   * the `aria-expanded`/`aria-controls` wiring and the 820px breakpoint. What is
+   * here is everything that is bildhaft's: the mark and the collapse chevron
+   * inside the brand row, the search field, both lists of rows, and the way out
+   * to Einstellungen.
+   *
+   * **The section seam is one snippet, and that is bildhaft's doing.** The `<h2>`
+   * is part of what a search swaps — „Sammlungen" becomes *n* Treffer — so a
+   * component-owned heading would have to be swapped by a component that knows
+   * nothing about searching, and a component-owned wrapper around the first
+   * section would leave an empty section and a 20px gap while a search is
+   * running. Drawing the sections here is also what keeps
+   * `.sidebar__section--words` and `--collections`, which have no CSS rule at all
+   * and exist purely so ten e2e selectors can tell the two lists of rows apart.
+   *
+   * **The collapse chevron stays here**, inside the brand row as its third flex
+   * child — which is why the component hands the brand snippet the wiring rather
+   * than drawing a chevron of its own. The `✕` beside it is the component's, and
+   * is drawn below the breakpoint only.
+   */
+  import SharedSidebar from '@lautstark/design/svelte/Sidebar';
   import { sentenceCaption, kindOf } from '../core/types.ts';
   import { drawCollections } from '@lautstark/design/collections';
   import Icon from '../pieces/Icon.svelte';
@@ -9,7 +33,22 @@
   import { openAppSettings } from '../app/settings.ts';
   import { t } from '../i18n/index.ts';
 
-  let { onNavigated, onCollapse }: { onNavigated: () => void; onCollapse: () => void } = $props();
+  let {
+    onNavigated,
+    onCollapse,
+    drawer = false,
+    collapsed = false,
+    ondismiss,
+  }: {
+    onNavigated: () => void;
+    onCollapse: () => void;
+    /** The drawer, below 820px. Ignored above it by the component. */
+    drawer?: boolean;
+    /** The remembered collapse, above 820px. §1.3. */
+    collapsed?: boolean;
+    /** The drawer's `✕`, which is the component's. */
+    ondismiss?: () => void;
+  } = $props();
 
   /* Both lists are drawn by drawCollections and so both emit
      `.collections__item`: the row is the same row, and sharing it is the
@@ -88,7 +127,8 @@
     s.collections.find((c) => c.id === collectionId)?.name ?? '—';
 </script>
 
-<aside class="sidebar"><div class="sidebar__brand"><Logo /><h1>bildhaft</h1><button class="btn quiet icon" type="button" title={t('ui.hide_sidebar')} onclick={onCollapse}><Icon name="chevronLeft" /></button></div><div class="sidebar__section"><input bind:this={searchInput} class="field" type="search" placeholder={t('ui.search_placeholder')} aria-label={t('ui.search_label')} oninput={(event) => { s.query = event.currentTarget.value; scheduleSearch(); }} /></div><!--
+<SharedSidebar id="sidebar" closeLabel={t('ui.close_menu')} {drawer} {collapsed} {ondismiss}
+  >{#snippet brand(wired)}<Logo /><h1>bildhaft</h1><button class="btn quiet icon sidebar__collapse" type="button" {...wired} title={t('ui.hide_sidebar')} onclick={onCollapse}><Icon name="chevronLeft" /></button>{/snippet}{#snippet search()}<div class="sidebar__section"><input bind:this={searchInput} class="field" type="search" placeholder={t('ui.search_placeholder')} aria-label={t('ui.search_label')} oninput={(event) => { s.query = event.currentTarget.value; scheduleSearch(); }} /></div>{/snippet}{#snippet sections()}<!--
   The Wortschatz, above the Sammlungen.
 
   „Alle Wörter" is always there, including on the first day when it counts
@@ -96,4 +136,5 @@
   done the thing it is the door to would never be found. „+ Neuer Tag" is not —
   a button to sort something that does not exist yet is a control that cannot
   do anything, so it waits until there is a word to sort.
---><div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{t('ui.wortschatz')}</h2><div class="collections" bind:this={wordRowsHost}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{t('ui.collections')}</h2><div class="collections" bind:this={rowsHost}></div><button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { s.wortschatz = null; void handleNewCollection(); onNavigated(); }}>{t('ui.new_collection')}</button></div>{/if}<div class="sidebar__section" style="margin-top:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button></div></aside>
+--><div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{t('ui.wortschatz')}</h2><div class="collections" bind:this={wordRowsHost}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{t('ui.collections')}</h2><div class="collections" bind:this={rowsHost}></div><button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { s.wortschatz = null; void handleNewCollection(); onNavigated(); }}>{t('ui.new_collection')}</button></div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
+>

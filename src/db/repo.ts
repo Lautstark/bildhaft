@@ -114,7 +114,12 @@ export function defaultSettings(): AppSettings {
     stopwords: { de: [...GERMAN_STOPWORDS], en: [...ENGLISH_STOPWORDS] },
     print: { ...DEFAULT_PRINT_SETTINGS },
     lastCollectionId: null,
-    sidebarOpen: false,
+    /* Open. It read `false` for a long time while App.svelte's own reader said
+       an absent preference means open, so a fresh install and a settings record
+       written before this field existed disagreed about the same page — and the
+       stored default was the one that won. conventions.md §6.3 calls that a bug
+       rather than a difference, and §1.3 never said otherwise. */
+    sidebarOpen: true,
     metacomRendering: null,
     pinnedTags: [],
   };

@@ -12,7 +12,9 @@
   import Icon from './pieces/Icon.svelte';
   import Logo from './pieces/Logo.svelte';
   import Sidebar from './ui/Sidebar.svelte';
-  import TopBar from './ui/TopBar.svelte';
+  import Scrim from '@lautstark/design/svelte/Scrim';
+  import Reveal from '@lautstark/design/svelte/Reveal';
+  import TopBar from '@lautstark/design/svelte/TopBar';
   import Footer from './ui/Footer.svelte';
   import Composer from './ui/Composer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
@@ -34,7 +36,24 @@
      from: every part of the page below asks the store what is in it. */
   let ready = $derived(s.settings !== null);
 
+  /*
+   * Which of the two is on screen — the column above 820px, the drawer below it.
+   *
+   * §6.3 offers `Sidebar`'s `showing` as a bindable for exactly this, so that
+   * `Reveal` and `TopBar`, which are mounted beside it and cannot see the live
+   * breakpoint, get the same answer. It is deliberately not bound here, and the
+   * reason is the one the comment below this already gives about `isMobile`:
+   * `showing` is written from an effect, so it is `false` for the first render
+   * of the page whatever the truth is. Bound, every load drew the collapsed
+   * arrangement and then transitioned the column open over 220ms — measured, and
+   * visible. What the products cannot disagree about is the breakpoint itself,
+   * because `MOBILE_QUERY` *is* the component's `NARROW` rather than a second
+   * copy of the same string.
+   */
   let sidebarOpen = $derived(s.isMobile ? s.mobileNavOpen : (s.settings?.sidebarOpen ?? true));
+  /** The remembered collapse. An absent preference means open, and since
+   *  `defaultSettings()` was corrected the stored default says the same. §1.3. */
+  let collapsed = $derived(!(s.settings?.sidebarOpen ?? true));
 
   let title = $derived(s.wortschatz
     ? s.wortschatz.tag ?? t('ui.all_words')
@@ -78,7 +97,17 @@
   }
 </script>
 
-{#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} />{#if s.isMobile && s.mobileNavOpen}<button class="scrim" type="button" aria-label={t('ui.close_menu')} onclick={() => { s.mobileNavOpen = false; }}></button>{/if}{#if !sidebarOpen}<div class="rail"><button class="btn quiet icon" type="button" title={t('ui.show_sidebar')} onclick={toggleSidebar}><Icon name="menu" /></button><Logo size={22} /></div>{/if}<main class="main"><TopBar {title} onToggleNav={toggleSidebar} /><!--
+{#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} drawer={s.mobileNavOpen} {collapsed} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
+  The page behind the drawer, and the way out of it. Always in the markup now
+  and hidden by the component, which is what lets it keep `[hidden]` ahead of
+  any `display` a stylesheet has — so app.css drops the `display: none` base it
+  used to switch on, and `shown` is the only answer to whether it is up.
+--><Scrim label={t('ui.close_menu')} shown={s.isMobile && s.mobileNavOpen} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
+  What brings the column back. `.rail` was bildhaft's name for it and is the
+  *reveal*, not the column — a flex container holding the ☰ and a small mark —
+  so the component is the container and the pair inside it is still this page's,
+  handed the wiring for its own button.
+--><Reveal controls="sidebar" shown={!sidebarOpen}>{#snippet brand(wired)}<button class="btn quiet icon" type="button" {...wired} title={t('ui.show_sidebar')} onclick={toggleSidebar}><Icon name="menu" /></button><Logo size={22} />{/snippet}</Reveal><main class="main"><TopBar controls="sidebar" expanded={sidebarOpen} label={t('ui.open_menu')} onreveal={toggleSidebar}>{#snippet icon()}<Icon name="menuMobile" />{/snippet}{#snippet brand()}<Logo size={20} /><span class="topbar__title">{title}</span>{/snippet}</TopBar><!--
   The two nouns share `.main__inner` and never overlap: one of them has the
   composer, the head and the wall of things, and the other has its own three.
   Drawn as one block each rather than hidden, which is what keeps the symbol

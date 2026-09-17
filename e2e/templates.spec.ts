@@ -12,10 +12,11 @@ import { translate } from './helpers.ts';
  * a narrow column with its words stacked on top of each other. It survived the
  * whole unit suite, because nothing about it is wrong until something is drawn.
  */
-/** This product opens with the sidebar put away, so the controls are behind it. */
-async function showSidebar(page: Page): Promise<void> {
-  const reveal = page.getByTitle('Seitenleiste einblenden');
-  if (await reveal.isVisible().catch(() => false)) await reveal.click();
+/** The sidebar is open on arrival, so this is the wait for it and nothing more.
+ *  It used to reveal the sidebar first: conventions.md §6.3 calls
+ *  `defaultSettings()`'s stored `sidebarOpen: false` a bug against this product's
+ *  own reader, which has always taken an absent preference to mean open. */
+async function sidebarReady(page: Page): Promise<void> {
   await expect(page.locator('.sidebar')).toBeVisible();
 }
 
@@ -30,7 +31,7 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
   const wide = await page.locator('.row').first().boundingBox();
 
   // A second Sammlung, switched to the card template while it is still empty.
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
   await page.keyboard.type('Karten');
@@ -41,7 +42,7 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
      nobody is looking at and read on the next one that is. */
 
   // Back to the first one. Its rows are rows again.
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.locator('.sidebar__section--collections .collections__item')
     .filter({ hasNotText: 'Karten' }).first().click();
   await expect(page.locator('.row').first()).toBeVisible();
@@ -62,7 +63,7 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
  * is a printout somebody discovers with scissors in their hand.
  */
 test('an Einkaufsliste prints its three sheets, and the cart holds its zones', async ({ page }) => {
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
 
@@ -116,7 +117,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // Tall enough for the tray under a Tafel of square tiles to be on screen:
   // a drag that starts off screen is not a drag.
   await page.setViewportSize({ width: 1280, height: 1100 });
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
 
@@ -196,7 +197,7 @@ test.describe('a full Tafel', () => {
   test.use({ viewport: { width: 1280, height: 1500 } });
 
 test('every card of a full Tafel can be dragged from the tray, one after the other', async ({ page }) => {
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await page.getByRole('button', { name: /^Tafel/ }).click();
 
@@ -246,7 +247,7 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
  * On a Tafel every free field is a large „+", so this was pressed a lot.
  */
 test('a Tafel field or tray „+" closed without a choice leaves no card', async ({ page }) => {
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await page.getByRole('button', { name: /^Tafel/ }).click();
   const bar = page.getByLabel('Wörter hinzufügen');
@@ -296,7 +297,7 @@ test.describe('colour on a Tafel', () => {
  * and on paper, because the two draw the block from one answer.
  */
 test('fields are marked and grouped, on screen and on paper', async ({ page }) => {
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   await page.getByRole('button', { name: /^Tafel/ }).click();
   const bar = page.getByLabel('Wörter hinzufügen');

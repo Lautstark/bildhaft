@@ -1,3 +1,4 @@
+import { NARROW } from '@lautstark/design/svelte/sidebar';
 import type { AppSettings, Collection, ProviderId, Sentence } from '../core/types.ts';
 import type { CollectionKind } from '../core/types.ts';
 import { kindOf } from '../core/types.ts';
@@ -92,8 +93,15 @@ export class AppState {
 
 }
 
-/** Matches the `max-width: 820px` breakpoint used throughout the stylesheet. */
-export const MOBILE_QUERY = '(max-width: 820px)';
+/**
+ * Matches the `max-width: 820px` breakpoint used throughout the stylesheet.
+ *
+ * Re-exported from `@lautstark/design/svelte/sidebar` rather than written out
+ * again: the sidebar component subscribes to that same string, and the two have
+ * to agree or the controls and the layout disagree about which arrangement is on
+ * screen with nothing on either side saying so. conventions.md §6.3.
+ */
+export const MOBILE_QUERY = NARROW;
 
 /**
  * The one store, made when the module is first read and never replaced.

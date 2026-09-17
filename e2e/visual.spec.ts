@@ -113,8 +113,6 @@ test.beforeEach(async ({ page }, testInfo) => {
  */
 async function openSettings(page: Page): Promise<Locator> {
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
-  const show = page.getByRole('button', { name: 'Seitenleiste einblenden' });
-  if (await show.count()) await show.click();
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
   return page.locator('dialog.sheet');
 }
@@ -415,8 +413,6 @@ test('the page footer', async ({ page }) => {
 test('the Wortschatz, empty', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
-  const show = page.getByRole('button', { name: 'Seitenleiste einblenden' });
-  if (await show.count()) await show.click();
   await page.locator('button.collections__item')
     .filter({ hasText: 'Alle Wörter' }).first().click();
 

@@ -115,7 +115,6 @@ test('says what the upgrade carried across', async ({ page }) => {
    * check against the Sammlungen in front of them. */
   await expect(page.locator('.toast'))
     .toHaveText('Die Datenbank wurde von Version 3 auf 4 gebracht. Eine Sammlung ist mitgekommen.');
-  await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
   await expect(page.locator('.sidebar__section--collections .collections__item')).toContainText(['Aus Version 3']);
 });
 
@@ -160,7 +159,6 @@ test('hands the records over as a file before anything is discarded', async ({ p
   // A page that starts, on an empty library, at the current version.
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
   expect(await versionOnDisk(page)).toBe(4);
-  await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
   await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(1);
   await expect(page.locator('.sidebar__section--collections .collections__item')).not.toContainText(['Aus Version 1']);
 });

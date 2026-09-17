@@ -48,16 +48,17 @@ async function closeSheet(page: Page): Promise<void> {
   await expect(page.locator('dialog.sheet')).toHaveCount(0);
 }
 
-/** This product opens with the sidebar put away, so the controls are behind it. */
-async function showSidebar(page: Page): Promise<void> {
-  const reveal = page.getByTitle('Seitenleiste einblenden');
-  if (await reveal.isVisible().catch(() => false)) await reveal.click();
+/** The sidebar is open on arrival, so this is the wait for it and nothing more.
+ *  It used to reveal the sidebar first: conventions.md §6.3 calls
+ *  `defaultSettings()`'s stored `sidebarOpen: false` a bug against this product's
+ *  own reader, which has always taken an absent preference to mean open. */
+async function sidebarReady(page: Page): Promise<void> {
   await expect(page.locator('.sidebar')).toBeVisible();
 }
 
 /** A second Sammlung, named, so the two can be told apart in the sidebar. */
 async function newCollection(page: Page, name: string): Promise<void> {
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
   // Creating is asynchronous and the focus lands at the end of it, so typing
   // before the field has it goes nowhere at all.
@@ -140,7 +141,7 @@ test('a Sammlung that answered for itself keeps its source when the default move
 
   // The first Sammlung never answered, so it followed the default there and
   // follows it back.
-  await showSidebar(page);
+  await sidebarReady(page);
   await page.locator('.sidebar__section--collections .collections__item').filter({ hasNotText: 'Zweite' }).first().click();
   await expect(credit(page)).toContainText('ARASAAC');
 });
