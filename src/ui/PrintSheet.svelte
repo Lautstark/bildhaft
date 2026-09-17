@@ -47,6 +47,20 @@
   const asStyle = (from: Record<string, string>): string =>
     Object.entries(from).map(([k, v]) => `${k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}:${v}`).join(';');
 
+  /**
+   * Whether anything on this paper is cut out.
+   *
+   * Asked of the blocks, because what is being printed is the only thing that
+   * can answer it. A Tafel is laminated whole and a Satzstreifen is cut along
+   * its strip, so neither is offered the switch in the print dialog — but the
+   * setting is one remembered list shared by every template, so an answer
+   * given on a card sheet reached this paper anyway and was honoured: a dashed
+   * line through every field of a Tafel, three lines under that same dialog's
+   * own sentence saying nothing on a Tafel is cut.
+   */
+  const CUT_UP = new Set(['row', 'grid', 'cut']);
+  let cutUp = $derived(blocks.some((block) => CUT_UP.has(block.kind)));
+
   /** The blocks of each page, or one page holding all of them while unplanned. */
   let pages = $derived.by(() => {
     if (!plan.pages) return null;
@@ -127,7 +141,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made"><span class="ps-made__name">{block.name}</span><span class="ps-made__tail"> · {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"

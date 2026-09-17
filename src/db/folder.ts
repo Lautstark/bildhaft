@@ -236,6 +236,22 @@ export const metacomInFolder = () => ablage.folderHolding('METACOM_Symbole');
 /* Somebody else's edit reaches this browser as a file that changed under it. A
    poll rather than a subscription, because a folder that syncs from elsewhere has
    nothing to notify with — the file simply differs the next time it is read. */
+/*
+ * How often, and why it is not thirty seconds.
+ *
+ * A poll has to read every file in the folder — there is nothing to subscribe
+ * to, so "did anything change" is answered by looking. On a real library that
+ * is several hundred files opened and parsed, in one household's case around
+ * seven hundred across both compartments, and every one of them costs the
+ * thread that draws. Thirty seconds meant paying that twice a minute forever,
+ * to catch an edit made on another device — which is not something that
+ * happens twice a minute.
+ *
+ * Five minutes is still well inside "I changed it on the iPad, where is it",
+ * and it is twenty times less of this.
+ */
+const EVERY = 5 * 60 * 1000;
+
 export const watchFolder = (onChange: () => void) => {
   const stop: (() => void)[] = [];
   /* Primed before it is armed. A poll answers "what differs from the last
@@ -246,8 +262,8 @@ export const watchFolder = (onChange: () => void) => {
      a change. */
   void Promise.all([ablage.poll(), shared.poll()]).then(() => {
     stop.push(
-      ablage.watch(30_000, (found) => { if (found.length) onChange(); }),
-      shared.watch(30_000, (found) => { if (found.length) onChange(); }),
+      ablage.watch(EVERY, (found) => { if (found.length) onChange(); }),
+      shared.watch(EVERY, (found) => { if (found.length) onChange(); }),
     );
   }).catch(() => undefined);
   return () => { for (const end of stop) end(); };

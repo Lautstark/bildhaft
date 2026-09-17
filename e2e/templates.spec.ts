@@ -172,6 +172,12 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(Math.round(free!.height)).toBe(Math.round(full!.height));
   // The grid is the Sammlung's, so the dialog does not offer to change it.
   await expect(page.getByLabel('Spalten')).toHaveCount(1);
+  /* And nothing on it is cut. The switch is not offered here — a Tafel is
+     laminated whole — but the setting is one remembered list shared by every
+     template, so an answer given on a card sheet used to reach this paper
+     anyway and draw a dashed line through every field. */
+  await expect(page.getByLabel('Schnittlinien')).toHaveCount(0);
+  await expect(sheet.locator('.ps-sheet--cutlines')).toHaveCount(0);
 });
 
 /**
