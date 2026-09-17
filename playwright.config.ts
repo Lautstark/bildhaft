@@ -11,13 +11,30 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * E2E_PORT still moves it, which is what two checkouts of *this* repo need -
  * a worktree running the suite beside another one has the same problem one
- * level down. */
+ * level down.
+ */
 const PORT = Number(process.env.E2E_PORT ?? 4174);
 
 /**
  * The suite runs against the real production bundle, not the dev server, so a
  * build-only breakage cannot slip through to Pages. `npm run test:e2e` builds
  * first; the CI workflow gates deployment on this passing.
+ *
+ * ## Why this is written out rather than `@lautstark/toolchain/playwright`
+ *
+ * bildhaft takes its tsconfig and its vitest base from the toolchain, and this
+ * one is the exception, held with the Playwright version beside it in
+ * package.json. The toolchain is on Playwright ^1.63, which ships Chromium
+ * 1243; on that browser the renderer dies while `metacom.restore()` reads a
+ * stored `FileSystemDirectoryHandle` back out of IndexedDB, which takes three
+ * METACOM cases down with it. It is the browser and not this app: main's own
+ * build crashes identically once its Playwright is bumped to 1.63.
+ *
+ * The visual baselines beside e2e/visual.spec.ts are the other half. They were
+ * recorded against the browser 1.62 ships, at a tolerance of zero, so the
+ * version cannot move without re-recording them. Both halves want the same
+ * thing: one deliberate change that moves the browser and the pictures
+ * together, which is not this one. adr/0003.
  */
 export default defineConfig({
   testDir: './e2e',

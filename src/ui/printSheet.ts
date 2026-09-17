@@ -1,12 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, ZoneStyle,
 } from '../core/types.ts';
-import { sentenceCaption, slotCaption } from '../core/types.ts';
-import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
-import { el } from './dom.ts';
-import { negationCross } from './logo.ts';
-import { t } from '../i18n/index.ts';
-import { peekSymbolUrl, resolveSymbolUrl, symbolIdFor } from './symbols.ts';
+import { slotCaption, symbolIdFor } from '../core/types.ts';
 
 /** The margin @page reserves on every side. Millimetres, because the sheet is. */
 export const PAGE_MARGIN_MM = 10;
@@ -49,7 +44,7 @@ export function printableArea(
  * symbol — the METACOM manual makes the same point. Derived rather than asked
  * for: it is a consequence of the radius, not a separate decision.
  */
-function framePadMm(settings: PrintSettings): number {
+export function framePadMm(settings: PrintSettings): number {
   return +(1 + settings.cardRadiusMm / 3).toFixed(2);
 }
 
@@ -62,8 +57,11 @@ function framePadMm(settings: PrintSettings): number {
 const PAGE_STYLE_ID = 'print-page-setup';
 
 export function applyPageSetup(paper: PaperSize, orientation: Orientation): void {
-  const style = document.getElementById(PAGE_STYLE_ID)
-    ?? document.head.appendChild(el('style', { attrs: { id: PAGE_STYLE_ID } }));
+  const style = document.getElementById(PAGE_STYLE_ID) ?? (() => {
+    const made = document.createElement('style');
+    made.id = PAGE_STYLE_ID;
+    return document.head.appendChild(made);
+  })();
   const { width, height } = paperSize(paper, orientation);
   /*
    * An explicit size rather than the `A4 landscape` keyword pair: the keywords
@@ -101,7 +99,7 @@ export const METACOM_COPYRIGHT = 'METACOM Symbole © Annette Kitzinger';
  * to PDF and sending that on is the ordinary way this material is shared, and a
  * link that survives that costs nothing on the page it is printed on.
  */
-const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
+export const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
 
 /*
  * Vertical room set aside on a grid page for the credit block.
@@ -170,9 +168,13 @@ export const PX_PER_MM = 96 / 25.4;
 export interface SheetPlan {
   /** A card sheet sized in millimetres: how many cards each row came out with. */
   rows: number[] | null;
-  /** How many blocks each page holds, in order. One entry per page. */
-  pages: number[];
+  /** How many blocks each page holds, in order. One entry per page, or null
+   *  while the sheet is still being measured and stands unpaged. */
+  pages: number[] | null;
 }
+
+/** A sheet that has been measured for neither of the two answers yet. */
+export const UNPLANNED: SheetPlan = { rows: null, pages: null };
 
 /** A block's own height and the margins above and below it, in pixels. */
 function outer(node: HTMLElement): { top: number; height: number; bottom: number } {
@@ -190,8 +192,15 @@ function outer(node: HTMLElement): { top: number; height: number; bottom: number
  * By where they landed, not by dividing the page: `.ps-row` wraps, and what it
  * fits depends on the frame and the cut margin as laid out rather than as
  * specified. Cards on one row share an offsetTop because the row is a flex line.
+ *
+ * Read off the sheet while it still has its one flowing row, which is the
+ * shape `UNPLANNED` draws. The answer goes back in as `plan.rows` and the
+ * component draws one `.ps-row` per line — where the hand-written sheet cut the
+ * row up in place, and had to be careful not to do it twice.
  */
-function cardRows(row: HTMLElement): number[] {
+export function cardRows(sheet: HTMLElement): number[] | null {
+  const row = sheet.querySelector<HTMLElement>(':scope > .ps-row');
+  if (!row) return null;
   const rows: number[] = [];
   let top: number | null = null;
   for (const card of row.querySelectorAll<HTMLElement>(':scope > .ps-card')) {
@@ -201,48 +210,30 @@ function cardRows(row: HTMLElement): number[] {
   return rows;
 }
 
-/** The one flowing row of a card sheet, or null when the sheet has none. */
-function flowingRow(sheet: HTMLElement): HTMLElement | null {
-  return sheet.querySelector<HTMLElement>(':scope > .ps-row');
-}
-
-/**
- * Cuts that one row into one row per line of cards, so a page can hold whole
- * lines. Without it the only block a card sheet has is the row itself, and a
- * sheet of forty cards would be one indivisible block eight pages tall.
- */
-function splitRow(sheet: HTMLElement, rows: number[]): void {
-  const row = flowingRow(sheet);
-  if (!row || rows.length < 2) return;
-  /*
-   * Idempotent, because it is asked twice of the same sheet: planPages() splits
-   * the preview to measure it and applyPlan() is then run against both copies
-   * from the one plan. Splitting an already-split sheet would take its first row
-   * — one card — and cut that into as many rows as the whole sheet had.
-   */
-  if (sheet.querySelectorAll(':scope > .ps-row').length === rows.length) return;
-  const cards = [...row.children];
-  const made: HTMLElement[] = [];
-  let taken = 0;
-  for (const count of rows) {
-    made.push(el('div', { class: 'ps-row' }, ...cards.slice(taken, taken + count)));
-    taken += count;
-  }
-  if (taken < cards.length) made[made.length - 1]!.append(...cards.slice(taken));
-  row.replaceWith(...made);
-}
-
 /** Sub-pixel slack, so a block that fits exactly is not pushed off the page. */
 const FIT_TOLERANCE = 0.5;
 
-export function planPages(sheet: HTMLElement, settings: PrintSettings): SheetPlan {
-  const row = settings.layout === 'sheet' && settings.sheetFit !== 'grid'
-    ? flowingRow(sheet) : null;
-  const rows = row ? cardRows(row) : null;
-  // Split before measuring: until it is, a card sheet's only block is the one
-  // flowing row, which is as tall as every card it holds.
-  if (rows) splitRow(sheet, rows);
-
+/**
+ * Where the pages fall, measured off a sheet that is in the document.
+ *
+ * The grid decides its own pages — that is the whole of the card grid. Nothing
+ * else did: a strip sheet was one long column that the browser broke wherever
+ * it happened to break, which the preview could not show and nobody could count
+ * before pressing Print. So the cut is worked out here, once, and both copies
+ * are drawn from the answer — the same rule the grid already follows, and the
+ * reason the preview can be page boxes rather than a scroll.
+ *
+ * Measured rather than derived, because the heights are not knowable from the
+ * settings: a caption that wraps makes its strip taller, and how many cards fit
+ * across a row depends on a frame that may or may not be drawn. Only the sheet
+ * on screen knows. #print-root is `display: none` and so has no heights at all,
+ * which is why this returns a plan for the component to draw rather than
+ * measuring both copies.
+ *
+ * It reads and never writes. The splitting it used to do first is `plan.rows`
+ * now, applied by the component in the paint before this one.
+ */
+export function planPages(sheet: HTMLElement, settings: PrintSettings): number[] {
   const limit = printableArea(settings.paper, settings.orientation).height * PX_PER_MM;
   const blocks = [...sheet.children] as HTMLElement[];
   /*
@@ -281,36 +272,10 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): SheetPla
     else pages[pages.length - 1]! += 1;
   }
 
-  return { rows, pages };
+  return pages;
 }
 
-/**
- * Puts a plan into a sheet: one `.ps-page` box per page, each exactly the
- * printable area. Run against both copies from the one plan, so the preview and
- * the printer cannot disagree about where a page ends.
- */
-export function applyPlan(sheet: HTMLElement, plan: SheetPlan): void {
-  if (plan.rows) splitRow(sheet, plan.rows);
-  const blocks = [...sheet.children] as HTMLElement[];
-  const pages: HTMLElement[] = [];
-  let taken = 0;
-  for (const count of plan.pages) {
-    pages.push(el('div', { class: 'ps-page' }, ...blocks.slice(taken, taken + count)));
-    taken += count;
-  }
-  // Cannot happen, and is checked anyway: a block the plan did not account for
-  // would be a symbol silently missing from a printout.
-  if (taken < blocks.length) pages[pages.length - 1]!.append(...blocks.slice(taken));
-  sheet.replaceChildren(...pages);
-  /*
-   * Said in a class, because the preview draws a paginated sheet differently: the
-   * paper's margin moves onto the page boxes. It cannot move before they exist —
-   * planPages() measures how many cards fit across a row, and it has to measure
-   * that inside the printable width, not inside the sheet with its margin taken
-   * off it.
-   */
-  sheet.classList.add('ps-sheet--paged');
-}
+/* ---------------------------------------------------------------- blocks -- */
 
 /**
  * A Tafel as it goes to paper: the grid, with the card lying in each field or
@@ -341,255 +306,25 @@ export interface SheetOptions {
 }
 
 /**
- * The printable document. Built twice: once inside the on-screen A4 preview and
- * once into #print-root, which @media print reveals. Both come from this one
- * function, so what the preview shows is what the printer produces.
- */
-export function printSheet(options: SheetOptions): HTMLElement {
-  const { sentences, board, settings, provider, attribution, copyright, collectionName } = options;
-
-  const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
-  const page = printableArea(settings.paper, settings.orientation);
-
-  const sheet = el('div', {
-    class: `ps-sheet${settings.showCutLines ? ' ps-sheet--cutlines' : ''}`,
-    style: {
-      // Every printed size derives from these, so millimetres stay millimetres.
-      '--sym': `${settings.symbolSizeMm}mm`,
-      '--cut': `${settings.cutMarginMm}mm`,
-      /* The card as a ruler finds it, for the fit that names that instead of
-         the symbol. A missing height is a square card — see cardHeightMm. */
-      '--card-w': `${settings.cardWidthMm}mm`,
-      '--card-h': `${settings.cardHeightMm ?? settings.cardWidthMm}mm`,
-      '--label': `${settings.labelSizePt}pt`,
-      // The sheet sizes itself from these, so the paper is set in exactly one place.
-      '--page-w': `${page.width}mm`,
-      '--page-h': `${page.height}mm`,
-      '--page-margin': `${PAGE_MARGIN_MM}mm`,
-      '--frame-w': `${settings.cardBorderMm}mm`,
-      '--frame-color': settings.cardBorderColor,
-      '--frame-pad': `${framePadMm(settings)}mm`,
-      '--card-radius': `${settings.cardRadiusMm}mm`,
-      '--card-bg': settings.cardBackground ?? 'transparent',
-      /*
-       * The strip frame's own thickness. It follows the card frame when there
-       * is one so both are drawn with the same pen, and falls back to a line
-       * thin enough to cut along when card frames are off — which is the usual
-       * case, since a strip frame is asked for on its own.
-       */
-      '--strip-w': `${settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm`,
-    },
-  });
-
-  /*
-   * Once, above everything, rather than per page: a header repeated on every
-   * sheet would cost the grid its room on all of them, and what this answers is
-   * "which collection is this printout" — a question a stack of paper asks once.
-   */
-  const title = settings.showCollectionTitle ? collectionName.trim() : '';
-  if (title) sheet.appendChild(el('h1', { class: 'ps-title', text: title }));
-
-  const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
-    + (title ? TITLE_ALLOWANCE_MM : 0);
-  if (board) {
-    sheet.appendChild(boardSheet(board, settings, provider, reserve));
-  } else if (settings.layout === 'einkaufsliste') {
-    for (const node of einkaufsliste(sentences, settings, provider)) sheet.appendChild(node);
-  } else if (settings.layout === 'sheet') {
-    for (const node of cardSheet(sentences, settings, provider, reserve)) sheet.appendChild(node);
-  } else {
-    for (const node of strips(sentences, settings, provider)) sheet.appendChild(node);
-  }
-
-  if (credits.length > 0) {
-    const lines: (string | Node)[] = [];
-    for (const line of credits) {
-      if (lines.length > 0) lines.push(el('br'));
-      lines.push(line);
-    }
-    sheet.appendChild(el('p', { class: 'ps-attribution' },
-      ...lines,
-      /*
-       * The name gives way, never the address. Both are on one line and a long
-       * name would push the address off it, so the name is the part allowed to
-       * be clipped — an ellipsis on a name the reader chose still says which
-       * collection this is, where half a URL says nothing and is not something
-       * anybody can type back in.
-       */
-      el('span', { class: 'ps-made' },
-        el('span', { class: 'ps-made__name', text: collectionName }),
-        el('span', { class: 'ps-made__tail' },
-          ` · ${t('ui.made_with')} `,
-          el('a', { class: 'ps-url', text: BILDHAFT_URL, attrs: { href: BILDHAFT_URL } })),
-      ),
-    ));
-  }
-
-  return sheet;
-}
-
-/** Sentence strips: one row per sentence, in reading order. */
-function strips(sentences: Sentence[], settings: PrintSettings, provider: ProviderId): HTMLElement[] {
-  return sentences.map((sentence, i) => el('div', {
-    class: 'ps-sentence'
-      + (settings.onePerPage && i < sentences.length - 1 ? ' ps-sentence--page' : '')
-      + (settings.stripFrame ? ' ps-sentence--framed' : ''),
-  },
-    settings.showSentenceText ? el('p', { class: 'ps-caption', text: sentenceCaption(sentence) }) : null,
-    el('div', { class: 'ps-row' }, ...sentence.slots.map((slot) => card(slot, settings, provider))),
-  ));
-}
-
-/**
- * Card sheet: individual cards for cutting up and laminating.
- * Duplicates are collapsed — a deck needs one card per symbol, not one per use.
+ * One block of the printable document: the thing a page is packed out of.
  *
- * Three ways to size them. By symbol size and by card size the cards keep their
- * millimetres and flow, and only the number that was named differs — the
- * picture in the one case, the card a ruler finds in the other. By grid the page
- * is divided into exactly as many cells as were asked for and the cards take
- * whatever size that leaves — which is how boards are actually specified, and
- * the only way to fill a page edge to edge on purpose.
+ * Data rather than nodes, and that is the change this file went through. The
+ * sheet used to be built twice as DOM, measured, cut up in place and the cut
+ * applied to both copies; the blocks are described once here, and
+ * `PrintSheet.svelte` draws the description — into the preview and into
+ * #print-root — from the one plan. What the printer gets and what the preview
+ * shows cannot differ, because neither worked anything out on its own.
  */
-function cardSheet(
-  sentences: Sentence[], settings: PrintSettings, provider: ProviderId, reserveMm = 0,
-): HTMLElement[] {
-  const seen = new Set<string>();
-  const cards: Slot[] = [];
-
-  for (const sentence of sentences) {
-    for (const slot of sentence.slots) {
-      /*
-       * A card is a symbol *and* the word under it, so both decide whether two
-       * uses are the same card. Keying on the symbol alone printed one card for
-       * a symbol whose caption had been rewritten in one sentence and not the
-       * other, and silently dropped whichever wording came second.
-       */
-      const id = symbolIdFor(slot, provider);
-      const key = `${id ?? 'blank'}|${slotCaption(slot).toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      cards.push(slot);
-    }
-  }
-
-  /* Both flowing fits: the cards keep their millimetres and wrap, and where
-     the millimetres came from — the symbol or the card — is the card's own
-     business. planPages() cuts the one row that comes back into lines. */
-  if (settings.sheetFit !== 'grid') {
-    const shape = settings.sheetFit === 'card' ? 'exact' : 'symbol';
-    return [el('div', { class: 'ps-row' },
-      ...cards.map((slot) => card(slot, settings, provider, shape)))];
-  }
-
-  const cols = Math.max(1, Math.round(settings.gridCols));
-  const rows = Math.max(1, Math.round(settings.gridRows));
-  const perPage = cols * rows;
-  const page = printableArea(settings.paper, settings.orientation);
-
-  /*
-   * Pages are cut here rather than left to the browser. Letting a single grid
-   * paginate itself puts a row wherever the break happens to fall, so the same
-   * board printed twice can come out with different rows on each sheet — fatal
-   * for material that is meant to be cut into a fixed set of cards.
-   */
-  const pages: HTMLElement[] = [];
-  for (let start = 0; start < Math.max(cards.length, 1); start += perPage) {
-    const chunk = cards.slice(start, start + perPage);
-    const last = start + perPage >= cards.length;
-    pages.push(el('div', {
-      class: `ps-grid${last ? '' : ' ps-grid--page'}`,
-      style: {
-        '--cols': String(cols),
-        '--cell-h': `${((page.height - reserveMm) / rows).toFixed(3)}mm`,
-      },
-    }, ...chunk.map((slot) => card(slot, settings, provider, 'cell'))));
-  }
-  return pages;
-}
-
-/* ---------------------------------------------------------------- Tafel ---- */
-
-/**
- * A Tafel: one grid page, every field drawn whether or not a card lies in it.
- *
- * The free field is the point. On the wall it is where somebody decided
- * nothing goes, and on paper it is an empty cell of the same size as the
- * others, with the same cut line — so a laminated board has a place that
- * *is* free rather than a hole where the grid stopped early. A card sheet
- * cannot say that: it flows its cards and a gap is just the end.
- *
- * One page and never more: the grid is the Sammlung's own size, and a Tafel
- * that needed a second sheet would be two Tafeln.
- */
-function boardSheet(
-  board: PrintBoard, settings: PrintSettings, provider: ProviderId, reserveMm = 0,
-): HTMLElement {
-  const page = printableArea(settings.paper, settings.orientation);
-  return el('div', {
-    class: 'ps-grid ps-tafel',
-    style: {
-      '--cols': String(board.cols),
-      '--cell-h': `${((page.height - reserveMm) / board.rows).toFixed(3)}mm`,
-    },
-  }, ...board.cells.map((sentence, index) => {
-    const slot = sentence?.slots[0];
-    /* The field's colour goes on the whole cell, gap included, rather than
-       inside the frame where the card's own background goes: a Tafel is
-       laminated whole, and a group is meant to read as one block — rounded
-       where the block ends and square where it goes on. The card on it is
-       white unless a background was asked for, because a picture straight on
-       the colour is a card that has disappeared into its group. */
-    const zone = board.zones?.[index];
-    const style = zone ? board.styles?.[zone] : undefined;
-    const onZone = style?.fill && settings.cardBackground === null
-      ? { ...settings, cardBackground: '#fff' } : settings;
-    const node = slot
-      ? card(slot, onZone, provider, 'cell')
-      : el('div', { class: 'ps-card ps-card--fill ps-card--empty', attrs: { 'aria-hidden': 'true' } });
-    if (zone) {
-      // The frame reads its colour from the sheet; this card says white instead.
-      if (onZone !== settings) node.style.setProperty('--card-bg', '#fff');
-      /* The group is a layer under the card, stepped in by 1 mm where the
-         block ends — half of a 2 mm rinne, so two blocks meet with a rinne
-         between them and a block ends with air to the sheet. Its frame runs
-         along those same ends and nowhere else. */
-      const map = { cols: board.cols, rows: board.rows, zones: board.zones ?? [], styles: board.styles ?? {} };
-      const box = zoneBox(map, index, '1mm', '3mm', '-0.3mm');
-      if (box) {
-        node.prepend(el('div', {
-          class: 'ps-block',
-          style: {
-            '--zone': style?.fill ?? 'transparent', inset: box.inset, borderRadius: box.borderRadius,
-            borderColor: style?.frame ?? 'transparent', borderWidth: style?.frame ? zoneBorder(map, index, '0.6mm') ?? '0' : '0',
-            clipPath: box.clipPath ?? '',
-          },
-        }));
-        // The frame carried round the block's inner corners at this field — see zoneJoint().
-        if (style?.frame) {
-          for (const corner of box.crooks) {
-            const j = zoneJoint(corner, '1mm', '-0.3mm', '0.6mm');
-            node.prepend(el('div', {
-              class: 'ps-joint',
-              style: {
-                ...j.position, width: j.size, height: j.size,
-                backgroundImage: `linear-gradient(${style.frame}, ${style.frame}), linear-gradient(${style.frame}, ${style.frame})`,
-                backgroundPosition: `${j.x} 0, 0 ${j.y}`, backgroundSize: `0.6mm 100%, 100% 0.6mm`,
-              },
-            }));
-          }
-        }
-      }
-      /* The name, as a shield on the block's top left edge, on the first field of the group. */
-      if (style?.name && labelField(map, zone) === index) {
-        node.appendChild(el('div', { class: 'ps-shield', text: style.name, style: { '--shield': labelColour(style) } }));
-      }
-    }
-    return node;
-  }));
-}
-
-/* ------------------------------------------------------- Einkaufsliste ---- */
+export type Block =
+  | { kind: 'title'; text: string }
+  | { kind: 'strip'; sentence: Sentence; page: boolean; framed: boolean }
+  | { kind: 'row'; slots: Slot[] }
+  | { kind: 'grid'; slots: Slot[]; cols: number; cellH: string; page: boolean }
+  | { kind: 'tafel'; board: PrintBoard; cellH: string }
+  | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number }
+  | { kind: 'cut'; slots: Slot[] }
+  | { kind: 'store'; slots: Slot[]; page: boolean }
+  | { kind: 'credit'; lines: string[]; name: string };
 
 /**
  * How many zones a block of the board holds, and how they are arranged.
@@ -598,7 +333,7 @@ function boardSheet(
  * sheet: a tall block to shop from, a wide one in the cart. Measured rather than
  * chosen — at 25 mm cards the two blocks come to 302 mm and the sheet is 277.
  */
-const BOARD = { list: { cols: 3, rows: 5 }, cart: { cols: 5, rows: 3 } };
+export const SHOPPING = { list: { cols: 3, rows: 5 }, cart: { cols: 5, rows: 3 } };
 
 /** The air a laminated card needs before it will go into a zone at all. */
 const ZONE_AIR_MM = 3;
@@ -608,52 +343,18 @@ const ZONE_GAP_MM = 2;
    Kept there rather than here because it is room on the page, and the page is
    what that file is about. Change one and check the other. */
 
-/** One empty zone: the size a laminated card comes back at, and its velcro dot. */
-const zone = (): HTMLElement => el('span', { class: 'ps-zone' }, el('span', { class: 'ps-dot' }));
-
-const zones = (cols: number, rows: number, extra = ''): HTMLElement =>
-  el('div', { class: `ps-zones${extra}`, style: { '--cols': String(cols) } },
-    ...Array.from({ length: cols * rows }, zone));
+/** How many cards of an Einkaufsliste go on one sheet, cut or stored. */
+const SHOPPING_PER_PAGE = 35;
 
 /**
- * The three sheets of an Einkaufsliste, which only mean anything together.
+ * The cards a deck comes to, with the duplicates collapsed.
  *
- * **The board** is blank and stays blank: it is laminated once and the cards
- * change, so nothing that changes may be printed on it — no date, no words, no
- * count. Fifteen zones to shop from, fifteen in the cart, and a card moves from
- * one to the other when the thing is in the trolley.
- *
- * **The cards** carry no word. A card that is handed around in a shop has one
- * job, and a word under it makes the picture smaller rather than clearer — the
- * word is on the board nowhere and on the storage sheet always.
- *
- * **The storage sheet** is the part most templates leave out and without which
- * the material is in a bag by the third week: every card has a labelled place,
- * with its symbol printed faintly so a child finds it without reading and the
- * word so an adult does not have to hunt. The empty place is the information.
- *
- * Each is a `ps-grid`, which is what makes it a page of its own — see
- * planPages. Nothing here paginates by itself.
+ * A card is a symbol *and* the word under it, so both decide whether two uses
+ * are the same card. Keying on the symbol alone printed one card for a symbol
+ * whose caption had been rewritten in one sentence and not the other, and
+ * silently dropped whichever wording came second.
  */
-function einkaufsliste(
-  sentences: Sentence[], settings: PrintSettings, provider: ProviderId,
-): HTMLElement[] {
-  /* The zone in millimetres, which every part of this material is measured
-     from — and which the cart has to be told, because its drawing *is* the
-     block of zones and a hard-coded viewBox would stretch the moment somebody
-     changes the card size. */
-  const zoneMm = settings.symbolSizeMm + 2 * settings.cutMarginMm + ZONE_AIR_MM;
-  const cartW = BOARD.cart.cols * zoneMm + (BOARD.cart.cols - 1) * ZONE_GAP_MM;
-  const cartH = BOARD.cart.rows * zoneMm + (BOARD.cart.rows - 1) * ZONE_GAP_MM;
-
-  const board = el('div', { class: 'ps-grid ps-board ps-grid--page' },
-    zones(BOARD.list.cols, BOARD.list.rows),
-    el('div', { class: 'ps-cart' },
-      cartArt(cartW, cartH),
-      zones(BOARD.cart.cols, BOARD.cart.rows, ' ps-zones--cart')));
-
-  /* The same de-duplication a card sheet does, and for the same reason: a word
-     used twice is one card, and one place to keep it. */
+function deck(sentences: Sentence[], provider: ProviderId): Slot[] {
   const seen = new Set<string>();
   const cards: Slot[] = [];
   for (const sentence of sentences) {
@@ -664,130 +365,100 @@ function einkaufsliste(
       cards.push(slot);
     }
   }
+  return cards;
+}
 
-  const perPage = 35;
-  const out: HTMLElement[] = [board];
-  for (let start = 0; start < Math.max(cards.length, 1); start += perPage) {
-    out.push(el('div', { class: 'ps-grid ps-cut ps-grid--page' },
-      ...cards.slice(start, start + perPage)
-        .map((slot) => card(slot, { ...settings, showLabel: false }, provider))));
-  }
-  for (let start = 0; start < Math.max(cards.length, 1); start += perPage) {
-    const last = start + perPage >= cards.length;
-    out.push(el('div', { class: `ps-grid ps-store${last ? '' : ' ps-grid--page'}` },
-      ...cards.slice(start, start + perPage).map((slot) => el('div', { class: 'ps-place' },
-        card(slot, { ...settings, showLabel: false }, provider),
-        el('span', { class: 'ps-place__word', text: slotCaption(slot) })))));
-  }
+const chunks = <T,>(all: T[], per: number): T[][] => {
+  const out: T[][] = [];
+  for (let start = 0; start < Math.max(all.length, 1); start += per) out.push(all.slice(start, start + per));
   return out;
-}
+};
 
 /**
- * The cart, drawn rather than decorated onto the page.
+ * The printable document, described.
  *
- * Its basket is *straight*, and that is the one thing about it worth a note: a
- * tapering basket is narrower at the bottom than the rectangle of zones inside
- * it, so the lower rows stand out of it on both sides. Which they did. The
- * handle points outwards and away, which there is room for on a landscape sheet
- * and none for on a portrait one.
- *
- * `preserveAspectRatio="none"` is safe because the viewBox is the zone block in
- * millimetres — stretch it and the wheels would be eggs.
+ * `rows` is the answer `cardRows()` measured off the previous paint: with it a
+ * flowing card sheet is one `.ps-row` per line of cards, which is what lets a
+ * page hold whole lines. Without it the sheet's only block is the row itself,
+ * and a sheet of forty cards would be one indivisible block eight pages tall.
  */
-function cartArt(widthMm: number, heightMm: number): SVGElement {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  /* One unit is one millimetre, because the box *is* the zones. That is what
-     lets the numbers below be reaches in millimetres rather than guesses, and
-     what keeps the wheels round however big the cards are. */
-  svg.setAttribute('viewBox', `0 0 ${widthMm} ${heightMm}`);
-  svg.setAttribute('preserveAspectRatio', 'none');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', 'ps-cart__art');
-  const w = widthMm;
-  const h = heightMm;
-  for (const d of [
-    `M -5 -5 H ${w + 5} V ${h + 5} H -5 Z`,
-    'M -5 -5 L -13 -14 H -22',
-    `M -5 ${h + 5} L 4 ${h + 16} H ${w - 7}`,
-  ]) {
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', d);
-    svg.append(path);
-  }
-  for (const cx of [24, w - 21]) {
-    const wheel = document.createElementNS(ns, 'circle');
-    wheel.setAttribute('cx', String(cx));
-    wheel.setAttribute('cy', String(h + 22));
-    wheel.setAttribute('r', '6');
-    svg.append(wheel);
-  }
-  return svg;
-}
-
-/** Whether anything is asked for that has to be drawn around the symbol. */
-function isFramed(settings: PrintSettings): boolean {
-  return settings.cardBorderMm > 0 || settings.cardBackground !== null;
-}
-
-/**
- * What decides a card's box: the symbol inside it ('symbol'), the grid cell
- * around it ('cell'), or the millimetres somebody named ('exact'). The last two
- * are the same card — a box whose size comes from outside and a symbol that
- * takes what the cut margin and the label leave — and differ only in where the
- * box's size comes from.
- */
-type CardShape = 'symbol' | 'cell' | 'exact';
-
-function card(
-  slot: Slot, settings: PrintSettings, provider: ProviderId, shape: CardShape = 'symbol',
-): HTMLElement {
-  const id = symbolIdFor(slot, provider);
-  const label = slotCaption(slot);
-  const box = el('div', { class: 'ps-card__img' });
+export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block[] {
+  const { sentences, board, settings, provider, attribution, copyright, collectionName } = options;
+  const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
+  const page = printableArea(settings.paper, settings.orientation);
+  const blocks: Block[] = [];
 
   /*
-   * The cross is re-laid every time the box's contents change, because they do
-   * change: a symbol that resolves late replaces whatever stood in for it, and
-   * a cross merely appended once would go with it.
+   * Once, above everything, rather than per page: a header repeated on every
+   * sheet would cost the grid its room on all of them, and what this answers is
+   * "which collection is this printout" — a question a stack of paper asks once.
    */
-  const cross = slot.negated ? negationCross() : null;
-  const put = (node: Node) => box.replaceChildren(...(cross ? [node, cross] : [node]));
+  const title = settings.showCollectionTitle ? collectionName.trim() : '';
+  if (title) blocks.push({ kind: 'title', text: title });
 
-  const blank = () => put(el('div', { class: 'ps-card__blank' }));
+  const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
+    + (title ? TITLE_ALLOWANCE_MM : 0);
 
-  const show = (url: string) => put(el('img', {
-    // alt is empty on purpose: a broken image would otherwise print its alt text
-    // inside the card, duplicating the label below it.
-    attrs: { src: url, alt: '' },
-    on: { error: blank },
-  }));
-
-  const known = id ? peekSymbolUrl(provider, id) : null;
-  if (known) show(known);
-  else {
-    blank();
-    if (id) resolveSymbolUrl(provider, id).then((url) => { if (url) show(url); });
+  if (board) {
+    blocks.push({
+      kind: 'tafel', board,
+      cellH: `${((page.height - reserve) / board.rows).toFixed(3)}mm`,
+    });
+  } else if (settings.layout === 'einkaufsliste') {
+    /* The zone in millimetres, which every part of this material is measured
+       from — and which the cart has to be told, because its drawing *is* the
+       block of zones and a hard-coded viewBox would stretch the moment somebody
+       changes the card size. */
+    const zoneMm = settings.symbolSizeMm + 2 * settings.cutMarginMm + ZONE_AIR_MM;
+    blocks.push({
+      kind: 'shopping-board',
+      zoneMm,
+      cartW: SHOPPING.cart.cols * zoneMm + (SHOPPING.cart.cols - 1) * ZONE_GAP_MM,
+      cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM,
+    });
+    const cards = deck(sentences, provider);
+    for (const slots of chunks(cards, SHOPPING_PER_PAGE)) blocks.push({ kind: 'cut', slots });
+    const stored = chunks(cards, SHOPPING_PER_PAGE);
+    stored.forEach((slots, at) => blocks.push({ kind: 'store', slots, page: at < stored.length - 1 }));
+  } else if (settings.layout === 'sheet') {
+    const cards = deck(sentences, provider);
+    if (settings.sheetFit !== 'grid') {
+      /* One row, or as many rows as the last paint measured. */
+      if (!rows || rows.length < 2) blocks.push({ kind: 'row', slots: cards });
+      else {
+        let taken = 0;
+        rows.forEach((count, at) => {
+          const last = at === rows.length - 1;
+          blocks.push({ kind: 'row', slots: last ? cards.slice(taken) : cards.slice(taken, taken + count) });
+          taken += count;
+        });
+      }
+    } else {
+      /*
+       * Pages are cut here rather than left to the browser. Letting a single
+       * grid paginate itself puts a row wherever the break happens to fall, so
+       * the same board printed twice can come out with different rows on each
+       * sheet — fatal for material that is meant to be cut into a fixed set of
+       * cards.
+       */
+      const cols = Math.max(1, Math.round(settings.gridCols));
+      const gridRows = Math.max(1, Math.round(settings.gridRows));
+      const pages = chunks(cards, cols * gridRows);
+      pages.forEach((slots, at) => blocks.push({
+        kind: 'grid', slots, cols,
+        cellH: `${((page.height - reserve) / gridRows).toFixed(3)}mm`,
+        page: at < pages.length - 1,
+      }));
+    }
+  } else {
+    /* Sentence strips: one row per sentence, in reading order. */
+    sentences.forEach((sentence, at) => blocks.push({
+      kind: 'strip', sentence,
+      page: settings.onePerPage && at < sentences.length - 1,
+      framed: settings.stripFrame,
+    }));
   }
 
-  const contents = [
-    box,
-    settings.showLabel ? el('div', { class: 'ps-card__label', text: label }) : null,
-  ];
-
-  /*
-   * The frame is a real element rather than a border on the card, because the
-   * card's edge is the cut line: a border there would be cut through. It is
-   * also only built when something asks for it, which is what keeps an
-   * unframed card exactly the size it has always been.
-   */
-  const framed = isFramed(settings);
-
-  const sized = shape === 'cell' ? ' ps-card--fill'
-    : shape === 'exact' ? ' ps-card--fill ps-card--exact' : '';
-
-  return el('div', { class: `ps-card${settings.labelPosition === 'above' ? ' ps-card--label-above' : ''}`
-      + sized + (framed ? ' ps-card--framed' : '') },
-    ...(framed ? [el('div', { class: 'ps-card__frame' }, ...contents)] : contents),
-  );
+  if (credits.length > 0) blocks.push({ kind: 'credit', lines: credits, name: collectionName });
+  return blocks;
 }

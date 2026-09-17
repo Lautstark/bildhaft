@@ -8,6 +8,7 @@ import { t } from '../i18n/index.ts';
 import {
   getOwnImage, listCollections, listAllOverrides, listOwnImages, listSentences, newId,
 } from './repo.ts';
+import { isStale, isStore } from './folder.ts';
 import { downloadJson as offer } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
@@ -107,13 +108,37 @@ export async function exportCollection(
   };
 }
 
-/** Everything at once — the "make me a backup before I break something" button. */
-export async function exportEverything(): Promise<BackupExport> {
+/**
+ * Whether the picture bytes have to travel inside the file.
+ *
+ * They do when this browser is the only place they exist. They do not when a
+ * folder is the store and reachable: the same bytes are already lying in
+ * `bildhaft/bilder/`, one file per picture, beside the records that name them —
+ * and putting them in as well made the standing backup an 85 MB document,
+ * rebuilt and rewritten four seconds after every edit. Measured on a real
+ * library: 2.4s to serialise, and the serialising happens on the thread that
+ * draws. That is a copy nobody asked for, paid for on every keystroke, of
+ * bytes that are already there.
+ *
+ * Stale counts as "not reachable", deliberately: a folder that cannot be read
+ * is not a place the pictures can be got back from, so they go in the file.
+ */
+const picturesAreFiled = (): boolean => isStore() && !isStale();
+
+/**
+ * Everything at once — the "make me a backup before I break something" button,
+ * and the standing backup, which calls it with no argument.
+ *
+ * `withImages` defaults to what the folder makes necessary rather than to
+ * `true`, so the download somebody asks for by hand is always whole while the
+ * one written after every edit stays small.
+ */
+export async function exportEverything(withImages = !picturesAreFiled()): Promise<BackupExport> {
   const collections = await listCollections();
   const sentences = (await Promise.all(collections.map((c) => listSentences(c.id)))).flat();
   // Every stored picture, not only the ones in use: this is the file that has
   // to be able to put the library back exactly as it was.
-  const images = await listOwnImages();
+  const images = withImages ? await listOwnImages() : [];
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,

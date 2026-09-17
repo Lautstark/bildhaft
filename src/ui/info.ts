@@ -1,5 +1,5 @@
-import { el } from './dom.ts';
-import { openDialog } from './dialog.ts';
+import { openSheet } from './sheet.svelte.ts';
+import Prose from './Prose.svelte';
 import { t } from '../i18n/index.ts';
 
 const REPO = 'https://github.com/Lautstark/bildhaft';
@@ -17,8 +17,12 @@ const ext = (href: string, text: string) =>
 const h3 = (text: string, first = false) =>
   `<h3 style="font-size:14px;margin:${first ? '0' : '18px'} 0 6px">${text}</h3>`;
 
-function page(title: string, html: string, onClose: () => void): void {
-  openDialog({ title, body: [el('div', { html })], onClose });
+/* One body component for all three, because all three are a `<div>` of prose
+   and differ only in the prose. `{@html}` rather than markup: the pages are
+   sentences with links inside them, built below, and a component per paragraph
+   would be a translation table spread across three files. */
+function page(title: string, html: string): void {
+  openSheet({ title, state: { html }, body: Prose });
 }
 
 /**
@@ -39,7 +43,7 @@ function page(title: string, html: string, onClose: () => void): void {
 const para = (html: string, first = false) =>
   `<p style="margin:${first ? '0 0 0' : '0'}">${html}</p>`;
 
-export function openAbout(onClose: () => void): void {
+export function openAbout(): void {
   page(t('info.about_title'), [
     para(t('info.about_lead'), true),
     h3(t('info.about_leaves')),
@@ -52,7 +56,7 @@ export function openAbout(onClose: () => void): void {
       org: ext(ORG, 'Lautstark'),
       mitreden: ext(MITREDEN, 'mitreden'),
     })),
-  ].join(''), onClose);
+  ].join(''));
 }
 
 /**
@@ -66,7 +70,7 @@ export function openAbout(onClose: () => void): void {
  * nothing names the privacy page — Article 13 requires the information, not a
  * word on a button.
  */
-export function openImpressum(onClose: () => void): void {
+export function openImpressum(): void {
   page(t('ui.impressum'), [
     h3(t('info.imprint_details'), true),
     para('Stefanie Grewenig<br>Talheide 5<br>21149 Hamburg<br>' + t('info.germany')),
@@ -83,7 +87,7 @@ export function openImpressum(onClose: () => void): void {
     para(t('info.links_body')),
     h3(t('info.disputes')),
     para(t('info.disputes_body')),
-  ].join(''), onClose);
+  ].join(''));
 }
 
 /**
@@ -92,7 +96,7 @@ export function openImpressum(onClose: () => void): void {
  * anything to land on. What still has to be named is what the host logs, and
  * that an ARASAAC request carries the IP address with it.
  */
-export function openDatenschutz(onClose: () => void): void {
+export function openDatenschutz(): void {
   page(t('ui.privacy'), [
     para(t('info.privacy_lead'), true),
     h3(t('info.controller')),
@@ -113,5 +117,5 @@ export function openDatenschutz(onClose: () => void): void {
     h3(t('info.rights')),
     para(t('info.rights_body')),
     `<p style="margin:18px 0 0;color:var(--text-faint)">${t('info.updated')}</p>`,
-  ].join(''), onClose);
+  ].join(''));
 }

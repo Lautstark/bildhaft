@@ -27,6 +27,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- The printable copy, which the print dialog fills and empties. Outside
+         #root on purpose: @media print hides #app-root, and this is the one
+         thing on the page that must survive that. It stands here rather than
+         being drawn by a component so that nothing in the component tree owns
+         its children — the dialog mounts its own sheet into it and takes it
+         out again. -->
+    <div id="print-root"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

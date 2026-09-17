@@ -1,7 +1,7 @@
 import { clearAllProviderData } from '@lautstark/bildquelle';
 import { getDB } from './db.ts';
 import {
-  adopt, adopted, fileCollection, fileImage, fileNameFor, fileOverride, isStore,
+  adopt, adopted, fileCollection, fileImage, fileNameFor, fileOverride, fileSentence, isStore,
   pushKind, readImage, readKind, unfile, unfileOverride, type Kind,
 } from './folder.ts';
 // The seed for a user's own editable list. The list itself stays theirs and
@@ -22,6 +22,64 @@ const SETTINGS_KEY = 'app';
 
 export const newId = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+/* ------------------------------------------------------------ in flight --- */
+
+/*
+ * Which records have a write in the air.
+ *
+ * The screen is drawn from memory and the store is written afterwards, so for
+ * as long as a write has not landed the two disagree — and anything that
+ * refills memory from the store in that window puts the *older* record back.
+ * That is what a moved card jumping home is; it is also a renamed Sammlung
+ * losing its name, a chosen template going back to Satzstreifen, and a symbol
+ * reverting a moment after it was picked. One window, four bugs.
+ *
+ * Counted rather than flagged: two edits to one record overlap all the time —
+ * type a name, press a template — and the first to land must not clear the
+ * second's claim.
+ */
+const writing = new Map<string, number>();
+
+/*
+ * And when each record was last written, counted in writes rather than in
+ * milliseconds.
+ *
+ * `isWriting` alone closes only half the window. A read that *starts* before a
+ * write and *answers* after it carries the record from before the edit and
+ * finds nothing in flight any more — so it would be applied, and the jump is
+ * back. A reader therefore takes `mark()` before it reads and asks
+ * `writtenSince` afterwards, which is a question about the read, not about the
+ * moment it is answered.
+ *
+ * One entry per record edited this session: bounded by what a person touches
+ * between reloads, which is why it is not pruned.
+ */
+let writes = 0;
+const lastWrite = new Map<string, number>();
+
+/** Whether memory holds a newer version of this record than the store does. */
+export const isWriting = (id: string): boolean => writing.has(id);
+
+/** Where the write count stands. Take it *before* reading the store. */
+export const mark = (): number => writes;
+
+/** Whether this record was written since that mark — so a read is behind. */
+export const writtenSince = (id: string, since: number): boolean =>
+  (lastWrite.get(id) ?? 0) > since;
+
+async function claim<T>(id: string, write: () => Promise<T>): Promise<T> {
+  writing.set(id, (writing.get(id) ?? 0) + 1);
+  try {
+    return await write();
+  } finally {
+    const left = (writing.get(id) ?? 1) - 1;
+    if (left > 0) writing.set(id, left);
+    else writing.delete(id);
+    writes += 1;
+    lastWrite.set(id, writes);
+  }
+}
 
 /* ---------------------------------------------------------------- change --- */
 
@@ -138,10 +196,12 @@ export async function createCollection(
 }
 
 export async function putCollection(collection: Collection): Promise<void> {
-  const db = await getDB();
-  const kept = { ...collection, updatedAt: Date.now() };
-  await db.put('collections', kept);
-  await fileCollection(kept);
+  await claim(collection.id, async () => {
+    const db = await getDB();
+    const kept = { ...collection, updatedAt: Date.now() };
+    await db.put('collections', kept);
+    await fileCollection(kept);
+  });
   touched();
 }
 
@@ -178,7 +238,11 @@ export async function deleteCollectionDeep(id: string): Promise<void> {
   for (const key of sentenceIds) await tx.objectStore('sentences').delete(key);
   await tx.objectStore('collections').delete(id);
   await tx.done;
-  await mirror('sammlungen', 'saetze');
+  /* Named removals rather than a wholesale mirror: the ids that went are the
+     ones just deleted, and finding them by reading the whole folder back costs
+     a second per hundred sentences filed. */
+  for (const key of sentenceIds) await unfile('saetze', String(key));
+  await unfile('sammlungen', id);
   touched();
 }
 
@@ -215,6 +279,12 @@ async function mirror(...kinds: Kind[]): Promise<void> {
    not the same thing, and guessing cost a household its calendar once. */
 export async function pullFromFolder(): Promise<boolean> {
   if (!isStore() || !(await adopted())) return false;
+  /* Never over an edit that has not landed. This clears the library and writes
+     the folder's copy in — and the folder has not been told about a write still
+     in the air, so the edit would be undone in the store as well as on screen.
+     The watch comes round again; boot, the other caller, has nothing in
+     flight. */
+  if (writing.size > 0) return false;
   const db = await getDB();
   const [collections, sentences, overrides, images] = await Promise.all([
     readKind<Collection>('sammlungen'),
@@ -279,44 +349,80 @@ export async function listSentences(collectionId: string): Promise<Sentence[]> {
 }
 
 export async function putSentence(sentence: Sentence): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction(['sentences', 'collections'], 'readwrite');
-  await tx.objectStore('sentences').put({ ...sentence, updatedAt: Date.now() });
-
-  const collections = tx.objectStore('collections');
-  const collection = await collections.get(sentence.collectionId);
-  if (collection && !collection.sentenceIds.includes(sentence.id)) {
-    await collections.put({
-      ...collection,
-      sentenceIds: [...collection.sentenceIds, sentence.id],
-      updatedAt: Date.now(),
-    });
-  }
-  await tx.done;
-  await mirror('saetze', 'sammlungen');
+  await claim(sentence.id, () => writeSentence(sentence));
   touched();
 }
 
+async function writeSentence(sentence: Sentence): Promise<void> {
+  const db = await getDB();
+  const kept = { ...sentence, updatedAt: Date.now() };
+  const tx = db.transaction(['sentences', 'collections'], 'readwrite');
+  await tx.objectStore('sentences').put(kept);
+
+  const collections = tx.objectStore('collections');
+  const collection = await collections.get(sentence.collectionId);
+  let listed: Collection | null = null;
+  if (collection && !collection.sentenceIds.includes(sentence.id)) {
+    listed = {
+      ...collection,
+      sentenceIds: [...collection.sentenceIds, sentence.id],
+      updatedAt: Date.now(),
+    };
+    await collections.put(listed);
+  }
+  await tx.done;
+  /* The two records that actually moved, and nothing else. This used to
+     mirror() both kinds wholesale, which reads and parses every file in the
+     folder to find out what differs: with 280 sentences filed that is around
+     a second of disk before the row on screen is allowed to change, on every
+     single edit, growing with the library. What changed is known here. */
+  await fileSentence(kept);
+  if (listed) await fileCollection(await freshest(db, listed));
+}
+
+/**
+ * The record as the store has it now, not as this transaction saw it.
+ *
+ * A Sammlung is written from more than one place: a card dragged on a Tafel
+ * writes the board while a sentence written beside it appends an id to the same
+ * record. The snapshot taken inside a transaction is old the moment the
+ * transaction closes, and filing it would put the folder's copy back to the
+ * board from before the drag — the previous code never noticed because it
+ * mirrored the whole kind afterwards, reading each record fresh. Reading one
+ * record back costs nothing next to that.
+ */
+async function freshest(
+  db: Awaited<ReturnType<typeof getDB>>, fallback: Collection,
+): Promise<Collection> {
+  return (await db.get('collections', fallback.id)) ?? fallback;
+}
+
 export async function deleteSentence(id: string): Promise<void> {
+  await claim(id, () => removeSentence(id));
+  touched();
+}
+
+async function removeSentence(id: string): Promise<void> {
   const db = await getDB();
   const sentence = await db.get('sentences', id);
   const tx = db.transaction(['sentences', 'collections'], 'readwrite');
   await tx.objectStore('sentences').delete(id);
+  let shortened: Collection | null = null;
   if (sentence) {
     const collections = tx.objectStore('collections');
     const collection = await collections.get(sentence.collectionId);
     if (collection) {
-      await collections.put({
+      shortened = {
         ...collection,
         sentenceIds: collection.sentenceIds.filter((s) => s !== id),
         updatedAt: Date.now(),
-      });
+      };
+      await collections.put(shortened);
     }
   }
   await tx.done;
   await unfile('saetze', id);
-  await mirror('sammlungen');
-  touched();
+  if (shortened) await fileCollection(await freshest(db, shortened));
 }
 
 /**
