@@ -9,13 +9,17 @@
    * own and the square it is cut to, the caption that gets printed, the negation
    * checkbox, and the line about the choice being remembered.
    *
-   * **The field moved, and it is the one visible change.** The component is the
-   * field *and* the grid in one block — `busy` suppresses both, which is the
-   * whole reason it is a prop rather than a wrapper — so the three controls that
-   * used to sit between them now sit above them. They are the things that are
-   * true of this field whatever symbol ends up in it, which is the reason
-   * app.css already gave for keeping them out of the grid; the search and the
-   * pictures it answers with are now one thing, under them.
+   * **The three rows sit between the field and the grid, which is where they
+   * have always sat.** Adopting the component moved them above the field: it is
+   * the field *and* the grid in one block — `busy` suppresses both, which is the
+   * whole reason it is a prop rather than a wrapper — so anything of ours had to
+   * go above the block or below it, and above put the search field fourth in a
+   * dialog somebody opened in order to search. That was reported rather than
+   * lived with, and §6 answers it: if a component cannot serve one consumer,
+   * change the component. bildquelle v2.4.0's `between` snippet is that change —
+   * drawn after the field and before the results box, in neither of them — and
+   * the three rows go in it. app.css's sentence about the negation, "below the
+   * own-image row and above the suggestions", is true again as written.
    */
   import SymbolSearch, { type SearchAnswer } from '@lautstark/bildquelle/svelte/SymbolSearch';
   import { getProvider, type Candidate } from '@lautstark/bildquelle';
@@ -63,9 +67,10 @@
   /**
    * The line above the pictures, from the search the component is showing.
    *
-   * It is drawn as the `lead` snippet, which is inside the results box: the
-   * component's own field and grid are one block, and a paragraph put above the
-   * component would sit above the field rather than above the tiles.
+   * It is drawn as the `lead` snippet, which is inside the results box, and not
+   * as `between`: this line is about the tiles and belongs immediately above
+   * them, where `between` is immediately below the field and has the three rows
+   * that are true of the field whatever symbol ends up in it.
    *
    * `searching` is only true where the box has nothing to stand in for the
    * search — results stay up while the next ones are being fetched, so the line
@@ -124,6 +129,35 @@
 </script>
 
 <!--
+  The search, and the pictures it answers with. conventions.md §6.4.
+
+  The tiles carry no `aria-pressed` and the component draws none: these tiles do
+  not come back. Pressing one closes the dialog with an answer, so an attribute
+  announcing a state would be announcing one the control does not have. The mark
+  on the stored choice is `picker__item--active`, which is a class either way.
+
+  The suggestions are not a block above the grid — they are the `suggestions`
+  prop and go into the same results list, declined by the component itself the
+  moment a word has been searched.
+--><SymbolSearch
+  class="picker__search"
+  provider={source}
+  words={{ field: t('ui.search_symbol'), placeholder: s.isNew ? t('ui.search_word') : t('ui.search_other_word') }}
+  chosen={s.chosen}
+  busy={cropping}
+  suggestions={s.suggested}
+  describe={captionOf}
+  onpick={(candidate) => s.finish(() => s.handlers.onChoose(candidate))}
+><!--
+  Everything between the field and the pictures, in `between` — after the one,
+  before the other, inside neither. The three rows that are true of this field
+  whatever symbol ends up in it, and the crop that replaces them.
+
+  It takes no argument. `between` is handed the answer the way every snippet
+  here is, and nothing in it is a function of that answer: an own picture, a
+  printed caption and a crossing-out are properties of the slot, and are the
+  same whether the grid below is showing four hits or none.
+-->{#snippet between()}<!--
   The picture the field is actually showing.
 
   It was the one thing this dialog would not show. Nothing here is marked while
@@ -144,30 +178,19 @@
   Negation is a property of the field, not a different symbol, so it does not
   settle the dialog the way picking one does: cross it out, see it, carry on.
   Hidden for a field that has nothing in it yet — there is nothing to cross.
---><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label></div>{/if}<div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
+--><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label></div>{/if}<!--
+  The square a picture of the user's own is cut to, last in `between` and in the
+  place it has always had: under the three rows, over the pictures.
+
+  It is the one thing here that is drawn while the search is not. `busy` takes
+  the component's field, grid and credit away and the three rows above hide
+  themselves, so what is left standing in the snippet is this — which is the
+  point, because a live grid of symbols under an open crop is a press that
+  throws the crop away without saying so.
+--><div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own, and it had two. Both went the same way and for the same
   reason: this dialog already has a footer, the footer already says what it
   does, and a control repeating that an inch higher is a question about which of
   them is the real one rather than a choice. Fertig keeps the square — so does
   Enter — and the ✕ drops it, which is what all three mean everywhere else here.
---><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div><!--
-  The search, and the pictures it answers with. conventions.md §6.4.
-
-  The tiles carry no `aria-pressed` and the component draws none: these tiles do
-  not come back. Pressing one closes the dialog with an answer, so an attribute
-  announcing a state would be announcing one the control does not have. The mark
-  on the stored choice is `picker__item--active`, which is a class either way.
-
-  The suggestions are not a block above the grid — they are the `suggestions`
-  prop and go into the same results list, declined by the component itself the
-  moment a word has been searched.
---><SymbolSearch
-  class="picker__search"
-  provider={source}
-  words={{ field: t('ui.search_symbol'), placeholder: s.isNew ? t('ui.search_word') : t('ui.search_other_word') }}
-  chosen={s.chosen}
-  busy={cropping}
-  suggestions={s.suggested}
-  describe={captionOf}
-  onpick={(candidate) => s.finish(() => s.handlers.onChoose(candidate))}
->{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}
+--><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}

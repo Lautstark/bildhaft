@@ -222,20 +222,16 @@ test('a focused field inside a sheet is not clipped by its scroll region', async
   /*
    * Positive on any edge means the ring reaches past what the region will show.
    *
-   * Left and right are still the tight case and are still asserted exactly: the
-   * field spans the region's whole width, so a zero there is the body's padding
-   * being precisely what the ring needs and nothing else.
-   *
-   * The top is no longer tight, and that is the search field's own doing rather
-   * than a relaxation. It used to be the first thing in this body; since the
-   * search became @lautstark/bildquelle/svelte/SymbolSearch it sits under the
-   * controls that are true of the field whatever symbol ends up in it, because
-   * the component is the field and the grid in one block. The padding it was
-   * watching is the same padding on all four sides, and the two edges above
-   * still hold it to the pixel.
+   * All three are tight, and the top is tight only because this field is the
+   * first thing in the body: a zero there is the body's padding being precisely
+   * what the ring needs and nothing else. Adopting
+   * @lautstark/bildquelle/svelte/SymbolSearch put three rows above the field and
+   * this assertion was relaxed to `<= 0` to follow them; the layout was what had
+   * moved, and the rows went back under the field through the component's
+   * `between` snippet. The assertion is the tight one again — and it is now also
+   * what keeps them there.
    */
-  expect(clipped).toMatchObject({ left: 0, right: 0 });
-  expect(clipped.top).toBeLessThanOrEqual(0);
+  expect(clipped).toMatchObject({ top: 0, left: 0, right: 0 });
 });
 
 test('crosses a symbol out for a negation, and keeps it crossed', async ({ page }) => {
