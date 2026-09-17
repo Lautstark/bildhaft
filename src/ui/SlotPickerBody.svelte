@@ -1,52 +1,97 @@
 <script lang="ts">
-  import TileGrid from '@lautstark/design/svelte/TileGrid';
-  import Tile from '@lautstark/design/svelte/Tile';
+  /**
+   * The slot picker's body. conventions.md §6.4.
+   *
+   * The search — the field, the grid, the minimum, the debounce, the
+   * stale-answer guard, the roving arrows and the credit line — is
+   * `@lautstark/bildquelle/svelte/SymbolSearch`. What is left here is everything
+   * bildhaft's picker carries that a search does not: a picture of the user's
+   * own and the square it is cut to, the caption that gets printed, the negation
+   * checkbox, and the line about the choice being remembered.
+   *
+   * **The field moved, and it is the one visible change.** The component is the
+   * field *and* the grid in one block — `busy` suppresses both, which is the
+   * whole reason it is a prop rather than a wrapper — so the three controls that
+   * used to sit between them now sit above them. They are the things that are
+   * true of this field whatever symbol ends up in it, which is the reason
+   * app.css already gave for keeping them out of the grid; the search and the
+   * pictures it answers with are now one thing, under them.
+   */
+  import SymbolSearch, { type SearchAnswer } from '@lautstark/bildquelle/svelte/SymbolSearch';
+  import { getProvider, type Candidate } from '@lautstark/bildquelle';
+  import Crop from '@lautstark/design/svelte/Crop';
   import { ownImageId } from '../core/types.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
-  import Crop from '@lautstark/design/svelte/Crop';
   import type { Picking } from './slotPicker.svelte.ts';
   import { t } from '../i18n/index.ts';
 
   let { s }: { s: Picking } = $props();
 
-  let search: HTMLInputElement;
   let upload: HTMLInputElement;
   /** While a square is being chosen, everything else on the sheet goes away:
       a live grid of symbols under an open crop is a press that throws the crop
       away without saying so. */
   let cropping = $derived(s.loaded !== null);
 
+  let source = $derived(getProvider(s.provider));
+
   /* Once, as the sheet opens: it is a background read that fills the
-     suggestions out, and it declines if anything has been searched since. */
+     suggestions out. It no longer has to ask what is in the field — the
+     component declines suggestions itself the moment anything has been
+     searched, which is its state to know. */
   // svelte-ignore state_referenced_locally
-  s.fillSuggestions(() => search?.value ?? '');
+  s.fillSuggestions();
 
   /*
-   * METACOM ships parallel rendering folders holding identical file names,
-   * so a search can answer several tiles that all say "ja" and differ only
-   * in picture. When a label repeats, the tile also names the folder its
-   * rendering came from. Display only - the candidate that is stored and
-   * chosen is untouched.
+   * METACOM ships parallel rendering folders holding identical file names, so a
+   * search can answer several tiles that all say "ja" and differ only in
+   * picture. When a label repeats, the tile also names the folder its rendering
+   * came from. Display only - the candidate that is stored and chosen is
+   * untouched.
+   *
+   * That the labels collide is the component's to notice and it says so with
+   * `among`; what the disambiguator *is* is bildhaft's. §6.4 files this as a
+   * convergence rather than a difference: vorlaut does the same thing in
+   * `aria-label` where this does it in visible text — so the same string goes
+   * to both, through `describe` and through the caption snippet.
    */
-  let twins = $derived.by(() => {
-    const seen = new Map<string, boolean>();
-    for (const candidate of s.shown) seen.set(candidate.label, seen.has(candidate.label));
-    return seen;
-  });
-
-  const captionOf = (label: string, id: string): string => {
-    const folder = s.provider === 'metacom' && twins.get(label) ? s.folderOf(id) : '';
-    return folder ? `${label} · ${folder}` : label;
+  const captionOf = (candidate: Candidate, among: boolean): string => {
+    const folder = s.provider === 'metacom' && among ? s.folderOf(candidate.id) : '';
+    return folder ? `${candidate.label} · ${folder}` : candidate.label;
   };
+
+  /**
+   * The line above the pictures, from the search the component is showing.
+   *
+   * It is drawn as the `lead` snippet, which is inside the results box: the
+   * component's own field and grid are one block, and a paragraph put above the
+   * component would sit above the field rather than above the tiles.
+   *
+   * `searching` is only true where the box has nothing to stand in for the
+   * search — results stay up while the next ones are being fetched, so the line
+   * goes on naming the answer that is actually on screen rather than blanking
+   * under a hand that is still typing.
+   */
+  function statusFor(answer: SearchAnswer): string {
+    if (s.cropFailed) return s.cropFailed;
+    if (answer.suggested) return s.idleMessage();
+    if (answer.searching) return t('ui.searching');
+    const term = answer.searched;
+    const n = answer.candidates.length;
+    if (n === 0) return t('ui.no_hits_for', { term });
+    return n === 1 ? t('ui.hits_for_one', { term }) : t('ui.hits_for', { n, term });
+  }
 
   /*
    * Enter is Fertig. A <dialog> with no form in it has no default action, so
    * until now the key did nothing at all — and it is what a person reaches for
    * after typing a caption.
    *
-   * Two things keep their own Enter. A focused button is the browser's to
-   * activate, and the search field means "look for this now" rather than "I am
-   * done" — closing the dialog there would throw away the reason it was open.
+   * Two things keep their own Enter, and the search field is no longer one of
+   * them to arrange: it claims the key itself, with `preventDefault` and
+   * `stopPropagation` on a real listener, so this handler never sees it. A
+   * focused button is still the browser's to activate, and a crop in progress
+   * still means "keep this square".
    */
   $effect(() => {
     const dialog = s.handle?.dialog;
@@ -62,8 +107,7 @@
       // where somebody is sitting is the crop being thrown away by the key that
       // everywhere else in this dialog means "yes".
       if (s.loaded) { s.keepSquare(); return; }
-      if (target === search) s.onQuery(search.value, true);
-      else s.finish(() => s.handlers.onClose());
+      s.finish(() => s.handlers.onClose());
     };
     dialog.addEventListener('keydown', enter);
     return () => dialog.removeEventListener('keydown', enter);
@@ -79,7 +123,7 @@
   }
 </script>
 
-<input bind:this={search} class="field" type="search" aria-label={t('ui.search_symbol')} placeholder={s.isNew ? t('ui.search_word') : t('ui.search_other_word')} hidden={cropping} oninput={() => s.onQuery(search.value)} /><!--
+<!--
   The picture the field is actually showing.
 
   It was the one thing this dialog would not show. Nothing here is marked while
@@ -106,15 +150,24 @@
   does, and a control repeating that an inch higher is a question about which of
   them is the real one rather than a choice. Fertig keeps the square — so does
   Enter — and the ✕ drops it, which is what all three mean everywhere else here.
---><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div><p class="small muted" style="margin:12px 0 0" hidden={cropping}>{s.status}</p><!--
-  The suggestions, as the shared grid. conventions.md §6.4.
+--><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div><!--
+  The search, and the pictures it answers with. conventions.md §6.4.
 
-  No `toggle`, and therefore no `aria-pressed`: these tiles do not come back.
-  Pressing one closes the dialog with an answer, so an attribute announcing a
-  state would be announcing one the control does not have — wochenwerk's tiles
-  toggle and carry it, and that is the whole reason it is a prop. The mark on
-  the stored choice is `active`, which is a class either way.
+  The tiles carry no `aria-pressed` and the component draws none: these tiles do
+  not come back. Pressing one closes the dialog with an answer, so an attribute
+  announcing a state would be announcing one the control does not have. The mark
+  on the stored choice is `picker__item--active`, which is a class either way.
 
-  `min` is bildhaft's 102px, because a tile here holds an 82px picture; the
-  margin above the grid is the page's and stays in app.css.
---><TileGrid class="picker__grid--under" min="102px" hidden={cropping}>{#each s.shown as candidate (candidate.id)}{@const caption = captionOf(candidate.label, candidate.id)}<Tile label={caption} active={candidate.id === s.chosen} onclick={() => s.finish(() => s.handlers.onChoose(candidate))}><span class="slot__img"><SymbolPicture provider={s.provider} id={candidate.id} alt={candidate.label} /></span></Tile>{/each}</TileGrid>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}
+  The suggestions are not a block above the grid — they are the `suggestions`
+  prop and go into the same results list, declined by the component itself the
+  moment a word has been searched.
+--><SymbolSearch
+  class="picker__search"
+  provider={source}
+  words={{ field: t('ui.search_symbol'), placeholder: s.isNew ? t('ui.search_word') : t('ui.search_other_word') }}
+  chosen={s.chosen}
+  busy={cropping}
+  suggestions={s.suggested}
+  describe={captionOf}
+  onpick={(candidate) => s.finish(() => s.handlers.onChoose(candidate))}
+>{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}

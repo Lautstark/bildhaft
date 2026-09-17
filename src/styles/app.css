@@ -497,16 +497,42 @@ kbd {
   flex: none;
 }
 
-/* The grid itself is @lautstark/design/svelte/TileGrid now, and components.css
-   draws it; the 102px a bildhaft tile is at its narrowest goes in as the `min`
-   prop, because that figure is the one thing the two products drawing this
-   grid disagree about. What is left here is the margin, which components.css
-   deliberately does not carry: it is not a property of a grid of pictures, it
-   is the gap between this grid and the status line above it, and only the page
-   that stacks the two knows about it. A modifier rather than a bare
-   `.picker__grid` rule, which would be loaded after components.css and quietly
-   replace the whole drawing. */
-.picker__grid--under { margin-top: 12px; }
+/* The search and the pictures it answers with are
+   @lautstark/bildquelle/svelte/SymbolSearch now, and components.css draws
+   `.picker__grid` and `.picker__item`. What is left here is what only the page
+   stacking them knows about, and every selector is narrowed through the
+   wrapper's own class so that none of them replaces a shared drawing.
+
+   `--tile-min` is the one figure the two products drawing this grid disagree
+   about: 102px, because a bildhaft tile holds an 82px picture. components.css
+   sets its 84px default through `:where()`, which is specificity zero on
+   purpose, so this wins by simply being a rule. */
+/* The search sits under the three controls that are true of this field whatever
+   symbol ends up in it, and takes the same 10px the rest of them stack on. */
+.picker__search { margin-top: 10px; }
+
+.picker__search .picker__grid {
+  --tile-min: 102px;
+  margin-top: 12px;
+}
+
+/* The status line — „Vorschläge für …", „3 Treffer für …" — is the `lead`
+   snippet, which draws inside the results box: the component's field and grid
+   are one block, so a paragraph above the component would sit above the field
+   rather than above the tiles. Inside the grid it is a grid item, and a
+   sentence is not a tile, so it takes the whole row. The 8px the grid already
+   puts between its children is the gap under it. */
+.picker__status {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Where the source's credit sits, under the pictures it is about. Not
+   `.footer__credit`: that name is the ARASAAC licence locator in the page
+   footer, and e2e/collection-source.spec.ts asserts it is absent under METACOM.
+   The component draws nothing at all where a source has no attribution, which
+   is what METACOM is — somebody's own licensed folder owes nothing to anybody. */
+.picker__search > p { margin: 12px 0 0; }
 
 /* ------------------------------------------------------- the square crop
 
@@ -549,17 +575,24 @@ kbd {
 }
 
 /* The tile, its hover and the mark on the chosen one are components.css's, and
-   the button is @lautstark/design/svelte/Tile. Two rules stay, because they
-   are the two things about a bildhaft tile that are not true of the shared
-   one: the picture in it is 82px rather than the 68px a chip carries, and the
-   label is 12px in --text-dim where wochenwerk's is `.small` in the page's
-   colour. components.css says as much beside `.picker__item > span`, and
-   leaves both out on purpose.
+   the button is the search component's. Two rules stay, because they are the
+   two things about a bildhaft tile that are not true of the shared one: the
+   picture in it is 82px rather than the 68px a chip carries, and the label is
+   12px in --text-dim where wochenwerk's is `.small` in the page's colour.
+   components.css says as much beside `.picker__item > span`, and leaves both
+   out on purpose — three products put three different thumbnails in this tile,
+   so the component emits a bare <img> and the product sizes it.
 
    Both selectors are narrowed, so neither replaces a shared drawing: the
    ellipsis on the label still comes from components.css, and these only add
    the size and the colour on top of it. */
-.picker__item .slot__img { width: 82px; height: 82px; }
+/* `scale-down` rather than `contain`, and it is the translation of the two
+   rules this replaced rather than a new opinion: the picture used to sit in an
+   82px box at `max-width: 100%`, so a small one was drawn at its own size and
+   only a large one was shrunk to fit. `contain` would blow a 60px picture up to
+   82 and make it soft; `scale-down` is `contain` and `none`, whichever is
+   smaller, which is exactly what the box did. */
+.picker__item img { width: 82px; height: 82px; object-fit: scale-down; }
 .picker__item > span {
   font-size: 12px;
   color: var(--text-dim);
