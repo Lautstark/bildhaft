@@ -33,13 +33,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* ------------------------------------------------------------ primitives */
 
-/* The button, the field and the focus policy come from
-   @lautstark/design/components.css now — this file only adds what is
-   bildhaft's own. .sm is density, which stays per product. */
-
-.muted { color: var(--text-dim); }
-.faint { color: var(--text-faint); }
-.small { font-size: 13.5px; }
+/* There is nothing left in this section, and that is the point of keeping the
+   heading. The button, the field, the focus policy and the density modifier
+   have come from @lautstark/design/components.css for a while; `small`,
+   `muted` and `faint` joined them in design v1.32.0, with the values bildhaft
+   and wochenwerk had each written for themselves — character for character the
+   three declarations that stood here. Re-adding any of them would be a bare
+   rule loaded after components.css, which wins silently; shadows.js is what
+   says so. */
 
 /* ---------------------------------------------------------------- layout */
 
@@ -496,12 +497,16 @@ kbd {
   flex: none;
 }
 
-.picker__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
+/* The grid itself is @lautstark/design/svelte/TileGrid now, and components.css
+   draws it; the 102px a bildhaft tile is at its narrowest goes in as the `min`
+   prop, because that figure is the one thing the two products drawing this
+   grid disagree about. What is left here is the margin, which components.css
+   deliberately does not carry: it is not a property of a grid of pictures, it
+   is the gap between this grid and the status line above it, and only the page
+   that stacks the two knows about it. A modifier rather than a bare
+   `.picker__grid` rule, which would be loaded after components.css and quietly
+   replace the whole drawing. */
+.picker__grid--under { margin-top: 12px; }
 
 /* ------------------------------------------------------- the square crop
 
@@ -569,26 +574,19 @@ kbd {
 .crop__row { margin-top: 10px; }
 .crop__zoom { width: 100%; accent-color: var(--accent); }
 
-.picker__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 9px 6px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  cursor: pointer;
-  transition: background .13s, box-shadow .13s;
-}
-.picker__item:hover { background: var(--surface-3); }
-.picker__item--active { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+/* The tile, its hover and the mark on the chosen one are components.css's, and
+   the button is @lautstark/design/svelte/Tile. Two rules stay, because they
+   are the two things about a bildhaft tile that are not true of the shared
+   one: the picture in it is 82px rather than the 68px a chip carries, and the
+   label is 12px in --text-dim where wochenwerk's is `.small` in the page's
+   colour. components.css says as much beside `.picker__item > span`, and
+   leaves both out on purpose.
+
+   Both selectors are narrowed, so neither replaces a shared drawing: the
+   ellipsis on the label still comes from components.css, and these only add
+   the size and the colour on top of it. */
 .picker__item .slot__img { width: 82px; height: 82px; }
-.picker__item span {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.picker__item > span {
   font-size: 12px;
   color: var(--text-dim);
 }

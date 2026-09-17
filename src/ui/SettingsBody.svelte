@@ -6,7 +6,7 @@
   import { wherePanel } from '@lautstark/sicherung/ablage-panel';
   import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
-  import Vanilla from '../pieces/Vanilla.svelte';
+  import Vanilla from '@lautstark/design/svelte/Vanilla';
   import { sourceFacts } from './symbolSources.ts';
   import { resetSymbolResolution } from './symbols.ts';
   import { ablage, isStore } from '../db/folder.ts';
@@ -38,8 +38,11 @@
    * buttons whose disabled state tracks a write in flight, or the hidden file
    * inputs a pick is delivered through; rebuilding one under a repaint would
    * drop all of that on the floor, or swap the input out from under a picker
-   * that is already open. `Vanilla.svelte` puts them in place under a
-   * `display: contents` host, so nothing about their layout changes.
+   * that is already open. `@lautstark/design/svelte/Vanilla` puts them in
+   * place under a `display: contents` host, so nothing about their layout
+   * changes. It was bildhaft's own file until design v1.34.0; all four
+   * products had written it, character-identical but for whether the prop was
+   * typed `HTMLElement` or `Node`. bildhaft had `Node`, which is the true one.
    */
   let dataHeadline = $state('');
   let metacomHeadline = $state('');
