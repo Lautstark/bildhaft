@@ -1,4 +1,6 @@
 <script lang="ts">
+  import TileGrid from '@lautstark/design/svelte/TileGrid';
+  import Tile from '@lautstark/design/svelte/Tile';
   import { ownImageId } from '../core/types.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import Crop from './Crop.svelte';
@@ -104,4 +106,15 @@
   does, and a control repeating that an inch higher is a question about which of
   them is the real one rather than a choice. Fertig keeps the square — so does
   Enter — and the ✕ drops it, which is what all three mean everywhere else here.
---><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div><p class="small muted" style="margin:12px 0 0" hidden={cropping}>{s.status}</p><div class="picker__grid" hidden={cropping}>{#each s.shown as candidate (candidate.id)}{@const caption = captionOf(candidate.label, candidate.id)}<button class="picker__item{candidate.id === s.chosen ? ' picker__item--active' : ''}" type="button" title={caption} onclick={() => s.finish(() => s.handlers.onChoose(candidate))}><span class="slot__img"><SymbolPicture provider={s.provider} id={candidate.id} alt={candidate.label} /></span><span>{caption}</span></button>{/each}</div>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}
+--><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div><p class="small muted" style="margin:12px 0 0" hidden={cropping}>{s.status}</p><!--
+  The suggestions, as the shared grid. conventions.md §6.4.
+
+  No `toggle`, and therefore no `aria-pressed`: these tiles do not come back.
+  Pressing one closes the dialog with an answer, so an attribute announcing a
+  state would be announcing one the control does not have — wochenwerk's tiles
+  toggle and carry it, and that is the whole reason it is a prop. The mark on
+  the stored choice is `active`, which is a class either way.
+
+  `min` is bildhaft's 102px, because a tile here holds an 82px picture; the
+  margin above the grid is the page's and stays in app.css.
+--><TileGrid class="picker__grid--under" min="102px" hidden={cropping}>{#each s.shown as candidate (candidate.id)}{@const caption = captionOf(candidate.label, candidate.id)}<Tile label={caption} active={candidate.id === s.chosen} onclick={() => s.finish(() => s.handlers.onChoose(candidate))}><span class="slot__img"><SymbolPicture provider={s.provider} id={candidate.id} alt={candidate.label} /></span></Tile>{/each}</TileGrid>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}

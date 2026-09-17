@@ -61,8 +61,11 @@ Four things were kept on purpose:
 - **The shared vanilla panels are still vanilla.** `@lautstark/sicherung`'s
   two panels, `@lautstark/bildquelle`'s METACOM panel and
   `@lautstark/design`'s language picker, collections list, rename field, menu
-  and toast are built once and put in place by `src/pieces/Vanilla.svelte`, a
-  `display: contents` host. Nothing in a shared package changed.
+  and toast are built once and put in place by a `display: contents` host.
+  Nothing in a shared package changed. (That host was `src/pieces/Vanilla.svelte`
+  when this was written; all four products had written the same file, and it is
+  `@lautstark/design/svelte/Vanilla` since design v1.34.0. The decision is the
+  one recorded here — the file is just no longer bildhaft's.)
 - **`#print-root` is outside the component tree.** It is in `index.html` now
   rather than built by the shell, because `@media print` hides `#app-root` and
   this is the one element that must survive that. The print dialog mounts its

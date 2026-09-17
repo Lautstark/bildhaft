@@ -20,10 +20,10 @@
     "test": "node tools/installcheck.mjs && vitest run"
   },
   "dependencies": {
-    "@lautstark/bildquelle": "github:Lautstark/bildquelle#v2.2.0",
-    "@lautstark/design": "github:Lautstark/design#v1.31.3",
-    "@lautstark/sicherung": "github:Lautstark/sicherung#v1.16.1",
-    "@lautstark/werkzeuge": "github:Lautstark/werkzeuge#v1.2.0",
+    "@lautstark/bildquelle": "github:Lautstark/bildquelle#v2.3.0",
+    "@lautstark/design": "github:Lautstark/design#v1.34.0",
+    "@lautstark/sicherung": "github:Lautstark/sicherung#v1.17.0",
+    "@lautstark/werkzeuge": "github:Lautstark/werkzeuge#v1.3.0",
     "idb": "^8.0.3"
   },
   "devDependencies": {
