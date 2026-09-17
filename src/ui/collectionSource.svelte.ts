@@ -34,7 +34,8 @@
  */
 
 import type { Collection, ProviderId } from '../core/types.ts';
-import { openSheet } from './sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from './dialog.ts';
 import CollectionSourceBody from './CollectionSourceBody.svelte';
 import CollectionSourceFoot from './CollectionSourceFoot.svelte';
 import { t } from '../i18n/index.ts';
@@ -91,6 +92,7 @@ export function openCollectionSource(options: CollectionSourceOptions): void {
   const state = new Choosing(options);
   const sheet = openSheet({
     title: t('ui.symbol_source_menu_title'),
+    closeLabel: CLOSE,
     state,
     body: CollectionSourceBody,
     foot: CollectionSourceFoot,

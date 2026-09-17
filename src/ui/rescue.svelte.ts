@@ -18,7 +18,8 @@ import { downloadJson } from '../db/exportImport.ts';
 import { asFile, countRecords, dumpEverything, type Dump } from '../db/rescue.ts';
 import { discardEverything } from '../db/db.ts';
 import { isRefusal } from '../db/migrations.ts';
-import { openSheet } from './sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from './dialog.ts';
 import RescueBody from './RescueBody.svelte';
 import RescueFoot from './RescueFoot.svelte';
 import { t } from '../i18n/index.ts';
@@ -93,6 +94,7 @@ async function show(page: Page): Promise<void> {
   const state = new Rescuing(dump, page);
   const sheet = openSheet({
     title: t('ui.rescue_title'),
+    closeLabel: CLOSE,
     state,
     body: RescueBody,
     foot: RescueFoot,

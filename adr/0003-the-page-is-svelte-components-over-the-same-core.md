@@ -56,8 +56,13 @@ Four things were kept on purpose:
   ✕, the body, the foot, the backdrop press and the one `close` exit are the
   package's. `src/ui/sheet.svelte.ts` mounts a body and a foot component
   straight into the frame's own containers with no wrapper between, because
-  `components.css` styles those children directly. The eight visual baselines
-  pass at a tolerance of zero, which is the proof.
+  `components.css` styles those children directly. The visual baselines pass at
+  a tolerance of zero, which is the proof. (That file was bildhaft's own when
+  this was written; all four products had written a sheet opener around the
+  same frame, and it is `@lautstark/design/svelte/sheet`'s `openSheet` since
+  design v1.34.0. The decision is the one recorded here — the mounting is just
+  no longer bildhaft's, and the one word it will not carry, the ✕'s name, still
+  reaches it from `src/ui/dialog.ts`.)
 - **The shared vanilla panels are still vanilla.** `@lautstark/sicherung`'s
   two panels, `@lautstark/bildquelle`'s METACOM panel and
   `@lautstark/design`'s language picker, collections list, rename field, menu

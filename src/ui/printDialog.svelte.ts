@@ -1,7 +1,8 @@
 import { flushSync, mount, unmount } from 'svelte';
 import type { CollectionKind, PrintSettings, ProviderId, Sentence } from '../core/types.ts';
 import { symbolIdsIn } from '../core/types.ts';
-import { openSheet } from './sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from './dialog.ts';
 import PrintBody from './PrintBody.svelte';
 import PrintFoot from './PrintFoot.svelte';
 import Printable from './Printable.svelte';
@@ -296,6 +297,7 @@ export function openPrintDialog(options: PrintOptions): void {
       : options.sentences.length === 1
         ? t('ui.print_row_title')
         : t('ui.print_collection_title', { n: options.sentences.length }),
+    closeLabel: CLOSE,
     wide: true,
     state,
     body: PrintBody,

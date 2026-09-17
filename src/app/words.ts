@@ -2,7 +2,8 @@ import type { Sentence } from '../core/types.ts';
 import { normalizeInput } from '@lautstark/bildquelle/german';
 import { listOverrides, newId, putSentence } from '../db/repo.ts';
 import { t } from '../i18n/index.ts';
-import { openSheet } from '../ui/sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from '../ui/dialog.ts';
 import WortschatzPickBody from '../ui/WortschatzPickBody.svelte';
 import { providerId, s } from './state.svelte.ts';
 import { askFor } from './asking.svelte.ts';
@@ -95,6 +96,7 @@ export async function openWortschatzSheet(): Promise<void> {
 
   const sheet: { close(): void } = openSheet({
     title: t('ui.add_wortschatz'),
+    closeLabel: CLOSE,
     state: {
       total: all.length,
       tags: [...tally.values()].sort((a, b) => a.label.localeCompare(b.label)),

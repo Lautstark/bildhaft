@@ -12,8 +12,8 @@ import {
 import { downloadCollectionExport, exportCollection, importCollectionFile } from '../db/exportImport.ts';
 import { folderName, wipeReaches } from '../db/folder.ts';
 import { LANG, t } from '../i18n/index.ts';
-import { confirmDialog } from '../ui/dialog.ts';
-import { openSheet } from '../ui/sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
 import { activeCollection, providerId, s } from './state.svelte.ts';
 import { askFor } from './asking.svelte.ts';
@@ -343,6 +343,7 @@ export async function confirmClearAll(): Promise<void> {
   if (reach === 'unreachable') {
     const sheet: { close(): void } = openSheet({
       title: t('ui.clear_all_blocked_title'),
+      closeLabel: CLOSE,
       state: {
         line: t('ui.clear_all_blocked', { folder }),
         label: t('ui.understood'),

@@ -1,4 +1,5 @@
-import { openSheet } from './sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from './dialog.ts';
 import SettingsBody from './SettingsBody.svelte';
 import { t } from '../i18n/index.ts';
 
@@ -17,6 +18,7 @@ import { t } from '../i18n/index.ts';
 export function openSettings(): void {
   const sheet: { close(): void } = openSheet({
     title: t('ui.settings'),
+    closeLabel: CLOSE,
     /* A column of panels, so 900px rather than 600. Three products showed this
        same column at 600 and wochenwerk at 900, and wochenwerk was the only one
        with a reason written down: 900px is where a line of German stops being
