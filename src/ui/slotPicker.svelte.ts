@@ -45,10 +45,13 @@ export class Picking {
   readonly chosen: string | null;
   readonly isNew: boolean;
 
+  /** The tiles to show while nothing has been searched. Handed to the search
+   *  component, which declines them the moment a word has been searched — so
+   *  nothing here has to ask what is in a field it no longer owns. */
   suggested = $state.raw<Candidate[]>([]);
-  /** What the grid is drawing: the suggestions, or what a search found. */
-  shown = $state.raw<Candidate[]>([]);
-  status = $state('');
+  /** The one thing the search's own status line cannot say: a cut that failed.
+   *  Cleared by the next crop, so it is never left standing over a fresh one. */
+  cropFailed = $state('');
   caption = $state('');
   negated = $state(false);
   /** A picture waiting to be cut, and then nothing else on the sheet is shown.
@@ -85,8 +88,6 @@ export class Picking {
   /** The caption typed but not yet written through, or null for nothing pending. */
   private pending: string | null = null;
   private labelTimer: number | undefined;
-  private searchTimer: number | undefined;
-  private searchToken = 0;
 
   constructor(
     readonly slot: Slot,
@@ -99,12 +100,6 @@ export class Picking {
     this.suggested = this.stored;
     this.caption = slot.label ?? '';
     this.negated = slot.negated ?? false;
-    this.paint(this.suggested, this.idleMessage());
-  }
-
-  paint(candidates: Candidate[], message: string): void {
-    this.shown = candidates;
-    this.status = message;
   }
 
   idleMessage(): string {
@@ -126,45 +121,22 @@ export class Picking {
     return inside.length > 1 ? inside[inside.length - 2]!.replace(/_/g, ' ') : '';
   }
 
-  onQuery(raw: string, now = false): void {
-    const term = raw.trim();
-    window.clearTimeout(this.searchTimer);
-    const mine = ++this.searchToken;
-
-    if (!term) {
-      this.paint(this.suggested, this.idleMessage());
-      return;
-    }
-
-    this.status = t('ui.searching');
-    /*
-     * Debounced manual search — the escape hatch for anything the pipeline
-     * missed. Enter asks for it now: sitting out a debounce you have finished
-     * typing through reads as the key having done nothing.
-     */
-    this.searchTimer = window.setTimeout(async () => {
-      const found = await getProvider(this.provider).search(term).catch(() => []);
-      if (mine !== this.searchToken) return;
-      this.paint(found, found.length === 0
-        ? t('ui.no_hits_for', { term })
-        : found.length === 1
-          ? t('ui.hits_for_one', { term })
-          : t('ui.hits_for', { n: found.length, term }));
-    }, now ? 0 : 260);
-  }
-
   /*
    * Slots store only a handful of candidates to keep collections and exports
    * small. Re-query on open for the full list — cached, so this is instant the
    * second time. Stored candidates stay first: they include any manual pick.
+   *
+   * It no longer asks whether anything has been searched since. The search
+   * component holds that state and declines the suggestions itself once a word
+   * has landed, which is §6.4's point: filling these in late is just a new value
+   * on a prop, and if an answer got there first nothing moves.
    */
-  fillSuggestions(searchValue: () => string): void {
+  fillSuggestions(): void {
     if (!this.slot.concept) return;
     void getProvider(this.provider).search(this.slot.concept).then((found) => {
-      if (found.length === 0 || this.searchToken !== 0 || searchValue().trim()) return;
+      if (found.length === 0) return;
       const seen = new Set(this.stored.map((c) => c.id));
       this.suggested = [...this.stored, ...found.filter((c) => !seen.has(c.id))];
-      this.paint(this.suggested, this.idleMessage());
     }).catch(() => undefined);
   }
 
@@ -212,6 +184,7 @@ export class Picking {
      * already square, or the browser could not read a size off it, and both
      * mean the file goes exactly as it did before this step existed.
      */
+    this.cropFailed = '';
     const loaded = await loadSquare(file, file.name).catch(() => null);
     if (!loaded) { this.finish(() => this.handlers.onOwnImage(file, file.name)); return; }
     this.loaded = loaded;
@@ -231,7 +204,7 @@ export class Picking {
     if (!loaded || !cropper) return;
     void cropper.cut().then(
       (square) => this.finish(() => this.handlers.onOwnImage(square, cropName(loaded.name, square.type))),
-      () => { this.endCrop(); this.status = t('ui.crop_failed'); });
+      () => { this.endCrop(); this.cropFailed = t('ui.crop_failed'); });
   }
 
   teardown(): void {
@@ -243,7 +216,6 @@ export class Picking {
     this.loaded?.close();
     this.loaded = null;
     window.clearTimeout(this.labelTimer);
-    window.clearTimeout(this.searchTimer);
   }
 
   /** Closes the dialog and then runs the outcome the pressed button stands for. */
