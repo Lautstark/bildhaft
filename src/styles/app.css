@@ -512,7 +512,16 @@ kbd {
 
    Cutting a picture of the user's own down to the square every box that shows
    a symbol actually is — the 68px chip, the 82px tile, and 40mm on paper. The
-   behaviour is in ui/crop.ts; this is only where the parts sit.
+   square, the slider and the two ways of moving them are
+   @lautstark/design/svelte/Crop over @lautstark/design/crop now, and that
+   component's scoped style carries the cursor, the focus ring, the picture, the
+   frame, the slider row and `touch-action: none` — the last of which bildhaft
+   did not have, so the first drag with a finger scrolled the dialog.
+
+   What is left here is the one thing §6.6 says the component must not own:
+   where the box is. One product's is `position: absolute; inset: 0` inside a
+   preview it already had, and bildhaft's is the square below — so the placement,
+   and the `overflow: hidden` the frame's dimming depends on, stay with it.
 
    The picker's own parts are hidden while it is up, and each of them needs a
    rule saying so: [hidden] is the user agent's and loses to any author
@@ -537,42 +546,7 @@ kbd {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
-  cursor: grab;
-  /* Or the browser scrolls the dialog instead of moving the picture, the first
-     time somebody drags with a finger. */
-  touch-action: none;
 }
-.crop:active { cursor: grabbing; }
-.crop:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-
-/* Placed from crop.ts in percentages of the box, so width, left and top are the
-   three properties left out here. max-width, because that width is deliberately
-   larger than the box — the overflow is what the frame is cutting off. */
-.crop__img {
-  position: absolute;
-  height: auto;
-  max-width: none;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-/* The square that will be kept. The inset is FRAME in crop.ts and the two have
-   to agree: that constant is what maps a source pixel onto this box.
-
-   One enormous spread rather than four rectangles round the frame, trimmed by
-   the box's own overflow. Its point is that what is being cut off stays
-   visible. White in both themes, like the picture under it — this line is drawn
-   against a photograph rather than against the page. */
-.crop__frame {
-  position: absolute;
-  inset: 8%;
-  pointer-events: none;
-  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.45);
-  outline: 1px solid rgb(255 255 255 / 0.9);
-}
-
-.crop__row { margin-top: 10px; }
-.crop__zoom { width: 100%; accent-color: var(--accent); }
 
 /* The tile, its hover and the mark on the chosen one are components.css's, and
    the button is @lautstark/design/svelte/Tile. Two rules stay, because they

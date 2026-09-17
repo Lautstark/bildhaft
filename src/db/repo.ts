@@ -745,7 +745,7 @@ export async function overrideMap(provider: ProviderId): Promise<Map<string, Ove
  *
  * The name arrives beside the bytes rather than on them, because what is stored
  * is no longer always the file that was chosen: a picture cut to a square is a
- * Blob the page drew and has no name of its own. See ui/crop.ts.
+ * Blob the page drew and has no name of its own. See @lautstark/design/crop.
  */
 export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage> {
   const image: OwnImage = {

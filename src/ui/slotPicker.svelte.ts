@@ -4,8 +4,8 @@ import { openSheet, type Handle } from '@lautstark/design/svelte/sheet';
 import { CLOSE } from './dialog.ts';
 import SlotPickerBody from './SlotPickerBody.svelte';
 import SlotPickerFoot from './SlotPickerFoot.svelte';
-import { cropName, cropSquare, type Loaded } from './crop.ts';
-import type Crop from './Crop.svelte';
+import { cropName, loadSquare, type Loaded } from '@lautstark/design/crop';
+import type Crop from '@lautstark/design/svelte/Crop';
 import { t } from '../i18n/index.ts';
 
 export interface PickerHandlers {
@@ -51,9 +51,10 @@ export class Picking {
   status = $state('');
   caption = $state('');
   negated = $state(false);
-  /** A picture waiting to be cut, and then nothing else on the sheet is shown. */
+  /** A picture waiting to be cut, and then nothing else on the sheet is shown.
+   *  It carries the source's own MIME, which is what the shared output policy's
+   *  `'source'` type preserves — so nothing beside it has to remember the file. */
   loaded = $state.raw<Loaded | null>(null);
-  loadedType = '';
   /** The component drawing that square, so Fertig can ask it for the bytes. */
   cropper: Crop | undefined = $state();
 
@@ -193,6 +194,14 @@ export class Picking {
    * Nothing is written by either. The database is not touched until the press
    * that keeps a square, so cancelling costs exactly what closing this dialog
    * has always cost — which is nothing.
+   *
+   * **Only ever the user's own file**, which is why this hangs off the upload
+   * path and off no other. A symbol from a source is not cropped and must not
+   * be: METACOM is read out of a licensed folder and never copied, so a crop of
+   * one would be a derivative bildhaft has no business writing, and ARASAAC
+   * pictograms are already square line art with nothing to gain. The model, the
+   * encoder and the output policy are `@lautstark/design/crop`; that rule is the
+   * product's and stays here.
    */
   async beginCrop(file: File): Promise<void> {
     /*
@@ -203,9 +212,8 @@ export class Picking {
      * already square, or the browser could not read a size off it, and both
      * mean the file goes exactly as it did before this step existed.
      */
-    const loaded = await cropSquare(file, file.name).catch(() => null);
+    const loaded = await loadSquare(file, file.name).catch(() => null);
     if (!loaded) { this.finish(() => this.handlers.onOwnImage(file, file.name)); return; }
-    this.loadedType = file.type;
     this.loaded = loaded;
   }
 
