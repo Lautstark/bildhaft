@@ -499,22 +499,27 @@ kbd {
    `--tile-min` is the one figure the two products drawing this grid disagree
    about: 102px, because a bildhaft tile holds an 82px picture. components.css
    sets its 84px default through `:where()`, which is specificity zero on
-   purpose, so this wins by simply being a rule. */
-/* The search sits under the three controls that are true of this field whatever
-   symbol ends up in it, and takes the same 10px the rest of them stack on. */
-.picker__search { margin-top: 10px; }
+   purpose, so this wins by simply being a rule.
 
+   The wrapper takes no margin of its own, and that is an assertion rather than
+   an omission. The three rows above are inside it now — the component's
+   `between` snippet, from bildquelle v2.4.0 — so the wrapper starts at the
+   search field, which is the first thing in the sheet's body and sits exactly
+   on its padding. e2e/translate.spec.ts measures the focus ring against that
+   edge to the pixel. Each of the three rows carries the 10px it always
+   carried, which is what puts the gap under the field. */
 .picker__search .picker__grid {
   --tile-min: 102px;
   margin-top: 12px;
 }
 
 /* The status line — „Vorschläge für …", „3 Treffer für …" — is the `lead`
-   snippet, which draws inside the results box: the component's field and grid
-   are one block, so a paragraph above the component would sit above the field
-   rather than above the tiles. Inside the grid it is a grid item, and a
-   sentence is not a tile, so it takes the whole row. The 8px the grid already
-   puts between its children is the gap under it. */
+   snippet, which draws inside the results box. Not `between`, which is where
+   the three rows above the grid go: this sentence is about the tiles and has to
+   sit immediately above them, and `between` is immediately below the field.
+   Inside the grid it is a grid item, and a sentence is not a tile, so it takes
+   the whole row. The 8px the grid already puts between its children is the gap
+   under it. */
 .picker__status {
   grid-column: 1 / -1;
   margin: 0;
