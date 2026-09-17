@@ -7,6 +7,7 @@
   import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
+  import Panel from '@lautstark/design/svelte/Panel';
   import { sourceFacts } from './symbolSources.ts';
   import { resetSymbolResolution } from './symbols.ts';
   import { ablage, isStore } from '../db/folder.ts';
@@ -345,6 +346,33 @@
     downloadJson(await exportEverything(true), LANG === 'de' ? 'sicherung' : 'backup');
     notify(t('ui.backup_exported'));
   }
+
+  /* ------------------------------------------------- the folded column --- */
+
+  /*
+   * Which panel is unfolded, one flag each, and every one of them is *bound*.
+   *
+   * The panels share a `name`, which makes them the platform's own accordion:
+   * opening one makes the browser remove another's `open` attribute directly,
+   * and Svelte never sees that write. Passed one way, this record would go on
+   * saying „open" for a panel the browser has already folded; the next write of
+   * `true` would then short-circuit against Svelte's own copy of the value,
+   * never reach the DOM, and the panel would stay shut with nothing red
+   * anywhere. Bound, the `toggle` the browser fires on its way past comes back
+   * here and the record stays true. @lautstark/design conventions.md §6.2.
+   *
+   * Sprache is the one that starts open, which is the column's own comment
+   * below and §3.11.
+   */
+  let open = $state({
+    language: true,
+    arasaac: false,
+    metacom: false,
+    words: false,
+    appearance: false,
+    data: false,
+    danger: false,
+  });
 </script>
 
 <!--
@@ -360,15 +388,22 @@
   which one somebody most needs on arrival, and "the setting you need in order
   to use anything at all" wins.
 
-  `name=` makes the panels one exclusive group: opening one closes the rest. The
-  platform's own accordion, radio-group semantics and no script, which is what
-  keeps the state lines in the headings readable at a glance.
-  @lautstark/design conventions.md §3.5.
---><details class="panel" name="settings" open><summary><span class="section">{t('ui.set_language')}</span><span class="state">{NAMES[LANG] ?? LANG}</span></summary><div class="body"><div class="opt"><Vanilla node={picker.node} /><span class="small faint">{t('ui.language_note')}</span></div></div></details><details class="panel" name="settings"><summary aria-current={fallback === 'arasaac' ? 'true' : null}><span class="section">ARASAAC</span><span class="state">{arasaacState}</span></summary><div class="body"><p class="small muted" style="margin:0">{t('ui.arasaac_about')}</p><p class="small faint" style="margin:6px 0 0">{arasaac.attribution ?? ''}</p>{#if fallback !== 'arasaac'}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('arasaac')}>{t('ui.use_as_default')}</button><!--
+  `group` makes the panels one exclusive group — `name="settings"` on each
+  `<details>`, which is its default. The platform's own accordion, radio-group
+  semantics and no script, which is what keeps the state lines in the headings
+  readable at a glance. @lautstark/design conventions.md §3.5.
+
+  The `<details>`, its summary and the two spans are
+  @lautstark/design/svelte/Panel's since design v1.34.0; components.css had
+  drawn every one of those rules for as long as the panel has existed and this
+  file was retyping the markup around them. bildhaft has no `.panel` rule of its
+  own and already spelled the body `.body`, so nothing here is drawn
+  differently than it was — see §6.2, and `open` above on why each one is bound.
+--><Panel section={t('ui.set_language')} state={NAMES[LANG] ?? LANG} bind:open={open.language}><div class="opt"><Vanilla node={picker.node} /><span class="small faint">{t('ui.language_note')}</span></div></Panel><Panel section="ARASAAC" state={arasaacState} current={fallback === 'arasaac'} bind:open={open.arasaac}><p class="small muted" style="margin:0">{t('ui.arasaac_about')}</p><p class="small faint" style="margin:6px 0 0">{arasaac.attribution ?? ''}</p>{#if fallback !== 'arasaac'}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('arasaac')}>{t('ui.use_as_default')}</button><!--
   The sentence that stops „Standardquelle" from being a word with no referent.
   It is under the button rather than at the top of the dialog, because it is
   what the button does that needs explaining.
---><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}</div></details><details class="panel" name="settings"><summary aria-current={fallback === 'metacom' ? 'true' : null}><span class="section">METACOM</span><span class="state">{metacomState}</span></summary><div class="body"><!--
+--><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}</Panel><Panel section="METACOM" state={metacomState} current={fallback === 'metacom'} bind:open={open.metacom}><!--
   The block is the module's; what is stacked under it is what the module leaves
   here on purpose, and its header says why for each.
 
@@ -377,12 +412,12 @@
   was nothing to share. The rendering chooser: it is built out of this app's own
   `<select class="field">`, and sharing it would mean sharing a menu component,
   which is @lautstark/design/menu's subject.
---><Vanilla node={symbolFolder.node} />{#if fallback !== 'metacom' && metacomReady}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('metacom')}>{t('ui.use_as_default')}</button><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}{#if renderings.length >= 2}<div class="opt" style="margin-top:14px"><label for="opt-rendering">{t('ui.rendering')}</label><select class="field" id="opt-rendering" aria-label={t('ui.rendering')} value={settings.metacomRendering ?? ''} onchange={(event) => { const name = event.currentTarget.value; change({ ...settings, metacomRendering: name || null }); notify(name ? t('ui.rendering_preferred', { name }) : t('ui.rendering_cleared')); }}><option value="">{t('ui.no_preference')}</option>{#each renderings as rendering (rendering.segment)}<option value={rendering.segment}>{rendering.segment} · {t('ui.n_symbols', { n: rendering.count })}</option>{/each}</select><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</div></details><details class="panel" name="settings"><summary><span class="section">{t('ui.set_function_words')}</span><span class="state">{t('ui.n_words', { n: wordCount })}</span></summary><div class="body"><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></div></details><details class="panel" name="settings"><summary><span class="section">{t('ui.set_appearance')}</span><span class="state">{THEME_LABELS[theme]}</span></summary><div class="body"><div class="opt"><!--
+--><Vanilla node={symbolFolder.node} />{#if fallback !== 'metacom' && metacomReady}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('metacom')}>{t('ui.use_as_default')}</button><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}{#if renderings.length >= 2}<div class="opt" style="margin-top:14px"><label for="opt-rendering">{t('ui.rendering')}</label><select class="field" id="opt-rendering" aria-label={t('ui.rendering')} value={settings.metacomRendering ?? ''} onchange={(event) => { const name = event.currentTarget.value; change({ ...settings, metacomRendering: name || null }); notify(name ? t('ui.rendering_preferred', { name }) : t('ui.rendering_cleared')); }}><option value="">{t('ui.no_preference')}</option>{#each renderings as rendering (rendering.segment)}<option value={rendering.segment}>{rendering.segment} · {t('ui.n_symbols', { n: rendering.count })}</option>{/each}</select><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
   role=group rather than radiogroup: .segmented marks its choice with
   aria-pressed, which is the vocabulary the print dialog already uses, and a
   radiogroup whose children are not radios reads worse than a labelled group of
   buttons.
---><div class="segmented" role="group" aria-label={t('ui.set_appearance')}>{#each THEMES as one (one)}<button type="button" aria-pressed={one === theme} onclick={() => pickTheme(one)}>{THEME_LABELS[one]}</button>{/each}</div><span class="small faint">{t('ui.theme_note')}</span></div></div></details><details class="panel" name="settings"><summary><span class="section">{t('ui.where_all')}</span><span class="state">{dataHeadline}</span></summary><div class="body"><!--
+--><div class="segmented" role="group" aria-label={t('ui.set_appearance')}>{#each THEMES as one (one)}<button type="button" aria-pressed={one === theme} onclick={() => pickTheme(one)}>{THEME_LABELS[one]}</button>{/each}</div><span class="small faint">{t('ui.theme_note')}</span></div></Panel><Panel section={t('ui.where_all')} state={dataHeadline} bind:open={open.data}><!--
   The panel itself comes from the package, so every Lautstark programme shows
   the same one. What stays here is what bildhaft alone offers besides the store:
   its standing snapshot and its file.
@@ -412,10 +447,16 @@
   read as one control, which is what a visual baseline showed the moment one was
   taken. The folder is the offer that keeps working after somebody stops
   thinking about it; the file is the one they reach for deliberately.
---><button class="btn sm" type="button" onclick={() => void exportAll()}>{t('ui.backup_download')}</button><label class="btn sm" style="cursor:pointer">{t('ui.backup_read')}<input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={() => { const file = importInput.files?.[0]; importInput.value = ''; if (file) { s.close(); void handleImport(file); } }} /></label></div><p class="small faint" style="margin:8px 0 0">{@html t('ui.backup_read_note')}</p></div></details><!--
+--><button class="btn sm" type="button" onclick={() => void exportAll()}>{t('ui.backup_download')}</button><label class="btn sm" style="cursor:pointer">{t('ui.backup_read')}<input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={() => { const file = importInput.files?.[0]; importInput.value = ''; if (file) { s.close(); void handleImport(file); } }} /></label></div><p class="small faint" style="margin:8px 0 0">{@html t('ui.backup_read_note')}</p></Panel><!--
   „Alles löschen" was an <h3> at the foot of „Daten" until 2026-08-29 — a second
   heading level doing a panel's job, and the one control in this dialog that
   destroys something filed under the word for making a backup. Its own panel,
   last in the column, so the list says what is here without anybody opening
   anything. vorlaut never mixed the two.
---><details class="panel" name="settings"><summary><span class="section">{t('ui.delete_all_heading')}</span><span class="state"></span></summary><div class="body"><p class="small faint" style="margin:0 0 10px">{t('ui.delete_all_note')}</p><button class="btn destructive sm" type="button" onclick={() => { s.close(); void confirmClearAll(); }}>{t('ui.delete_all_button')}</button></div></details>
+
+  `state=""` and not no state at all: this panel has nothing to say in its
+  heading, and `''` is what draws the empty `<span class="state">` it has always
+  drawn. Panel omits the span entirely for `undefined`, and below 560px the
+  summary is a two-column grid where an empty span is a second row and two
+  pixels — so the two are not the same panel. §6.2.
+--><Panel section={t('ui.delete_all_heading')} state="" bind:open={open.danger}><p class="small faint" style="margin:0 0 10px">{t('ui.delete_all_note')}</p><button class="btn destructive sm" type="button" onclick={() => { s.close(); void confirmClearAll(); }}>{t('ui.delete_all_button')}</button></Panel>

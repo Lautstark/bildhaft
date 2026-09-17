@@ -19,8 +19,21 @@ import { confirmDialog as ask, openDialog as open } from '@lautstark/design/dial
 import type { DialogOptions, OpenDialog } from '@lautstark/design/dialog';
 import { t } from '../i18n/index.ts';
 
-/** The corner cross, in this app's language. Never the same as a footer's. */
-const CLOSE = t('ui.close_dialog');
+/**
+ * The corner cross, in this app's language. Never the same as a footer's.
+ *
+ * Read once, at module load, and that is safe *here* and would not be
+ * everywhere: the only thing that changes this app's language is
+ * `chooseLanguage()`, and it reloads the document — see the Sprache section of
+ * SettingsBody.svelte, which says why that is the honest small version. A
+ * product whose shell repaints in place would need a thunk.
+ *
+ * Exported because the sheets need it too. `@lautstark/design/svelte/sheet`'s
+ * `openSheet` takes `closeLabel` required and with no fallback, and this is the
+ * one place bildhaft names the dismissal — the eight sheets pass this constant
+ * rather than eight `t()` calls that can drift apart.
+ */
+export const CLOSE = t('ui.close_dialog');
 
 export type { OpenDialog };
 

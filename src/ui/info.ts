@@ -1,4 +1,5 @@
-import { openSheet } from './sheet.svelte.ts';
+import { openSheet } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from './dialog.ts';
 import Prose from './Prose.svelte';
 import { t } from '../i18n/index.ts';
 
@@ -22,7 +23,7 @@ const h3 = (text: string, first = false) =>
    sentences with links inside them, built below, and a component per paragraph
    would be a translation table spread across three files. */
 function page(title: string, html: string): void {
-  openSheet({ title, state: { html }, body: Prose });
+  openSheet({ title, closeLabel: CLOSE, state: { html }, body: Prose });
 }
 
 /**

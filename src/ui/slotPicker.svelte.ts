@@ -1,6 +1,7 @@
 import type { Candidate, ProviderId, Slot } from '../core/types.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
-import { openSheet, type Handle } from './sheet.svelte.ts';
+import { openSheet, type Handle } from '@lautstark/design/svelte/sheet';
+import { CLOSE } from './dialog.ts';
 import SlotPickerBody from './SlotPickerBody.svelte';
 import SlotPickerFoot from './SlotPickerFoot.svelte';
 import { cropName, cropSquare, type Loaded } from './crop.ts';
@@ -62,7 +63,23 @@ export class Picking {
    * dismissal handler first, which discarded the very slot being filled.
    */
   settled = false;
-  handle: Handle | undefined;
+
+  /*
+   * The sheet, once it exists, and reactive like `cropper` above it.
+   *
+   * It is filled after `openSheet` returns, because the handle is what that
+   * call hands back — so the body is already mounted when it arrives, and the
+   * effect in SlotPickerBody that hangs „Enter ist Fertig" off the dialog reads
+   * it and finds nothing on its first run. Plain, that effect never ran again
+   * and the key did nothing.
+   *
+   * It only looked like it worked before: bildhaft's own sheet opener left the
+   * body's effects for the next flush, so they happened to run after this line.
+   * `@lautstark/design/svelte/sheet` flushes before it returns — so that the
+   * handle it hands back is complete — and the order became visible. The order
+   * was never the guarantee; this is.
+   */
+  handle: Handle | undefined = $state();
 
   /** The caption typed but not yet written through, or null for nothing pending. */
   private pending: string | null = null;
@@ -235,6 +252,7 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
 
   const handle = openSheet({
     title: state.isNew ? t('ui.add_slot') : t('ui.symbol_for', { word: slot.sourceToken }),
+    closeLabel: CLOSE,
     state,
     body: SlotPickerBody,
     foot: SlotPickerFoot,

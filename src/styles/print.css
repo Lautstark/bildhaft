@@ -375,9 +375,12 @@
 
   /*
    * The print dialog itself is UI too, and it is the one piece #app-root does
-   * not cover: openDialog() appends a native <dialog> to document.body and
-   * shows it with showModal(), so it is a sibling of the mount point and lives
-   * in the top layer — above everything, including the sheet it is previewing.
+   * not cover: a sheet is a native <dialog> shown with showModal(), mounted
+   * outside the app — openDialog() appends it to document.body, and the Svelte
+   * openSheet gives it a host <div> there — so it is never under the mount
+   * point and lives in the top layer, above everything, including the sheet it
+   * is previewing. The selector below is the bare element for that reason: it
+   * has to catch the dialog wherever the opener happened to put it.
    * Hiding it here is what stops the browser's print preview from showing the
    * dialog instead of the page. display:none takes a modal dialog out of the
    * top layer along with its ::backdrop, which is the dim that would otherwise
