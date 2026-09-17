@@ -1,6 +1,16 @@
-import { openSheet } from '@lautstark/design/svelte/sheet';
-import { CLOSE } from './dialog.ts';
-import Prose from './Prose.svelte';
+/**
+ * The three pages the footer opens: what this is, the Impressum, and the
+ * privacy notice.
+ *
+ * They are **one** dialog with three sections in it, which is
+ * `@lautstark/design/svelte/Legal` and conventions.md §6.12. Until 2026-09-17
+ * this file made three `openSheet` calls that differed only in their prose —
+ * three sheets, and so three chances for one of them to be reachable and the
+ * others not, which is the exact failure both legal pages are required
+ * against. What is left here is the prose and the addresses in it; the frame,
+ * the heading that names whichever page is showing, and the hiding of the two
+ * that are not, are the component's.
+ */
 import { t } from '../i18n/index.ts';
 
 const REPO = 'https://github.com/Lautstark/bildhaft';
@@ -18,13 +28,31 @@ const ext = (href: string, text: string) =>
 const h3 = (text: string, first = false) =>
   `<h3 style="font-size:14px;margin:${first ? '0' : '18px'} 0 6px">${text}</h3>`;
 
-/* One body component for all three, because all three are a `<div>` of prose
-   and differ only in the prose. `{@html}` rather than markup: the pages are
-   sentences with links inside them, built below, and a component per paragraph
-   would be a translation table spread across three files. */
-function page(title: string, html: string): void {
-  openSheet({ title, closeLabel: CLOSE, state: { html }, body: Prose });
-}
+/** Which of the three is showing. `null` closes the dialog. */
+export type LegalKey = 'about' | 'impressum' | 'privacy';
+
+/** One page: what `Legal` needs to name it, and the prose it draws.
+ *
+ * `{@html}` rather than markup, as before: the pages are sentences with links
+ * inside them, built below, and a component per paragraph would be a
+ * translation table spread across three files. */
+export interface InfoPage { key: LegalKey; title: string; id: string; html: string }
+
+/**
+ * The `<section>`'s id, and it is load-bearing from the day the three sheets
+ * became one dialog.
+ *
+ * All three sections are in the document together and the two not showing are
+ * `hidden` — which is `Legal`'s shape and the right one — so the dialog's own
+ * text is now the text of all three pages at once. `legal.spec.ts` is the gate
+ * on § 5 DDG and Art. 13 DSGVO: asked of the dialog, „Stefanie Grewenig" and
+ * „21149 Hamburg" would be found in the privacy notice and the Impressum could
+ * be empty, and `a[href^="mailto:"]` genuinely matched twice. Asked of the
+ * section, each claim is about the page it is a claim about. Same three names
+ * vorlaut uses, since this is the same arrangement.
+ */
+const page = (key: LegalKey, title: string, parts: string[]): InfoPage =>
+  ({ key, title, id: `${key}Page`, html: parts.join('') });
 
 /**
  * What the footer used to try to say in five words. It has room here to be
@@ -44,8 +72,8 @@ function page(title: string, html: string): void {
 const para = (html: string, first = false) =>
   `<p style="margin:${first ? '0 0 0' : '0'}">${html}</p>`;
 
-export function openAbout(): void {
-  page(t('info.about_title'), [
+const about = (): InfoPage =>
+  page('about', t('info.about_title'), [
     para(t('info.about_lead'), true),
     h3(t('info.about_leaves')),
     para(t('info.about_leaves_body')),
@@ -57,8 +85,7 @@ export function openAbout(): void {
       org: ext(ORG, 'Lautstark'),
       mitreden: ext(MITREDEN, 'mitreden'),
     })),
-  ].join(''));
-}
+  ]);
 
 /**
  * The details § 5 DDG asks for. bildhaft is not a trade, so there is no register
@@ -71,8 +98,8 @@ export function openAbout(): void {
  * nothing names the privacy page — Article 13 requires the information, not a
  * word on a button.
  */
-export function openImpressum(): void {
-  page(t('ui.impressum'), [
+const impressum = (): InfoPage =>
+  page('impressum', t('ui.impressum'), [
     h3(t('info.imprint_details'), true),
     para('Stefanie Grewenig<br>Talheide 5<br>21149 Hamburg<br>' + t('info.germany')),
     h3(t('info.contact')),
@@ -88,8 +115,7 @@ export function openImpressum(): void {
     para(t('info.links_body')),
     h3(t('info.disputes')),
     para(t('info.disputes_body')),
-  ].join(''));
-}
+  ]);
 
 /**
  * The information Article 13 GDPR asks for. It gets by without the usual
@@ -97,8 +123,8 @@ export function openImpressum(): void {
  * anything to land on. What still has to be named is what the host logs, and
  * that an ARASAAC request carries the IP address with it.
  */
-export function openDatenschutz(): void {
-  page(t('ui.privacy'), [
+const privacy = (): InfoPage =>
+  page('privacy', t('ui.privacy'), [
     para(t('info.privacy_lead'), true),
     h3(t('info.controller')),
     para(`Stefanie Grewenig, Talheide 5, 21149 Hamburg, ${t('info.germany')}<br>`
@@ -118,5 +144,17 @@ export function openDatenschutz(): void {
     h3(t('info.rights')),
     para(t('info.rights_body')),
     `<p style="margin:18px 0 0;color:var(--text-faint)">${t('info.updated')}</p>`,
-  ].join(''));
-}
+  ]);
+
+/**
+ * All three, in the order they are drawn — which is the order of the buttons
+ * in the footer.
+ *
+ * Built once, at first ask. The prose is a constant in the bundle: `t()` reads
+ * a table and the language of the page cannot change without a reload
+ * (i18n/index.ts), so there is nothing here that could go stale between two
+ * openings. Lazily all the same, so that importing this file does not build
+ * three pages of HTML on the way to the first paint.
+ */
+let built: InfoPage[] | null = null;
+export const infoPages = (): InfoPage[] => (built ??= [about(), impressum(), privacy()]);
