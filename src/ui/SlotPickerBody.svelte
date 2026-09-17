@@ -3,7 +3,7 @@
   import Tile from '@lautstark/design/svelte/Tile';
   import { ownImageId } from '../core/types.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
-  import Crop from './Crop.svelte';
+  import Crop from '@lautstark/design/svelte/Crop';
   import type { Picking } from './slotPicker.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -100,7 +100,7 @@
   Negation is a property of the field, not a different symbol, so it does not
   settle the dialog the way picking one does: cross it out, see it, carry on.
   Hidden for a field that has nothing in it yet — there is nothing to cross.
---><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label></div>{/if}<div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} type={s.loadedType} /><!--
+--><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label></div>{/if}<div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own, and it had two. Both went the same way and for the same
   reason: this dialog already has a footer, the footer already says what it
   does, and a control repeating that an inch higher is a question about which of
