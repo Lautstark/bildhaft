@@ -2,7 +2,7 @@ import { metacom } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange, takeMigrationNote } from '../db/db.ts';
 import { createCollection, listCollections, loadSettings, pullFromFolder } from '../db/repo.ts';
 import { ablage, adopted, moveWortschatz, restoreFolder, watchFolder } from '../db/folder.ts';
-import { offerRescue } from '../ui/rescue.svelte.ts';
+import { offerRescue } from '../ui/rescue.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
 import { openNamed, refreshCollections, setActive } from './collections.ts';
 import { notify } from './notify.ts';
