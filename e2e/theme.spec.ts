@@ -11,7 +11,6 @@ import { expect, test } from '@playwright/test';
  */
 
 async function openTheme(page: import('@playwright/test').Page): Promise<void> {
-  await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
   await page.locator('.panel', { hasText: 'Erscheinungsbild' }).locator('summary').click();
 }

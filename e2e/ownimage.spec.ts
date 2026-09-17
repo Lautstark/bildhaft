@@ -124,8 +124,6 @@ test('carries own pictures through a backup and back', async ({ page }) => {
   // Reading a file lives in Einstellungen → Sicherung, beside the button that makes
   // one — it used to be a „Importieren" button in the sidebar, a screen away
   // from its own other half.
-  const show = page.getByRole('button', { name: 'Seitenleiste einblenden' });
-  if (await show.count()) await show.click();
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
   await page.locator('.panel', { hasText: 'Sicherung' }).locator('summary').click();
   await page.locator('.panel', { hasText: 'Sicherung' }).locator('input[type=file]')
@@ -215,7 +213,6 @@ test('adding the store keeps a database that was already there', async ({ page }
   });
 
   await page.reload();
-  await page.getByRole('button', { name: 'Seitenleiste einblenden' }).click();
   await expect(page.locator('.sidebar__section--collections .collections__item')).toContainText(['Aus Version 3']);
   await expect(rowFor(page, 'Der Hund liegt unter dem Tisch')).toHaveCount(1);
 });

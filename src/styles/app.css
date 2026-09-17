@@ -67,29 +67,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 36px 32px 32px;
 }
 
-/* Floating control that reveals the sidebar when it is collapsed. */
-.rail {
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* What brings the column back once it has been put away.
+   @lautstark/design/svelte/Reveal draws it, and `.rail` was this product's name
+   for it — the *reveal* affordance, not the column, which is the rename §6.3
+   says is not one rename each. The component carries the placement, the flex
+   pair, `[hidden]` and the media query that drops it below the breakpoint;
+   every one of those has to be its, because a scoped selector carries the hash
+   and out-specifies a plain rule here. What is left is this page's own layer. */
+.reveal { z-index: 20; }
 
-/* Mobile-only header. Opaque on purpose: content scrolls underneath it. */
-.topbar {
-  display: none;
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-}
+/* Mobile-only header, @lautstark/design/svelte/TopBar. Opaque on purpose:
+   content scrolls underneath it — which is the component's `background` now,
+   along with the sticky placement, the gap, the border and both halves of the
+   breakpoint. The stacking is a fact about this page's layers and stays. */
+.topbar { z-index: 30; }
 .topbar__title {
   flex: 1;
   min-width: 0;
@@ -101,35 +92,37 @@ button, input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: -.01em;
 }
 
-/* Backdrop behind the off-canvas sidebar. */
-.scrim {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  border: none;
-  background: rgba(0, 0, 0, .45);
-}
+/* Backdrop behind the off-canvas sidebar, @lautstark/design/svelte/Scrim.
+   The `display: none` base this used to switch on is deliberately gone: the
+   component's `shown` is the only answer to whether the scrim is up, and two
+   answers to that question is how a scrim ends up over a page nobody asked to
+   cover. §6.3. */
+.scrim { z-index: 55; }
 
 /* --------------------------------------------------------------- sidebar */
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 16px 14px;
-  background: var(--surface);
-  border-right: 1px solid var(--line);
-  overflow: hidden auto;
-}
+/* The column is @lautstark/design/svelte/Sidebar, whose scoped style carries
+   the six declarations all three products already agreed on character for
+   character — the flex column, the 20px gap, the 16px/14px padding, the surface
+   and the border down its right. What is left here is what this product varies:
+   it is a grid item rather than a fixed column, so its own scrolling is its own.
+
+   `.sidebar__brand` went the same way; its `<h1>` did not and cannot, because
+   snippet content is compiled in this component and carries this product's
+   scope — bildhaft's mark is a sibling of the heading rather than inside it. */
+.sidebar { overflow: hidden auto; }
 .app--collapsed .sidebar { visibility: hidden; }
 
-.sidebar__brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 2px 4px;
+/* The chevron collapses a column, and below 820px there is no column — down
+   there the sidebar is a layer and the way out of it is the component's own ✕,
+   which it draws below the breakpoint and only there. Without this rule the
+   drawer's brand row carries two controls that do the same thing, side by side.
+   conventions.md §6.3 says the collapse control is the mirror image of that ✕;
+   this is the mirror. */
+@media (max-width: 820px) {
+  .sidebar__collapse { display: none; }
 }
+
 .sidebar__brand h1 {
   flex: 1;
   margin: 0;
@@ -838,9 +831,10 @@ footer.footer {
   .main { overflow: visible; }
   .main__inner { padding: 16px 16px 48px; }
 
-  .topbar { display: flex; }
-  /* The desktop floating toggle is replaced by the top bar. */
-  .rail { display: none; }
+  /* The bar appearing and the reveal disappearing are both the components'
+     own media queries now, and have to be: a copy here would be a plain class
+     rule losing to a scoped one that carries the hash, so the bar would never
+     appear. §6.0's caveat, pointing the way round people expect least. */
 
   /* Sidebar becomes an off-canvas panel rather than a hidden grid column. */
   .sidebar {
@@ -856,7 +850,6 @@ footer.footer {
     border-right: 1px solid var(--line);
   }
   .app--nav-open .sidebar { transform: none; }
-  .app--nav-open .scrim { display: block; }
 
   /* backdrop-filter is a known source of black compositing artefacts on mobile. */
   .sheet::backdrop { backdrop-filter: none; }

@@ -142,7 +142,6 @@ test('the search finds a named row by its name and by what was typed', async ({ 
   await washing.fill('Hände waschen');
   await washing.press('Enter');
 
-  await page.getByTitle('Seitenleiste einblenden').click();
   const search = page.getByLabel('Alle Sätze durchsuchen');
 
   await search.fill('Hände');

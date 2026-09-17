@@ -20,8 +20,10 @@ test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
   await page.goto('/');
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
-  // This product opens with the sidebar put away, so the control is behind it.
-  await page.getByTitle('Seitenleiste einblenden').click();
+  /* The sidebar is open on arrival. An absent preference has always meant open
+     in this product, and since conventions.md §6.3 called `defaultSettings()`'s
+     stored `false` a bug rather than a difference, the stored default says the
+     same — so there is nothing to reveal and the reveal does not render. */
   await expect(page.locator('.sidebar')).toBeVisible();
 });
 

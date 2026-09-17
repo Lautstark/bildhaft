@@ -22,12 +22,8 @@ import { mockArasaac } from './arasaac-mock.ts';
 
 const says = (lang: 'de' | 'en', key: string) => TEXTS[lang]![key]!;
 
-/** Einstellungen, from the sidebar, which starts collapsed. */
+/** Einstellungen, from the sidebar, which is open on arrival. */
 async function openSettings(page: Page, lang: 'de' | 'en'): Promise<void> {
-  // Only if it is still away: once opened the toggle renames itself, so a call
-  // that insisted on "einblenden" would wait for a button that is gone.
-  const show = page.getByRole('button', { name: says(lang, 'ui.show_sidebar') });
-  if (await show.count()) await show.click();
   await page.getByRole('button', { name: says(lang, 'ui.settings'), exact: true }).click();
 }
 
