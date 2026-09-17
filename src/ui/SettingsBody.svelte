@@ -1,9 +1,11 @@
 <script lang="ts">
   import type { ProviderId } from '../core/types.ts';
   import { arasaac, metacom } from '@lautstark/bildquelle';
-  import { metacomPanel } from '@lautstark/bildquelle/metacom-panel';
-  import { backupPanel } from '@lautstark/sicherung/backup-panel';
-  import { wherePanel } from '@lautstark/sicherung/ablage-panel';
+  import type { MetacomAction } from '@lautstark/bildquelle/metacom-panel';
+  import MetacomPanel from '@lautstark/bildquelle/svelte/MetacomPanel';
+  import { headlineFor } from '@lautstark/sicherung/backup-panel';
+  import BackupPanel from '@lautstark/sicherung/svelte/BackupPanel';
+  import AblagePanel from '@lautstark/sicherung/svelte/AblagePanel';
   import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
@@ -35,109 +37,135 @@
   /* ------------------------------------------------- the shared panels --- */
 
   /*
-   * Built once and kept. Each of the three owns a subscription, a pair of
-   * buttons whose disabled state tracks a write in flight, or the hidden file
-   * inputs a pick is delivered through; rebuilding one under a repaint would
-   * drop all of that on the floor, or swap the input out from under a picker
-   * that is already open. `@lautstark/design/svelte/Vanilla` puts them in
-   * place under a `display: contents` host, so nothing about their layout
-   * changes. It was bildhaft's own file until design v1.34.0; all four
-   * products had written it, character-identical but for whether the prop was
-   * typed `HTMLElement` or `Node`. bildhaft had `Node`, which is the true one.
+   * Three panels this product does not draw, each the package's own Svelte
+   * component.
+   *
+   * They were nodes built by the vanilla twins and parked under
+   * `@lautstark/design/svelte/Vanilla` until now — same markup, same words,
+   * the same `WORDS` table, which is imported by the components rather than
+   * copied, so „same words" is a fact about the build. What the ports change is
+   * the same change three times: `lang` is a value rather than a thunk, because
+   * the reactivity is the framework's here; and `refresh()` and `dispose()` are
+   * gone, because an `$effect` returning its teardown *is* the unsubscribe the
+   * vanilla panels handed back — the one this file remembered to call for two
+   * of the three and the one three of the four products it replaced never
+   * called at all.
+   *
+   * The words and the markup left this file a round earlier, when „Wo alles
+   * liegt" stopped being 211 lines of `src/ui/backupFolder.ts`; what leaves now
+   * is the last of the wiring around them. `Vanilla` stays for the language
+   * picker below, which has no component twin.
+   *
+   * ## This round was withdrawn once, and what it cost is why
+   *
+   * The components used to import their own package's `src/`. `exports["."]`
+   * points at `dist`, and `tsc` writes `#private;` into a class's declaration,
+   * so the `MetacomProvider` in `MetacomPanel`'s signature and the one
+   * `@lautstark/bildquelle` hands this file were two nominally distinct types:
+   * bildhaft could not pass its own provider to its own panel, and the swap
+   * compiled only behind a cast asserting that two identical classes were the
+   * same class. It cost bytes as well — the bundler resolved `../src/x.js` to
+   * the TypeScript beside it and shipped a second copy of every module a
+   * component reached that way, +12.9 kB raw and +3.7 kB gz here, measured.
+   *
+   * Both packages now import their published entries and have a test that goes
+   * red if that stops being true (sicherung 1.17.1, bildquelle 2.3.2). There is
+   * no cast below. If one is ever needed again the fix has come undone, and
+   * that is a finding rather than something to write around.
    */
-  let dataHeadline = $state('');
+
+  /* The page's language, once. A value and not a thunk: `chooseLanguage()`
+     reloads the document, so a locale read here cannot go stale — and all
+     three components take it the same way. */
+  const panelLang = LANG === 'en' ? 'en' : 'de';
+
   let metacomHeadline = $state('');
   let adopted = false;
   let defaultDropped = false;
 
-  /* The name of a folder somebody just picked that holds nothing of ours yet is
-     asked about in the panel rather than in a dialog over it, which is why this
-     lives for as long as the sheet does. */
-  const store_panel = wherePanel({
-    store: ablage,
-    adopt: adoptFolder,
-    changed: () => { void refreshCollections(); if (store.activeId) setActive(store.activeId); },
-    say: notify,
-    lang: LANG === 'en' ? 'en' : 'de',
+  /*
+   * What „Wo alles liegt" carries in its own heading, asked here rather than
+   * reported by the panel.
+   *
+   * `BackupPanel` tells a `headline` callback on every paint, and that is the
+   * right seam for a product that always draws it. bildhaft does not: the block
+   * is offered only where there is no store folder, because with one the copies
+   * already go beside the work. The standing backup runs either way — app/
+   * backup.ts schedules it on every write and has never heard of the store — so
+   * a heading fed by the panel would go blank for exactly the households that
+   * have both, and a backup that is still being written would stop being
+   * visible without unfolding anything. That heading is what the vanilla panel
+   * reported from outside the `{#if}`, and it stays true here.
+   *
+   * `headlineFor` is the same function the component calls, and answers `''`
+   * where there is nothing to say — no folder set, and a browser with no
+   * picker, where there is no backup story to tell at all.
+   */
+  const backup = standing();
+  let backupStatus = $state.raw(backup.status);
+  $effect(() => {
+    /* Read again on the way in. `Sicherung.subscribe` does not call its
+       listener on subscribe, so the status this panel arrived at is the one
+       read here, and re-reading closes the gap between construction and the
+       effect in which a debounced write could have landed. */
+    backupStatus = backup.status;
+    return backup.subscribe((next) => { backupStatus = next; });
   });
+  let dataHeadline = $derived(headlineFor(backupStatus, panelLang));
 
-  const folder = backupPanel({
-    backup: standing(),
-    say: notify,
-    lang: LANG === 'en' ? 'en' : 'de',
-    // The heading carries the folder, the way every other panel's heading
-    // carries its own state — so „Daten" stops being the one section whose
-    // status you have to unfold it to learn. Blank where no folder is set,
-    // and blank in a browser without a picker, where there is nothing to say.
-    //
-    // This was bildhaft's alone across four products drawing the same panel.
-    // It is @lautstark/sicherung/backup-panel's now, and the 211 lines that
-    // used to sit in src/ui/backupFolder.ts went with it — words, markup, the
-    // age rule and the dispose. See that module's header for what the four
-    // copies had drifted into.
-    headline: (text: string) => { dataHeadline = text; },
-  });
+  /* Everything on screen is about to be wrong. */
+  function storeChanged(): void {
+    void refreshCollections();
+    if (store.activeId) setActive(store.activeId);
+  }
 
   /*
-   * The licensed symbol folder, drawn by the package that owns it.
-   *
-   * What is passed is what this product alone knows. `after` moves the default
-   * source; `say` adds what that did to the page; `headline` puts the state in
-   * the panel's own summary. Everything else — the licence paragraph, the four
-   * acts, the state line and its sentences in both languages — is the module's,
-   * and conventions.md §4.12 is why the words came with it.
+   * What a METACOM act means to this app, which is the half the panel leaves
+   * here. `after` moves the default source; `say` adds what that did to the
+   * page. Everything else — the licence paragraph, the four acts, the state
+   * line and its sentences in both languages — is the component's, and
+   * conventions.md §4.12 is why the words came with it.
    */
-  const symbolFolder = metacomPanel({
-    metacom,
-    /* A value and not a function, unlike the option's own default reading.
-       chooseLanguage() reloads the document, so a locale captured here cannot
-       go stale — and both sibling panels above take it the same way. */
-    lang: LANG === 'en' ? 'en' : 'de',
-    headline: (text: string) => { metacomHeadline = text; },
-    after: async (action: string) => {
-      /*
-       * Choosing a folder or reading a ZIP makes METACOM the default; the other
-       * two deliberately do not. Re-reading re-reads a folder that may be set up
-       * without being the default, and forgetting is the opposite move.
-       *
-       * isReady() and not the mere absence of a throw: a pick that produced no
-       * usable index must not switch the whole app onto an empty source, which
-       * would blank every row and look like the data had gone.
-       */
-      adopted = (action === 'choose' || action === 'zip')
-        && metacom.isReady() && settings.activeProvider !== 'metacom';
-      if (adopted) change({ ...settings, activeProvider: 'metacom' });
-
-      /* Forgetting resets the *default* when the default was METACOM. It
-         deliberately reaches into no Sammlung that chose METACOM for itself —
-         that is somebody's answer, and the folder may well come back. Recorded
-         rather than re-derived: `say` runs after this and would find the
-         setting already moved. */
-      defaultDropped = action === 'forget' && settings.activeProvider === 'metacom';
-      if (defaultDropped) change({ ...settings, activeProvider: 'arasaac' });
-
-      resetSymbolResolution('metacom');
-      void syncProvider();
-      status = metacom.status();
-    },
+  async function metacomActed(action: MetacomAction): Promise<void> {
     /*
-     * The module's sentence, and what it means here added to it.
+     * Choosing a folder or reading a ZIP makes METACOM the default; the other
+     * two deliberately do not. Re-reading re-reads a folder that may be set up
+     * without being the default, and forgetting is the opposite move.
      *
-     * §4.12's rule for where a product still differs: it is handed the shared
-     * line and adds, rather than replacing it. So „Der METACOM-Ordner wird
-     * nicht mehr gelesen." is the same sentence in all three products, and only
-     * what it costs *this* Sammlung is bildhaft's.
+     * isReady() and not the mere absence of a throw: a pick that produced no
+     * usable index must not switch the whole app onto an empty source, which
+     * would blank every row and look like the data had gone.
      */
-    say: (line: string, action: string) => {
-      const extra = action === 'forget' ? forgottenCosts()
-        : adopted ? defaultMoved('METACOM') : '';
-      notify(extra ? `${line} ${extra}` : line);
-    },
-  });
+    adopted = (action === 'choose' || action === 'zip')
+      && metacom.isReady() && settings.activeProvider !== 'metacom';
+    if (adopted) change({ ...settings, activeProvider: 'metacom' });
 
-  store_panel.refresh();
+    /* Forgetting resets the *default* when the default was METACOM. It
+       deliberately reaches into no Sammlung that chose METACOM for itself —
+       that is somebody's answer, and the folder may well come back. Recorded
+       rather than re-derived: `say` runs after this and would find the
+       setting already moved. */
+    defaultDropped = action === 'forget' && settings.activeProvider === 'metacom';
+    if (defaultDropped) change({ ...settings, activeProvider: 'arasaac' });
 
-  $effect(() => () => { folder?.dispose(); symbolFolder.dispose(); });
+    resetSymbolResolution('metacom');
+    void syncProvider();
+    status = metacom.status();
+  }
+
+  /*
+   * The component's sentence, and what it means here added to it.
+   *
+   * §4.12's rule for where a product still differs: it is handed the shared
+   * line and adds, rather than replacing it. So „Der METACOM-Ordner wird nicht
+   * mehr gelesen." is the same sentence in all three products, and only what it
+   * costs *this* Sammlung is bildhaft's.
+   */
+  function metacomSaid(line: string, action: MetacomAction): void {
+    const extra = action === 'forget' ? forgottenCosts()
+      : adopted ? defaultMoved('METACOM') : '';
+    notify(extra ? `${line} ${extra}` : line);
+  }
 
   /* ------------------------------------------------------------ sources --- */
 
@@ -412,7 +440,7 @@
   was nothing to share. The rendering chooser: it is built out of this app's own
   `<select class="field">`, and sharing it would mean sharing a menu component,
   which is @lautstark/design/menu's subject.
---><Vanilla node={symbolFolder.node} />{#if fallback !== 'metacom' && metacomReady}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('metacom')}>{t('ui.use_as_default')}</button><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}{#if renderings.length >= 2}<div class="opt" style="margin-top:14px"><label for="opt-rendering">{t('ui.rendering')}</label><select class="field" id="opt-rendering" aria-label={t('ui.rendering')} value={settings.metacomRendering ?? ''} onchange={(event) => { const name = event.currentTarget.value; change({ ...settings, metacomRendering: name || null }); notify(name ? t('ui.rendering_preferred', { name }) : t('ui.rendering_cleared')); }}><option value="">{t('ui.no_preference')}</option>{#each renderings as rendering (rendering.segment)}<option value={rendering.segment}>{rendering.segment} · {t('ui.n_symbols', { n: rendering.count })}</option>{/each}</select><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
+--><MetacomPanel {metacom} lang={panelLang} headline={(text) => { metacomHeadline = text; }} after={metacomActed} say={metacomSaid} />{#if fallback !== 'metacom' && metacomReady}<div style="margin-top:10px"><button class="btn sm" type="button" onclick={() => useAsDefault('metacom')}>{t('ui.use_as_default')}</button><p class="small faint" style="margin:10px 0 0">{@html t('ui.default_note')}</p></div>{/if}{#if renderings.length >= 2}<div class="opt" style="margin-top:14px"><label for="opt-rendering">{t('ui.rendering')}</label><select class="field" id="opt-rendering" aria-label={t('ui.rendering')} value={settings.metacomRendering ?? ''} onchange={(event) => { const name = event.currentTarget.value; change({ ...settings, metacomRendering: name || null }); notify(name ? t('ui.rendering_preferred', { name }) : t('ui.rendering_cleared')); }}><option value="">{t('ui.no_preference')}</option>{#each renderings as rendering (rendering.segment)}<option value={rendering.segment}>{rendering.segment} · {t('ui.n_symbols', { n: rendering.count })}</option>{/each}</select><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
   role=group rather than radiogroup: .segmented marks its choice with
   aria-pressed, which is the vocabulary the print dialog already uses, and a
   radiogroup whose children are not radios reads worse than a labelled group of
@@ -421,7 +449,7 @@
   The panel itself comes from the package, so every Lautstark programme shows
   the same one. What stays here is what bildhaft alone offers besides the store:
   its standing snapshot and its file.
---><Vanilla node={store_panel.node} /><hr class="hair" /><p class="sub">{t('ui.keep_out_in')}</p><!--
+--><AblagePanel store={ablage} adopt={adoptFolder} changed={storeChanged} say={notify} lang={panelLang} /><hr class="hair" /><p class="sub">{t('ui.keep_out_in')}</p><!--
   .explainer and not .notice: components.css reserves .notice for the outcome of
   an action just taken, and this is standing prose about what a backup is. It
   looks exactly as it did under the old local .notice — same plate, same type —
@@ -431,7 +459,13 @@
   the work, and a second picker here would be the same offer under a name that
   reads almost the same. Absent in any browser without the picker, and then the
   download below is the whole offer, unchanged.
--->{#if !isStore() && folder}<Vanilla node={folder.node} />{/if}<!--
+
+  The second half of that condition used to be here too — the vanilla factory
+  answered `null` where `showDirectoryPicker` is absent, so the guard read
+  `!isStore() && folder`. A component cannot answer null, so it asks the live
+  status and draws nothing for `unsupported`, which is the same answer from one
+  step further in. The store folder is the only question left for this file.
+-->{#if !isStore()}<BackupPanel {backup} say={notify} lang={panelLang} />{/if}<!--
   The two halves of the same subject, side by side.
 
   „Sicherung einlesen" used to be „Importieren" in the sidebar, a screen away
