@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ProviderId, Sentence, Slot } from '../core/types.ts';
   import { slotCaption } from '../core/types.ts';
-  import { renameField, type RenameField } from '@lautstark/design/rename';
+  import TitleField from '@lautstark/design/svelte/TitleField';
   import Icon from '../pieces/Icon.svelte';
   import NegationCross from '../pieces/NegationCross.svelte';
   import SymbolPicture from '../pieces/Symbol.svelte';
@@ -86,42 +86,38 @@
    * Empty means unnamed, so the field shows the typed line as a placeholder and
    * holds only a name that was actually given. The same reading the caption
    * field in the picker has, so clearing works the same way in both.
+   *
+   * `@lautstark/design/svelte/TitleField` since design v1.40.0, which makes
+   * this the last of bildhaft's three rename fields to be the shared one — and
+   * it is the shared one on the second attempt rather than the first. The
+   * closing round left this field written out, because the component carried
+   * no `maxlength` and no `title` and took no rest props: adopting would have
+   * dropped both without saying so, and two cases in e2e/rowname.spec.ts read
+   * that title, one for its text under a named row and one for its absence
+   * under an unnamed one. Declining and reporting it is why v1.39.0 gave the
+   * component the attributes a field carries, with the eight it owns excluded
+   * from the type so no caller can take `class` or `aria-label` off it while
+   * reaching for `maxlength`. Both now arrive as rest props.
+   *
+   * `class="row__title"` because this field is not `.title-input` — §6.5 made
+   * `class` a prop for exactly this, and the rule that draws it a line until
+   * it is hovered is this product's, at the row's size rather than the work
+   * head's.
+   *
+   * The debounce, the write on the way out, the refusal to write a value that
+   * has not moved and the guard against a repaint typing over somebody are all
+   * `@lautstark/design/rename`'s and always were. What leaves with this change
+   * is bildhaft's own copy of the wiring around them — and with it the last
+   * trace of the effect that used to assign `titleInput.value` directly, which
+   * was the bug `rename.js` exists to remove arriving by the back door: the
+   * assignment read `sentence.title`, so the effect re-ran on every write and
+   * stopped the binding mid-word. The component reaches the field through
+   * `refresh()` and nothing else.
+   *
+   * No `oninput`: nothing outside this row echoes a sentence's name while it is
+   * being typed. No `caret` either — a row is made by translating, not by a
+   * „+ Neu" button that owes the new thing a caret.
    */
-  let titleInput: HTMLInputElement;
-  let naming: RenameField | undefined;
-
-  /* Debounced while typing, written on blur and on Enter, and not written when
-     the value has not moved. @lautstark/design/rename holds that timing for all
-     three products; what is left here is what the field looks like and what an
-     empty one means.
-   *
-   * This is the one rename field in bildhaft that is NOT
-   * `@lautstark/design/svelte/TitleField`, and the reason is two attributes the
-   * component does not carry and cannot be given from outside: `maxlength="80"`
-   * and the `title` that shows the typed line under a named row, which
-   * e2e/rowname.spec.ts asserts both the presence and the absence of. It takes
-   * no rest props, so both would be dropped silently. Adopting here means a
-   * prop on the component, in the design repository, and that is a round of its
-   * own rather than a thing to lose quietly in this one.
-   *
-   * What it can take from §6.5 it has taken: the stored name reaches the field
-   * only through `refresh()` below. The line that used to stand here assigned
-   * `titleInput.value` directly, which is the bug `rename.js` was written to
-   * remove — and because the assignment read `sentence.title`, this effect ran
-   * again on every write, stopping the binding and dropping a pending keystroke
-   * in the middle of somebody typing. Nothing reactive is read here now, so the
-   * field is bound once and stays bound. */
-  $effect(() => {
-    naming = renameField(titleInput, (typed) => void handleRename(sentence.id, typed));
-    const made = naming;
-    return () => made.stop();
-  });
-
-  /* A renamed record reaches the field through refresh(), which knows when the
-     field is the better authority. This is what the old `rename()` did without
-     the row being rebuilt — and here the row is not rebuilt in the first place,
-     because the `{#each}` above is keyed by the sentence's id. */
-  $effect(() => { naming?.refresh(sentence.title?.trim() ?? ''); });
 
   /* A named row still says what was typed, because those are the words the
      symbols were fetched with and the ones a search finds it by — and the
@@ -130,7 +126,7 @@
   let typedLine = $derived(sentence.title?.trim() ? t('ui.typed_line', { text: sentence.rawInput }) : null);
 </script>
 
-<article class="row"><header class="row__head"><input bind:this={titleInput} class="row__title" type="text" maxlength="80" aria-label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} /><div class="row__actions"><button class="btn quiet icon" type="button" title={t('ui.print_row')} onclick={() => openPrint([sentence.id])}><Icon name="printer" /></button><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
+<article class="row"><header class="row__head"><TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} /><div class="row__actions"><button class="btn quiet icon" type="button" title={t('ui.print_row')} onclick={() => openPrint([sentence.id])}><Icon name="printer" /></button><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
   class="slot"
   class:slot--empty={!symbolIdFor(slot, provider)}
   class:slot--dragging={dragFrom === index}
