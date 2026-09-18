@@ -20,8 +20,8 @@
     setOverrideCaption, setOverrideTags,
   } from '../db/repo.ts';
   import { topicsOf } from '../core/tags.ts';
-  import { renameField, type RenameField } from '@lautstark/design/rename';
   import Overflow from '@lautstark/design/svelte/Overflow';
+  import TitleField from '@lautstark/design/svelte/TitleField';
   import Icon from '../pieces/Icon.svelte';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import TypingBox from './TypingBox.svelte';
@@ -105,39 +105,29 @@
 
   /* ------------------------------------------------------------- head --- */
 
-  let titleInput: HTMLInputElement | undefined = $state();
-  let titleField: RenameField | undefined;
-
   /* Debounced while typing, written on blur and on Enter. Renaming a tag is a
      write to every entry carrying it, which is what makes the debounce worth
-     more here than on a Sammlung's name. */
-  $effect(() => {
-    if (!titleInput) { titleField = undefined; return; }
-    const made = renameField(titleInput, (typed) => {
-      const from = lens;
-      if (!from || !typed.trim()) return undefined;
-      const to = typed.trim();
-      persistSettings({
-        ...s.settings!,
-        pinnedTags: (s.settings?.pinnedTags ?? []).map((tag) => (fold(tag) === fold(from) ? to : tag)),
-      });
-      go(to);
-      return renameTag(from, typed).then(() => { void refreshCollections(); refresh(); });
+     more here than on a Sammlung's name. The timing is
+     `@lautstark/design/rename`'s and always was; what moved into
+     `@lautstark/design/svelte/TitleField` is the binding around it, the
+     `refresh()` that keeps a repaint off what somebody is typing, and the
+     caret. The field only exists under a lens, so mounting it inside the
+     `{#if}` below is what the `titleInput` guard used to be. */
+  const renameLens = (typed: string): Promise<void> | undefined => {
+    const from = lens;
+    if (!from || !typed.trim()) return undefined;
+    const to = typed.trim();
+    persistSettings({
+      ...s.settings!,
+      pinnedTags: (s.settings?.pinnedTags ?? []).map((tag) => (fold(tag) === fold(from) ? to : tag)),
     });
-    titleField = made;
-    return () => made.stop();
-  });
-
-  $effect(() => { titleField?.refresh(lens ?? ''); });
+    go(to);
+    return renameTag(from, typed).then(() => { void refreshCollections(); refresh(); });
+  };
 
   /* „+ Neuer Tag" makes the tag and puts the caret in its name, selected;
      conventions.md §1.5, the same bargain a new Sammlung is made under. */
-  $effect(() => {
-    if (asking() !== 'tag-name' || !titleInput) return;
-    titleInput.focus();
-    titleInput.select();
-    answered();
-  });
+  const caret = { asked: () => asking() === 'tag-name', answered };
 
   let count = $derived(shown.length === 1 ? t('ui.n_words_one') : t('ui.n_words', { n: shown.length }));
 
@@ -351,7 +341,7 @@
   open is the other half and the commoner one, so the action lives there
   instead, in the Sammlung's own ⋯ where it can be used again and again. The
   composer is this place's action.
---><div class="collection-head">{#if lens === null}<span class="work-title">{t('ui.all_words')}</span><span class="small faint" style="white-space:nowrap">{count}</span>{:else}<input bind:this={titleInput} class="title-input" aria-label={t('ui.tag_name')} placeholder={t('ui.tag_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><span><Overflow label={t('ui.tag_actions')} build={(item) => {
+--><div class="collection-head">{#if lens === null}<span class="work-title">{t('ui.all_words')}</span><span class="small faint" style="white-space:nowrap">{count}</span>{:else}<TitleField value={lens ?? ''} write={renameLens} {caret} label={t('ui.tag_name')} placeholder={t('ui.tag_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><span><Overflow label={t('ui.tag_actions')} build={(item) => {
   item(t('ui.unpin_tag'), () => pin(lens!, true));
   item(t('ui.delete_tag'), () => void deleteLens(), { danger: true });
 }}><Icon name="dots" /></Overflow></span>{/if}</div>

@@ -3,7 +3,9 @@
    * The work head: the Sammlung's name, how much is in it, Drucken, and the ⋯.
    * conventions.md §3.3 is the row; this is bildhaft's copy of it.
    *
-   * The ⋯ is `@lautstark/design/svelte/Overflow` now. It is this product's own
+   * Both halves of it are the package's now.
+   *
+   * The ⋯ is `@lautstark/design/svelte/Overflow`. It is this product's own
    * `src/ui/ActionMenu.svelte` — conventions.md §6.10 promoted that file, class
    * string and all — so the markup here is unchanged and the trigger still
    * carries its `dots` icon rather than the shared default `⋯`. What comes back
@@ -12,10 +14,17 @@
    * caps its height so a long menu stays inside the box it was opened in.
    * A copy that sits beside the thing it was copied into can only drift, and
    * this one already had.
+   *
+   * The name is `@lautstark/design/svelte/TitleField`, over the same
+   * `@lautstark/design/rename` this file already used. §6.5 shaped that
+   * component against this field by name: `oninput`, because the echo below is
+   * a live redraw and not a write, and `caret`, because the ask-and-answer in
+   * `asking.svelte.ts` is the one of the three mechanisms that does not couple
+   * the controller to the field it is asking of.
    */
-  import { renameField, type RenameField } from '@lautstark/design/rename';
-  import { renameCollection } from '../db/repo.ts';
   import Overflow from '@lautstark/design/svelte/Overflow';
+  import TitleField from '@lautstark/design/svelte/TitleField';
+  import { renameCollection } from '../db/repo.ts';
   import Icon from '../pieces/Icon.svelte';
   import { activeCollection, holdsWords, s } from './state.svelte.ts';
   import { answered, asking } from './asking.svelte.ts';
@@ -24,58 +33,35 @@
   import { openPrint } from './print.ts';
   import { t } from '../i18n/index.ts';
 
-  let titleInput: HTMLInputElement;
-
   /* Which Sammlung a pending rename is for, captured on the keystroke rather
      than read when the write runs. Switching blurs the field and so writes
      first, which makes the two the same in practice — but the debounce is the
      one path where they could differ, and the id is free to capture. */
   let renaming: string | null = null;
 
-  /* Debounced while typing, written on blur and on Enter, and never written
-     when the value has not moved — which this copy did on every visit to the
-     field, because its blur flushed unconditionally. */
-  let field: RenameField | undefined;
-  $effect(() => {
-    field = renameField(titleInput, (typed) => {
-      if (!renaming) return undefined;
-      return renameCollection(renaming, typed);
-    });
-    const made = field;
-    return () => made.stop();
-  });
+  /* The debounce, the write on the way out, the refusal to write a value that
+     has not moved and the guard against a repaint typing over somebody are
+     `@lautstark/design/rename`'s and always were. What the component takes
+     over is the wiring the three products each bolted on separately: the
+     binding, `refresh()` in place of an assignment, and the caret. */
+  const write = (typed: string): Promise<void> | undefined =>
+    renaming ? renameCollection(renaming, typed) : undefined;
 
-  /* Through refresh() rather than by assigning. The value comparison this used
-     to be is not the same guard: it holds only because the input handler below
-     echoes each keystroke into `collections` first, so a render caused by
-     anything else — a store refresh landing mid-word — would compare against
-     the stored name and put it back over what is being typed. refresh()
-     declines on focus and on a pending keystroke instead. */
-  $effect(() => {
-    const name = activeCollection()?.name ?? '';
-    field?.refresh(name);
-  });
-
-  /* Straight into the name, selected: the first keystroke replaces the date it
-     was given. conventions.md §1.5, and the selecting is the half of it that
-     was missing here — the name was invented and then left as a chore to
-     delete, which is the difference between a suggestion and a default.
-     An effect, so it runs after the paint that puts the new name in the field. */
-  $effect(() => {
-    if (asking() !== 'collection-name') return;
-    titleInput.focus();
-    titleInput.select();
-    answered();
-  });
+  /* Where the caret is owed, as the `caret` prop's two questions.
+     conventions.md §6.5 took this shape from here — an asker that names what
+     it wants rather than the field it wants it in — so `asking.svelte.ts` is
+     unchanged and only the reading of it moves. */
+  const caret = { asked: () => asking() === 'collection-name', answered };
 
   /* The live echo, and only that: the name in the sidebar row and the top bar
      follow each keystroke. Writing it is design/rename's, on its own listener —
      which is why that package binds with addEventListener rather than taking
-     the property, so the two can share one field. */
-  function echo(): void {
+     the property, so the two can share one field, and why §6.5 makes `oninput`
+     a prop instead of collapsing the field to one debounced write. */
+  function echo(event: Event & { currentTarget: HTMLInputElement }): void {
     if (!s.activeId) return;
     renaming = s.activeId;
-    const name = titleInput.value;
+    const name = event.currentTarget.value;
     s.collections = s.collections.map((c) => (c.id === s.activeId ? { ...c, name } : c));
   }
 
@@ -87,7 +73,7 @@
       : t('ui.n_rows', { n }));
 </script>
 
-<div class="collection-head"><input bind:this={titleInput} class="title-input" aria-label={t('ui.collection_name')} placeholder={t('ui.collection_name')} oninput={echo} /><span class="small faint" style="white-space:nowrap">{count}</span><button class="btn quiet sm" type="button" disabled={n === 0} onclick={() => openPrint(s.sentences.map((x) => x.id))}>{t('ui.print')}</button><!--
+<div class="collection-head"><TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><button class="btn quiet sm" type="button" disabled={n === 0} onclick={() => openPrint(s.sentences.map((x) => x.id))}>{t('ui.print')}</button><!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to
