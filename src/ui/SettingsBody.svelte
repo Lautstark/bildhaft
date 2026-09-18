@@ -6,11 +6,12 @@
   import { headlineFor } from '@lautstark/sicherung/backup-panel';
   import BackupPanel from '@lautstark/sicherung/svelte/BackupPanel';
   import AblagePanel from '@lautstark/sicherung/svelte/AblagePanel';
-  import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
+  import { readTheme, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
   import Panel from '@lautstark/design/svelte/Panel';
   import Dropdown from '@lautstark/design/svelte/Dropdown';
+  import ThemePicker from '@lautstark/design/svelte/ThemePicker';
   import { sourceFacts } from './symbolSources.ts';
   import { resetSymbolResolution } from './symbols.ts';
   import { ablage, isStore } from '../db/folder.ts';
@@ -316,18 +317,22 @@
    * reasoning and both siblings share it.
    */
   const THEME_KEY = 'bildhaft.theme';
+  /* Read once, which is safe here for the reason the next section gives: the
+     language of the page is the one choice on this dialog that reloads, so no
+     table lookup made while this component is alive can go stale. */
   const THEME_LABELS: Record<Theme, string> = {
     system: t('ui.theme_system'),
     light: t('ui.theme_light'),
     dark: t('ui.theme_dark'),
   };
+  /* The control is @lautstark/design/svelte/ThemePicker now — conventions.md
+     §6.10, four near-identical implementations over one shared runtime, of
+     which this file's was one. Storing the choice and putting it in force are
+     the component's; the initial read stays here because the Panel's summary
+     says which scheme is in force and has to say it before anybody picks.
+     `initTheme` — the half of the adoption §6.10 says comes with it — is an
+     entry-point call and main.ts has always made it. */
   let theme = $state<Theme>(readTheme(THEME_KEY));
-
-  function pickTheme(next: Theme): void {
-    saveTheme(THEME_KEY, next);
-    applyTheme(next);
-    theme = next;
-  }
 
   /* ------------------------------------------------------------ Sprache --- */
 
@@ -471,11 +476,17 @@
   wide as the word on it would leave them reading as different kinds of thing;
   `start` because the list hangs off a control at the left of the panel.
 --><div class="opt" style="margin-top:14px"><span class="opt__label" id="opt-rendering-label">{t('ui.rendering')}</span><Dropdown id="opt-rendering" field start labelledBy="opt-rendering-label" label={renderingLabel} build={(add) => { add(t('ui.no_preference'), () => prefer(null), { checked: settings.metacomRendering === null }); for (const rendering of renderings) add(`${rendering.segment} · ${t('ui.n_symbols', { n: rendering.count })}`, () => prefer(rendering.segment), { checked: settings.metacomRendering === rendering.segment }); }} /><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
-  role=group rather than radiogroup: .segmented marks its choice with
-  aria-pressed, which is the vocabulary the print dialog already uses, and a
-  radiogroup whose children are not radios reads worse than a labelled group of
-  buttons.
---><div class="segmented" role="group" aria-label={t('ui.set_appearance')}>{#each THEMES as one (one)}<button type="button" aria-pressed={one === theme} onclick={() => pickTheme(one)}>{THEME_LABELS[one]}</button>{/each}</div><span class="small faint">{t('ui.theme_note')}</span></div></Panel><Panel section={t('ui.where_all')} state={dataHeadline} bind:open={open.data}><!--
+  The three buttons are the package's. The argument for role=group over
+  radiogroup — .segmented marks its choice with aria-pressed, which is the
+  vocabulary the print dialog already uses, and a radiogroup whose children are
+  not radios reads worse than a labelled group of buttons — went with them: it
+  is in the component, word for word, because three of the four products that
+  drew this carried it and that is what said the control was ready to be shared.
+
+  The panel around it stays here, which is the point of the split. `bind:theme`
+  is how the summary line above knows what to say, and the note under the
+  buttons is this product's own.
+--><ThemePicker key={THEME_KEY} label={(one) => THEME_LABELS[one]} ariaLabel={t('ui.set_appearance')} bind:theme /><span class="small faint">{t('ui.theme_note')}</span></div></Panel><Panel section={t('ui.where_all')} state={dataHeadline} bind:open={open.data}><!--
   The panel itself comes from the package, so every Lautstark programme shows
   the same one. What stays here is what bildhaft alone offers besides the store:
   its standing snapshot and its file.
