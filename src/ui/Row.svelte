@@ -93,11 +93,27 @@
   /* Debounced while typing, written on blur and on Enter, and not written when
      the value has not moved. @lautstark/design/rename holds that timing for all
      three products; what is left here is what the field looks like and what an
-     empty one means. */
+     empty one means.
+   *
+   * This is the one rename field in bildhaft that is NOT
+   * `@lautstark/design/svelte/TitleField`, and the reason is two attributes the
+   * component does not carry and cannot be given from outside: `maxlength="80"`
+   * and the `title` that shows the typed line under a named row, which
+   * e2e/rowname.spec.ts asserts both the presence and the absence of. It takes
+   * no rest props, so both would be dropped silently. Adopting here means a
+   * prop on the component, in the design repository, and that is a round of its
+   * own rather than a thing to lose quietly in this one.
+   *
+   * What it can take from §6.5 it has taken: the stored name reaches the field
+   * only through `refresh()` below. The line that used to stand here assigned
+   * `titleInput.value` directly, which is the bug `rename.js` was written to
+   * remove — and because the assignment read `sentence.title`, this effect ran
+   * again on every write, stopping the binding and dropping a pending keystroke
+   * in the middle of somebody typing. Nothing reactive is read here now, so the
+   * field is bound once and stays bound. */
   $effect(() => {
     naming = renameField(titleInput, (typed) => void handleRename(sentence.id, typed));
     const made = naming;
-    titleInput.value = sentence.title?.trim() ?? '';
     return () => made.stop();
   });
 

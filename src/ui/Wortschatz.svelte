@@ -20,8 +20,9 @@
     setOverrideCaption, setOverrideTags,
   } from '../db/repo.ts';
   import { topicsOf } from '../core/tags.ts';
-  import { renameField, type RenameField } from '@lautstark/design/rename';
-  import ActionMenu from './ActionMenu.svelte';
+  import Overflow from '@lautstark/design/svelte/Overflow';
+  import TitleField from '@lautstark/design/svelte/TitleField';
+  import Icon from '../pieces/Icon.svelte';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import TypingBox from './TypingBox.svelte';
   import { openSlotPicker } from './slotPicker.svelte.ts';
@@ -104,39 +105,29 @@
 
   /* ------------------------------------------------------------- head --- */
 
-  let titleInput: HTMLInputElement | undefined = $state();
-  let titleField: RenameField | undefined;
-
   /* Debounced while typing, written on blur and on Enter. Renaming a tag is a
      write to every entry carrying it, which is what makes the debounce worth
-     more here than on a Sammlung's name. */
-  $effect(() => {
-    if (!titleInput) { titleField = undefined; return; }
-    const made = renameField(titleInput, (typed) => {
-      const from = lens;
-      if (!from || !typed.trim()) return undefined;
-      const to = typed.trim();
-      persistSettings({
-        ...s.settings!,
-        pinnedTags: (s.settings?.pinnedTags ?? []).map((tag) => (fold(tag) === fold(from) ? to : tag)),
-      });
-      go(to);
-      return renameTag(from, typed).then(() => { void refreshCollections(); refresh(); });
+     more here than on a Sammlung's name. The timing is
+     `@lautstark/design/rename`'s and always was; what moved into
+     `@lautstark/design/svelte/TitleField` is the binding around it, the
+     `refresh()` that keeps a repaint off what somebody is typing, and the
+     caret. The field only exists under a lens, so mounting it inside the
+     `{#if}` below is what the `titleInput` guard used to be. */
+  const renameLens = (typed: string): Promise<void> | undefined => {
+    const from = lens;
+    if (!from || !typed.trim()) return undefined;
+    const to = typed.trim();
+    persistSettings({
+      ...s.settings!,
+      pinnedTags: (s.settings?.pinnedTags ?? []).map((tag) => (fold(tag) === fold(from) ? to : tag)),
     });
-    titleField = made;
-    return () => made.stop();
-  });
-
-  $effect(() => { titleField?.refresh(lens ?? ''); });
+    go(to);
+    return renameTag(from, typed).then(() => { void refreshCollections(); refresh(); });
+  };
 
   /* „+ Neuer Tag" makes the tag and puts the caret in its name, selected;
      conventions.md §1.5, the same bargain a new Sammlung is made under. */
-  $effect(() => {
-    if (asking() !== 'tag-name' || !titleInput) return;
-    titleInput.focus();
-    titleInput.select();
-    answered();
-  });
+  const caret = { asked: () => asking() === 'tag-name', answered };
 
   let count = $derived(shown.length === 1 ? t('ui.n_words_one') : t('ui.n_words', { n: shown.length }));
 
@@ -350,17 +341,17 @@
   open is the other half and the commoner one, so the action lives there
   instead, in the Sammlung's own ⋯ where it can be used again and again. The
   composer is this place's action.
---><div class="collection-head">{#if lens === null}<span class="work-title">{t('ui.all_words')}</span><span class="small faint" style="white-space:nowrap">{count}</span>{:else}<input bind:this={titleInput} class="title-input" aria-label={t('ui.tag_name')} placeholder={t('ui.tag_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><span><ActionMenu label={t('ui.tag_actions')} build={(item) => {
+--><div class="collection-head">{#if lens === null}<span>{t('ui.all_words')}</span><span class="small faint" style="white-space:nowrap">{count}</span>{:else}<TitleField value={lens ?? ''} write={renameLens} {caret} label={t('ui.tag_name')} placeholder={t('ui.tag_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><span><Overflow label={t('ui.tag_actions')} build={(item) => {
   item(t('ui.unpin_tag'), () => pin(lens!, true));
   item(t('ui.delete_tag'), () => void deleteLens(), { danger: true });
-}} /></span>{/if}</div>
+}}><Icon name="dots" /></Overflow></span>{/if}</div>
 
 <div class="wortschatz"><div class="tag-filters">{#if anyTags}<button class="chip" type="button" aria-pressed={lens === null} onclick={() => go(null)}>{t('ui.filter_all')}<span class="n">{entries.length}</span></button>{#if tallies.own.size > 0}<span class="tag-filters__sep"></span>{/if}{#each ownTags as tag (tag.label)}{@const on = lens !== null && fold(lens) === fold(tag.label)}<button class="chip" type="button" aria-pressed={on} onclick={() => go(tag.label)}>{tag.label}<span class="n">{tag.n}</span><!--
   The pin sits on the chip that is on, and only on a tag somebody typed. A
   suggested one is a wording — „Nomen" is „Noun" tomorrow — and a sidebar row
   remembering a word this app translated is a row that empties itself when the
   interface changes language.
--->{#if on}{@const held = isPinned(tag.label)}<span class="chip__pin" role="button" tabindex="0" title={held ? t('ui.unpin_tag') : t('ui.pin_tag')} aria-label={held ? t('ui.unpin_tag') : t('ui.pin_tag')} style:opacity={held ? '1' : '.45'} onclick={(event) => { event.stopPropagation(); pin(tag.label, held); }} onkeydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); pin(tag.label, held); } }}>📌</span>{/if}</button>{/each}{#if tallies.said.size > 0}<span class="tag-filters__sep"></span>{/if}{#each saidTags as tag (tag.label)}<button class="chip" type="button" aria-pressed={lens !== null && fold(lens) === fold(tag.label)} onclick={() => go(tag.label)}>{tag.label}<span class="n">{tag.n}</span></button>{/each}{/if}</div><div class="words">{#if shown.length === 0 && pending.length === 0}<div class="empty"><b>{lens ? t('ui.tag_empty') : t('ui.no_entries')}</b><small>{lens ? t('ui.tag_empty_hint') : t('ui.wortschatz_empty_hint')}</small></div>{:else}{#each pending as word (word)}<div class="word word--waiting"><button class="word__pic word__pic--asking" type="button" aria-label={t('ui.pick_picture_for', { word })} onclick={() => pick(word)}>?</button><b class="word__name">{word}</b><span class="tags"><button class="tag tag--ask" type="button" onclick={() => pick(word)}>{t('ui.pick_picture')}</button></span></div>{/each}{#each shown as entry (entry.key)}<div class="word"><button class="word__pic" type="button" aria-label={t('ui.change_picture_for', { word: entry.token })} onclick={() => pick(entry.token, entry)}><SymbolPicture provider={entry.provider} id={entry.symbolId} alt={entry.label} /></button><!--
+-->{#if on}{@const held = isPinned(tag.label)}<span class="chip__pin" role="button" tabindex="0" title={held ? t('ui.unpin_tag') : t('ui.pin_tag')} aria-label={held ? t('ui.unpin_tag') : t('ui.pin_tag')} style:opacity={held ? '1' : '.45'} onclick={(event) => { event.stopPropagation(); pin(tag.label, held); }} onkeydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); pin(tag.label, held); } }}>📌</span>{/if}</button>{/each}{#if tallies.said.size > 0}<span class="tag-filters__sep"></span>{/if}{#each saidTags as tag (tag.label)}<button class="chip" type="button" aria-pressed={lens !== null && fold(lens) === fold(tag.label)} onclick={() => go(tag.label)}>{tag.label}<span class="n">{tag.n}</span></button>{/each}{/if}</div><div class="words">{#if shown.length === 0 && pending.length === 0}<div class="empty"><b>{lens ? t('ui.tag_empty') : t('ui.no_entries')}</b><small>{lens ? t('ui.tag_empty_hint') : t('ui.wortschatz_empty_hint')}</small></div>{:else}{#each pending as word (word)}<div class="word"><button class="word__pic word__pic--asking" type="button" aria-label={t('ui.pick_picture_for', { word })} onclick={() => pick(word)}>?</button><b class="word__name">{word}</b><span class="tags"><button class="tag tag--ask" type="button" onclick={() => pick(word)}>{t('ui.pick_picture')}</button></span></div>{/each}{#each shown as entry (entry.key)}<div class="word"><button class="word__pic" type="button" aria-label={t('ui.change_picture_for', { word: entry.token })} onclick={() => pick(entry.token, entry)}><SymbolPicture provider={entry.provider} id={entry.symbolId} alt={entry.label} /></button><!--
   Asked first. The settings panel this replaced had a labelled „Entfernen"
   button that took a deliberate press; a cross in the corner of a card takes a
   stray one, and what it throws away is a picture somebody chose and a text they
