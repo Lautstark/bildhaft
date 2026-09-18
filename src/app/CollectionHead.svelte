@@ -2,10 +2,21 @@
   /**
    * The work head: the Sammlung's name, how much is in it, Drucken, and the ⋯.
    * conventions.md §3.3 is the row; this is bildhaft's copy of it.
+   *
+   * The ⋯ is `@lautstark/design/svelte/Overflow` now. It is this product's own
+   * `src/ui/ActionMenu.svelte` — conventions.md §6.10 promoted that file, class
+   * string and all — so the markup here is unchanged and the trigger still
+   * carries its `dots` icon rather than the shared default `⋯`. What comes back
+   * is the half the local copy never had: `fit()`, vorlaut's collision
+   * handling, which flips the list upwards where there is more room above and
+   * caps its height so a long menu stays inside the box it was opened in.
+   * A copy that sits beside the thing it was copied into can only drift, and
+   * this one already had.
    */
   import { renameField, type RenameField } from '@lautstark/design/rename';
   import { renameCollection } from '../db/repo.ts';
-  import ActionMenu from '../ui/ActionMenu.svelte';
+  import Overflow from '@lautstark/design/svelte/Overflow';
+  import Icon from '../pieces/Icon.svelte';
   import { activeCollection, holdsWords, s } from './state.svelte.ts';
   import { answered, asking } from './asking.svelte.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
@@ -81,7 +92,7 @@
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to
   it, because both are answered by which Sammlung it sits beside.
---><ActionMenu label={t('ui.collection_actions')} build={(add) => {
+--><Overflow label={t('ui.collection_actions')} build={(add) => {
   /* First, because it is the one thing in here that puts something *in*;
      the rest act on what is already there or on what the Sammlung is.
      And absent rather than greyed while the Wortschatz is empty — the same
@@ -93,4 +104,4 @@
   add(t('ui.export_collection'), () => void handleExport(), { disabled: s.sentences.length === 0 });
   add(t('ui.symbol_source_menu'), () => openSourceSheet());
   add(t('ui.delete_collection'), () => void confirmDeleteCollection(), { danger: true });
-}} /></div>
+}}><Icon name="dots" /></Overflow></div>

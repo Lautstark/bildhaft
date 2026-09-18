@@ -21,7 +21,8 @@
   } from '../db/repo.ts';
   import { topicsOf } from '../core/tags.ts';
   import { renameField, type RenameField } from '@lautstark/design/rename';
-  import ActionMenu from './ActionMenu.svelte';
+  import Overflow from '@lautstark/design/svelte/Overflow';
+  import Icon from '../pieces/Icon.svelte';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import TypingBox from './TypingBox.svelte';
   import { openSlotPicker } from './slotPicker.svelte.ts';
@@ -350,10 +351,10 @@
   open is the other half and the commoner one, so the action lives there
   instead, in the Sammlung's own ⋯ where it can be used again and again. The
   composer is this place's action.
---><div class="collection-head">{#if lens === null}<span class="work-title">{t('ui.all_words')}</span><span class="small faint" style="white-space:nowrap">{count}</span>{:else}<input bind:this={titleInput} class="title-input" aria-label={t('ui.tag_name')} placeholder={t('ui.tag_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><span><ActionMenu label={t('ui.tag_actions')} build={(item) => {
+--><div class="collection-head">{#if lens === null}<span class="work-title">{t('ui.all_words')}</span><span class="small faint" style="white-space:nowrap">{count}</span>{:else}<input bind:this={titleInput} class="title-input" aria-label={t('ui.tag_name')} placeholder={t('ui.tag_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><span><Overflow label={t('ui.tag_actions')} build={(item) => {
   item(t('ui.unpin_tag'), () => pin(lens!, true));
   item(t('ui.delete_tag'), () => void deleteLens(), { danger: true });
-}} /></span>{/if}</div>
+}}><Icon name="dots" /></Overflow></span>{/if}</div>
 
 <div class="wortschatz"><div class="tag-filters">{#if anyTags}<button class="chip" type="button" aria-pressed={lens === null} onclick={() => go(null)}>{t('ui.filter_all')}<span class="n">{entries.length}</span></button>{#if tallies.own.size > 0}<span class="tag-filters__sep"></span>{/if}{#each ownTags as tag (tag.label)}{@const on = lens !== null && fold(lens) === fold(tag.label)}<button class="chip" type="button" aria-pressed={on} onclick={() => go(tag.label)}>{tag.label}<span class="n">{tag.n}</span><!--
   The pin sits on the chip that is on, and only on a tag somebody typed. A
