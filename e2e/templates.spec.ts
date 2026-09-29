@@ -372,10 +372,21 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await page.keyboard.press('Escape');
   await expect(marked).toHaveCount(0);
 
-  // A press on a grouped field marks its whole block and shows its group; „Gruppe entfernen" takes it away.
+  // A press on a grouped field marks its whole block and shows its group. A
+  // press on one of its fields then marks that one alone, and „Aus Gruppe
+  // nehmen" takes it out while the rest stays a group.
   await pressTile(5);
   await expect(marked).toHaveCount(4);
   await expect(page.getByRole('button', { name: 'Rahmen Grün' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Aus Gruppe nehmen' })).toHaveCount(0);
+  await pressTile(8);
+  await expect(marked).toHaveCount(1);
+  await page.getByRole('button', { name: 'Aus Gruppe nehmen' }).click();
+  await expect(zoned).toHaveCount(5);
+  await expect(marked).toHaveCount(0);
+  // „Gruppe entfernen" takes the rest away.
+  await pressTile(5);
+  await expect(marked).toHaveCount(3);
   await page.getByRole('button', { name: 'Gruppe entfernen' }).click();
   await expect(zoned).toHaveCount(2);
   await expect(marked).toHaveCount(0);

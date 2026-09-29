@@ -160,6 +160,20 @@ export function dissolveZone(board: Board, id: string): Board {
   return tidy({ ...rest, zones: zones.map((z) => (z === id ? null : z)), styles: stylesOf(board) });
 }
 
+/** These fields out of whatever group they are in; the group keeps the rest. */
+export function leaveZone(board: Board, indices: Iterable<number>): Board {
+  const zones = zonesOf(board);
+  let changed = false;
+  for (const index of indices) {
+    if (!zones[index]) continue;
+    zones[index] = null;
+    changed = true;
+  }
+  if (!changed) return board;
+  const { groups: _groups, ...rest } = board;
+  return tidy({ ...rest, zones, styles: stylesOf(board) });
+}
+
 /** A key no group on this board has. Short and stable, so a test can name it. */
 export function newZoneId(board: Pick<Board, 'zones' | 'styles'>): string {
   const taken = new Set([...(board.zones ?? []), ...Object.keys(board.styles ?? {})]);

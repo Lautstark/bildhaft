@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blockAt, boardOf, defaultAirMm, dissolveZone, firstFree, labelColour, labelField, newZoneId, placedIds, placeOn,
+  blockAt, boardOf, defaultAirMm, dissolveZone, leaveZone, firstFree, labelColour, labelField, newZoneId, placedIds, placeOn,
   resizeBoard, setZone, shade, stylesOf, takeOff, zoneBorder, zoneBox, zoneClip, zoneCorners, zoneCrooks, zoneJoint, zoneMap, zonesOf,
 } from '../../src/core/board.ts';
 import type { Board } from '../../src/core/types.ts';
@@ -120,6 +120,14 @@ describe('a group on fields', () => {
     expect(dissolveZone(next, 'g1').zones).toEqual([null, null, null, null]);
     expect(dissolveZone(next, 'g1').styles).toEqual({});
     expect(dissolveZone(next, 'g9')).toBe(next);
+  });
+
+  it('lets single fields leave a group, and forgets the group when none is left', () => {
+    const next = setZone(grid(2, 2), [0, 1, 3], 'g1', { frame: b });
+    expect(leaveZone(next, [1]).zones).toEqual(['g1', null, null, 'g1']);
+    expect(leaveZone(next, [1]).styles).toEqual({ g1: { frame: b } });
+    expect(leaveZone(next, [0, 1, 3]).styles).toEqual({});
+    expect(leaveZone(next, [2])).toBe(next);
   });
 
   it('lets a field leave one group for another, and forgets a group nobody is in', () => {

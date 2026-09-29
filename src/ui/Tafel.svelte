@@ -29,7 +29,7 @@
     blockAt, boardOf, firstFree, labelColour, labelField, MAX_BOARD_SIDE, newZoneId,
     placeOn, resizeBoard, takeOff, zoneBorder, zoneBox, zoneJoint, zoneMap,
   } from '../core/board.ts';
-  import { dissolveZone, setZone } from '../core/board.ts';
+  import { dissolveZone, leaveZone, setZone } from '../core/board.ts';
   import WordCard from './WordCard.svelte';
   import { activeCollection, s } from '../app/state.svelte.ts';
   import { handleNewCard, writeBoard } from '../app/board.ts';
@@ -182,7 +182,8 @@
   /**
    * A press on a field's air. Alone it marks the field, or unmarks it; on a
    * grouped field with nothing marked yet it marks the whole block, so a
-   * group is changed as one. Held and moved, it draws a frame instead, and
+   * group is changed as one, and a press on one field of that marked block
+   * marks that field alone. Held and moved, it draws a frame instead, and
    * every field the frame touches is marked when it is let go.
    */
   function pressAir(event: PointerEvent, index: number): void {
@@ -217,6 +218,14 @@
         return;
       }
       if (selected.has(index)) {
+        /* A whole block marked, and one of its fields pressed: that field
+           alone, so it can be taken out of the group without unmarking
+           every other one first. */
+        const block = blockAt(map, index);
+        if (block.length > 1 && block.length === selected.size && block.every((i) => selected.has(i))) {
+          selected = new Set([index]);
+          return;
+        }
         const next = new Set(selected);
         next.delete(index);
         selected = next;
@@ -251,6 +260,13 @@
   }
 
   /* ------------------------------------------------------------- panel --- */
+
+  /* Part of a group marked rather than all of it: the panel's button then
+     takes the marked fields out and leaves the group standing. */
+  let leaving = $derived(
+    [...selected].some((i) => map.zones[i])
+      && !(editing && map.zones.every((z, i) => z !== editing || selected.has(i))),
+  );
 
   /** The style the panel is showing: the group's, or nothing yet. */
   let style = $derived<ZoneStyle>((editing && map.styles[editing]) || {});
@@ -315,10 +331,11 @@
 <div class="board-head"><label class="small">{t('ui.columns')}<input bind:this={colsInput} class="field board-head__n" type="number" min="1" max={MAX_BOARD_SIDE} step="1" aria-label={t('ui.columns')} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n)) void writeBoard((one) => resizeBoard(one, n, board.rows)); }} /></label><span class="faint" aria-hidden="true">×</span><label class="small">{t('ui.rows')}<input bind:this={rowsInput} class="field board-head__n" type="number" min="1" max={MAX_BOARD_SIDE} step="1" aria-label={t('ui.rows')} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n)) void writeBoard((one) => resizeBoard(one, board.cols, n)); }} /></label><!--
   The panel over the marked fields: how many, and the three things a group can
   have — a name, a frame, a colour behind — each with „Kein" first, each taking
-  effect on the spot. „Gruppe entfernen" takes all three away; „Fertig" only
+  effect on the spot. „Gruppe entfernen" takes all three away — or, with only
+  part of the group marked, „Aus Gruppe nehmen" takes just those fields; „Fertig" only
   puts the marks down. In the head row rather than floating over the fields: a
   bar over the first row covered the very tiles the next press was meant for.
--->{#if selected.size > 0}<div class="group-panel" role="group" aria-label={t('ui.selection')} onpointerdown={(event) => event.stopPropagation()}><div class="group-panel__head"><span class="group-panel__count">{selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size })}</span><button class="group-panel__done" type="button" onclick={() => { flushName(); selected = new Set(); }}>{t('ui.done')}</button></div><span class="group-panel__label">{t('ui.group_name')}</span><input bind:this={nameInput} class="field group-panel__name" type="text" placeholder={t('ui.group_name_none')} aria-label={t('ui.group_name')} maxlength="40" oninput={typedName} onblur={flushName} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); flushName(); } }} />{#each [{ key: 'frame' as const, what: t('ui.group_frame'), ownStart: '#3f88e0' }, { key: 'fill' as const, what: t('ui.group_fill'), ownStart: '#d8e9fc' }] as row (row.key)}<span class="group-panel__label">{row.what}</span><div class="group-panel__row" role="group" aria-label={row.what}><button class="group-panel__swatch group-panel__swatch--none{style[row.key] ? '' : ' group-panel__swatch--on'}" type="button" aria-label="{row.what}: {t('ui.none')}" aria-pressed={!style[row.key]} onclick={() => choose({ [row.key]: undefined })}></button>{#each ZONE_COLOURS as colour (colour.name)}<button class="group-panel__swatch{style[row.key] === colour[row.key] ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour[row.key]} aria-label={t('ui.colour_for', { what: row.what, colour: t(colour.name) })} aria-pressed={style[row.key] === colour[row.key]} onclick={() => choose({ [row.key]: colour[row.key] })}></button>{/each}<label class="group-panel__wheel{isOwn(row.key) ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: row.what })}><input class="group-panel__own" type="color" value={style[row.key] ?? row.ownStart} aria-label={t('ui.own_colour_for', { what: row.what })} onchange={(event) => choose({ [row.key]: event.currentTarget.value })} /></label></div>{/each}<div class="group-panel__foot"><button class="group-panel__remove" type="button" disabled={!editing} onclick={() => { const id = editing; selected = new Set(); if (id) void writeBoard((one) => dissolveZone(one, id)); }}>{t('ui.remove_group')}</button></div></div>{/if}</div>
+-->{#if selected.size > 0}<div class="group-panel" role="group" aria-label={t('ui.selection')} onpointerdown={(event) => event.stopPropagation()}><div class="group-panel__head"><span class="group-panel__count">{selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size })}</span><button class="group-panel__done" type="button" onclick={() => { flushName(); selected = new Set(); }}>{t('ui.done')}</button></div><span class="group-panel__label">{t('ui.group_name')}</span><input bind:this={nameInput} class="field group-panel__name" type="text" placeholder={t('ui.group_name_none')} aria-label={t('ui.group_name')} maxlength="40" oninput={typedName} onblur={flushName} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); flushName(); } }} />{#each [{ key: 'frame' as const, what: t('ui.group_frame'), ownStart: '#3f88e0' }, { key: 'fill' as const, what: t('ui.group_fill'), ownStart: '#d8e9fc' }] as row (row.key)}<span class="group-panel__label">{row.what}</span><div class="group-panel__row" role="group" aria-label={row.what}><button class="group-panel__swatch group-panel__swatch--none{style[row.key] ? '' : ' group-panel__swatch--on'}" type="button" aria-label="{row.what}: {t('ui.none')}" aria-pressed={!style[row.key]} onclick={() => choose({ [row.key]: undefined })}></button>{#each ZONE_COLOURS as colour (colour.name)}<button class="group-panel__swatch{style[row.key] === colour[row.key] ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour[row.key]} aria-label={t('ui.colour_for', { what: row.what, colour: t(colour.name) })} aria-pressed={style[row.key] === colour[row.key]} onclick={() => choose({ [row.key]: colour[row.key] })}></button>{/each}<label class="group-panel__wheel{isOwn(row.key) ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: row.what })}><input class="group-panel__own" type="color" value={style[row.key] ?? row.ownStart} aria-label={t('ui.own_colour_for', { what: row.what })} onchange={(event) => choose({ [row.key]: event.currentTarget.value })} /></label></div>{/each}<div class="group-panel__foot">{#if leaving}<button class="group-panel__remove" type="button" onclick={() => { const indices = [...selected]; selected = new Set(); void writeBoard((one) => leaveZone(one, indices)); }}>{t('ui.leave_group')}</button>{:else}<button class="group-panel__remove" type="button" disabled={!editing} onclick={() => { const id = editing; selected = new Set(); if (id) void writeBoard((one) => dissolveZone(one, id)); }}>{t('ui.remove_group')}</button>{/if}</div></div>{/if}</div>
 
 <div bind:this={grid} class="board" role="list" style:--cols={String(board.cols)}>{#each board.cells as id, index (index)}{@const card = id ? byId.get(id) : undefined}{@const zone = map.zones[index]}{@const box = zoneBox(map, index, '4px', '12px', '-2px')}{@const zoneStyle = zone ? map.styles[zone] : undefined}<!-- A field takes the keyboard, because Space marks it and an arrow walks to
      the next one; and it says whether it is marked, which is what the panel
