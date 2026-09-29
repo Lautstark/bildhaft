@@ -248,21 +248,25 @@ function colourAt(map: ZoneMap, c: number, r: number): string | null {
  * Which corners of a coloured field are rounded.
  *
  * A corner is a corner of the block when both its sides are: no neighbour of
- * the same colour on either. And it is rounded only when it is a corner *on
- * paper* — at least one of the two fields beside it bare, the sheet's edge
- * counting as bare. Where both are other blocks, the corner sits in the
- * crook of an L or at a T of blocks, and a rounded corner there left a notch
- * of paper against the other block's straight inner edge. Square there, the
- * blocks meet along a rinne. Written as a CSS border-radius, top-left first.
+ * the same colour on either. And it is rounded unless it sits in the crook
+ * of another block — the two fields beside it and the one across it all of
+ * that one colour. A rounded corner there left a notch of paper against the
+ * other block's square inner corner; square, the blocks meet along a rinne.
+ * Where the fields around are two different blocks, each has its own rinne
+ * and paper shows round the corner, so it is round. Written as a CSS
+ * border-radius, top-left first.
  */
 export function zoneCorners(map: ZoneMap, index: number, radius: string): string {
   const edges = zoneEdges(map, index);
   if (!edges) return '0';
   const col = index % map.cols;
   const row = Math.floor(index / map.cols);
-  const bare = (c: number, r: number) => colourAt(map, c, r) === null;
+  const crook = (dc: number, dr: number): boolean => {
+    const other = colourAt(map, col, row + dr);
+    return other !== null && colourAt(map, col + dc, row) === other && colourAt(map, col + dc, row + dr) === other;
+  };
   const corner = (vertical: boolean, horizontal: boolean, dc: number, dr: number) =>
-    (vertical && horizontal && (bare(col, row + dr) || bare(col + dc, row)) ? radius : '0');
+    (vertical && horizontal && !crook(dc, dr) ? radius : '0');
   return [
     corner(edges.top, edges.left, -1, -1), corner(edges.top, edges.right, 1, -1),
     corner(edges.bottom, edges.right, 1, 1), corner(edges.bottom, edges.left, -1, 1),
