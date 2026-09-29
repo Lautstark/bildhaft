@@ -236,6 +236,18 @@ describe('where a block ends', () => {
     expect(zoneCorners(m, 5, 'R')).toBe('0 0 R R');
   });
 
+  it('rounds a corner where two other blocks meet, not in anyone\'s crook', () => {
+    // g g .      the real board: green's right corners face grey above and
+    // y y b      blue beside, two blocks with a rinne between them each —
+    // y y b      no crook, so paper shows round the corner
+    // p p b
+    const g = '#e9ecef'; const p = '#fde';
+    const m = map(3, 4, [g, g, null, y, y, b, y, y, b, p, p, b]);
+    expect(zoneCorners(m, 4, 'R')).toBe('0 R 0 0');
+    expect(zoneCorners(m, 7, 'R')).toBe('0 0 R 0');
+    expect(zoneCorners(m, 10, 'R')).toBe('0 R R 0');
+  });
+
   it('steps in by half a gutter on its own sides only, and reaches out where it goes on', () => {
     const m = map(3, 1, [y, y, null]);
     expect(zoneBox(m, 0, '1mm', '3mm')).toEqual({ inset: '1mm 0 1mm 1mm', borderRadius: '3mm 0 0 3mm', clipPath: null, crooks: [] });
