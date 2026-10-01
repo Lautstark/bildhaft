@@ -1350,3 +1350,39 @@ footer.footer {
 .tray__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
 .tray__head b { font-size: 13px; }
 .tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius-md); }
+
+/* ---------------------------------------------------------------- rezept */
+
+/* Two boxes, what is needed and what is done, each holding its parts with a
+   box to type into under each. The walls and rows inside are the Wortkarten's
+   and the Satzstreifen's own; only the frame around them is new. */
+.recipe { display: flex; flex-direction: column; gap: 18px; }
+.recipe__box {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 16px;
+  border-radius: var(--radius);
+  outline: 1px solid var(--line);
+}
+.recipe__part { display: flex; flex-direction: column; gap: 10px; }
+.recipe__head { margin: 0; font-size: 15px; font-weight: 650; }
+/* The composer's box, smaller: it is one of three on the page, and the big
+   type is for the one box a Satzstreifen has. */
+.recipe__type .composer { margin: 0; }
+.recipe__type .composer__box { padding: 8px 8px 8px 14px; box-shadow: none; }
+.recipe__type .composer__input { min-height: 26px; font-size: 16px; }
+.recipe__type .composer__meta { display: none; }
+.row__step {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

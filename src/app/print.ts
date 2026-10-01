@@ -22,13 +22,24 @@ import { persistSettings } from './settings.ts';
  * material and not preferences, which is why the material carries them and
  * the global settings do not.
  *
+ * A Rezept opens on itself too: one A4 page standing up, its name at the top,
+ * and cards small enough that the Zutaten, the Hilfsmittel and the first
+ * Schritte share that page. The size stays a choice — what this Rezept set
+ * for itself wins over the 20 mm it starts at — because a child who needs
+ * bigger pictures gets a second page rather than smaller ones.
+ *
+ * And a template that is not a material never opens on one. The household's
+ * remembered layout is whatever was printed last, and when that was an
+ * Einkaufsliste or a Rezept, a Satzstreifen would otherwise open on a cart.
+ *
  * A function of its inputs and nothing else, so tests/unit/print-for.test.ts
- * can hold each template to its opening layout without a page. `ownAirMm` is
- * what a Tafel set for itself, when it did; the board's own `airMm` stands
- * behind it, and the paper decides when neither says.
+ * can hold each template to its opening layout without a page. `own` is what
+ * this Sammlung set for itself: for a Tafel the board's own `airMm` stands
+ * behind its air, and the paper decides when neither says.
  */
 export function printFor(
-  print: PrintSettings, which: CollectionKind, board: Board | null, ownAirMm?: number,
+  print: PrintSettings, which: CollectionKind, board: Board | null,
+  own: Partial<PrintSettings> = {},
 ): PrintSettings {
   /* A Tafel prints as the grid it is. Its columns and rows are the
      Sammlung's, not the dialog's — the dialog's are for a deck of cards
@@ -41,10 +52,10 @@ export function printFor(
        this paper, so a crowded A5 gets less than a roomy A4. */
     const page = printableArea(print.paper, print.orientation);
     const field = Math.min(page.width / grid.cols, page.height / grid.rows);
-    const own = ownAirMm ?? grid.airMm;
+    const air = own.cutMarginMm ?? grid.airMm;
     return {
       ...print, layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows,
-      cutMarginMm: own ?? defaultAirMm(field),
+      cutMarginMm: air ?? defaultAirMm(field),
     };
   }
   if (which === 'einkaufsliste') {
@@ -59,8 +70,27 @@ export function printFor(
       showCollectionTitle: true,
     };
   }
+  if (which === 'rezept') {
+    return {
+      ...print,
+      layout: 'rezept',
+      paper: 'a4',
+      orientation: 'portrait',
+      symbolSizeMm: own.symbolSizeMm ?? 20,
+      cutMarginMm: 1.5,
+      showLabel: true,
+      labelPosition: 'below',
+      labelSizePt: own.labelSizePt ?? 9,
+      cardBorderMm: 0,
+      cardBackground: null,
+      showCollectionTitle: true,
+    };
+  }
   if (which === 'wortkarten' && print.layout !== 'sheet') {
     return { ...print, layout: 'sheet' };
+  }
+  if (print.layout !== 'strip' && print.layout !== 'sheet') {
+    return { ...print, layout: 'strip' };
   }
   return print;
 }
@@ -96,9 +126,13 @@ export function openPrint(ids: string[]): void {
      people make. */
   const open = activeCollection();
   const board = kind() === 'tafel' && open ? boardOf(open) : null;
+  /* A Rezept prints whole too, and in the order it reads on screen: oldest
+     first, each part in its place on the paper. */
   const chosen = board
     ? placedIds(board).map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x))
-    : ids.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x));
+    : kind() === 'rezept'
+      ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
+      : ids.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x));
   if ((chosen.length === 0 && !board) || !s.settings) return;
 
   openPrintDialog({
@@ -117,14 +151,18 @@ export function openPrint(ids: string[]): void {
 
        Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
        because cutting sentences into cards is a thing people actually do. */
-    settings: printFor(printBase(), kind(), board, open?.print?.cutMarginMm),
+    settings: printFor(printBase(), kind(), board, open?.print ?? {}),
     onChange: (print: PrintSettings) => {
       if (!s.settings) return;
       /* Twice, on purpose. The household's defaults follow along, so the
          next Sammlung starts from what was last wanted; and the Sammlung
          keeps its own, so this one prints tomorrow as it printed today,
-         whatever was set elsewhere in between. */
-      persistSettings({ ...s.settings, print });
+         whatever was set elsewhere in between.
+
+         Not for a Rezept. Everything its dialog offers is about this paper —
+         its colour, its 20 mm cards — and handed to the household it would
+         be the next Satzstreifen's symbol size. */
+      if (kind() !== 'rezept') persistSettings({ ...s.settings, print });
       void keepPrint(print);
     },
     provider: providerId(),

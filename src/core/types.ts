@@ -176,7 +176,29 @@ export interface Sentence {
    * whose name was cleared.
    */
   title?: string | null;
+
+  /**
+   * Which part of a Rezept this is: a card in the Zutaten, a card in the
+   * Hilfsmittel, or one of the Schritte. Only a `rezept` reads it.
+   *
+   * On the sentence rather than in a list on the Sammlung, as the Tafel keeps
+   * its grid, because a recipe has no arrangement beyond the part: the order
+   * within a part is the order things were typed, and a card deleted is gone
+   * from its part with nothing else to tidy up.
+   *
+   * Absent reads as a Zutat (`partOf()`). A card that arrives without one —
+   * poured in from the Wortschatz, or made in another template — is a card,
+   * and the Zutaten are where a card of a recipe is first looked for.
+   */
+  part?: RecipePart;
 }
+
+/** The three parts of a Rezept, in the order they are shown and printed. */
+export const RECIPE_PARTS = ['zutat', 'hilfsmittel', 'schritt'] as const;
+export type RecipePart = (typeof RECIPE_PARTS)[number];
+
+/** Which part of a Rezept a sentence is in. */
+export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart => sentence.part ?? 'zutat';
 
 /**
  * What a row is called, on screen, on paper and in the sidebar. One expression,
@@ -362,7 +384,7 @@ export interface BoardGroup {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /** What a Sammlung is when it has never been asked. */
@@ -456,8 +478,11 @@ export interface Override {
  * place to live. It sits here rather than beside them because everything that
  * builds a page reads this one field, and a material that could not say which
  * pages it wants would have to be threaded through every one of them.
+ *
+ * `rezept` is one too, for the same reason: its Zutaten, its Hilfsmittel and
+ * its numbered Schritte are one paper, not cards that happen to be laid out.
  */
-export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste';
+export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**
@@ -556,6 +581,12 @@ export interface PrintSettings {
    * unconditional and always prints.
    */
   showCopyright: boolean;
+
+  /**
+   * A Rezept's colour: its headings, its step numbers and the dotted line
+   * around each card. Only a Rezept prints it. A CSS colour.
+   */
+  accentColour: string;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -582,6 +613,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   cardRadiusMm: 2,
   cardBackground: null,
   showCopyright: false,
+  accentColour: '#e3262b',
 };
 
 /* ------------------------------------------------------------- settings --- */

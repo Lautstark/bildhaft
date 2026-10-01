@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mockArasaac } from './arasaac-mock.ts';
+import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
 import { translate } from './helpers.ts';
 
 /**
@@ -450,4 +450,70 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await page.getByRole('button', { name: 'Drucken', exact: true }).click();
   await expect(page.getByLabel('Rand um jede Karte')).toHaveValue('3');
 });
+});
+
+/**
+ * A Rezept is three parts with a box each, and the paper keeps them apart.
+ *
+ * Held here: a line lands in the part whose box it was typed into and nowhere
+ * else; a Zutat's amount stays on the card and off the lookup, so „2 Eier"
+ * gets the picture for „Eier"; the Schritte read top to bottom in the order
+ * they were typed, numbered, which is the reverse of a Satzstreifen; and the
+ * paper carries the three headings, the numbers and the name — and, with
+ * pictures too big for one page, goes on to a second rather than shrinking.
+ */
+test('a Rezept takes each part in its own box, and prints them in order', async ({ page }) => {
+  await sidebarReady(page);
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.keyboard.type('Waffeln (5–6 Stück)');
+
+  const tile = page.getByRole('button', { name: /^Rezept/ });
+  await tile.click();
+  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  // Its parts have their own boxes, so the composer above would be a fourth.
+  await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
+
+  const zutaten = page.getByRole('region', { name: 'Zutaten' });
+  await page.getByLabel('Zutat hinzufügen').fill('2 Eier\n325 ml Milch');
+  await page.getByLabel('Zutat hinzufügen').press('Enter');
+  await expect(zutaten.locator('.word__name')).toHaveText(['2 Eier', '325 ml Milch']);
+
+  const eier = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === '2 Eier'));
+  expect(eier?.slots[0]?.sourceToken).toBe('Eier');
+  expect(eier?.slots[0]?.chosen).toBe(String(idForTerm('Eier')));
+
+  await page.getByLabel('Hilfsmittel hinzufügen').fill('Schüssel');
+  await page.getByLabel('Hilfsmittel hinzufügen').press('Enter');
+  await expect(page.getByRole('region', { name: 'Hilfsmittel' }).locator('.word__name'))
+    .toHaveText(['Schüssel']);
+  await expect(zutaten.locator('.word__name')).toHaveCount(2);
+
+  // Two submissions, so the order is the one they were typed in and not a batch's.
+  const schritte = page.getByRole('region', { name: 'Schritte' });
+  for (const [at, step] of ['Eier in die Schüssel', 'Rühren'].entries()) {
+    await page.getByLabel('Schritt hinzufügen').fill(step);
+    await page.getByLabel('Schritt hinzufügen').press('Enter');
+    await expect(schritte.locator('.row')).toHaveCount(at + 1);
+  }
+  await expect(schritte.locator('.row__step')).toHaveText(['1', '2']);
+  expect(await schritte.locator('.row__title').evaluateAll((fields) =>
+    fields.map((field) => field.getAttribute('placeholder')))).toEqual(['Eier in die Schüssel', 'Rühren']);
+
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  const sheet = page.locator('.preview-frame');
+  await expect(sheet.locator('.ps-title')).toHaveText('Waffeln (5–6 Stück)');
+  await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten', 'Hilfsmittel', 'Schritte']);
+  await expect(sheet.locator('.ps-recipe-cards').first().locator('.ps-card__label'))
+    .toHaveText(['2 Eier', '325 ml Milch']);
+  await expect(sheet.locator('.ps-recipe-step__n')).toHaveText(['1', '2']);
+  await expect(sheet.locator('.ps-page')).toHaveCount(1);
+
+  // Bigger pictures: the Schritte go on over the page at the size asked for.
+  await page.getByLabel('Symbolgröße').fill('60');
+  await expect(sheet.locator('.ps-page')).toHaveCount(2);
+  await expect(sheet.locator('.ps-page').nth(1).locator('.ps-recipe-step')).not.toHaveCount(0);
+  const img = await sheet.locator('.ps-recipe-step .ps-card__img').last().evaluate((node) =>
+    parseFloat(getComputedStyle(node).width));
+  expect(img).toBeCloseTo(60 * 96 / 25.4, 0);
 });

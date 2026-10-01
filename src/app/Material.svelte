@@ -18,6 +18,7 @@
   import WordCard from '../ui/WordCard.svelte';
   import TemplateArt from '../ui/TemplateArt.svelte';
   import Tafel from '../ui/Tafel.svelte';
+  import Recipe from '../ui/Recipe.svelte';
   import { handleNewCard } from './board.ts';
   import { openWortschatzSheet } from './words.ts';
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
@@ -57,7 +58,10 @@
   again. Afterwards it lives in the ⋯, because by then the Sammlung has
   something in it and the wall is the thing to look at. Absent rather than
   greyed while there is no Wortschatz to pour.
--->{#if s.wordCount > 0}<p class="small muted" style="margin-top:14px"><button class="linklike" type="button" onclick={() => void openWortschatzSheet()}>{t('ui.add_wortschatz')}</button></p>{/if}</div>{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if holdsWords()}<div class="rows words">{#each s.sentences as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if s.wordCount > 0}<p class="small muted" style="margin-top:14px"><button class="linklike" type="button" onclick={() => void openWortschatzSheet()}>{t('ui.add_wortschatz')}</button></p>{/if}</div>{/if}<!--
+  A Rezept is drawn empty as well, under the tiles: its boxes are where it is
+  typed into, so without them an empty Rezept would have no way to begin.
+-->{#if kind() === 'rezept'}<Recipe {provider} />{:else if empty}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if holdsWords()}<div class="rows words">{#each s.sentences as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other

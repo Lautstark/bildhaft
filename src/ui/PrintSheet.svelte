@@ -133,7 +133,13 @@
   material is in a bag by the third week: every card has a labelled place, with
   its symbol printed faintly so a child finds it without reading and the word so
   an adult does not have to hunt. The empty place is the information.
---><div class="ps-grid ps-store{block.page ? ' ps-grid--page' : ''}">{#each block.slots as slot (slot.id)}<div class="ps-place"><PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} /><span class="ps-place__word">{slotCaption(slot)}</span></div>{/each}</div>{:else if block.kind === 'credit'}<!--
+--><div class="ps-grid ps-store{block.page ? ' ps-grid--page' : ''}">{#each block.slots as slot (slot.id)}<div class="ps-place"><PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} /><span class="ps-place__word">{slotCaption(slot)}</span></div>{/each}</div>{:else if block.kind === 'recipe-part'}<!--
+  A Rezept's cards keep their word: unlike the Einkaufsliste's they are not
+  handed around, they are read where they are, and „325 ml" is only on the card.
+--><section class="ps-recipe-part"><h2 class="ps-recipe-head">{t(`ui.recipe_${block.part}`)}</h2><div class="ps-recipe-cards">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></section>{:else if block.kind === 'recipe-step'}<!--
+  The heading rides with the first Schritt, so a page can never end on
+  „Schritte" with nothing under it.
+--><div class="ps-recipe-step">{#if block.first}<h2 class="ps-recipe-head">{t('ui.recipe_schritt')}</h2>{/if}<div class="ps-recipe-step__row"><span class="ps-recipe-step__n">{block.n}</span><div class="ps-recipe-step__slots">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></div></div>{:else if block.kind === 'credit'}<!--
   The name gives way, never the address. Both are on one line and a long name
   would push the address off it, so the name is the part allowed to be clipped —
   an ellipsis on a name the reader chose still says which collection this is,
@@ -141,7 +147,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made"><span class="ps-made__name">{block.name}</span><span class="ps-made__tail"> · {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"
@@ -156,4 +162,5 @@
   style:--card-radius="{settings.cardRadiusMm}mm"
   style:--card-bg={settings.cardBackground ?? 'transparent'}
   style:--strip-w="{settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm"
+  style:--recipe={settings.accentColour}
 >{#if pages}{#each pages as held, at (at)}<div class="ps-page">{#each held as block, i (i)}{@render one(block)}{/each}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
