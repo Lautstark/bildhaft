@@ -1,6 +1,6 @@
 import type { Board, Collection, Sentence, Slot } from '../core/types.ts';
 import { boardOf, placeOn } from '../core/board.ts';
-import { newId, putCollection, putSentence } from '../db/repo.ts';
+import { newId, patchCollection, putSentence } from '../db/repo.ts';
 import { activeCollection, s } from './state.svelte.ts';
 import { openPicker } from './editing.ts';
 
@@ -22,7 +22,8 @@ export async function writeBoard(change: (board: Board) => Board): Promise<void>
   if (board === current) return;
   const next: Collection = { ...open, board, updatedAt: Date.now() };
   s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
-  await putCollection(next);
+  // The grid alone: the rest of the copy on screen may be behind the store.
+  await patchCollection(next.id, { board });
 }
 
 /**

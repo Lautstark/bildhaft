@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createCollection, isWriting, mark, newId, putCollection, putSentence, writtenSince,
+  createCollection, isWriting, mark, newId, patchCollection, putSentence, writtenSince,
 } from '../../src/db/repo.ts';
 import type { Sentence } from '../../src/core/types.ts';
 
@@ -69,8 +69,8 @@ describe('a read racing a write', () => {
 
   it('counts overlapping writes to one record, so the first to land does not clear the second', async () => {
     const collection = await createCollection('Test');
-    const first = putCollection({ ...collection, name: 'Eins' });
-    const second = putCollection({ ...collection, name: 'Zwei' });
+    const first = patchCollection(collection.id, { name: 'Eins' });
+    const second = patchCollection(collection.id, { name: 'Zwei' });
     await first;
     // The second is still out; a refill here would put „Eins" back on screen.
     expect(isWriting(collection.id)).toBe(true);

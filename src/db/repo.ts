@@ -200,20 +200,56 @@ export async function createCollection(
   return collection;
 }
 
-export async function putCollection(collection: Collection): Promise<void> {
-  await claim(collection.id, async () => {
+/** What a write changes on a Sammlung. `undefined` takes the field off. */
+export type CollectionPatch = Partial<Omit<Collection, 'id' | 'createdAt' | 'updatedAt'>>;
+
+/**
+ * Some fields of one Sammlung, read, merged and written back in one
+ * transaction. Null when it is not there.
+ *
+ * Every edit to a Sammlung goes through here, rather than a whole record put
+ * back. A Sammlung is written from five places — its name, its source, its
+ * template, its grid and its print settings — and each of them used to put the
+ * whole record as it held it: renaming read the store and wrote a moment
+ * later, the others wrote the copy on screen. Any two of those a moment apart
+ * and the second put back the field the first had just changed — a card moved
+ * on the Tafel while the name was being typed went home, a source picked while
+ * the print settings were saved went back to the default. A patch only says
+ * what it changes, and the read it is merged over is in the same transaction
+ * as the write, so there is nothing left to be stale. mitreden's
+ * patchCollection, for the same reason.
+ *
+ * Claimed like the sentence writes, so a refill from the store cannot put the
+ * record from before the edit back on screen while this is in the air.
+ */
+export async function patchCollection(
+  id: string, patch: CollectionPatch,
+): Promise<Collection | null> {
+  const kept = await claim(id, async () => {
     const db = await getDB();
-    const kept = { ...collection, updatedAt: Date.now() };
-    await db.put('collections', kept);
-    await fileCollection(kept);
+    const tx = db.transaction('collections', 'readwrite');
+    const held = await tx.store.get(id);
+    if (!held) {
+      await tx.done;
+      return null;
+    }
+    const merged: Collection = { ...held, ...patch, updatedAt: Date.now() };
+    for (const field of Object.keys(patch) as (keyof CollectionPatch)[]) {
+      if (patch[field] === undefined) delete (merged as Partial<Collection>)[field];
+    }
+    await tx.store.put(merged);
+    await tx.done;
+    await fileCollection(await freshest(db, merged));
+    return merged;
   });
-  touched();
+  if (kept) touched();
+  return kept;
 }
 
 export async function renameCollection(id: string, name: string): Promise<void> {
-  const collection = await getCollection(id);
-  if (!collection) return;
-  await putCollection({ ...collection, name: name.trim() || collection.name });
+  // An emptied field keeps the name it had: a Sammlung has to be called something.
+  if (!name.trim()) return;
+  await patchCollection(id, { name: name.trim() });
 }
 
 /**
@@ -227,12 +263,7 @@ export async function renameCollection(id: string, name: string): Promise<void> 
 export async function saveCollectionProvider(
   id: string, provider: ProviderId | null,
 ): Promise<void> {
-  const collection = await getCollection(id);
-  if (!collection) return;
-  const next = { ...collection };
-  if (provider) next.provider = provider;
-  else delete next.provider;
-  await putCollection(next);
+  await patchCollection(id, { provider: provider ?? undefined });
 }
 
 /** Deletes a collection AND its sentences. Only ever called behind a named confirm. */

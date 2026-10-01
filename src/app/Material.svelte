@@ -13,7 +13,7 @@
   import type { Collection, CollectionKind } from '../core/types.ts';
   import { COLLECTION_KINDS, kindOf } from '../core/types.ts';
   import { boardOf } from '../core/board.ts';
-  import { putCollection } from '../db/repo.ts';
+  import { patchCollection } from '../db/repo.ts';
   import Row from '../ui/Row.svelte';
   import WordCard from '../ui/WordCard.svelte';
   import TemplateArt from '../ui/TemplateArt.svelte';
@@ -46,7 +46,7 @@
     if (which === 'tafel') next.board = boardOf(next);
     else delete next.board;
     s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
-    await putCollection(next);
+    await patchCollection(next.id, { kind: which, board: next.board });
   }
 </script>
 

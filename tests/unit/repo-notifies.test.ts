@@ -18,7 +18,7 @@ import * as repo from '../../src/db/repo.ts';
 const MUTATORS = [
   'saveSettings',
   'createCollection',
-  'putCollection',
+  'patchCollection',
   'renameCollection',
   'saveCollectionProvider',
   'deleteCollectionDeep',
@@ -79,10 +79,10 @@ describe('the change notifier', () => {
   const call: Record<(typeof MUTATORS)[number], () => Promise<unknown>> = {
     saveSettings: () => repo.saveSettings(repo.defaultSettings()),
     createCollection: () => repo.createCollection('Test'),
-    putCollection: async () => {
+    patchCollection: async () => {
       const made = await repo.createCollection('Test');
       heard = 0;
-      return repo.putCollection({ ...made, name: 'Anders' });
+      return repo.patchCollection(made.id, { name: 'Anders' });
     },
     renameCollection: async () => {
       const made = await repo.createCollection('Test');

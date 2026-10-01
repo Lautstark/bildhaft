@@ -1,6 +1,6 @@
 import type { Board, Collection, CollectionKind, PrintSettings, Sentence } from '../core/types.ts';
 import { boardOf, defaultAirMm, placedIds, stylesOf, zonesOf } from '../core/board.ts';
-import { putCollection } from '../db/repo.ts';
+import { patchCollection } from '../db/repo.ts';
 import { openPrintDialog } from '../ui/printDialog.svelte.ts';
 import { printableArea } from '../ui/printSheet.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
@@ -103,7 +103,7 @@ async function keepPrint(print: PrintSettings): Promise<void> {
   if (JSON.stringify(open.print) === JSON.stringify(own)) return;
   const next: Collection = { ...open, print: own, updatedAt: Date.now() };
   s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
-  await putCollection(next);
+  await patchCollection(next.id, { print: own });
 }
 
 /**

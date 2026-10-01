@@ -171,7 +171,7 @@ describe('an edit and the folder', () => {
     });
     // Inside the window: the Sammlung moves on while the sentence is mid-write.
     await held.reached;
-    await repo.putCollection({ ...collection, name: 'Nachher' });
+    await repo.patchCollection(collection.id, { name: 'Nachher' });
     held.release();
     await writing;
 

@@ -8,8 +8,9 @@ import * as repo from '../../src/db/repo.ts';
  * so a second edit that started before the first landed wrote the record from
  * before it, and the first was gone. The Wortschatz's picker is where it shows:
  * it hands over the caption and then the picture without waiting in between.
- * `patchOverride` reads and writes in one transaction, which is what every
- * case below depends on.
+ * A Sammlung had the same shape, with five writers each putting back the whole
+ * record as they held it. `patchOverride` and `patchCollection` read and write
+ * in one transaction, which is what every case below depends on.
  *
  * Nothing here awaits between the two writes, on purpose: that is the race.
  */
@@ -57,5 +58,33 @@ describe('two writes to one Wortschatz entry', () => {
     const entry = await oma();
     expect('caption' in entry).toBe(false);
     expect('tags' in entry).toBe(false);
+  });
+});
+
+describe('two writes to one Sammlung', () => {
+  beforeEach(() => repo.clearEverything());
+
+  it('keeps a name typed while its source was picked', async () => {
+    const made = await repo.createCollection('Vorher');
+    await Promise.all([
+      repo.renameCollection(made.id, 'Nachher'),
+      repo.saveCollectionProvider(made.id, 'metacom'),
+    ]);
+    const held = (await repo.getCollection(made.id))!;
+    expect({ name: held.name, provider: held.provider }).toEqual({ name: 'Nachher', provider: 'metacom' });
+  });
+
+  it('keeps a name typed while the grid moved, and following the default again removes the field', async () => {
+    const made = await repo.createCollection('Vorher', 'tafel');
+    await Promise.all([
+      repo.renameCollection(made.id, 'Nachher'),
+      repo.patchCollection(made.id, { board: { cols: 2, rows: 1, cells: ['a', null] } }),
+    ]);
+    await repo.saveCollectionProvider(made.id, 'metacom');
+    await repo.saveCollectionProvider(made.id, null);
+    const held = (await repo.getCollection(made.id))!;
+    expect(held.name).toBe('Nachher');
+    expect(held.board?.cells).toEqual(['a', null]);
+    expect('provider' in held).toBe(false);
   });
 });
