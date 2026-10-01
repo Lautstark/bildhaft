@@ -26,7 +26,7 @@
   import TitleField from '@lautstark/design/svelte/TitleField';
   import { renameCollection } from '../db/repo.ts';
   import Icon from '../pieces/Icon.svelte';
-  import { activeCollection, holdsWords, s } from './state.svelte.ts';
+  import { activeCollection, holdsWords, kind, s } from './state.svelte.ts';
   import { answered, asking } from './asking.svelte.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
@@ -66,7 +66,9 @@
   }
 
   let n = $derived(s.sentences.length);
-  let count = $derived(holdsWords()
+  let count = $derived(kind() === 'rezept'
+    ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
+    : holdsWords()
     ? (n === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n }))
     : n === 1
       ? t('ui.n_rows_one')

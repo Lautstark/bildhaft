@@ -39,7 +39,7 @@ describe('what a template opens the print dialog on', () => {
     it('keeps the air the Tafel set for itself, over what the board carries', () => {
       const own = boardOf({ board: { ...board, airMm: 3 } });
       expect(printFor(remembered, 'tafel', own).cutMarginMm).toBe(3);
-      expect(printFor(remembered, 'tafel', own, 6).cutMarginMm).toBe(6);
+      expect(printFor(remembered, 'tafel', own, { cutMarginMm: 6 }).cutMarginMm).toBe(6);
     });
   });
 
@@ -48,5 +48,29 @@ describe('what a template opens the print dialog on', () => {
       layout: 'einkaufsliste', paper: 'a4', orientation: 'landscape',
       symbolSizeMm: 20, cutMarginMm: 3, showLabel: true, showCollectionTitle: true,
     });
+  });
+
+  describe('a Rezept', () => {
+    it('opens on one A4 page standing up, headed by its name', () => {
+      expect(printFor({ ...remembered, orientation: 'landscape', paper: 'a3' }, 'rezept', null))
+        .toMatchObject({
+          layout: 'rezept', paper: 'a4', orientation: 'portrait',
+          symbolSizeMm: 20, showLabel: true, showCollectionTitle: true,
+        });
+    });
+
+    it('keeps the card size it set for itself, not the household one', () => {
+      expect(printFor({ ...remembered, symbolSizeMm: 40 }, 'rezept', null).symbolSizeMm).toBe(20);
+      expect(printFor(remembered, 'rezept', null, { symbolSizeMm: 32 }).symbolSizeMm).toBe(32);
+    });
+  });
+
+  /* The household remembers the layout printed last. Printed last as a
+     material, that layout is not one a sentence or a card can take. */
+  it('never opens a Satzstreifen or Wortkarten on a material', () => {
+    for (const layout of ['einkaufsliste', 'rezept'] as const) {
+      expect(printFor({ ...remembered, layout }, 'satzstreifen', null).layout).toBe('strip');
+      expect(printFor({ ...remembered, layout }, 'wortkarten', null).layout).toBe('sheet');
+    }
   });
 });

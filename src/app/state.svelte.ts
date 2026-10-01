@@ -127,8 +127,11 @@ export const kind = (): CollectionKind => {
 
 /* Zwei Vorlagen halten Wörter und teilen sich deshalb alles, was Wörter
    angeht: die Kachelwand, die Leiste, den Zähler. Was sie unterscheidet, ist
-   einzig, was hinten aus dem Drucker kommt. */
-export const holdsWords = (): boolean => kind() !== 'satzstreifen';
+   einzig, was hinten aus dem Drucker kommt.
+
+   Ein Rezept hält beides, Karten und Zeilen, und hat für jeden seiner Teile
+   ein eigenes Feld — es ist deshalb keine von beiden Seiten. */
+export const holdsWords = (): boolean => kind() !== 'satzstreifen' && kind() !== 'rezept';
 
 /**
  * The symbol source the page is drawing in: the open collection's own answer,

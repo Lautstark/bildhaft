@@ -501,3 +501,64 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- rezept */
+
+/* One colour, the Rezept's own, for everything that says „this is a part":
+   the name at the top, the three headings, the dotted line round a card and
+   the number of a Schritt. The pictures keep theirs. */
+.ps-sheet--recipe .ps-title {
+  padding-bottom: 1.5mm;
+  border-bottom: 0.6mm solid var(--recipe);
+  font-size: 15pt;
+  font-weight: 700;
+  color: var(--recipe);
+}
+.ps-recipe-part,
+.ps-recipe-step {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.ps-recipe-part { margin-bottom: 4mm; }
+.ps-recipe-head {
+  margin: 0 0 1.5mm;
+  font-size: 10pt;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--recipe);
+}
+.ps-recipe-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5mm;
+}
+.ps-recipe-cards .ps-card {
+  border: 0.3mm dotted var(--recipe);
+  border-radius: 1mm;
+}
+.ps-recipe-step { margin-bottom: 1.5mm; }
+.ps-recipe-step__row {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  padding-bottom: 1.5mm;
+  border-bottom: 0.3mm dotted var(--recipe);
+}
+.ps-recipe-step:last-of-type .ps-recipe-step__row { border-bottom: 0; }
+.ps-recipe-step__n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 7mm;
+  height: 7mm;
+  border-radius: 50%;
+  background: var(--recipe);
+  color: #fff;
+  font-size: 11pt;
+  font-weight: 700;
+}
+.ps-recipe-step__slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}

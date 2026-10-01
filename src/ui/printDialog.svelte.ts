@@ -294,6 +294,8 @@ export function openPrintDialog(options: PrintOptions): void {
   const sheet = openSheet({
     title: options.board
       ? t('ui.print_board_title', { cols: options.board.cols, rows: options.board.rows })
+      : options.kind === 'rezept'
+        ? t('ui.print_recipe_title')
       : options.sentences.length === 1
         ? t('ui.print_row_title')
         : t('ui.print_collection_title', { n: options.sentences.length }),

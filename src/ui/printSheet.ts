@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, ZoneStyle,
 } from '../core/types.ts';
-import { slotCaption, symbolIdFor } from '../core/types.ts';
+import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
 
 /** The margin @page reserves on every side. Millimetres, because the sheet is. */
 export const PAGE_MARGIN_MM = 10;
@@ -324,6 +324,8 @@ export type Block =
   | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number }
   | { kind: 'cut'; slots: Slot[] }
   | { kind: 'store'; slots: Slot[]; page: boolean }
+  | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
+  | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
   | { kind: 'credit'; lines: string[]; name: string };
 
 /**
@@ -420,6 +422,22 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
     for (const slots of chunks(cards, SHOPPING_PER_PAGE)) blocks.push({ kind: 'cut', slots });
     const stored = chunks(cards, SHOPPING_PER_PAGE);
     stored.forEach((slots, at) => blocks.push({ kind: 'store', slots, page: at < stored.length - 1 }));
+  } else if (settings.layout === 'rezept') {
+    /*
+     * The Zutaten and the Hilfsmittel as a block each, and every Schritt as a
+     * block of its own: a page then breaks between two Schritte and never
+     * inside one, and a recipe longer than its page goes on, at the same size,
+     * on the next. Nothing is collapsed — two cards saying „Schüssel" in the
+     * Hilfsmittel are somebody's two bowls.
+     */
+    for (const part of ['zutat', 'hilfsmittel'] as const) {
+      const slots = sentences.filter((sentence) => partOf(sentence) === part)
+        .flatMap((sentence) => sentence.slots.slice(0, 1));
+      if (slots.length > 0) blocks.push({ kind: 'recipe-part', part, slots });
+    }
+    sentences.filter((sentence) => partOf(sentence) === 'schritt').forEach((sentence, at) => {
+      blocks.push({ kind: 'recipe-step', n: at + 1, slots: sentence.slots, first: at === 0 });
+    });
   } else if (settings.layout === 'sheet') {
     const cards = deck(sentences, provider);
     if (settings.sheetFit !== 'grid') {

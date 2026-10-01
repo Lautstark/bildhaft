@@ -1,6 +1,7 @@
-import type { Sentence } from '../core/types.ts';
+import type { RecipePart, Sentence } from '../core/types.ts';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { buildSlots, buildWordSlot } from '../core/match.ts';
+import { buildPartSlot } from '../core/recipe.ts';
 import { findByNormalized, newId, overrideMap, putSentence } from '../db/repo.ts';
 import { withTimeout } from '../core/timeout.ts';
 import { LANG, t } from '../i18n/index.ts';
@@ -56,21 +57,36 @@ function placeRow(sentence: Sentence): void {
 
 export async function handleSubmit(): Promise<void> {
   const raw = s.draft.trim();
-  const collectionId = s.activeId;
-  if (!raw || !s.settings || !collectionId || s.busy) return;
-
-  const lines = splitLines(raw);
-  if (lines.length === 0) return;
-
-  s.busy = true;
+  if (!raw || !s.settings || !s.activeId || s.busy) return;
   /*
    * The box is emptied now, not at the end. A pasted text is the case where
    * the wait is long enough to read as a hang, and a box still holding the
    * words is the strongest sign nothing happened. Whatever fails to translate
-   * is put back below, so nothing is lost by clearing it early.
+   * is put back, so nothing is lost by clearing it early.
    */
   s.draft = '';
   s.reuse = null;
+  const left = await addLines(raw);
+  if (left) s.draft = left;
+}
+
+/**
+ * Translates what was typed into rows or cards of the open Sammlung, and hands
+ * back whatever could not be — for the box it came from to show again.
+ *
+ * Shared by the composer and by the three boxes of a Rezept, which differ only
+ * in where the lines land: `part` says which part of the recipe, and with it
+ * how a line is looked up — a Schritt as a sentence, a Zutat or a Hilfsmittel
+ * as one card with its amount kept off the lookup.
+ */
+export async function addLines(raw: string, part?: RecipePart): Promise<string> {
+  const collectionId = s.activeId;
+  if (!raw.trim() || !s.settings || !collectionId || s.busy) return raw;
+
+  const lines = splitLines(raw.trim());
+  if (lines.length === 0) return '';
+
+  s.busy = true;
   s.batch = lines.length > 1 ? { done: 0, total: lines.length } : null;
 
   const now = Date.now();
@@ -88,7 +104,7 @@ export async function handleSubmit(): Promise<void> {
        hands the button back. It used to matter more than it does: the paint
        was a call rather than a consequence, and one error in it left `busy`
        set and the button spinning for good. */
-    const words = holdsWords();
+    const words = part ? part !== 'schritt' : holdsWords();
     const options = {
       provider: provider(),
       stopwords: new Set(s.settings.stopwords[LANG]),
@@ -114,16 +130,24 @@ export async function handleSubmit(): Promise<void> {
              to the box with a word about it, rather than a button that spins
              until the tab is closed. */
           slots: await withTimeout(
-            words ? buildWordSlot(line, options).then((slot) => [slot]) : buildSlots(line, options),
+            words
+              ? (part ? buildPartSlot(line, options) : buildWordSlot(line, options)).then((slot) => [slot])
+              : buildSlots(line, options),
             LOOKUP_MS, t('ui.wait_source')),
           collectionId,
           /*
            * Descending within the batch. The list is sorted newest first, so
            * this is what keeps the lines in the order they were typed — which
            * is also the order they get printed in.
+           *
+           * A Rezept reads its parts the other way, oldest first, because a
+           * recipe is written top to bottom: the next Schritt goes under the
+           * last one. So its lines count up instead, and a pasted recipe
+           * comes out in the order it was pasted.
            */
-          createdAt: now - index,
+          createdAt: part ? now + index : now - index,
           updatedAt: now,
+          ...(part ? { part } : {}),
         };
         await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
         delete owed[index];
@@ -147,12 +171,11 @@ export async function handleSubmit(): Promise<void> {
   } finally {
     s.busy = false;
     s.batch = null;
-    /* Back into the box, in the order they were written. A book whose tenth
-       line has no symbols must not take the ninety after it down with it. */
-    const left = [...owed].filter(Boolean);
-    if (left.length > 0) s.draft = left.join('\n');
     if (firstError !== null) notify(sayWhy(firstError));
   }
+  /* Back into the box, in the order they were written. A book whose tenth
+     line has no symbols must not take the ninety after it down with it. */
+  return [...owed].filter(Boolean).join('\n');
 }
 
 export async function handleReuse(): Promise<void> {
