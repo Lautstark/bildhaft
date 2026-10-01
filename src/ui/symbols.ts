@@ -53,6 +53,23 @@ async function resolveUrl(provider: ProviderId, id: string): Promise<string | nu
   return path && path !== id ? metacom.getImageUrl(path) : null;
 }
 
+/*
+ * Which of the cached URLs are this file's to give back.
+ *
+ * An own picture's URL is made here, by `URL.createObjectURL`, and holds its
+ * bytes in memory until somebody revokes it — nobody else knows it exists. The
+ * symbol sources' URLs are bildquelle's, which keeps and revokes its own, so
+ * revoking one of those here would blank a picture another part of the page
+ * is still drawing from the same cache.
+ */
+const isOwnKey = (key: string): boolean => key.startsWith(`own:${OWN_PREFIX}`);
+
+function forget(key: string): void {
+  const url = cache.get(key);
+  if (url && isOwnKey(key)) URL.revokeObjectURL(url);
+  cache.delete(key);
+}
+
 export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<string | null> {
   const key = cacheKey(provider, id);
 
@@ -62,17 +79,43 @@ export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<stri
   const inFlight = pending.get(key);
   if (inFlight) return inFlight;
 
-  const task = Promise.race([
-    resolveUrl(provider, id),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS)),
+  /*
+   * The lookup goes on after the clock gives up on it — nothing here can stop
+   * a database read — and for an own picture what it ends in is a fresh object
+   * URL. Nobody was waiting for that one any more, so it is revoked as it
+   * arrives rather than left holding the bytes for the life of the page.
+   */
+  let gaveUp = false;
+  const lookup = resolveUrl(provider, id);
+  void lookup.then((url) => {
+    if (gaveUp && url && isOwnKey(key)) URL.revokeObjectURL(url);
+  }, () => undefined);
+
+  const task: Promise<string | null> = Promise.race([
+    lookup,
+    new Promise<null>((resolve) => setTimeout(() => { gaveUp = true; resolve(null); }, RESOLVE_TIMEOUT_MS)),
   ])
     .then((url) => {
+      if (!url) return url;
+      /* Two lookups of one key can both be out — one started before a reset
+         cleared `pending` and one after — and the second to land would
+         overwrite the first's URL in the cache and orphan it. The first one
+         in stays; a second own URL for the same picture is given back. */
+      const held = cache.get(key);
+      if (held && held !== url) {
+        if (isOwnKey(key)) URL.revokeObjectURL(url);
+        return held;
+      }
       // Only successes are cached, so a later attempt can still succeed.
-      if (url) cache.set(key, url);
+      cache.set(key, url);
       return url;
     })
     .catch(() => null)
-    .finally(() => pending.delete(key));
+    /* Only its own entry. A reset clears `pending` while a lookup is out, a
+       newer lookup for the same key takes the slot, and the older one's
+       finally used to delete *that* — so a third caller started a third
+       lookup instead of waiting on the second. */
+    .finally(() => { if (pending.get(key) === task) pending.delete(key); });
 
   pending.set(key, task);
   return task;
@@ -94,7 +137,7 @@ const reset = changes();
 /** Makes every mounted symbol try again. */
 export function resetSymbolResolution(provider?: ProviderId): void {
   if (provider) clearSymbolCache(provider);
-  else cache.clear();
+  else for (const key of [...cache.keys()]) forget(key);
   pending.clear();
   generation += 1;
   reset.touched();
@@ -106,7 +149,7 @@ export const onSymbolReset = reset.onChanged;
 /** Dropped when a provider is reconfigured and its object URLs are revoked. */
 export function clearSymbolCache(provider: ProviderId): void {
   const prefix = `${provider}:`;
-  for (const key of [...cache.keys()]) if (key.startsWith(prefix)) cache.delete(key);
+  for (const key of [...cache.keys()]) if (key.startsWith(prefix)) forget(key);
 }
 
 /**
