@@ -191,28 +191,40 @@
 
   function pick(word: string, entry?: Override): void {
     const held = entry?.tags ?? [];
+    /* The last caption typed in this picker, said again once a picture lands.
+       The picker hands the caption over a moment *before* the picture, and a
+       word still waiting in `pending` has no entry for it to land on yet — so
+       a caption typed for a new word went nowhere and the picture came in
+       without it. For a word that already has an entry this writes the same
+       text again, which setOverrideCaption declines to write. */
+    let typed: string | null = null;
     const done = () => {
       pending = pending.filter((one) => one !== word);
       void refreshCollections();
       refresh();
     };
+    const filed = (): Promise<void> =>
+      (typed === null ? Promise.resolve() : setOverrideCaption(providerId(), word, typed));
     openSlotPicker(asSlot(word, entry), providerId(), {
-      onChoose: (candidate) => void file(word, candidate, held).then(done),
+      onChoose: (candidate) => void file(word, candidate, held).then(filed).then(done),
       /* A picture of the person's own is the case this whole place exists for
          — Oma, Bello, Kita Sonnenschein — so it has to work here and not only
          inside a sentence. An entry points at it by the same prefixed id a
          Slot uses, which is why `Symbol.svelte` can already draw it. */
       onOwnImage: (picture, name) => void putOwnImage(picture, name)
         .then((image) => file(word, { id: ownImageId(image.id), label: word, score: 1000 }, held))
-        .then(done),
+        .then(filed).then(done),
       /* The words that go with the symbol are half of what an entry is, so this is
          the one field of the dialog that means the same thing here as it does
          in a Sammlung — and it means it for every sentence, rather than for
          one row. It was thrown away for a week, which is what made the entry
          impossible to read: the card showed a word and the picker offered to
          change a caption that went nowhere. */
-      onLabel: (caption) => void setOverrideCaption(providerId(), word, caption)
-        .then(() => { void refreshCollections(); refresh(); }),
+      onLabel: (caption) => {
+        typed = caption;
+        void setOverrideCaption(providerId(), word, caption)
+          .then(() => { void refreshCollections(); refresh(); });
+      },
       /* The rest acts on a Slot in a Sammlung. Crossing a symbol out is a thing
          a sentence does to a word in one place, and removing the slot removes
          the field rather than the word — the × on the card is what removes

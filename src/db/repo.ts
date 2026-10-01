@@ -540,34 +540,89 @@ async function entriesFor(provider: ProviderId, token: string): Promise<Override
     .filter((override) => mine(override) && override.token.toLowerCase() === wanted);
 }
 
+/** What a write changes on an entry. `undefined` takes the field off. */
+type OverridePatch = Partial<Omit<Override, 'key' | 'updatedAt'>>;
+
+/**
+ * One entry, read, changed and written back in one transaction.
+ *
+ * Every write to an entry goes through here, and the reason is the
+ * Wortschatz's picker: it hands over the caption and the picture a moment
+ * apart and nobody awaits the first. When each writer read the entry, went
+ * away, and put its own copy back, the second put was built from the record
+ * before the first landed — so picking a picture just after typing a caption
+ * lost the caption, or the picture, whichever lost the race, and two tag edits
+ * did the same to each other. Inside one readwrite transaction the read and the
+ * put cannot be split, and IndexedDB runs two such transactions on one store
+ * one after the other, so the second always reads what the first wrote. This
+ * is mitreden's patchPhrases, for the same bug.
+ *
+ * `patch` is asked with what is stored, because what some writers change is
+ * worked out from it — a tag renamed among the others an entry holds. It
+ * answers `null` for "nothing to write", and an entry that is not stored is
+ * only ever made by a patch that knows the word, which is `putOverride`.
+ * Synchronous on purpose: a transaction closes at the first await that is not
+ * its own, so the patch cannot be allowed to wait on anything.
+ *
+ * Filed from the store afterwards rather than from what was put, the way
+ * `freshest` files a Sammlung: two of these can finish in either order, and
+ * the folder has to end with the later one.
+ */
+async function patchOverride(
+  key: string, patch: (held: Override | undefined) => OverridePatch | null,
+): Promise<Override | null> {
+  const db = await getDB();
+  const tx = db.transaction('overrides', 'readwrite');
+  const held = await tx.store.get(key);
+  const change = patch(held);
+  if (!change) {
+    await tx.done;
+    return null;
+  }
+  const merged = { ...held, ...change, key, updatedAt: Date.now() } as Override;
+  for (const field of Object.keys(change) as (keyof OverridePatch)[]) {
+    if (change[field] === undefined) delete (merged as Partial<Override>)[field];
+  }
+  await tx.store.put(merged);
+  await tx.done;
+  await fileOverride((await db.get('overrides', key)) ?? merged);
+  return merged;
+}
+
 export async function putOverride(
   provider: ProviderId, token: string, candidate: Candidate,
 ): Promise<void> {
-  const db = await getDB();
-  const key = overrideKey(provider, token);
-  /* A second correction of the same word replaces the record, and the tags are
-     on the record. Read them across, or filing "Oma" under Familie and then
-     picking a better picture for her quietly unfiles her. */
-  const held = await db.get('overrides', key);
-  const override: Override = {
-    key,
+  /* A second correction of the same word replaces the picture and keeps the
+     rest: the tags and the caption are the household's and stay on the record,
+     or filing "Oma" under Familie and then picking a better picture for her
+     quietly unfiles her. A patch is what says so — only the fields below move. */
+  await patchOverride(overrideKey(provider, token), () => ({
     lang: LANG,
     provider,
     token: token.toLowerCase(),
     symbolId: candidate.id,
     label: candidate.label,
-    ...(held?.tags?.length ? { tags: held.tags } : {}),
-    ...(held?.caption ? { caption: held.caption } : {}),
     /* What the source says, as it says it. Absent stays absent rather than
        being written as an empty list, so an entry that predates this and one
        whose source knows nothing are the same record. */
-    ...(candidate.categories?.length ? { categories: candidate.categories } : {}),
-    ...(candidate.wordClass ? { wordClass: candidate.wordClass } : {}),
-    updatedAt: Date.now(),
-  };
-  await db.put('overrides', override);
-  await fileOverride(override);
+    categories: candidate.categories?.length ? candidate.categories : undefined,
+    wordClass: candidate.wordClass || undefined,
+  }));
   touched();
+}
+
+/** The tags as they are kept: trimmed, the first spelling of each, none empty. */
+function tagsAsKept(tags: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const raw of tags) {
+    const tag = raw.trim();
+    const fold = tag.toLowerCase();
+    if (!tag || seen.has(fold)) continue;
+    seen.add(fold);
+    kept.push(tag);
+  }
+  return kept;
 }
 
 /**
@@ -586,29 +641,12 @@ export async function putOverride(
 export async function setOverrideTags(
   provider: ProviderId, token: string, tags: readonly string[],
 ): Promise<void> {
-  const db = await getDB();
   const found = await entriesFor(provider, token);
   if (found.length === 0) return;
 
-  const seen = new Set<string>();
-  const kept: string[] = [];
-  for (const raw of tags) {
-    const tag = raw.trim();
-    const fold = tag.toLowerCase();
-    if (!tag || seen.has(fold)) continue;
-    seen.add(fold);
-    kept.push(tag);
-  }
-
-  for (const held of found) {
-    const { tags: _dropped, ...rest } = held;
-    const override: Override = {
-      ...rest,
-      ...(kept.length ? { tags: kept } : {}),
-      updatedAt: Date.now(),
-    };
-    await db.put('overrides', override);
-    await fileOverride(override);
+  const kept = tagsAsKept(tags);
+  for (const { key } of found) {
+    await patchOverride(key, (held) => (held ? { tags: kept.length ? kept : undefined } : null));
   }
   touched();
 }
@@ -622,6 +660,10 @@ export async function setOverrideTags(
  * Case-insensitive on the way in, so renaming „kita" also catches the entry
  * that spelled it „Kita"; the new spelling is written as given.
  *
+ * Each entry's new tags are worked out from the entry as it is stored at the
+ * moment of the write, not from the list read to find them, so a tag added to
+ * one of them in between is renamed along with the rest instead of undone.
+ *
  * Returns how many entries moved, so a caller can say nothing happened.
  */
 export async function renameTag(from: string, to: string): Promise<number> {
@@ -629,22 +671,13 @@ export async function renameTag(from: string, to: string): Promise<number> {
   const after = to.trim();
   if (!before || !after || before === after.toLowerCase()) return 0;
 
-  const db = await getDB();
   let moved = 0;
-  for (const override of await listOverrides()) {
-    if (!override.tags?.some((tag) => tag.toLowerCase() === before)) continue;
-    const seen = new Set<string>();
-    const tags: string[] = [];
-    for (const tag of override.tags) {
-      const next = tag.toLowerCase() === before ? after : tag;
-      if (seen.has(next.toLowerCase())) continue;
-      seen.add(next.toLowerCase());
-      tags.push(next);
-    }
-    const moved_ = { ...override, tags, updatedAt: Date.now() };
-    await db.put('overrides', moved_);
-    await fileOverride(moved_);
-    moved += 1;
+  for (const { key } of await listOverrides()) {
+    const wrote = await patchOverride(key, (held) => {
+      if (!held?.tags?.some((tag) => tag.toLowerCase() === before)) return null;
+      return { tags: tagsAsKept(held.tags.map((tag) => (tag.toLowerCase() === before ? after : tag))) };
+    });
+    if (wrote) moved += 1;
   }
   if (moved > 0) touched();
   return moved;
@@ -661,16 +694,14 @@ export async function dropTag(tag: string): Promise<void> {
   const gone = tag.trim().toLowerCase();
   if (!gone) return;
 
-  const db = await getDB();
   let touchedAny = false;
-  for (const override of await listOverrides()) {
-    if (!override.tags?.some((held) => held.toLowerCase() === gone)) continue;
-    const tags = override.tags.filter((held) => held.toLowerCase() !== gone);
-    const { tags: _dropped, ...rest } = override;
-    const next: Override = { ...rest, ...(tags.length ? { tags } : {}), updatedAt: Date.now() };
-    await db.put('overrides', next);
-    await fileOverride(next);
-    touchedAny = true;
+  for (const { key } of await listOverrides()) {
+    const wrote = await patchOverride(key, (held) => {
+      if (!held?.tags?.some((one) => one.toLowerCase() === gone)) return null;
+      const tags = held.tags.filter((one) => one.toLowerCase() !== gone);
+      return { tags: tags.length ? tags : undefined };
+    });
+    if (wrote) touchedAny = true;
   }
   if (touchedAny) touched();
 }
@@ -685,17 +716,14 @@ export async function dropTag(tag: string): Promise<void> {
 export async function setOverrideCaption(
   provider: ProviderId, token: string, caption: string,
 ): Promise<void> {
-  const db = await getDB();
   const text = caption.trim();
   let wrote = false;
 
-  for (const held of await entriesFor(provider, token)) {
-    if ((held.caption ?? '') === text) continue;
-    const { caption: _cleared, ...rest } = held;
-    const override: Override = { ...rest, ...(text ? { caption: text } : {}), updatedAt: Date.now() };
-    await db.put('overrides', override);
-    await fileOverride(override);
-    wrote = true;
+  for (const { key } of await entriesFor(provider, token)) {
+    const done = await patchOverride(key, (held) => (
+      !held || (held.caption ?? '') === text ? null : { caption: text || undefined }
+    ));
+    if (done) wrote = true;
   }
   if (wrote) touched();
 }
