@@ -52,5 +52,17 @@
       automerge: false,
       labels: ["dependencies", "shared", "licensing"],
     },
+
+    // Playwright 1.63 ships Chromium 153.0.8010.12, whose renderer dies when
+    // IndexedDB hands back any stored FileSystemHandle - one get(), no app code
+    // needed (reproduced 2026-10-01; Chrome 153.0.8010.50 no longer does it).
+    // That is metacom.restore()'s whole job, so the three METACOM cases fail on
+    // every 1.63 branch. Skipping 1.63.x rather than holding below it lets the
+    // next release, with a fixed browser, arrive here on its own - together
+    // with the visual baselines it will need re-recorded. adr/0003.
+    {
+      matchPackageNames: ["@playwright/test"],
+      allowedVersions: "!/^1\\.63\\./",
+    },
   ],
 }
