@@ -137,6 +137,46 @@ export function symbolIdsIn(
     .filter((id): id is string => Boolean(id)));
 }
 
+/**
+ * Every own picture these rows and these Wortschatz entries point at, by the
+ * picture's id (without the prefix).
+ *
+ * One question, asked by the two places that decide a picture's fate: the
+ * prune that deletes what nothing points at, and the export that packs what a
+ * file needs. Both used to ask only `slot.ownImage`, which is how a picture
+ * gets into a row from the slot picker — and not the only way. A picture filed
+ * in the Wortschatz is an entry whose `symbolId` is `own:<id>`, and
+ * `buildSlots` copies that id into `slot.choice[provider]` of every sentence
+ * written with the word, leaving `ownImage` empty. So Oma's photo, put there
+ * once for every sentence, was the one picture the prune could not see: taking
+ * any other own picture off a slot deleted it, and every Sammlung exported
+ * without it drew a hole where she had been.
+ *
+ * Every provider's choice, not just the active one's: a choice is kept per
+ * provider so that switching source and back loses nothing, and a picture
+ * deleted while the other source was showing would be lost on the way back.
+ * The cached `candidates` are left out on purpose — they are suggestions the
+ * picker offers, not something drawn, and counting them would keep a picture
+ * alive for as long as any row once had it on offer.
+ */
+export function ownImagesInUse(
+  sentences: readonly Pick<Sentence, 'slots'>[],
+  overrides: readonly Pick<Override, 'symbolId'>[] = [],
+): Set<string> {
+  const used = new Set<string>();
+  const note = (id: string | null | undefined): void => {
+    if (id?.startsWith(OWN_PREFIX)) used.add(id.slice(OWN_PREFIX.length));
+  };
+  for (const sentence of sentences) {
+    for (const slot of sentence.slots) {
+      if (slot.ownImage) used.add(slot.ownImage);
+      for (const chosen of Object.values(slot.choice)) note(chosen);
+    }
+  }
+  for (const override of overrides) note(override.symbolId);
+  return used;
+}
+
 /** A picture the user supplied. bildhaft holds the bytes; nothing points at a file. */
 export interface OwnImage {
   id: string;

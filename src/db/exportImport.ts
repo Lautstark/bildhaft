@@ -1,7 +1,8 @@
 import {
   BACKUP_FORMAT, BACKUP_VERSION, COLLECTION_KINDS, EXPORT_FORMAT, EXPORT_VERSION,
   type BackupExport, type Board, type Collection, type CollectionExport, type CollectionKind,
-  type Override, type OwnImage, type OwnImageExport, type Sentence,
+  OWN_PREFIX, ownImageId, ownImagesInUse,
+  type Override, type OwnImage, type OwnImageExport, type Sentence, type Slot,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
@@ -74,12 +75,18 @@ function portable(collection: Collection): Collection {
   return copy;
 }
 
-/** The own pictures these sentences actually point at, in the order they appear. */
-async function imagesUsedBy(sentences: Sentence[]): Promise<OwnImage[]> {
-  const ids = new Set<string>();
-  for (const sentence of sentences) {
-    for (const slot of sentence.slots) if (slot.ownImage) ids.add(slot.ownImage);
-  }
+/**
+ * The own pictures this file points at, in the order they appear.
+ *
+ * The rows *and* the Wortschatz entries going with them: a sentence written
+ * with a word whose entry is a photo draws it through `slot.choice`, and the
+ * entry itself travels in `overrides`. `ownImagesInUse` is the same question
+ * the prune asks, so a picture is in the file exactly when it is kept here.
+ */
+async function imagesUsedBy(
+  sentences: Sentence[], overrides: readonly Override[] = [],
+): Promise<OwnImage[]> {
+  const ids = ownImagesInUse(sentences, overrides);
   const found = await Promise.all([...ids].map((id) => getOwnImage(id)));
   return found.filter((image): image is OwnImage => Boolean(image));
 }
@@ -95,14 +102,15 @@ export async function exportCollection(
   collection: Collection, includeOverrides = true,
 ): Promise<CollectionExport> {
   const sentences = await listSentences(collection.id);
-  const images = await imagesUsedBy(sentences);
+  const overrides = includeOverrides ? await listAllOverrides() : undefined;
+  const images = await imagesUsedBy(sentences, overrides);
   return {
     format: EXPORT_FORMAT,
     version: EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
     collection: { ...portable(collection), sentenceIds: sentences.map((s) => s.id) },
     sentences,
-    overrides: includeOverrides ? await listAllOverrides() : undefined,
+    overrides,
     ownImages: images.length > 0 ? await packImages(images) : undefined,
     notice: images.length > 0 ? NOTICE_WITH_IMAGES : NOTICE,
   };
@@ -229,15 +237,47 @@ async function restoreImages(packed: OwnImageExport[] | undefined): Promise<Map<
   return mapping;
 }
 
-/** Points a sentence's slots at the pictures as they were just restored. */
+/**
+ * A prefixed `own:` id pointed at the picture as it was just restored.
+ *
+ * Anything else — a symbol id, or an own picture the file did not carry —
+ * comes back as it went in. An unknown own id is not cleared the way an
+ * unknown `ownImage` is: a choice is per provider and also names symbols, and
+ * a file restored into the browser it came from still has that picture.
+ */
+function remapOwnId(
+  id: string | null | undefined, mapping: Map<string, string>,
+): string | null | undefined {
+  if (!id?.startsWith(OWN_PREFIX)) return id;
+  const fresh = mapping.get(id.slice(OWN_PREFIX.length));
+  return fresh ? ownImageId(fresh) : id;
+}
+
+/**
+ * Points a sentence's slots at the pictures as they were just restored.
+ *
+ * Both ways a slot can hold one: `ownImage`, set from the slot picker, and a
+ * `choice` of `own:<id>`, which is what a word filed with a photo in the
+ * Wortschatz writes into every sentence made with it. Only the first was
+ * remapped, so a row drawing Oma through the Wortschatz arrived pointing at an
+ * id this browser had never seen, beside her picture stored under a fresh one.
+ */
 function remapImages(sentence: Sentence, mapping: Map<string, string>): Sentence {
-  if (!sentence.slots.some((slot) => slot.ownImage)) return sentence;
   return {
     ...sentence,
-    slots: sentence.slots.map((slot) => (slot.ownImage
-      ? { ...slot, ownImage: mapping.get(slot.ownImage) ?? null }
-      : slot)),
+    slots: sentence.slots.map((slot) => ({
+      ...slot,
+      ...(slot.ownImage ? { ownImage: mapping.get(slot.ownImage) ?? null } : {}),
+      choice: Object.fromEntries(Object.entries(slot.choice)
+        .map(([provider, id]) => [provider, remapOwnId(id, mapping)])) as Slot['choice'],
+    })),
   };
+}
+
+/** A Wortschatz entry pointed at its picture as it was just restored. */
+function remapOverride(override: Override, mapping: Map<string, string>): Override {
+  const symbolId = remapOwnId(override.symbolId, mapping) ?? override.symbolId;
+  return symbolId === override.symbolId ? override : { ...override, symbolId };
 }
 
 /**
@@ -309,7 +349,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   for (const override of parsed.overrides ?? []) {
     if (!override?.key) continue;
     if (await store.get(override.key)) continue;
-    await store.put(override);
+    await store.put(remapOverride(override, imageIds));
     overrideCount++;
   }
   await tx.done;
@@ -376,7 +416,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   for (const override of parsed.overrides ?? []) {
     if (!override?.key) continue;
     if (await store.get(override.key)) continue;
-    await store.put(override);
+    await store.put(remapOverride(override, imageIds));
     overrideCount++;
   }
   await tx.done;

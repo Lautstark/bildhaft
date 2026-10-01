@@ -10,7 +10,7 @@ import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
 import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
 import { LANG, LOCALE, t } from '../i18n/index.ts';
 import {
-  DEFAULT_PRINT_SETTINGS,
+  DEFAULT_PRINT_SETTINGS, ownImagesInUse,
   type AppSettings, type Candidate, type Collection, type CollectionKind,
   type Override, type OwnImage,
   type ProviderId,
@@ -786,23 +786,29 @@ export async function saveOwnImage(image: OwnImage): Promise<void> {
 }
 
 /**
- * Drops any image no slot points at any more.
+ * Drops any image nothing points at any more — no row and no Wortschatz entry.
  *
  * Deleting one with its slot would be wrong: the same picture can sit in
- * several rows, and in this app a row is cheap to delete by accident.
+ * several rows, and in this app a row is cheap to delete by accident. What
+ * counts as pointing is `ownImagesInUse`'s, which the export asks too.
+ *
+ * The reads and the deletes are one transaction, so a picture filed in the
+ * Wortschatz or put on a row while this runs is either seen as used or was
+ * not there to delete.
  */
 export async function pruneOwnImages(): Promise<number> {
   const db = await getDB();
-  const used = new Set<string>();
-  for (const sentence of await db.getAll('sentences')) {
-    for (const slot of sentence.slots) if (slot.ownImage) used.add(slot.ownImage);
-  }
+  const tx = db.transaction(['sentences', 'overrides', 'ownImages'], 'readwrite');
+  const used = ownImagesInUse(
+    await tx.objectStore('sentences').getAll(),
+    await tx.objectStore('overrides').getAll(),
+  );
 
-  const tx = db.transaction('ownImages', 'readwrite');
+  const images = tx.objectStore('ownImages');
   let removed = 0;
-  for (const image of await tx.store.getAll()) {
+  for (const image of await images.getAll()) {
     if (used.has(image.id)) continue;
-    await tx.store.delete(image.id);
+    await images.delete(image.id);
     removed++;
   }
   await tx.done;
