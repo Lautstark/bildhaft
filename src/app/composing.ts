@@ -22,6 +22,37 @@ import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
  */
 const LINES_AT_ONCE = 4;
 
+/*
+ * The rows whose write was given up on, by the line they were made from.
+ *
+ * Giving up on a store write does not stop it — `withTimeout` says so — and an
+ * IndexedDB that is stalled behind another tab's upgrade lands every queued
+ * write the moment the other tab lets go. So the line that was put back in the
+ * box may already be a row by the time it is sent again, and a second row with
+ * a fresh id beside it was the duplicate. Sending it again under the *same* id
+ * makes the second write a put over the first rather than a second row,
+ * whichever of the two lands first and whether or not the first ever does.
+ *
+ * Keyed by the Sammlung, the part and the text, because that is what "the same
+ * line sent again" means: a line edited in the box is a different line, and
+ * the same words sent to another Sammlung are another row. A list per line,
+ * and each id is taken by one line only, because a song repeats its lines and
+ * two rows of „La la la" are two rows. Bounded by what timed out this session,
+ * which is a handful of lines on a bad day.
+ */
+const unsettled = new Map<string, { id: string; createdAt: number }[]>();
+
+/** The id a line timed out under before, if it did, taken so no other line gets it. */
+function takeUnsettled(key: string): { id: string; createdAt: number } | undefined {
+  const held = unsettled.get(key);
+  const first = held?.shift();
+  if (held && held.length === 0) unsettled.delete(key);
+  return first;
+}
+
+const lineKey = (collectionId: string, line: string, part?: RecipePart): string =>
+  `${collectionId}\n${part ?? ''}\n${line}`;
+
 /* What the composer does with what was typed: the reuse hint, and Enter. */
 
 let reuseTimer = 0;
@@ -49,10 +80,14 @@ export function scheduleReuseLookup(): void {
  * back here is what lets a line that finished early wait for its place.
  */
 function placeRow(sentence: Sentence): void {
-  const at = s.sentences.findIndex((x) => x.createdAt < sentence.createdAt);
+  /* Without itself: a line sent again under the id of a write that timed out
+     may already be on screen, if that write landed and the list was read back
+     since — and one id twice in a keyed list is an error, not a duplicate. */
+  const rows = s.sentences.filter((x) => x.id !== sentence.id);
+  const at = rows.findIndex((x) => x.createdAt < sentence.createdAt);
   s.sentences = at === -1
-    ? [...s.sentences, sentence]
-    : [...s.sentences.slice(0, at), sentence, ...s.sentences.slice(at)];
+    ? [...rows, sentence]
+    : [...rows.slice(0, at), sentence, ...rows.slice(at)];
 }
 
 export async function handleSubmit(): Promise<void> {
@@ -118,9 +153,12 @@ export async function addLines(raw: string, part?: RecipePart): Promise<string> 
      * first corrections can be made before the last line has arrived.
      */
     const translate = async (line: string, index: number): Promise<void> => {
+      const key = lineKey(collectionId, line, part);
+      const earlier = takeUnsettled(key);
+      let parked = false;
       try {
         const sentence: Sentence = {
-          id: newId(),
+          id: earlier?.id ?? newId(),
           normalizedInput: normalizeInput(line),
           rawInput: line,
           /* One card holds one thing, so on that template the whole line is
@@ -145,14 +183,27 @@ export async function addLines(raw: string, part?: RecipePart): Promise<string> 
            * last one. So its lines count up instead, and a pasted recipe
            * comes out in the order it was pasted.
            */
-          createdAt: part ? now + index : now - index,
+          /* A line sent again after a write that timed out keeps its first
+             place as well as its id, so the row the late write made does
+             not move when this one lands over it. */
+          createdAt: earlier?.createdAt ?? (part ? now + index : now - index),
           updatedAt: now,
           ...(part ? { part } : {}),
         };
-        await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
+        try {
+          await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
+        } catch (err) {
+          unsettled.set(key, [...(unsettled.get(key) ?? []),
+            { id: sentence.id, createdAt: sentence.createdAt }]);
+          parked = true;
+          throw err;
+        }
         delete owed[index];
         if (s.activeId === collectionId) placeRow(sentence);
       } catch (err) {
+        /* A lookup that failed before the write was tried leaves the earlier
+           write's id where it was, for the next time the line is sent. */
+        if (earlier && !parked) unsettled.set(key, [earlier, ...(unsettled.get(key) ?? [])]);
         firstError ??= err;
       }
       if (s.batch) s.batch = { ...s.batch, done: s.batch.done + 1 };
