@@ -837,13 +837,6 @@ export async function listOwnImages(): Promise<OwnImage[]> {
   return (await db.getAll('ownImages')).sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function saveOwnImage(image: OwnImage): Promise<void> {
-  const db = await getDB();
-  await db.put('ownImages', image);
-  await fileImage(image);
-  touched();
-}
-
 /**
  * Drops any image nothing points at any more — no row and no Wortschatz entry.
  *

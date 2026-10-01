@@ -32,7 +32,6 @@ const MUTATORS = [
   'dropTag',
   'deleteOverride',
   'putOwnImage',
-  'saveOwnImage',
   'pruneOwnImages',
 ] as const;
 
@@ -144,14 +143,6 @@ describe('the change notifier', () => {
       new File([new Uint8Array([1, 2, 3])], 'bild.png', { type: 'image/png' }),
       'bild.png',
     ),
-    saveOwnImage: async () => {
-      const image = await repo.putOwnImage(
-        new File([new Uint8Array([1])], 'b.png', { type: 'image/png' }),
-        'b.png',
-      );
-      heard = 0;
-      return repo.saveOwnImage({ ...image, name: 'anders.png' });
-    },
     pruneOwnImages: async () => {
       await repo.putOwnImage(
         new File([new Uint8Array([1])], 'weg.png', { type: 'image/png' }), 'weg.png');

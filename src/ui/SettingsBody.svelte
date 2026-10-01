@@ -33,7 +33,7 @@
      itself: repainting all of them together would be shorter and wrong —
      METACOM reports progress while it indexes, and that would rebuild, and so
      empty, the Funktionswörter box somebody is typing into. */
-  let status = $state(metacom.status());
+  let status = $state.raw(metacom.status());
   $effect(() => metacom.subscribe(() => { status = metacom.status(); }));
 
   /* ------------------------------------------------- the shared panels --- */
