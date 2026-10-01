@@ -185,7 +185,6 @@ export async function createCollection(
   const collection: Collection = {
     id: newId(),
     name: name?.trim() || defaultCollectionName(),
-    sentenceIds: [],
     /* Absent stays absent for the default. A Sammlung made today and one made
        last month should be the same record when nobody chose anything, or the
        two are told apart by a field that means the same in both. */
@@ -393,18 +392,24 @@ async function writeSentence(sentence: Sentence): Promise<void> {
   const db = await getDB();
   const kept = { ...sentence, updatedAt: Date.now() };
   const tx = db.transaction(['sentences', 'collections'], 'readwrite');
-  await tx.objectStore('sentences').put(kept);
+  const sentences = tx.objectStore('sentences');
+  const before = await sentences.get(sentence.id);
+  await sentences.put(kept);
 
-  const collections = tx.objectStore('collections');
-  const collection = await collections.get(sentence.collectionId);
+  /* A Sammlung that gains a row is the one being worked on, and the sidebar is
+     sorted by when each was last touched — so a row arriving in it stamps it,
+     and an edit to a row already there does not. This used to be decided by
+     whether the id was in `sentenceIds`, a list on the Sammlung that was
+     written on every add and read by nothing else; the store already says
+     which rows a Sammlung has, by its index. */
   let listed: Collection | null = null;
-  if (collection && !collection.sentenceIds.includes(sentence.id)) {
-    listed = {
-      ...collection,
-      sentenceIds: [...collection.sentenceIds, sentence.id],
-      updatedAt: Date.now(),
-    };
-    await collections.put(listed);
+  if (before?.collectionId !== sentence.collectionId) {
+    const collections = tx.objectStore('collections');
+    const collection = await collections.get(sentence.collectionId);
+    if (collection) {
+      listed = { ...collection, updatedAt: Date.now() };
+      await collections.put(listed);
+    }
   }
   await tx.done;
   /* The two records that actually moved, and nothing else. This used to
@@ -448,11 +453,7 @@ async function removeSentence(id: string): Promise<void> {
     const collections = tx.objectStore('collections');
     const collection = await collections.get(sentence.collectionId);
     if (collection) {
-      shortened = {
-        ...collection,
-        sentenceIds: collection.sentenceIds.filter((s) => s !== id),
-        updatedAt: Date.now(),
-      };
+      shortened = { ...collection, updatedAt: Date.now() };
       await collections.put(shortened);
     }
   }

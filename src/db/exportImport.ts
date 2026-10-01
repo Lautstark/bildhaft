@@ -108,7 +108,7 @@ export async function exportCollection(
     format: EXPORT_FORMAT,
     version: EXPORT_VERSION,
     exportedAt: new Date().toISOString(),
-    collection: { ...portable(collection), sentenceIds: sentences.map((s) => s.id) },
+    collection: portable(collection),
     sentences,
     overrides,
     ownImages: images.length > 0 ? await packImages(images) : undefined,
@@ -196,8 +196,8 @@ interface AnyExport {
   format?: string;
   version?: number;
   collection?: Partial<Collection>;
-  /** Full-backup field. */
-  collections?: Collection[];
+  /** Full-backup field. Older files list each Sammlung's rows as well. */
+  collections?: (Collection & { sentenceIds?: unknown })[];
   sentences?: Sentence[];
   overrides?: Override[];
   ownImages?: OwnImageExport[];
@@ -318,7 +318,6 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   const collection: Collection = {
     id: collectionId,
     name: source.name || 'Importierte Sammlung',
-    sentenceIds: sentences.map((s) => s.id),
     /* Carried, where provider is not: which language the sentences are in is a
        fact about them, and it is what the symbol search has to be asked in for
        a correction to be findable at all. */
@@ -374,15 +373,16 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   // Fresh ids throughout, so restoring a backup never collides with existing work.
   const idMap = new Map(sourceCollections.map((c) => [c.id, newId()]));
 
-  const collections: Collection[] = sourceCollections.map((c) => ({
+  /* A backup made before `sentenceIds` went still has one on every Sammlung,
+     listing the old ids. It is left behind rather than carried: nothing reads
+     it, and the ids in it are not the ones the rows are about to get. */
+  const collections: Collection[] = sourceCollections.map(({ sentenceIds: _old, ...c }) => ({
     ...c,
     id: idMap.get(c.id)!,
-    sentenceIds: [],
     createdAt: c.createdAt ?? now,
     updatedAt: now,
   }));
 
-  const byCollection = new Map(collections.map((c) => [c.id, c]));
   const sentences: Sentence[] = [];
   const sentenceIds = new Map<string, string>();
   const imageIds = await restoreImages(parsed.ownImages);
@@ -399,7 +399,6 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
     }, imageIds);
     sentenceIds.set(source.id, sentence.id);
     sentences.push(sentence);
-    byCollection.get(target)!.sentenceIds.push(sentence.id);
   }
   // A Tafel's fields name their cards by id, and every id above is new.
   for (const collection of collections) {

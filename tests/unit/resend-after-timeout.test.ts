@@ -43,7 +43,7 @@ describe('a line whose write timed out, sent again', () => {
     stored.clear();
     held.length = 0;
     s.settings = defaultSettings();
-    s.collections = [{ id: 'c1', name: 'Test', sentenceIds: [], createdAt: 0, updatedAt: 0 }];
+    s.collections = [{ id: 'c1', name: 'Test', createdAt: 0, updatedAt: 0 }];
     s.activeId = 'c1';
     s.sentences = [];
     s.busy = false;

@@ -254,7 +254,11 @@ export interface Collection {
   id: string;
   /** e.g. "Der Grüffelo" */
   name: string;
-  sentenceIds: string[];
+  /* `sentenceIds` stood here: the rows, listed on the Sammlung as well as by
+     the store's `byCollection` index. It was written on every add and removal
+     and read by nothing, and every whole-record put from a copy on screen could
+     set it back. Records and export files that still carry one are read as
+     before — nothing looks at the field — and a backup restored drops it. */
 
   /**
    * Which symbol source this collection is drawn in — or absent, meaning
