@@ -395,10 +395,22 @@ test('the toast, carrying a message', async ({ page }) => {
  * app.css for the 840px column it stands in. Nothing had ever looked at it.
  */
 test('the page footer', async ({ page }) => {
+  /* Tall enough that the footer is on screen without scrolling. Scrolled to,
+     it lands wherever the scroll stopped, which is a fraction of a pixel. */
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 1400 });
   await page.goto('/');
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
   const footer = page.locator('footer.footer');
   await expect(footer).toBeVisible();
+  /* And onto a whole pixel. Where the footer lands is whatever the empty
+     Sammlung above it adds up to, and that is fractional: the fifth template
+     tile put it at 937.64px, and Linux then rounded the capture to 71 rows on
+     one run and 72 on the next — a red run about the tiles, in a test that
+     watches the footer. The nudge is under a pixel and changes nothing in it. */
+  await footer.evaluate((node) => {
+    const off = node.getBoundingClientRect().top % 1;
+    if (off) node.style.marginTop = `calc(${getComputedStyle(node).marginTop} + ${1 - off}px)`;
+  });
   await expect(footer).toHaveScreenshot('footer.png');
 });
 
