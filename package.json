@@ -22,12 +22,12 @@
   "dependencies": {
     "@lautstark/bildquelle": "github:Lautstark/bildquelle#v2.4.1",
     "@lautstark/design": "github:Lautstark/design#v1.40.3",
-    "@lautstark/sicherung": "github:Lautstark/sicherung#v1.17.2",
+    "@lautstark/sicherung": "github:Lautstark/sicherung#v1.18.0",
     "@lautstark/werkzeuge": "github:Lautstark/werkzeuge#v2.0.1",
     "idb": "^8.0.3"
   },
   "devDependencies": {
-    "@lautstark/toolchain": "github:Lautstark/toolchain#v4.0.0",
+    "@lautstark/toolchain": "github:Lautstark/toolchain#v4.1.0",
     "@playwright/test": "1.62.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^24.19.0",
