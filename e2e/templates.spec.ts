@@ -538,6 +538,10 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await tile.click();
   await expect(tile).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
+  // Its box stands where every other template's does: above the Sammlung's name.
+  const box = await page.getByLabel('Liedtext').boundingBox();
+  const head = await page.locator('.collection-head').boundingBox();
+  expect(box!.y).toBeLessThan(head!.y);
 
   const refrain = ['Ich geh mit meiner Laterne', 'Dort oben leuchten die Sterne', 'Hier unten leuchten wir'];
   const rab = 'Rabimmel, rabammel, rabum';

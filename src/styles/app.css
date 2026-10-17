@@ -1393,7 +1393,6 @@ footer.footer {
    Satzstreifen's own. The Refrain stands on a ground of the accent, as it
    does on paper, so it is found again at a glance wherever it comes back. */
 .song { display: flex; flex-direction: column; gap: 14px; }
-.song__type .composer { margin: 0; }
 .song__type .composer__meta { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .song__bar { display: flex; justify-content: flex-end; }
 .song__part {

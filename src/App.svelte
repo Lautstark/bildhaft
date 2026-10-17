@@ -17,6 +17,7 @@
   import TopBar from '@lautstark/design/svelte/TopBar';
   import Footer from './ui/Footer.svelte';
   import Composer from './ui/Composer.svelte';
+  import SongComposer from './ui/SongComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
   import Banners from './app/Banners.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
@@ -113,7 +114,7 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner"><Banners />{#if s.wortschatz}<Wortschatz />{:else}{#if kind() !== 'rezept' && kind() !== 'lied'}<Composer />{/if}<CollectionHead /><Material />{/if}</div><Footer /></main></div>{/if}<!--
+--><div class="main__inner"><Banners />{#if s.wortschatz}<Wortschatz />{:else}{#if kind() === 'lied'}<SongComposer />{:else if kind() !== 'rezept'}<Composer />{/if}<CollectionHead /><Material />{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug
