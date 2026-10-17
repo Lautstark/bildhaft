@@ -356,9 +356,45 @@ export interface Collection {
    */
   print?: Partial<PrintSettings>;
 
+  /**
+   * A Lied: which lines make up each of its parts, and the order the parts
+   * are sung in. Only a `lied` has one, and one without it is a Lied nothing
+   * has been pasted into yet.
+   *
+   * On the Sammlung, as the Tafel's grid is, because it is the arrangement
+   * and not the lines: each line is a row of the Sammlung, held once however
+   * often it is sung. „Rabimmel, rabammel, rabum" ten times over is one row,
+   * so a symbol fixed in it is fixed in all ten places — which is the whole
+   * point of the template. A Satzstreifen holding the same song had ten rows,
+   * and fixing one left nine.
+   */
+  song?: Song;
+
   createdAt: number;
   updatedAt: number;
 }
+
+/**
+ * A song as its parts and the order they are sung in.
+ *
+ * `order` names parts by id, and a part may stand in it more than once — that
+ * is what a refrain is. `lines` names rows by id, and a row may stand in more
+ * than one part, or twice in one: „Rabimmel, rabammel, rabum" closes every
+ * Strophe of the Laternenlied and is one row.
+ */
+export interface Song {
+  parts: SongPart[];
+  order: string[];
+}
+
+export interface SongPart {
+  id: string;
+  kind: SongPartKind;
+  lines: string[];
+}
+
+export const SONG_PART_KINDS = ['refrain', 'strophe'] as const;
+export type SongPartKind = (typeof SONG_PART_KINDS)[number];
 
 /**
  * A grid with a place for a card in each field.
@@ -428,7 +464,7 @@ export interface BoardGroup {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /** What a Sammlung is when it has never been asked. */
@@ -525,8 +561,9 @@ export interface Override {
  *
  * `rezept` is one too, for the same reason: its Zutaten, its Hilfsmittel and
  * its numbered Schritte are one paper, not cards that happen to be laid out.
+ * And `lied`: a song written out the way it is sung, part under part.
  */
-export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept';
+export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**
@@ -628,9 +665,20 @@ export interface PrintSettings {
 
   /**
    * A Rezept's colour: its headings, its step numbers and the dotted line
-   * around each card. Only a Rezept prints it. A CSS colour.
+   * around each card. A Lied's too: the ground behind its refrain. Only those
+   * two print it. A CSS colour.
    */
   accentColour: string;
+
+  /** A Lied: „Strophe 1", „Refrain" over each part. */
+  songHeadings: boolean;
+
+  /**
+   * A Lied: lines sung twice in a row printed once, with „2×" beside them.
+   * Off, which writes everything out as it is sung — a small child follows a
+   * sheet line by line and does not go back up it.
+   */
+  songRepeats: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -658,6 +706,8 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   cardBackground: null,
   showCopyright: false,
   accentColour: '#e3262b',
+  songHeadings: true,
+  songRepeats: false,
 };
 
 /* ------------------------------------------------------------- settings --- */

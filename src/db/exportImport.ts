@@ -2,7 +2,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, COLLECTION_KINDS, EXPORT_FORMAT, EXPORT_VERSION,
   type BackupExport, type Board, type Collection, type CollectionExport, type CollectionKind,
   OWN_PREFIX, ownImageId, ownImagesInUse,
-  type Override, type OwnImage, type OwnImageExport, type Sentence, type Slot,
+  type Override, type OwnImage, type OwnImageExport, type Sentence, type Slot, type Song,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
@@ -330,6 +330,8 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     ...(source.kind && (COLLECTION_KINDS as readonly string[]).includes(source.kind)
       ? { kind: source.kind as CollectionKind } : {}),
     ...(source.board ? { board: remapBoard(source.board, sentenceIds) } : {}),
+    // A Lied's parts name their rows by id too.
+    ...(source.song ? { song: remapSong(source.song, sentenceIds) } : {}),
     // How it printed is part of what it is; the copyright choice is not in it.
     ...(source.print ? { print: source.print } : {}),
     createdAt: now,
@@ -361,6 +363,17 @@ function remapBoard(board: Board, ids: Map<string, string>): Board {
   return {
     ...board,
     cells: (board.cells ?? []).map((cell) => (cell ? ids.get(cell) ?? null : null)),
+  };
+}
+
+/** A song's lines pointing at the fresh ids its rows were given. */
+function remapSong(song: Song, ids: Map<string, string>): Song {
+  return {
+    ...song,
+    parts: (song.parts ?? []).map((part) => ({
+      ...part,
+      lines: (part.lines ?? []).map((id) => ids.get(id)).filter((id): id is string => Boolean(id)),
+    })),
   };
 }
 
@@ -403,6 +416,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   // A Tafel's fields name their cards by id, and every id above is new.
   for (const collection of collections) {
     if (collection.board) collection.board = remapBoard(collection.board, sentenceIds);
+    if (collection.song) collection.song = remapSong(collection.song, sentenceIds);
   }
 
   const db = await getDB();

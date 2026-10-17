@@ -517,3 +517,75 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
     parseFloat(getComputedStyle(node).width));
   expect(img).toBeCloseTo(60 * 96 / 25.4, 0);
 });
+
+/**
+ * A Lied is pasted whole, and every line that comes back is one row.
+ *
+ * Held here: a song pasted without a blank line is cut into its Refrain and
+ * its Strophen; a line sung four times is one row, says so, and a name given
+ * to it in one place stands in all four; the song sent again from „Text
+ * bearbeiten" keeps that row and its name rather than making new ones; and the
+ * paper writes the song out as it is sung — the Refrain every time, on its own
+ * ground — with the headings and the „2×" as the dialog asks.
+ */
+test('a Lied holds a repeated line once, and prints the song written out', async ({ page }) => {
+  await sidebarReady(page);
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.keyboard.type('Laternenlied');
+
+  const tile = page.getByRole('button', { name: /^Lied/ });
+  await tile.click();
+  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
+
+  const refrain = ['Ich geh mit meiner Laterne', 'Dort oben leuchten die Sterne', 'Hier unten leuchten wir'];
+  const rab = 'Rabimmel, rabammel, rabum';
+  const verse = (line: string) => [line, rab, line, rab];
+  const text = [
+    ...refrain, ...verse('Mein Licht geht aus'), ...refrain, ...verse('Mein Licht ist klein'), ...refrain,
+  ].join('\n');
+  await page.getByLabel('Liedtext').fill(text);
+  await page.getByLabel('Liedtext').press('Enter');
+
+  await expect(page.locator('.song__head'))
+    .toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
+  // The first Refrain open, the two after it folded: the same rows, not drawn again.
+  await expect(page.locator('.song__folded')).toHaveText(Array(2).fill('Refrain · 3 Zeilen · aufklappen'));
+  await expect.poll(async () => (await readSentences(page)).length).toBe(6);
+
+  const rabRows = page.locator('.row').filter({ has: page.locator(`input[placeholder="${rab}"]`) });
+  await expect(rabRows).toHaveCount(4);
+  await expect(rabRows.locator('.row__sung')).toHaveText(Array(4).fill('4×'));
+  const rabNames = () => rabRows.locator('.row__title')
+    .evaluateAll((fields) => fields.map((field) => (field as HTMLInputElement).value));
+
+  await rabRows.first().locator('.row__title').fill('Rabimmel!');
+  await rabRows.first().locator('.row__title').press('Tab');
+  await expect.poll(() => rabNames()).toEqual(Array(4).fill('Rabimmel!'));
+
+  // Sent again unchanged: no new rows, and the name stays where it was given.
+  await page.getByRole('button', { name: 'Text bearbeiten' }).click();
+  await expect(page.getByLabel('Liedtext')).toHaveValue(new RegExp(`^${refrain[0]}\\n`));
+  await page.getByLabel('Liedtext').press('Enter');
+  await expect(page.locator('.song__head')).toHaveCount(5);
+  expect((await readSentences(page)).filter((row) => row.rawInput === rab)).toHaveLength(1);
+  await expect.poll(() => rabNames()).toEqual(Array(4).fill('Rabimmel!'));
+
+  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  const sheet = page.locator('.preview-frame');
+  await expect(sheet.locator('.ps-title')).toHaveText('Laternenlied');
+  await expect(sheet.locator('.ps-song-part')).toHaveCount(5);
+  await expect(sheet.locator('.ps-song-part--refrain')).toHaveCount(3);
+  await expect(sheet.locator('.ps-song-head'))
+    .toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
+  await expect(sheet.locator('.ps-song-line')).toHaveCount(17);
+  await expect(sheet.locator('.ps-song-times')).toHaveCount(0);
+
+  await page.getByLabel('Doppelte Zeilen nur einmal, mit „2×“').check();
+  await expect(sheet.locator('.ps-song-times')).toHaveText(['2×', '2×']);
+  await expect(sheet.locator('.ps-song-line')).toHaveCount(13);
+
+  await page.getByLabel('Überschriften drucken (Strophe, Refrain)').uncheck();
+  await expect(sheet.locator('.ps-song-head')).toHaveCount(0);
+});

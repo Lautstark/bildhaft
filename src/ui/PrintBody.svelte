@@ -2,7 +2,7 @@
   /**
    * What this material can be asked, and what the answer looks like on paper.
    *
-   * Five templates, five lists — and a Satzstreifen-Sammlung has two, because
+   * Six templates, six lists — and a Satzstreifen-Sammlung has two, because
    * its rows print either as strips or cut into cards, and those are different
    * papers. An option that cannot mean anything for this material is not shown
    * greyed out; it is not shown.
@@ -30,6 +30,9 @@
   let board = $derived(kind === 'tafel');
   let list = $derived(kind === 'einkaufsliste');
   let recipe = $derived(kind === 'rezept');
+  let song = $derived(kind === 'lied');
+  /* The two that carry their own paper, colour and picture size. */
+  let material = $derived(recipe || song);
   let gridded = $derived(cards && s.settings.sheetFit === 'grid');
   /* The card named in millimetres, which only a card sheet can be asked. */
   let exact = $derived(cards && s.settings.sheetFit === 'card');
@@ -64,7 +67,7 @@
   The Einkaufsliste and the Rezept are materials with their own paper; the
   rest choose. A Rezept's own options come first instead: its colour, then
   how big its pictures are and how big the words under them.
--->{#if recipe}{@render colorOpt('opt-recipe-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 60, 1, 20, 'mm', t('ui.recipe_size_note'), (next) => set('symbolSizeMm', next))}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/if}{#if !list && !recipe}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.paper')}</label>{@render segmented([
+-->{#if song}{@render colorOpt('opt-song-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 60, 1, 16, 'mm', t('ui.song_size_note'), (next) => set('symbolSizeMm', next))}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}<div class="opt">{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}</div>{/if}{#if recipe}{@render colorOpt('opt-recipe-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 60, 1, 20, 'mm', t('ui.recipe_size_note'), (next) => set('symbolSizeMm', next))}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/if}{#if !list && !material}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.paper')}</label>{@render segmented([
   { label: 'A5', active: s.settings.paper === 'a5', onPick: () => set('paper', 'a5') },
   { label: 'A4', active: s.settings.paper === 'a4', onPick: () => set('paper', 'a4') },
   { label: 'A3', active: s.settings.paper === 'a3', onPick: () => set('paper', 'a3') },
@@ -85,10 +88,10 @@
   margin where scissors go, air where nothing is cut. Against a symbol size they
   are added around the card, against a card size they are taken out of it — so
   the note says which, where the number is.
--->{#if cards || strip}{@render numberOpt('opt-cut', t('ui.cut_margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}{#if board}{@render numberOpt('opt-cut', t('ui.card_air'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', t('ui.card_air_note'), (next) => set('cutMarginMm', next))}{/if}{#if !list && !recipe}<div class="opt">{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}{@render segmented([
+-->{#if cards || strip}{@render numberOpt('opt-cut', t('ui.cut_margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}{#if board}{@render numberOpt('opt-cut', t('ui.card_air'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', t('ui.card_air_note'), (next) => set('cutMarginMm', next))}{/if}{#if !list && !material}<div class="opt">{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}{@render segmented([
   { label: t('ui.label_below'), active: s.settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
   { label: t('ui.label_above'), active: s.settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
-], 'margin-top:6px')}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null, (next) => set('labelSizePt', next))}{/if}</div>{/if}{#if !recipe}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.frame_colour')}</label>{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
+], 'margin-top:6px')}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null, (next) => set('labelSizePt', next))}{/if}</div>{/if}{#if !material}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.frame_colour')}</label>{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
   A frame around the whole sentence is a strip's alone: a card sheet has no
   sentence to frame and a Tafel is one sheet already.
 -->{#if strip}{@render check(t('ui.frame_strip'), s.settings.stripFrame, (next) => set('stripFrame', next))}{/if}<!--
@@ -98,7 +101,7 @@
   when there is not.
 -->{#if framed}<div class="opt--pair">{#if s.settings.cardBorderMm > 0}{@render numberOpt('opt-border', t('ui.thickness'), s.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null, (next) => set('cardBorderMm', next))}{/if}{@render numberOpt('opt-radius', t('ui.corners'), s.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null, (next) => set('cardRadiusMm', next))}{@render colorOpt('opt-border-color', t('ui.colour'), s.settings.cardBorderColor, (next) => set('cardBorderColor', next))}</div>{/if}{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}<span class="small faint">{t('ui.background_note')}</span></div>{/if}<div class="opt"><!--
   Cut lines where something is cut: a card sheet, the list's cards.
--->{#if cards || list}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if strip}{@render check(t('ui.sentence_above'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if !list && !recipe}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{/if}</div><!--
+-->{#if cards || list}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if strip}{@render check(t('ui.sentence_above'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if !list && !material}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{/if}</div><!--
   METACOM only. ARASAAC's attribution is a licence condition and prints whether
   anyone asks for it or not, so offering to switch it off would be offering
   something bildhaft will not do.

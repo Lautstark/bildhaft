@@ -11,6 +11,7 @@ import { openSlotPicker } from '../ui/slotPicker.svelte.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
 import { kind, providerId, s } from './state.svelte.ts';
 import { writeBoard } from './board.ts';
+import { takeOutOfSong } from './song.ts';
 import { notify } from './notify.ts';
 
 /**
@@ -276,6 +277,8 @@ export async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
      cannot find — it draws the field free — but a record that names a card
      which no longer exists is a record that lies. */
   if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
+  /* And out of a Lied, from every place it was sung. */
+  if (kind() === 'lied') await takeOutOfSong(sentence);
 }
 
 export async function noteUnreadable(id: string): Promise<void> {

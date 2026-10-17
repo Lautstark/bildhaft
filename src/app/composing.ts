@@ -113,8 +113,13 @@ export async function handleSubmit(): Promise<void> {
  * in where the lines land: `part` says which part of the recipe, and with it
  * how a line is looked up — a Schritt as a sentence, a Zutat or a Hilfsmittel
  * as one card with its amount kept off the lookup.
+ *
+ * `made` hears of every row as it is written, with the line it came from: a
+ * Lied has to know which row each line became, to put it where it is sung.
  */
-export async function addLines(raw: string, part?: RecipePart): Promise<string> {
+export async function addLines(
+  raw: string, part?: RecipePart, made?: (line: string, sentence: Sentence) => void,
+): Promise<string> {
   const collectionId = s.activeId;
   if (!raw.trim() || !s.settings || !collectionId || s.busy) return raw;
 
@@ -199,6 +204,7 @@ export async function addLines(raw: string, part?: RecipePart): Promise<string> 
           throw err;
         }
         delete owed[index];
+        made?.(line, sentence);
         if (s.activeId === collectionId) placeRow(sentence);
       } catch (err) {
         /* A lookup that failed before the write was tried leaves the earlier

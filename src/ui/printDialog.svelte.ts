@@ -9,7 +9,7 @@ import Printable from './Printable.svelte';
 import {
   applyPageSetup, cardRows, clearPageSetup, METACOM_COPYRIGHT, paperSize, planPages,
   printableArea, PX_PER_MM, sheetBlocks,
-  type Block, type PrintBoard, type SheetPlan,
+  type Block, type PrintBoard, type PrintSong, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { LOCALE, t } from '../i18n/index.ts';
@@ -29,6 +29,8 @@ export interface PrintOptions {
    * offered — the paper, the margins and the frames still are.
    */
   board?: PrintBoard | null;
+  /** A Lied, when this is one: its parts as they are sung. */
+  song?: PrintSong | null;
   collectionName: string;
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
@@ -122,6 +124,7 @@ export class Printing {
   blocks: Block[] = $derived.by(() => sheetBlocks({
     sentences: this.options.sentences,
     board: this.options.board,
+    song: this.options.song,
     settings: this.settings,
     provider: this.options.provider,
     attribution: this.options.attribution,
@@ -296,6 +299,8 @@ export function openPrintDialog(options: PrintOptions): void {
       ? t('ui.print_board_title', { cols: options.board.cols, rows: options.board.rows })
       : options.kind === 'rezept'
         ? t('ui.print_recipe_title')
+      : options.kind === 'lied'
+        ? t('ui.print_song_title')
       : options.sentences.length === 1
         ? t('ui.print_row_title')
         : t('ui.print_collection_title', { n: options.sentences.length }),

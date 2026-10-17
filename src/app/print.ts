@@ -1,5 +1,6 @@
 import type { Board, Collection, CollectionKind, PrintSettings, Sentence } from '../core/types.ts';
 import { boardOf, defaultAirMm, placedIds, stylesOf, zonesOf } from '../core/board.ts';
+import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { openPrintDialog } from '../ui/printDialog.svelte.ts';
 import { printableArea } from '../ui/printSheet.ts';
@@ -27,6 +28,10 @@ import { persistSettings } from './settings.ts';
  * Schritte share that page. The size stays a choice — what this Rezept set
  * for itself wins over the 20 mm it starts at — because a child who needs
  * bigger pictures gets a second page rather than smaller ones.
+ *
+ * A Lied likewise: A4 standing up, written out as it is sung, its pictures
+ * small enough that a Strophe's longest line fits across the page, and its
+ * Refrain on a ground of its own colour — blue until it is given another.
  *
  * And a template that is not a material never opens on one. The household's
  * remembered layout is whatever was printed last, and when that was an
@@ -86,6 +91,23 @@ export function printFor(
       showCollectionTitle: true,
     };
   }
+  if (which === 'lied') {
+    return {
+      ...print,
+      layout: 'lied',
+      paper: 'a4',
+      orientation: 'portrait',
+      symbolSizeMm: own.symbolSizeMm ?? 16,
+      cutMarginMm: 1,
+      showLabel: true,
+      labelPosition: 'below',
+      labelSizePt: own.labelSizePt ?? 9,
+      cardBorderMm: 0,
+      cardBackground: null,
+      showCollectionTitle: true,
+      accentColour: own.accentColour ?? '#2c66c8',
+    };
+  }
   if (which === 'wortkarten' && print.layout !== 'sheet') {
     return { ...print, layout: 'sheet' };
   }
@@ -128,12 +150,24 @@ export function openPrint(ids: string[]): void {
   const board = kind() === 'tafel' && open ? boardOf(open) : null;
   /* A Rezept prints whole too, and in the order it reads on screen: oldest
      first, each part in its place on the paper. */
+  /* A Lied prints whole, as it is sung: every part where it comes, its rows
+     looked up by id each time, so a row sung ten times is the same row ten
+     times on paper. */
+  const song = kind() === 'lied' && open?.song ? {
+    parts: sungParts(open.song).map((at) => ({
+      kind: at.kind, n: at.n,
+      lines: at.part.lines.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
+    })),
+  } : null;
   const chosen = board
     ? placedIds(board).map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x))
+    : song
+      ? [...new Set(song.parts.flatMap((part) => part.lines))]
     : kind() === 'rezept'
       ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
       : ids.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x));
   if ((chosen.length === 0 && !board) || !s.settings) return;
+
 
   openPrintDialog({
     sentences: chosen,
@@ -142,6 +176,7 @@ export function openPrint(ids: string[]): void {
       cols: board.cols, rows: board.rows, zones: zonesOf(board), styles: stylesOf(board),
       cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)),
     } : null,
+    song,
     collectionName: open?.name ?? 'bildhaft',
     /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
        layout says. Strips are a shape for a sentence: a strip of one symbol
@@ -159,10 +194,10 @@ export function openPrint(ids: string[]): void {
          keeps its own, so this one prints tomorrow as it printed today,
          whatever was set elsewhere in between.
 
-         Not for a Rezept. Everything its dialog offers is about this paper —
-         its colour, its 20 mm cards — and handed to the household it would
-         be the next Satzstreifen's symbol size. */
-      if (kind() !== 'rezept') persistSettings({ ...s.settings, print });
+         Not for a Rezept or a Lied. Everything their dialog offers is about
+         this paper — its colour, its small cards — and handed to the
+         household it would be the next Satzstreifen's symbol size. */
+      if (kind() !== 'rezept' && kind() !== 'lied') persistSettings({ ...s.settings, print });
       void keepPrint(print);
     },
     provider: providerId(),

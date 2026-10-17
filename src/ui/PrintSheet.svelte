@@ -139,7 +139,13 @@
 --><section class="ps-recipe-part"><h2 class="ps-recipe-head">{t(`ui.recipe_${block.part}`)}</h2><div class="ps-recipe-cards">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></section>{:else if block.kind === 'recipe-step'}<!--
   The heading rides with the first Schritt, so a page can never end on
   „Schritte" with nothing under it.
---><div class="ps-recipe-step">{#if block.first}<h2 class="ps-recipe-head">{t('ui.recipe_schritt')}</h2>{/if}<div class="ps-recipe-step__row"><span class="ps-recipe-step__n">{block.n}</span><div class="ps-recipe-step__slots">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></div></div>{:else if block.kind === 'credit'}<!--
+--><div class="ps-recipe-step">{#if block.first}<h2 class="ps-recipe-head">{t('ui.recipe_schritt')}</h2>{/if}<div class="ps-recipe-step__row"><span class="ps-recipe-step__n">{block.n}</span><div class="ps-recipe-step__slots">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></div></div>{:else if block.kind === 'song-part'}<!--
+  A part of a Lied: its name when headings are asked for, then its lines, one
+  row of pictures each. The Refrain stands on a ground of the Lied's colour, so
+  a child finds it again on the sheet without reading its name. Lines folded
+  under „2×" share a bar down their right side with the count beside it, so it
+  is plain which lines the „2×" means.
+--><section class="ps-song-part{block.part === 'refrain' ? ' ps-song-part--refrain' : ''}">{#if settings.songHeadings}<h2 class="ps-song-head">{block.part === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: block.n })}</h2>{/if}{#each block.groups as group, g (g)}<div class="ps-song-group{group.times > 1 ? ' ps-song-group--again' : ''}"><div class="ps-song-lines">{#each group.lines as line, k (k)}<div class="ps-song-line">{#each line.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{/each}</div>{#if group.times > 1}<span class="ps-song-times">{t('ui.song_sung', { n: group.times })}</span>{/if}</div>{/each}</section>{:else if block.kind === 'credit'}<!--
   The name gives way, never the address. Both are on one line and a long name
   would push the address off it, so the name is the part allowed to be clipped —
   an ellipsis on a name the reader chose still says which collection this is,
@@ -147,7 +153,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made"><span class="ps-made__name">{block.name}</span><span class="ps-made__tail"> · {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"
@@ -163,4 +169,5 @@
   style:--card-bg={settings.cardBackground ?? 'transparent'}
   style:--strip-w="{settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm"
   style:--recipe={settings.accentColour}
+  style:--song={settings.accentColour}
 >{#if pages}{#each pages as held, at (at)}<div class="ps-page">{#each held as block, i (i)}{@render one(block)}{/each}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

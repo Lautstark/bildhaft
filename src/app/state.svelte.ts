@@ -130,8 +130,10 @@ export const kind = (): CollectionKind => {
    einzig, was hinten aus dem Drucker kommt.
 
    Ein Rezept hält beides, Karten und Zeilen, und hat für jeden seiner Teile
-   ein eigenes Feld — es ist deshalb keine von beiden Seiten. */
-export const holdsWords = (): boolean => kind() !== 'satzstreifen' && kind() !== 'rezept';
+   ein eigenes Feld — es ist deshalb keine von beiden Seiten. Ein Lied hält
+   Zeilen, aber in seiner eigenen Ordnung. */
+export const holdsWords = (): boolean =>
+  kind() !== 'satzstreifen' && kind() !== 'rezept' && kind() !== 'lied';
 
 /**
  * The symbol source the page is drawing in: the open collection's own answer,

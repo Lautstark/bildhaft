@@ -65,10 +65,25 @@ describe('what a template opens the print dialog on', () => {
     });
   });
 
+  describe('a Lied', () => {
+    it('opens on A4 standing up, written out, with headings and in blue', () => {
+      expect(printFor({ ...remembered, orientation: 'landscape', paper: 'a3' }, 'lied', null))
+        .toMatchObject({
+          layout: 'lied', paper: 'a4', orientation: 'portrait', symbolSizeMm: 16,
+          showCollectionTitle: true, songHeadings: true, songRepeats: false, accentColour: '#2c66c8',
+        });
+    });
+
+    it('keeps what it set for itself', () => {
+      expect(printFor(remembered, 'lied', null, { symbolSizeMm: 22, accentColour: '#2e8b57' }))
+        .toMatchObject({ symbolSizeMm: 22, accentColour: '#2e8b57' });
+    });
+  });
+
   /* The household remembers the layout printed last. Printed last as a
      material, that layout is not one a sentence or a card can take. */
   it('never opens a Satzstreifen or Wortkarten on a material', () => {
-    for (const layout of ['einkaufsliste', 'rezept'] as const) {
+    for (const layout of ['einkaufsliste', 'rezept', 'lied'] as const) {
       expect(printFor({ ...remembered, layout }, 'satzstreifen', null).layout).toBe('strip');
       expect(printFor({ ...remembered, layout }, 'wortkarten', null).layout).toBe('sheet');
     }

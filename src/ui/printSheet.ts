@@ -1,7 +1,8 @@
 import type {
-  Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, ZoneStyle,
+  Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, SongPartKind, ZoneStyle,
 } from '../core/types.ts';
 import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
+import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves on every side. Millimetres, because the sheet is. */
 export const PAGE_MARGIN_MM = 10;
@@ -292,8 +293,19 @@ export interface PrintBoard {
   styles?: Record<string, ZoneStyle>;
 }
 
+/**
+ * A Lied as it goes to paper: its parts in the order they are sung, each with
+ * its rows. A Refrain sung five times is here five times — the paper is
+ * written out the way the song goes.
+ */
+export interface PrintSong {
+  parts: { kind: SongPartKind; n: number; lines: Sentence[] }[];
+}
+
 export interface SheetOptions {
   sentences: Sentence[];
+  /** Set for a Lied, and then it decides what is printed and in what order. */
+  song?: PrintSong | null;
   /** Set for a Tafel, and then it decides the page; `sentences` are the cards on it. */
   board?: PrintBoard | null;
   settings: PrintSettings;
@@ -326,6 +338,7 @@ export type Block =
   | { kind: 'store'; slots: Slot[]; page: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
+  | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[] }
   | { kind: 'credit'; lines: string[]; name: string };
 
 /**
@@ -385,7 +398,7 @@ const chunks = <T,>(all: T[], per: number): T[][] => {
  * and a sheet of forty cards would be one indivisible block eight pages tall.
  */
 export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block[] {
-  const { sentences, board, settings, provider, attribution, copyright, collectionName } = options;
+  const { sentences, board, song, settings, provider, attribution, copyright, collectionName } = options;
   const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
   const page = printableArea(settings.paper, settings.orientation);
   const blocks: Block[] = [];
@@ -438,6 +451,22 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
     sentences.filter((sentence) => partOf(sentence) === 'schritt').forEach((sentence, at) => {
       blocks.push({ kind: 'recipe-step', n: at + 1, slots: sentence.slots, first: at === 0 });
     });
+  } else if (settings.layout === 'lied') {
+    /*
+     * A part is one block, so a page breaks between two parts and never
+     * inside one: a Strophe split over two sheets is a child turning the page
+     * in the middle of a line of song. With „2×" asked for, lines sung again
+     * straight after themselves are printed once; otherwise every line is its
+     * own group of one, which is the song written out.
+     */
+    for (const part of song?.parts ?? []) {
+      blocks.push({
+        kind: 'song-part', part: part.kind, n: part.n,
+        groups: settings.songRepeats
+          ? foldRepeats(part.lines)
+          : part.lines.map((line) => ({ lines: [line], times: 1 })),
+      });
+    }
   } else if (settings.layout === 'sheet') {
     const cards = deck(sentences, provider);
     if (settings.sheetFit !== 'grid') {
