@@ -593,6 +593,11 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await page.getByLabel('Überschriften drucken (Strophe, Refrain)').uncheck();
   await expect(sheet.locator('.ps-song-head')).toHaveCount(0);
 
+  // The line as written, above its pictures, as a strip has it — and off again.
+  await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(13);
+  await page.getByLabel('Satztext über der Reihe').uncheck();
+  await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
+
   // A song sheet is printed on A5 as often as on A4: the paper is the Lied's to choose.
   const pages = await sheet.locator('.ps-page').count();
   await page.getByRole('button', { name: 'A5', exact: true }).click();

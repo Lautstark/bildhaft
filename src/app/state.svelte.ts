@@ -2,6 +2,7 @@ import { NARROW } from '@lautstark/design/svelte/sidebar';
 import type { AppSettings, Collection, ProviderId, Sentence } from '../core/types.ts';
 import type { CollectionKind } from '../core/types.ts';
 import { kindOf } from '../core/types.ts';
+import { TEMPLATES } from './templates.ts';
 import { getProvider } from '@lautstark/bildquelle';
 
 /**
@@ -129,15 +130,9 @@ export const kind = (): CollectionKind => {
   return open ? kindOf(open) : 'satzstreifen';
 };
 
-/* Zwei Vorlagen halten Wörter und teilen sich deshalb alles, was Wörter
-   angeht: die Kachelwand, die Leiste, den Zähler. Was sie unterscheidet, ist
-   einzig, was hinten aus dem Drucker kommt.
-
-   Ein Rezept hält beides, Karten und Zeilen, und hat für jeden seiner Teile
-   ein eigenes Feld — es ist deshalb keine von beiden Seiten. Ein Lied hält
-   Zeilen, aber in seiner eigenen Ordnung. */
-export const holdsWords = (): boolean =>
-  kind() !== 'satzstreifen' && kind() !== 'rezept' && kind() !== 'lied';
+/* Whether the open Sammlung holds one-word cards — the wall, the tray, the
+   counter. Its template says so; see `TEMPLATES`. */
+export const holdsWords = (): boolean => TEMPLATES[kind()].cards;
 
 /**
  * The symbol source the page is drawing in: the open collection's own answer,

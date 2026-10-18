@@ -12,6 +12,7 @@ import {
   type Block, type PrintBoard, type PrintSong, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
+import { TEMPLATES } from '../app/templates.ts';
 import { LOCALE, t } from '../i18n/index.ts';
 
 export interface PrintOptions {
@@ -295,12 +296,8 @@ export function openPrintDialog(options: PrintOptions): void {
   let closed = false;
 
   const sheet = openSheet({
-    title: options.board
-      ? t('ui.print_board_title', { cols: options.board.cols, rows: options.board.rows })
-      : options.kind === 'rezept'
-        ? t('ui.print_recipe_title')
-      : options.kind === 'lied'
-        ? t('ui.print_song_title')
+    title: TEMPLATES[options.kind].printTitle
+      ? t(TEMPLATES[options.kind].printTitle!, { cols: options.board?.cols ?? 0, rows: options.board?.rows ?? 0 })
       : options.sentences.length === 1
         ? t('ui.print_row_title')
         : t('ui.print_collection_title', { n: options.sentences.length }),

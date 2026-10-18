@@ -26,6 +26,7 @@
   import { notify, useToast } from './app/notify.ts';
   import { persistSettings } from './app/settings.ts';
   import { activeCollection, kind, MOBILE_QUERY, s } from './app/state.svelte.ts';
+  import { TEMPLATES } from './app/templates.ts';
   import { t } from './i18n/index.ts';
 
   let toast: HTMLElement;
@@ -114,7 +115,7 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner"><Banners />{#if s.wortschatz}<Wortschatz />{:else}{#if kind() === 'lied'}<SongComposer />{:else if kind() !== 'rezept'}<Composer />{/if}<CollectionHead /><Material />{/if}</div><Footer /></main></div>{/if}<!--
+--><div class="main__inner"><Banners />{#if s.wortschatz}<Wortschatz />{:else}{#if kind() === 'lied'}<SongComposer />{:else if TEMPLATES[kind()].composer}<Composer />{/if}<CollectionHead /><Material />{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

@@ -1,127 +1,25 @@
 import type { Board, Collection, CollectionKind, PrintSettings, Sentence } from '../core/types.ts';
-import { boardOf, defaultAirMm, placedIds, stylesOf, zonesOf } from '../core/board.ts';
+import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { openPrintDialog } from '../ui/printDialog.svelte.ts';
-import { printableArea } from '../ui/printSheet.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
+import { TEMPLATES } from './templates.ts';
 
 /**
- * The print settings a template opens on.
- *
- * A Wortkarten-Sammlung opens on the card sheet, and only there: a strip of
- * one symbol is a card with the wrong margins, so the remembered layout in
- * that case is the other template's setting arriving in this one. A
- * Satzstreifen-Sammlung keeps whatever was chosen, because cutting sentences
- * into cards is a thing people do.
- *
- * An Einkaufsliste opens on itself, and brings its own millimetres with it.
- * Fifteen zones beside fifteen more on one sheet is only possible at 20 mm,
- * measured rather than chosen — and a 3 mm laminating margin, because 5 mm
- * around a 20 mm card is a third of the card. Those are facts about this
- * material and not preferences, which is why the material carries them and
- * the global settings do not.
- *
- * A Rezept opens on itself too: one A4 page standing up, its name at the top,
- * and cards small enough that the Zutaten, the Hilfsmittel and the first
- * Schritte share that page. The size stays a choice — what this Rezept set
- * for itself wins over the 20 mm it starts at — because a child who needs
- * bigger pictures gets a second page rather than smaller ones.
- *
- * A Lied opens the same way: A4 standing up, written out as it is sung, its
- * pictures small enough that a Strophe's longest line fits across the page,
- * and its Refrain on a ground of its own colour — blue until it is given
- * another. Unlike a Rezept it is offered everything a Satzstreifen is — paper,
- * frames, the words under the pictures, the title — because a song sheet is
- * printed on A5 for a folder as often as on A4. What it set for itself wins;
- * the household's choices do not reach it, or a 40 mm strip's frame would be
- * the next song's.
- *
- * And a template that is not a material never opens on one. The household's
- * remembered layout is whatever was printed last, and when that was an
- * Einkaufsliste or a Rezept, a Satzstreifen would otherwise open on a cart.
+ * The print settings a template opens on — its entry in `TEMPLATES` says
+ * which, and why.
  *
  * A function of its inputs and nothing else, so tests/unit/print-for.test.ts
  * can hold each template to its opening layout without a page. `own` is what
- * this Sammlung set for itself: for a Tafel the board's own `airMm` stands
- * behind its air, and the paper decides when neither says.
+ * this Sammlung set for itself.
  */
 export function printFor(
   print: PrintSettings, which: CollectionKind, board: Board | null,
   own: Partial<PrintSettings> = {},
 ): PrintSettings {
-  /* A Tafel prints as the grid it is. Its columns and rows are the
-     Sammlung's, not the dialog's — the dialog's are for a deck of cards
-     that is being asked to *become* a grid at print time. */
-  if (which === 'tafel') {
-    const grid = board ?? boardOf({});
-    /* And the air around each card rather than the cutting margin, which on
-       a Tafel is the same number under a different name. What this Tafel
-       set for itself when it has; otherwise from the size of a field on
-       this paper, so a crowded A5 gets less than a roomy A4. */
-    const page = printableArea(print.paper, print.orientation);
-    const field = Math.min(page.width / grid.cols, page.height / grid.rows);
-    const air = own.cutMarginMm ?? grid.airMm;
-    return {
-      ...print, layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows,
-      cutMarginMm: air ?? defaultAirMm(field),
-    };
-  }
-  if (which === 'einkaufsliste') {
-    return {
-      ...print,
-      layout: 'einkaufsliste',
-      paper: 'a4',
-      orientation: 'landscape',
-      symbolSizeMm: 20,
-      cutMarginMm: 3,
-      showLabel: true,
-      showCollectionTitle: true,
-    };
-  }
-  if (which === 'rezept') {
-    return {
-      ...print,
-      layout: 'rezept',
-      paper: 'a4',
-      orientation: 'portrait',
-      symbolSizeMm: own.symbolSizeMm ?? 20,
-      cutMarginMm: 1.5,
-      showLabel: true,
-      labelPosition: 'below',
-      labelSizePt: own.labelSizePt ?? 9,
-      cardBorderMm: 0,
-      cardBackground: null,
-      showCollectionTitle: true,
-    };
-  }
-  if (which === 'lied') {
-    return {
-      ...print,
-      layout: 'lied',
-      paper: own.paper ?? 'a4',
-      orientation: own.orientation ?? 'portrait',
-      symbolSizeMm: own.symbolSizeMm ?? 16,
-      cutMarginMm: 1,
-      showLabel: own.showLabel ?? true,
-      labelPosition: own.labelPosition ?? 'below',
-      labelSizePt: own.labelSizePt ?? 9,
-      cardBorderMm: own.cardBorderMm ?? 0,
-      cardRadiusMm: own.cardRadiusMm ?? print.cardRadiusMm,
-      cardBorderColor: own.cardBorderColor ?? print.cardBorderColor,
-      cardBackground: own.cardBackground !== undefined ? own.cardBackground : null,
-      showCollectionTitle: own.showCollectionTitle ?? true,
-      accentColour: own.accentColour ?? '#2c66c8',
-    };
-  }
-  if (which === 'wortkarten' && print.layout !== 'sheet') {
-    return { ...print, layout: 'sheet' };
-  }
-  if (print.layout !== 'strip' && print.layout !== 'sheet') {
-    return { ...print, layout: 'strip' };
-  }
-  return print;
+  return TEMPLATES[which].opens(print, own, board);
 }
 
 /** What this Sammlung has set for its printing, written to it — everything but the household's copyright choice. */
@@ -201,10 +99,10 @@ export function openPrint(ids: string[]): void {
          keeps its own, so this one prints tomorrow as it printed today,
          whatever was set elsewhere in between.
 
-         Not for a Rezept or a Lied. Everything their dialog offers is about
-         this paper — its colour, its small cards — and handed to the
-         household it would be the next Satzstreifen's symbol size. */
-      if (kind() !== 'rezept' && kind() !== 'lied') persistSettings({ ...s.settings, print });
+         Not for a template that keeps its print to itself (`ownPrint`): its
+         colour and its small cards handed to the household would be the next
+         Satzstreifen's symbol size. */
+      if (!TEMPLATES[kind()].ownPrint) persistSettings({ ...s.settings, print });
       void keepPrint(print);
     },
     provider: providerId(),
