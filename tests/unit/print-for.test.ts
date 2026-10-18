@@ -74,6 +74,14 @@ describe('what a template opens the print dialog on', () => {
         });
     });
 
+    it('takes the paper it set for itself, and not the household one', () => {
+      expect(printFor({ ...remembered, paper: 'a3' }, 'lied', null).paper).toBe('a4');
+      expect(printFor(remembered, 'lied', null, { paper: 'a5', orientation: 'landscape' }))
+        .toMatchObject({ paper: 'a5', orientation: 'landscape' });
+      expect(printFor({ ...remembered, cardBorderMm: 1 }, 'lied', null).cardBorderMm).toBe(0);
+      expect(printFor(remembered, 'lied', null, { cardBorderMm: 0.5 }).cardBorderMm).toBe(0.5);
+    });
+
     it('keeps what it set for itself', () => {
       expect(printFor(remembered, 'lied', null, { symbolSizeMm: 22, accentColour: '#2e8b57' }))
         .toMatchObject({ symbolSizeMm: 22, accentColour: '#2e8b57' });

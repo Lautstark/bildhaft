@@ -29,9 +29,14 @@ import { persistSettings } from './settings.ts';
  * for itself wins over the 20 mm it starts at — because a child who needs
  * bigger pictures gets a second page rather than smaller ones.
  *
- * A Lied likewise: A4 standing up, written out as it is sung, its pictures
- * small enough that a Strophe's longest line fits across the page, and its
- * Refrain on a ground of its own colour — blue until it is given another.
+ * A Lied opens the same way: A4 standing up, written out as it is sung, its
+ * pictures small enough that a Strophe's longest line fits across the page,
+ * and its Refrain on a ground of its own colour — blue until it is given
+ * another. Unlike a Rezept it is offered everything a Satzstreifen is — paper,
+ * frames, the words under the pictures, the title — because a song sheet is
+ * printed on A5 for a folder as often as on A4. What it set for itself wins;
+ * the household's choices do not reach it, or a 40 mm strip's frame would be
+ * the next song's.
  *
  * And a template that is not a material never opens on one. The household's
  * remembered layout is whatever was printed last, and when that was an
@@ -95,16 +100,18 @@ export function printFor(
     return {
       ...print,
       layout: 'lied',
-      paper: 'a4',
-      orientation: 'portrait',
+      paper: own.paper ?? 'a4',
+      orientation: own.orientation ?? 'portrait',
       symbolSizeMm: own.symbolSizeMm ?? 16,
       cutMarginMm: 1,
-      showLabel: true,
-      labelPosition: 'below',
+      showLabel: own.showLabel ?? true,
+      labelPosition: own.labelPosition ?? 'below',
       labelSizePt: own.labelSizePt ?? 9,
-      cardBorderMm: 0,
-      cardBackground: null,
-      showCollectionTitle: true,
+      cardBorderMm: own.cardBorderMm ?? 0,
+      cardRadiusMm: own.cardRadiusMm ?? print.cardRadiusMm,
+      cardBorderColor: own.cardBorderColor ?? print.cardBorderColor,
+      cardBackground: own.cardBackground !== undefined ? own.cardBackground : null,
+      showCollectionTitle: own.showCollectionTitle ?? true,
       accentColour: own.accentColour ?? '#2c66c8',
     };
   }
