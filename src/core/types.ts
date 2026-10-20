@@ -789,6 +789,8 @@ export interface PrintSettings {
   markFreeFields: boolean;
   /** An Einkaufsliste: the few lines under its cards that say what the sheets become. */
   showGuide: boolean;
+  /** An Einkaufsliste: the line its cart is drawn in, or null for the usual grey. */
+  cartColour: string | null;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -828,6 +830,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   showPageNumbers: false,
   markFreeFields: false,
   showGuide: true,
+  cartColour: null,
 };
 
 /* ------------------------------------------------------------- settings --- */

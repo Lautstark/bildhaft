@@ -439,16 +439,17 @@
   #print-root .ps-page:last-child { break-after: avoid; page-break-after: avoid; }
 
   /*
-   * A Tafel's colour, to the paper's edge: its @page has no margin (see
-   * applyPageSetup), so the page box takes the margin inside, as padding on
-   * the colour — the preview's page, which the saved PDF is drawn from, is
-   * built the same way.
+   * A Tafel's colour, or an Einkaufsliste board's, to the paper's edge: its
+   * @page has no margin (see applyPageSetup), so every page box takes the
+   * margin inside, as padding on the colour — and on the white of an
+   * Einkaufsliste's other sheets. The preview's page, which the saved PDF is
+   * drawn from, is built the same way.
    */
-  #print-root .ps-page--coloured {
+  #print-root .ps-sheet--bleed .ps-page {
     box-sizing: content-box;
     padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
-    background: var(--page-bg);
   }
+  #print-root .ps-page--coloured { background: var(--page-bg); }
 
   /* shadows .toast: a line of acknowledgement still standing when the print
      starts is not part of the sheet, and only on paper is it taken away. */
@@ -489,6 +490,8 @@
   display: grid;
   place-items: center;
 }
+/* On a coloured page the zones stand white, as a Tafel's cards do on its colour. */
+.ps-page--coloured .ps-zone { background: #fff; }
 /* Where the velcro dot goes. Dashed and pale, so it says "here" without being
    a circle in the way when nothing is stuck on it. */
 .ps-dot {
@@ -509,7 +512,7 @@
   height: 100%;
   overflow: visible;
   fill: none;
-  stroke: #b4b9be;
+  stroke: var(--cart, #b4b9be);
   stroke-width: calc(2px * var(--shop));
   stroke-linecap: round;
   stroke-linejoin: round;

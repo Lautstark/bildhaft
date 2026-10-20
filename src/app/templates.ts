@@ -50,6 +50,8 @@ export interface PrintOffer {
   freeFields?: boolean;
   /** An Einkaufsliste: the guide under its cards. */
   guide?: boolean;
+  /** An Einkaufsliste: the colour of its cart. */
+  cart?: boolean;
 }
 
 /**
@@ -146,7 +148,10 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      card. Facts about this material, not preferences. So the paper is all it
      is asked, and its name: on A3 or A5 the whole of it grows or shrinks by
      the same factor, always lying on its side. The name over the board as
-     everywhere, its size, colour and line. No frame and no background, and the cut lines
+     everywhere, its size, colour and line. A colour behind the board's page,
+     as a Tafel has, and its cart drawn in a colour to go with it — the board
+     only: the cards and their places are cut and stored, not hung up. No
+     frame and no background on a card, and the cut lines
      always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
     cards: true, ownPrint: true,
@@ -163,9 +168,11 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         titleColour: own.titleColour !== undefined ? own.titleColour : null,
         titleLine: own.titleLine ?? false,
         showGuide: own.showGuide ?? true,
+        pageColour: own.pageColour !== undefined ? own.pageColour : null,
+        cartColour: own.cartColour !== undefined ? own.cartColour : null,
       };
     },
-    offers: () => ({ paper: 'size', title: true, guide: true }),
+    offers: () => ({ paper: 'size', page: true, cart: true, title: true, guide: true }),
     /* The paper decides the millimetres again; the name over the board is
        what was just set, and stays. */
     settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, settings, null),

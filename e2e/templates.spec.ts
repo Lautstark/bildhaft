@@ -126,6 +126,19 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
   await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
   await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
+  /* A colour behind the board's page, as a Tafel has, and the cart in a
+     colour to go with it. The board's page only: the cards are cut up. */
+  await page.getByLabel('Seitenfarbe').check();
+  const bg = (at: number) => sheet.locator('.ps-page').nth(at).evaluate((one) => getComputedStyle(one).backgroundColor);
+  await expect.poll(() => bg(0)).toBe('rgb(169, 203, 236)');
+  expect(await bg(1)).toBe('rgb(255, 255, 255)');
+  expect(await sheet.locator('.ps-page').first().locator('.ps-zone').first()
+    .evaluate((zone) => getComputedStyle(zone).backgroundColor)).toBe('rgb(255, 255, 255)');
+  await page.getByLabel('Farbe des Wagens').fill('#2c66c8');
+  await expect.poll(() => sheet.locator('.ps-cart__art').evaluate((art) => getComputedStyle(art).stroke)).toBe('rgb(44, 102, 200)');
+  await page.getByLabel('Seitenfarbe').uncheck();
+  await expect.poll(() => bg(0)).toBe('rgb(255, 255, 255)');
+
   // Its name over the board is set as everywhere: size, colour, a line.
   await page.getByLabel('Linie darunter').check();
   await page.getByLabel('Schriftgröße des Titels').fill('20');

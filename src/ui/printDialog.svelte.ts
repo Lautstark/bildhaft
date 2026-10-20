@@ -211,7 +211,7 @@ export class Printing {
    */
   replan(): void {
     applyPageSetup(this.settings.paper, this.settings.orientation,
-      Boolean(this.options.board) && this.settings.pageColour !== null);
+      (Boolean(this.options.board) || this.settings.layout === 'einkaufsliste') && this.settings.pageColour !== null);
     this.rows = null;
     this.pages = null;
     flushSync();

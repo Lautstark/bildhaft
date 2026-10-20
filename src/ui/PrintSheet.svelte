@@ -36,6 +36,15 @@
   /* A Tafel's colour behind its page. Only a Tafel's: the setting cannot be
      reached from any other template, and must not arrive in one either. */
   let pageColour = $derived(blocks.some((block) => block.kind === 'tafel') ? settings.pageColour : null);
+  /* An Einkaufsliste's, behind its board's page and no other: the cards and
+     their places are cut and stored, not hung up. */
+  const boardColour = (held: Block[]): string | null =>
+    held.some((block) => block.kind === 'shopping-board') ? settings.pageColour : null;
+  /* With either, the paper has no margin of its own and every page carries it
+     inside — a white page beside a coloured one too, or it would print to the
+     edge. printDialog asks the same question of @page. */
+  let bleed = $derived(settings.pageColour !== null
+    && blocks.some((block) => block.kind === 'tafel' || block.kind === 'shopping-board'));
 
   /* A sentence's own words, over its row or under it — a strip and a song line alike. */
   const captionAt = (where: 'above' | 'below'): boolean =>
@@ -199,7 +208,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"
@@ -224,7 +233,8 @@
   style:--recipe={settings.accentColour}
   style:--song={settings.accentColour}
   style:--shop={String(SHOPPING_SCALE[settings.paper])}
+  style:--cart={settings.cartColour}
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.
---><div class="ps-page" class:ps-page--coloured={pageColour !== null}>{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+--><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
