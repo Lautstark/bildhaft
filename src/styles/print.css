@@ -403,35 +403,37 @@
 /* One number governs the material: the zone a laminated card comes back at.
    Everything on all three sheets is measured from it, which is what keeps a
    card, its place on the board and its place in the box the same size. The
-   3 mm is the air a laminated card needs to go into a zone at all. */
-.ps-sheet { --zone: calc(var(--sym) + 2 * var(--cut) + 3mm); }
+   3 mm is the air a laminated card needs to go into a zone at all. Every
+   millimetre here is an A4 sheet's, times --shop: the factor the paper puts on
+   the whole material (SHOPPING_SCALE). */
+.ps-sheet { --shop: 1; --zone: calc(var(--sym) + 2 * var(--cut) + 3mm * var(--shop)); }
 
 .ps-board {
   display: flex;
   align-items: flex-start;
   /* Wide enough for the cart's handle to reach into, because that is the only
      room there is: the two blocks and the handle are the whole sheet. */
-  gap: 24mm;
+  gap: calc(24mm * var(--shop));
 }
 .ps-zones {
   display: grid;
   grid-template-columns: repeat(var(--cols), var(--zone));
-  gap: 2mm;
+  gap: calc(2mm * var(--shop));
   align-content: start;
 }
 .ps-zone {
   width: var(--zone);
   height: var(--zone);
   border: 0.3mm solid #c9c9c9;
-  border-radius: 2mm;
+  border-radius: calc(2mm * var(--shop));
   display: grid;
   place-items: center;
 }
 /* Where the velcro dot goes. Dashed and pale, so it says "here" without being
    a circle in the way when nothing is stuck on it. */
 .ps-dot {
-  width: 5mm;
-  height: 5mm;
+  width: calc(5mm * var(--shop));
+  height: calc(5mm * var(--shop));
   border: 0.3mm dashed #d2d2d2;
   border-radius: 50%;
 }
@@ -439,7 +441,7 @@
 /* The cart is drawn *around* its zones: the svg is the block, the zones sit in
    it, and the handle and wheels reach outside it through overflow. The margins
    are that reach — without them the wheels would be cut by the page edge. */
-.ps-cart { position: relative; margin: 18mm 0 32mm 0; }
+.ps-cart { position: relative; margin: calc(18mm * var(--shop)) 0 calc(32mm * var(--shop)) 0; }
 .ps-cart__art {
   position: absolute;
   inset: 0;
@@ -448,7 +450,7 @@
   overflow: visible;
   fill: none;
   stroke: #b4b9be;
-  stroke-width: 2;
+  stroke-width: calc(2px * var(--shop));
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -468,16 +470,16 @@
   display: flex;
   flex-wrap: wrap;
   align-content: start;
-  gap: 2mm;
+  gap: calc(2mm * var(--shop));
 }
 .ps-place {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: var(--zone);
-  padding-bottom: 1mm;
+  padding-bottom: calc(1mm * var(--shop));
   border: 0.3mm solid #c9c9c9;
-  border-radius: 2mm;
+  border-radius: calc(2mm * var(--shop));
 }
 /* A place already has its frame and is not cut out, so the sheet's cut lines
    stop at its card. */

@@ -380,7 +380,7 @@ export type Block =
   | { kind: 'row'; slots: Slot[] }
   | { kind: 'grid'; slots: Slot[]; cols: number; cellH: string; page: boolean }
   | { kind: 'tafel'; board: PrintBoard; cellH: string }
-  | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number }
+  | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number; k: number }
   | { kind: 'cut'; slots: Slot[] }
   | { kind: 'store'; slots: Slot[]; page: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
@@ -397,6 +397,14 @@ export type Block =
  * chosen — at 25 mm cards the two blocks come to 302 mm and the sheet is 277.
  */
 export const SHOPPING = { list: { cols: 3, rows: 5 }, cart: { cols: 5, rows: 3 } };
+
+/**
+ * How much bigger an Einkaufsliste comes out than on A4, which it was measured
+ * on. All of it by the same factor — cards, zones, the air between them, the
+ * cart — so a card printed on A3 goes into a board printed on A3, and the
+ * sheets hold as many on every paper as they do on A4.
+ */
+export const SHOPPING_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
 /** The air a laminated card needs before it will go into a zone at all. */
 const ZONE_AIR_MM = 3;
@@ -471,12 +479,13 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
        from — and which the cart has to be told, because its drawing *is* the
        block of zones and a hard-coded viewBox would stretch the moment somebody
        changes the card size. */
-    const zoneMm = settings.symbolSizeMm + 2 * settings.cutMarginMm + ZONE_AIR_MM;
+    const k = SHOPPING_SCALE[settings.paper];
+    const zoneMm = settings.symbolSizeMm + 2 * settings.cutMarginMm + ZONE_AIR_MM * k;
     blocks.push({
       kind: 'shopping-board',
-      zoneMm,
-      cartW: SHOPPING.cart.cols * zoneMm + (SHOPPING.cart.cols - 1) * ZONE_GAP_MM,
-      cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM,
+      zoneMm, k,
+      cartW: SHOPPING.cart.cols * zoneMm + (SHOPPING.cart.cols - 1) * ZONE_GAP_MM * k,
+      cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM * k,
     });
     const cards = deck(sentences, provider);
     for (const slots of chunks(cards, SHOPPING_PER_PAGE)) blocks.push({ kind: 'cut', slots });

@@ -47,6 +47,16 @@ describe('what a template opens the print dialog on', () => {
     expect(printFor(remembered, 'einkaufsliste', null)).toMatchObject({
       layout: 'einkaufsliste', paper: 'a4', orientation: 'landscape',
       symbolSizeMm: 20, cutMarginMm: 3, showLabel: true, showCollectionTitle: true,
+      cardBorderMm: 0, cardBackground: null, showCutLines: true,
+    });
+  });
+
+  it('grows and shrinks an Einkaufsliste with the paper it set for itself, lying on its side', () => {
+    expect(printFor(remembered, 'einkaufsliste', null, { paper: 'a3', orientation: 'portrait' })).toMatchObject({
+      paper: 'a3', orientation: 'landscape', symbolSizeMm: 28, cutMarginMm: 4,
+    });
+    expect(printFor(remembered, 'einkaufsliste', null, { paper: 'a5' })).toMatchObject({
+      paper: 'a5', orientation: 'landscape', symbolSizeMm: 14, cutMarginMm: 2,
     });
   });
 

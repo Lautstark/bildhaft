@@ -103,6 +103,31 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(first!.y).toBeGreaterThan(basket!.y);
   expect(last!.x + last!.width).toBeLessThan(basket!.x + basket!.width);
   expect(last!.y + last!.height).toBeLessThan(basket!.y + basket!.height);
+
+  /* The paper is all it is asked, and the paper decides every millimetre:
+     always landscape, and no frame, background or cut-line switch — the cut
+     lines are always on the cards to cut. */
+  const panel = page.locator('.print-view__panel');
+  await expect(panel.getByRole('button', { name: 'Quer', exact: true })).toHaveCount(0);
+  await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
+  await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
+  await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
+  const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
+    .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
+      * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);
+  expect(await symbolMm()).toBeCloseTo(20, 0);
+  for (const [paper, mm] of [['A3', 28], ['A5', 14]] as const) {
+    await panel.getByRole('button', { name: paper, exact: true }).click();
+    await expect.poll(symbolMm).toBeCloseTo(mm, 0);
+    // Still three sheets: nothing outgrows its page on any paper.
+    await expect(sheet.locator('.ps-page')).toHaveCount(3);
+    const fits = await sheet.locator('.ps-page').first().evaluate((sheetPage) =>
+      [...sheetPage.querySelectorAll('.ps-zone')].every((zone) => {
+        const outer = sheetPage.getBoundingClientRect(); const box = zone.getBoundingClientRect();
+        return box.right <= outer.right && box.bottom <= outer.bottom;
+      }));
+    expect(fits).toBe(true);
+  }
 });
 
 /**

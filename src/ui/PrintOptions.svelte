@@ -80,10 +80,13 @@
   { label: 'A5', active: s.settings.paper === 'a5', onPick: () => set('paper', 'a5') },
   { label: 'A4', active: s.settings.paper === 'a4', onPick: () => set('paper', 'a4') },
   { label: 'A3', active: s.settings.paper === 'a3', onPick: () => set('paper', 'a3') },
-], '')}{@render segmented([
+], '')}{#if offer.paper === true}{@render segmented([
   { label: t('ui.portrait'), active: s.settings.orientation === 'portrait', onPick: () => set('orientation', 'portrait') },
   { label: t('ui.landscape'), active: s.settings.orientation === 'landscape', onPick: () => set('orientation', 'landscape') },
-], 'margin-top:6px')}</div>{/if}{#if size || offer.margin || offer.label === 'size'}{@render group(t('ui.group_size'))}{/if}<!--
+], 'margin-top:6px')}{/if}<!--
+  A material whose paper decides its size says what that size comes to here,
+  having no size of its own to say it under.
+-->{#if !size}{@render cardSize()}{/if}</div>{/if}{#if size || offer.margin || offer.label === 'size'}{@render group(t('ui.group_size'))}{/if}<!--
   How big. Cards: the symbol, the card itself, or a grid. Strips and the
   materials: the symbol. A Tafel: its grid is its own, so only the readout. The
   three are one question — which number do you have? — so they sit under one

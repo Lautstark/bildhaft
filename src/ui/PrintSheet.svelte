@@ -19,7 +19,7 @@
   import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
   import PrintCard from './PrintCard.svelte';
   import {
-    BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING,
+    BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING, SHOPPING_SCALE,
     TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
@@ -132,7 +132,8 @@
   and away, which there is room for on a landscape sheet and none for on a
   portrait one. `preserveAspectRatio="none"` is safe because the viewBox is the
   zone block in millimetres — stretch it and the wheels would be eggs.
---><div class="ps-grid ps-board ps-grid--page">{@render shoppingZones(SHOPPING.list.cols, SHOPPING.list.rows, '')}<div class="ps-cart"><svg viewBox="0 0 {block.cartW} {block.cartH}" preserveAspectRatio="none" aria-hidden="true" class="ps-cart__art"><path d="M -5 -5 H {block.cartW + 5} V {block.cartH + 5} H -5 Z" /><path d="M -5 -5 L -13 -14 H -22" /><path d="M -5 {block.cartH + 5} L 4 {block.cartH + 16} H {block.cartW - 7}" /><circle cx="24" cy={block.cartH + 22} r="6" /><circle cx={block.cartW - 21} cy={block.cartH + 22} r="6" /></svg>{@render shoppingZones(SHOPPING.cart.cols, SHOPPING.cart.rows, ' ps-zones--cart')}</div></div>{:else if block.kind === 'cut'}<!--
+  Drawn in the millimetres of an A4 sheet, times the paper's factor `k`.
+-->{@const k = block.k}<div class="ps-grid ps-board ps-grid--page">{@render shoppingZones(SHOPPING.list.cols, SHOPPING.list.rows, '')}<div class="ps-cart"><svg viewBox="0 0 {block.cartW} {block.cartH}" preserveAspectRatio="none" aria-hidden="true" class="ps-cart__art"><path d="M {-5 * k} {-5 * k} H {block.cartW + 5 * k} V {block.cartH + 5 * k} H {-5 * k} Z" /><path d="M {-5 * k} {-5 * k} L {-13 * k} {-14 * k} H {-22 * k}" /><path d="M {-5 * k} {block.cartH + 5 * k} L {4 * k} {block.cartH + 16 * k} H {block.cartW - 7 * k}" /><circle cx={24 * k} cy={block.cartH + 22 * k} r={6 * k} /><circle cx={block.cartW - 21 * k} cy={block.cartH + 22 * k} r={6 * k} /></svg>{@render shoppingZones(SHOPPING.cart.cols, SHOPPING.cart.rows, ' ps-zones--cart')}</div></div>{:else if block.kind === 'cut'}<!--
   The cards carry no word. A card that is handed around in a shop has one job,
   and a word under it makes the picture smaller rather than clearer — the word
   is on the board nowhere and on the storage sheet always.
@@ -186,6 +187,7 @@
   style:--title-rule="{TITLE_RULE_MM}mm"
   style:--recipe={settings.accentColour}
   style:--song={settings.accentColour}
+  style:--shop={String(SHOPPING_SCALE[settings.paper])}
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.

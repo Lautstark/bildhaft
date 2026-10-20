@@ -1,6 +1,6 @@
 import type { Board, CollectionKind, PrintSettings } from '../core/types.ts';
 import { boardOf, defaultAirMm } from '../core/board.ts';
-import { printableArea } from '../ui/printSheet.ts';
+import { printableArea, SHOPPING_SCALE } from '../ui/printSheet.ts';
 
 /**
  * What the print dialog offers a material — which controls, never where.
@@ -17,7 +17,8 @@ import { printableArea } from '../ui/printSheet.ts';
 export interface PrintOffer {
   /** The material's own colour: a Rezept's headings, a Lied's refrain ground. */
   colour?: boolean;
-  paper?: boolean;
+  /** `true`: size and which way up; `size`: the size only, for a material that lies one way. */
+  paper?: boolean | 'size';
   /**
    * How big. `symbol` is one number, with its bounds and a note under it (or
    * the card readout when there is none); `cards` is the card sheet's choice
@@ -71,6 +72,11 @@ export interface Template {
    */
   opens(print: PrintSettings, own: Partial<PrintSettings>, board: Board | null): PrintSettings;
   offers(settings: PrintSettings): PrintOffer;
+  /**
+   * What one setting changed in the dialog does to the others, for a template
+   * where one decides the rest. Absent, a change is only itself.
+   */
+  settles?(settings: PrintSettings): PrintSettings;
 }
 
 const CARD_SHEET: PrintOffer = {
@@ -124,17 +130,27 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   },
 
   /* Brings its own millimetres. Fifteen zones beside fifteen more on one
-     sheet is only possible at 20 mm, measured rather than chosen — and a 3 mm
-     laminating margin, because 5 mm around a 20 mm card is a third of the
-     card. Facts about this material, not preferences. */
+     A4 sheet is only possible at 20 mm, measured rather than chosen — and a
+     3 mm laminating margin, because 5 mm around a 20 mm card is a third of the
+     card. Facts about this material, not preferences. So the paper is all it
+     is asked: on A3 or A5 the whole of it grows or shrinks by the same factor,
+     always lying on its side. No frame and no background, and the cut lines
+     always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
-    cards: true, ownPrint: false,
-    opens: (print) => ({
-      ...print, layout: 'einkaufsliste', paper: 'a4', orientation: 'landscape',
-      symbolSizeMm: 20, cutMarginMm: 3, showLabel: true, showCollectionTitle: true,
-      titleSizePt: 12, titleColour: null, titleLine: false,
-    }),
-    offers: () => ({ frames: true, cutLines: true }),
+    cards: true, ownPrint: true,
+    opens: (print, own) => {
+      const paper = own.paper ?? 'a4';
+      const k = SHOPPING_SCALE[paper];
+      return {
+        ...print, layout: 'einkaufsliste', paper, orientation: 'landscape',
+        symbolSizeMm: Math.round(20 * k), cutMarginMm: Math.round(3 * k * 2) / 2,
+        showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2,
+        cardBorderMm: 0, cardBackground: null, showCutLines: true,
+        showCollectionTitle: true, titleSizePt: 12, titleColour: null, titleLine: false,
+      };
+    },
+    offers: () => ({ paper: 'size' }),
+    settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, { paper: settings.paper }, null),
   },
 
   /* Opens on one A4 page standing up, its name at the top, cards small

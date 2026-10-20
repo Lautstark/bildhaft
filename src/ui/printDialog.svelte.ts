@@ -10,6 +10,7 @@ import {
 import { warmSymbols } from './symbols.ts';
 import { previewToPdf } from './pdf.ts';
 import { LOCALE, t } from '../i18n/index.ts';
+import { TEMPLATES } from '../app/templates.ts';
 
 export interface PrintOptions {
   sentences: Sentence[];
@@ -175,7 +176,8 @@ export class Printing {
   }
 
   set<K extends keyof PrintSettings>(key: K, value: PrintSettings[K]): void {
-    this.settings = { ...this.settings, [key]: value };
+    const next = { ...this.settings, [key]: value };
+    this.settings = TEMPLATES[this.options.kind].settles?.(next) ?? next;
     this.options.onChange(this.settings);
     this.replan();
   }
