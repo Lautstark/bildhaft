@@ -119,6 +119,8 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // The templates a Sammlung can be, named on the tiles in its empty state.
   { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app/Material.svelte' },
   { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/Material.svelte' },
+  // The same templates in the plural, heading their groups in the sidebar.
+  { prefix: 'ui.group_', from: COLLECTION_KINDS, where: 'ui/Sidebar.svelte' },
   // A Rezept's three parts: the heading over each, and the box under it.
   { prefix: 'ui.recipe_', from: RECIPE_PARTS, where: 'ui/Recipe.svelte' },
   { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_label`), where: 'ui/RecipeComposer.svelte' },

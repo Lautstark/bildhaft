@@ -86,29 +86,37 @@
     .map((kind) => ({ kind, rows: s.collections.filter((c) => kindOf(c) === kind) }))
     .filter((group) => group.rows.length > 0));
 
-  /* What is folded, remembered on this device. Sections are open until folded;
-     a template's group is folded until opened — six open groups would be the
-     long list again. */
-  const FOLDS = 'bildhaft.sidebar.folds';
-  const readFolds = (): Record<string, boolean> => {
-    try { return JSON.parse(localStorage.getItem(FOLDS) ?? '{}') as Record<string, boolean>; } catch { return {}; }
-  };
-  let folds = $state<Record<string, boolean>>(readFolds());
-  const isOpen = (id: string, otherwise = true): boolean => folds[id] ?? otherwise;
-  function toggle(id: string, otherwise = true): void {
-    folds = { ...folds, [id]: !isOpen(id, otherwise) };
-    try { localStorage.setItem(FOLDS, JSON.stringify(folds)); } catch { /* a private window keeps nothing */ }
-  }
-  const groupId = (kind: CollectionKind) => `kind:${kind}`;
-  /* A group is open by default only while it holds the Material that is
-     showing — asked, not written down, or every group visited once would stay
-     open and the list would be long again by the end of an afternoon. */
+  /**
+   * What is open: only what holds the thing that is showing.
+   *
+   * Everything else is folded, and nothing is remembered. A press on a heading
+   * opens or folds it until something else is opened, and then the sidebar
+   * folds back around that. Remembered folds were tried first and drifted: a
+   * group opened once stayed open, and by the end of an afternoon the list was
+   * as long as before it had groups.
+   */
   let showingKind = $derived.by(() => {
+    if (s.wortschatz) return null;
     const open = s.collections.find((c) => c.id === s.activeId);
     return open ? kindOf(open) : null;
   });
-  const groupOpen = (kind: CollectionKind) => isOpen(groupId(kind), kind === showingKind);
-  const toggleGroup = (kind: CollectionKind) => toggle(groupId(kind), kind === showingKind);
+  const holds = (id: string): boolean => {
+    if (id === 'words') return s.wortschatz !== null;
+    if (id === 'collections') return showingKind !== null;
+    if (id === 'recent') return showingKind !== null && s.collections.slice(0, RECENT).some((c) => c.id === s.activeId);
+    return id === groupId(showingKind ?? 'satzstreifen') && showingKind !== null;
+  };
+  let pressed = $state<Record<string, boolean>>({});
+  $effect(() => {
+    /* Read only to run again when they change. */
+    void s.activeId; void s.wortschatz;
+    pressed = {};
+  });
+  const isOpen = (id: string): boolean => pressed[id] ?? holds(id);
+  const toggle = (id: string): void => { pressed = { ...pressed, [id]: !isOpen(id) }; };
+  const groupId = (kind: CollectionKind) => `kind:${kind}`;
+  const groupOpen = (kind: CollectionKind) => isOpen(groupId(kind));
+  const toggleGroup = (kind: CollectionKind) => toggle(groupId(kind));
 
   /* The rows are @lautstark/design/collections'. It empties the container it
      is given, so that container is a node this component renders and never
@@ -192,7 +200,7 @@
   do anything, so it waits until there is a word to sort.
 
   Every heading is a button that folds what is under it.
--->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.template_${group.kind}`)}</span><span class="sidebar__count">{group.rows.length}</span></button>{#if groupOpen(group.kind)}<div class="collections sidebar__group-rows" {@attach materialRows(group.rows, false)}></div>{/if}{/each}{:else}<div class="collections" {@attach materialRows(s.collections, true)}></div>{/if}{/if}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { s.wortschatz = null; void handleNewCollection(); onNavigated(); }}>{t('ui.new_collection')}</button></div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
+-->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.group_${group.kind}`)}</span><span class="sidebar__count">{group.rows.length}</span></button>{#if groupOpen(group.kind)}<div class="collections sidebar__group-rows" {@attach materialRows(group.rows, false)}></div>{/if}{/each}{:else}<div class="collections" {@attach materialRows(s.collections, true)}></div>{/if}{/if}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { s.wortschatz = null; void handleNewCollection(); onNavigated(); }}>{t('ui.new_collection')}</button></div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
 ><!--
   A section's heading, which is also what folds it.
 -->{#snippet fold(id: string, label: string, count?: number)}<button class="sidebar__fold" type="button" aria-expanded={isOpen(id)} onclick={() => toggle(id)}><Icon name="chevronRight" /><span>{label}</span>{#if count !== undefined}<span class="sidebar__count">{count}</span>{/if}</button>{/snippet}

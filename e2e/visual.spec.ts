@@ -425,6 +425,8 @@ test('the page footer', async ({ page }) => {
 test('the Wortschatz, empty', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  // Folded while a Material is showing: only what holds the open thing is open.
+  await page.getByRole('button', { name: 'Wortschatz' }).click();
   await page.locator('button.collections__item')
     .filter({ hasText: 'Alle Wörter' }).first().click();
 
