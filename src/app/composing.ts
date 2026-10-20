@@ -2,6 +2,7 @@ import type { RecipePart, Sentence } from '../core/types.ts';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { buildSlots, buildWordSlot } from '../core/match.ts';
 import { buildPartSlot } from '../core/recipe.ts';
+import { buildSayingSlot } from '../core/talk.ts';
 import { findByNormalized, newId, overrideMap, putSentence } from '../db/repo.ts';
 import { withTimeout } from '../core/timeout.ts';
 import { LANG, t } from '../i18n/index.ts';
@@ -40,6 +41,9 @@ const LINES_AT_ONCE = 4;
  * two rows of „La la la" are two rows. Bounded by what timed out this session,
  * which is a handful of lines on a bad day.
  */
+/** How a line is looked up and where it lands: a part of a Rezept, or an Aussage. */
+type LinePart = RecipePart | 'aussage';
+
 const unsettled = new Map<string, { id: string; createdAt: number }[]>();
 
 /** The id a line timed out under before, if it did, taken so no other line gets it. */
@@ -50,7 +54,7 @@ function takeUnsettled(key: string): { id: string; createdAt: number } | undefin
   return first;
 }
 
-const lineKey = (collectionId: string, line: string, part?: RecipePart): string =>
+const lineKey = (collectionId: string, line: string, part?: LinePart): string =>
   `${collectionId}\n${part ?? ''}\n${line}`;
 
 /* What the composer does with what was typed: the reuse hint, and Enter. */
@@ -112,13 +116,15 @@ export async function handleSubmit(): Promise<void> {
  * Shared by the composer and by the three boxes of a Rezept, which differ only
  * in where the lines land: `part` says which part of the recipe, and with it
  * how a line is looked up — a Schritt as a sentence, a Zutat or a Hilfsmittel
- * as one card with its amount kept off the lookup.
+ * as one card with its amount kept off the lookup. `aussage` is a card of a
+ * Plauderbuch, one picture for a line of several words; where it goes in the
+ * book is the caller's, through `made`.
  *
  * `made` hears of every row as it is written, with the line it came from: a
  * Lied has to know which row each line became, to put it where it is sung.
  */
 export async function addLines(
-  raw: string, part?: RecipePart, made?: (line: string, sentence: Sentence) => void,
+  raw: string, part?: LinePart, made?: (line: string, sentence: Sentence) => void,
 ): Promise<string> {
   const collectionId = s.activeId;
   if (!raw.trim() || !s.settings || !collectionId || s.busy) return raw;
@@ -174,7 +180,8 @@ export async function addLines(
              until the tab is closed. */
           slots: await withTimeout(
             words
-              ? (part ? buildPartSlot(line, options) : buildWordSlot(line, options)).then((slot) => [slot])
+              ? (part === 'aussage' ? buildSayingSlot(line, options)
+                : part ? buildPartSlot(line, options) : buildWordSlot(line, options)).then((slot) => [slot])
               : buildSlots(line, options),
             LOOKUP_MS, t('ui.wait_source')),
           collectionId,
@@ -193,7 +200,7 @@ export async function addLines(
              not move when this one lands over it. */
           createdAt: earlier?.createdAt ?? (part ? now + index : now - index),
           updatedAt: now,
-          ...(part ? { part } : {}),
+          ...(part && part !== 'aussage' ? { part } : {}),
         };
         try {
           await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));

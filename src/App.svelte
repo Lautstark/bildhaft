@@ -20,6 +20,7 @@
   import SongComposer from './ui/SongComposer.svelte';
   import PrintView from './ui/PrintView.svelte';
   import RecipeComposer from './ui/RecipeComposer.svelte';
+  import TalkComposer from './ui/TalkComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
   import Banners from './app/Banners.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
@@ -121,7 +122,7 @@
   and the head stay where they are in both; only what is under them changes:
   the material („Bearbeiten"), or the sheet with its pages and its settings
   („Drucken"). The page keeps one width in both, so nothing above moves.
--->{#if s.choosing === s.activeId}{:else if kind() === 'lied'}<SongComposer />{:else if kind() === 'rezept'}<RecipeComposer />{:else}<Composer />{/if}<CollectionHead />{#if s.view === 'print' && s.sentences.length > 0}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if kind() === 'lied'}<SongComposer />{:else if kind() === 'rezept'}<RecipeComposer />{:else if kind() === 'plauderbuch'}<TalkComposer />{:else}<Composer />{/if}<CollectionHead />{#if s.view === 'print' && s.sentences.length > 0}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

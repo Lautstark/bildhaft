@@ -12,6 +12,7 @@ import { resetSymbolResolution } from '../ui/symbols.ts';
 import { kind, providerId, s } from './state.svelte.ts';
 import { writeBoard } from './board.ts';
 import { takeOutOfSong } from './song.ts';
+import { takeOutOfTalk } from './talk.ts';
 import { notify } from './notify.ts';
 
 /**
@@ -290,6 +291,8 @@ export async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
   if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
   /* And out of a Lied, from every place it was sung. */
   if (kind() === 'lied') await takeOutOfSong(sentence);
+  /* And off its page of a Plauderbuch. */
+  if (kind() === 'plauderbuch') await takeOutOfTalk(sentence);
 }
 
 export async function noteUnreadable(id: string): Promise<void> {

@@ -5,7 +5,7 @@ import Printable from './Printable.svelte';
 import {
   applyPageSetup, cardRows, METACOM_COPYRIGHT, paperSize, planPages,
   printableArea, PX_PER_MM, sheetBlocks,
-  type Block, type PrintBoard, type PrintSong, type SheetPlan,
+  type Block, type PrintBoard, type PrintSong, type PrintTalk, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { previewToPdf } from './pdf.ts';
@@ -35,6 +35,8 @@ export interface PrintOptions {
   onPdf?: (pdf: Blob, settings: PrintSettings, pages: number) => Promise<void>;
   /** A Lied, when this is one: its parts as they are sung. */
   song?: PrintSong | null;
+  /** A Plauderbuch, when this is one: its pages in order. */
+  talk?: PrintTalk | null;
   collectionName: string;
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
@@ -144,6 +146,7 @@ export class Printing {
     sentences: this.options.sentences,
     board: this.options.board,
     song: this.options.song,
+    talk: this.options.talk,
     settings: this.settings,
     provider: this.options.provider,
     attribution: this.options.attribution,

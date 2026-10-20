@@ -119,10 +119,20 @@ export function printOptions(): PrintOptions | null {
       lines: at.part.lines.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
     })),
   } : null;
+  /* A Plauderbuch prints whole and in its order: page after page, each with
+     its question, then the cards to cut out for all of them. */
+  const talk = kind() === 'plauderbuch' && open?.talk ? {
+    pages: open.talk.pages.map((page) => ({
+      question: page.question ? byId.get(page.question) ?? null : null,
+      sayings: page.sayings.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
+    })),
+  } : null;
   const chosen = board
     ? placedIds(board).map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x))
     : song
       ? [...new Set(song.parts.flatMap((part) => part.lines))]
+    : talk
+      ? talk.pages.flatMap((page) => [...(page.question ? [page.question] : []), ...page.sayings])
     : kind() === 'rezept'
       ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
       : s.sentences;
@@ -136,6 +146,7 @@ export function printOptions(): PrintOptions | null {
       cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)),
     } : null,
     song,
+    talk,
     collectionName: open?.name ?? 'bildhaft',
     /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
        layout says. Strips are a shape for a sentence: a strip of one symbol

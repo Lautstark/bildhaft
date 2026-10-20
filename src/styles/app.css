@@ -1634,7 +1634,8 @@ footer.footer {
 .templates--wide {
   max-width: none;
   margin: 16px 0 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Four across: seven templates in threes left one alone on the last row. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 @media (max-width: 1000px) { .templates--wide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .templates--wide { grid-template-columns: 1fr; } }
@@ -1656,3 +1657,23 @@ footer.footer {
   border: 1px solid var(--accent);
 }
 .sidebar__new:hover { background: var(--accent); color: var(--accent-ink); }
+
+/* ----------------------------------------------------------- plauderbuch */
+
+/* A Plauderbuch's pages, one under the other, each its own box. The page the
+   box at the top writes onto is outlined, as a Rezept's part is. */
+.talk { display: flex; flex-direction: column; gap: 12px; }
+.talk__page { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); cursor: pointer; transition: outline-color .13s, background .13s; }
+.talk__page--target { outline: 2px solid var(--accent); background: var(--accent-soft); }
+.talk__head { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.talk__pic { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; cursor: pointer; }
+.talk__pic img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.talk__pic--asking { border-style: dashed; color: var(--text-faint); font-weight: 700; }
+.talk__question { margin: 0; font-size: 16px; font-weight: 650; min-width: 0; }
+.talk__question--none { font-size: 14px; font-weight: 400; color: var(--text-faint); }
+.talk__tools { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.talk__page:hover .song__tool, .talk__page:hover .song__acts { opacity: 1; }
+.talk__ask { flex: 1; }
+.talk__sayings { cursor: auto; }
+.talk__page .song__plus { cursor: pointer; }
+.talk__more { display: flex; justify-content: center; }

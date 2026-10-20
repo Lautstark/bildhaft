@@ -901,3 +901,87 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await showSheet(page);
   await expect(page.getByLabel('Copyright-Hinweis drucken')).toBeChecked();
 });
+
+/**
+ * A Plauderbuch is written page by page, as the Plauderplan-Drehbuch is laid
+ * out: a question on each page, the Aussagen to choose from under it.
+ *
+ * Held here: an Aussage is one card with the picture of its last word and the
+ * whole line under it; the box at the top writes onto the outlined page, and
+ * „+ Seite" makes the next one the box's; „✎ Text" writes a page's Aussagen
+ * again and keeps the card of a line it keeps; on paper each page is a
+ * sheet with its question on the band, a free field once, and a field for
+ * each Aussage, going on to another sheet when there are more than six; the
+ * cards follow on sheets of their own, which carry no footer and are not
+ * counted in the page numbers; the paper opens A5 across.
+ */
+test('a Plauderbuch is written page by page, and prints its pages and the cards to cut', async ({ page }) => {
+  await pickTemplate(page, /^Plauderbuch/);
+  await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
+  await expect(page.getByText('Noch keine Aussagen.')).toBeVisible();
+  await expect(page.locator('.empty')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Andere Vorlage wählen' })).toBeVisible();
+
+  await page.getByRole('button', { name: '✎ Frage' }).click();
+  await page.getByLabel('Frage', { exact: true }).fill('Was ich erzählen will');
+  await page.getByLabel('Frage', { exact: true }).press('Enter');
+  const first = page.getByRole('region', { name: 'Was ich erzählen will' });
+  await expect(first.locator('.talk__question')).toHaveText('Was ich erzählen will');
+  await expect(first).toHaveClass(/talk__page--target/);
+
+  await page.getByLabel('Aussage hinzufügen').fill('vom Morgenkreis\nvom Essen');
+  await page.getByLabel('Aussage hinzufügen').press('Enter');
+  await expect(first.locator('.word__name')).toHaveText(['vom Morgenkreis', 'vom Essen']);
+  const essen = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === 'vom Essen'));
+  expect(essen?.slots).toHaveLength(1);
+  expect(essen?.slots[0]?.sourceToken).toBe('Essen');
+
+  // A new page is where the box writes next. Its region is named by its place, having no question.
+  await page.getByRole('button', { name: '+ Seite' }).click();
+  const second = page.getByRole('region', { name: 'Seite 2' });
+  await expect(second).toHaveClass(/talk__page--target/);
+  await page.getByLabel('Aussage hinzufügen').fill('fertig');
+  await page.getByLabel('Aussage hinzufügen').press('Enter');
+  await expect(second.locator('.word__name')).toHaveText(['fertig']);
+  await expect(first.locator('.word__name')).toHaveCount(2);
+
+  // As text: one dropped, the rest reordered and added to — the kept keep their cards.
+  await first.getByRole('button', { name: 'Aussagen von „Was ich erzählen will“ als Text bearbeiten' }).click();
+  const text = page.getByRole('textbox', { name: 'Aussagen von „Was ich erzählen will“ als Text bearbeiten' });
+  await expect(text).toHaveValue('vom Morgenkreis\nvom Essen');
+  const more = ['vom Essen', 'vom Spielen', 'vom Turnen', 'von der Pause', 'vom Malen', 'vom Singen', 'vom Ausflug'];
+  await text.fill(more.join('\n'));
+  await page.getByRole('button', { name: 'Fertig', exact: true }).click();
+  await expect(first.locator('.word__name')).toHaveText(more);
+  const after = await readSentences(page);
+  expect(after.find((row) => row.rawInput === 'vom Essen')!.id).toBe(essen!.id);
+  expect(after.map((row) => row.rawInput)).not.toContain('vom Morgenkreis');
+
+  await showSheet(page);
+  const sheet = page.locator('.preview-frame');
+  await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
+    .toContain('size: 210mm 148mm');
+  // Seven Aussagen go on over two sheets, the question again on the second and no second free field.
+  const pages = sheet.locator('.ps-talk');
+  await expect(pages).toHaveCount(3);
+  await expect(pages.nth(0).locator('.ps-talk__question')).toHaveText('Was ich erzählen will');
+  await expect(pages.nth(1).locator('.ps-talk__question')).toHaveText('Was ich erzählen willweiter');
+  await expect(sheet.locator('.ps-talk__field--free')).toHaveCount(2);
+  expect(await pages.evaluateAll((all) => all.map((one) =>
+    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([6, 1, 1]);
+  await expect(sheet.locator('.ps-talk-cut .ps-talk__word')).toHaveText([...more, 'fertig']);
+
+  // The footer as everywhere — on the book's pages only.
+  await page.getByLabel('Seitenzahlen drucken').check();
+  await expect(sheet.locator('.ps-page__n')).toHaveText(['Seite 1 von 3', 'Seite 2 von 3', 'Seite 3 von 3']);
+  expect(await sheet.locator('.ps-page').evaluateAll((all) => all
+    .filter((one) => one.querySelector('.ps-talk-cut'))
+    .map((one) => one.querySelector('.ps-foot') === null))).not.toContain(false);
+
+  // A page taken out goes with its cards.
+  await showMaterial(page);
+  await second.getByRole('button', { name: '„Seite 2“ löschen' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
+  await expect(page.locator('.talk__page')).toHaveCount(1);
+  await expect.poll(async () => (await readSentences(page)).map((row) => row.rawInput)).not.toContain('fertig');
+});
