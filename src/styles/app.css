@@ -1629,3 +1629,16 @@ footer.footer {
 .templates--wide .tpl b { font-size: 14.5px; }
 .templates--wide .tpl small { font-size: 12px; }
 
+
+/* „+ Neues Material", at the top of the sidebar. The accent at rest, not only
+   on hover: it is the one thing in the sidebar that makes something. */
+.sidebar__new {
+  width: 100%;
+  margin-bottom: 8px;
+  justify-content: flex-start;
+  font-weight: 600;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+}
+.sidebar__new:hover { background: var(--accent); color: var(--accent-ink); }
