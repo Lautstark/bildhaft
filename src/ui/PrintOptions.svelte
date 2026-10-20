@@ -97,7 +97,7 @@
   margin where scissors go, air where nothing is cut. Against a symbol size they
   are added around the card, against a card size they are taken out of it — so
   the note says which, where the number is.
--->{#if offer.margin === 'cut'}{@render numberOpt('opt-cut', t('ui.cut_margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}{#if offer.margin === 'air'}{@render numberOpt('opt-cut', t('ui.card_air'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', t('ui.card_air_note'), (next) => set('cutMarginMm', next))}{/if}<!--
+-->{#if offer.margin === 'cut'}{@render numberOpt('opt-cut', t('ui.cut_margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}{#if offer.margin === 'air'}{@render numberOpt('opt-cut', t('ui.card_air'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', null, (next) => set('cutMarginMm', next))}{/if}<!--
   A Rezept's words always print, so how big they are is all it is asked, and
   that is a size. Where they can be left off, how big sits under whether.
 -->{#if offer.label === 'size'}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/if}{#if offer.colour || offer.label === 'full' || offer.sentence || offer.frames || checks || s.options.provider === 'metacom'}{@render group(t('ui.group_look'))}{/if}{#if offer.colour}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/if}<!--
