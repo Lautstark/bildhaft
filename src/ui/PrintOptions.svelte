@@ -13,7 +13,6 @@
   import type { PrintSettings } from '../core/types.ts';
   import type { Snippet } from 'svelte';
   import { METACOM_COPYRIGHT } from './printSheet.ts';
-  import { MAX_BOARD_SIDE } from '../core/board.ts';
   import type { Printing } from './printDialog.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
   import { t } from '../i18n/index.ts';
@@ -51,17 +50,6 @@
     if (document.activeElement === field) field.blur();
   }
 
-  /* A Tafel's grid. Refreshed rather than bound: the preview is built again
-     on every change to the grid, and a value written over the field being
-     typed in would put the stored number back under the finger. */
-  let colsInput: HTMLInputElement | undefined = $state();
-  let rowsInput: HTMLInputElement | undefined = $state();
-  $effect(() => {
-    const board = s.options.board;
-    if (!board) return;
-    if (colsInput && document.activeElement !== colsInput && colsInput.valueAsNumber !== board.cols) colsInput.value = String(board.cols);
-    if (rowsInput && document.activeElement !== rowsInput && rowsInput.valueAsNumber !== board.rows) rowsInput.value = String(board.rows);
-  });
 </script>
 
 {#snippet numberField(id: string, label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void)}<div class="opt__row"><input class="field" {id} type="number" {min} {max} {step} {value} aria-label={label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} onwheel={leaveOnWheel} /><span class="opt__unit">{unit}</span></div>{/snippet}
@@ -104,7 +92,7 @@
   { label: t('ui.fit_symbol'), active: !gridded && !exact, onPick: () => set('sheetFit', 'size') },
   { label: t('ui.fit_card'), active: exact, onPick: () => set('sheetFit', 'card') },
   { label: t('ui.grid'), active: gridded, onPick: () => set('sheetFit', 'grid') },
-], '')}<span class="small faint">{gridded ? t('ui.grid_note') : exact ? t('ui.card_note') : t('ui.fixed_note')}</span></div>{/if}{#if exact}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-card-w', t('ui.card_width'), s.settings.cardWidthMm, 15, 300, 1, 60, 'mm', null, (next) => set('cardWidthMm', next))}{@render cardHeightOpt()}</div>{@render cardSize()}</div>{/if}{#if gridded}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-cols', t('ui.columns'), s.settings.gridCols, 1, 12, 1, 4, '', null, (next) => set('gridCols', Math.round(next)))}{@render numberOpt('opt-rows', t('ui.rows'), s.settings.gridRows, 1, 12, 1, 3, '', null, (next) => set('gridRows', Math.round(next)))}</div>{@render cardSize()}</div>{/if}{#if cards && !gridded && !exact}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null, (next) => set('symbolSizeMm', next), cardSize)}{/if}{#if size?.kind === 'symbol'}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, size.max, 1, size.fallback, 'mm', size.note ? t(size.note) : null, (next) => set('symbolSizeMm', next), cardSize)}{/if}{#if size?.kind === 'board'}<div class="opt"><div class="opt--pair"><div class="opt"><label for="opt-board-cols">{t('ui.columns')}</label><div class="opt__row"><input bind:this={colsInput} class="field" id="opt-board-cols" type="number" min="1" max={MAX_BOARD_SIDE} step="1" aria-label={t('ui.columns')} onwheel={leaveOnWheel} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && s.options.board) s.options.onBoard?.(Math.round(n), s.options.board.rows); }} /></div></div><div class="opt"><label for="opt-board-rows">{t('ui.rows')}</label><div class="opt__row"><input bind:this={rowsInput} class="field" id="opt-board-rows" type="number" min="1" max={MAX_BOARD_SIDE} step="1" aria-label={t('ui.rows')} onwheel={leaveOnWheel} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && s.options.board) s.options.onBoard?.(s.options.board.cols, Math.round(n)); }} /></div></div></div>{@render cardSize()}</div>{/if}<!--
+], '')}<span class="small faint">{gridded ? t('ui.grid_note') : exact ? t('ui.card_note') : t('ui.fixed_note')}</span></div>{/if}{#if exact}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-card-w', t('ui.card_width'), s.settings.cardWidthMm, 15, 300, 1, 60, 'mm', null, (next) => set('cardWidthMm', next))}{@render cardHeightOpt()}</div>{@render cardSize()}</div>{/if}{#if gridded}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-cols', t('ui.columns'), s.settings.gridCols, 1, 12, 1, 4, '', null, (next) => set('gridCols', Math.round(next)))}{@render numberOpt('opt-rows', t('ui.rows'), s.settings.gridRows, 1, 12, 1, 3, '', null, (next) => set('gridRows', Math.round(next)))}</div>{@render cardSize()}</div>{/if}{#if cards && !gridded && !exact}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null, (next) => set('symbolSizeMm', next), cardSize)}{/if}{#if size?.kind === 'symbol'}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, size.max, 1, size.fallback, 'mm', size.note ? t(size.note) : null, (next) => set('symbolSizeMm', next), cardSize)}{/if}{#if size?.kind === 'board'}<div class="opt">{@render cardSize()}</div>{/if}<!--
   The same millimetres, named for what they are on this material: a cutting
   margin where scissors go, air where nothing is cut. Against a symbol size they
   are added around the card, against a card size they are taken out of it — so

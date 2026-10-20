@@ -154,13 +154,32 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
 
   // A smaller grid keeps what still has a place. Both cards are in the first
-  // row, so 3 × 2 keeps them and the twelve fields become six. The grid is set
-  // in the view „Drucken", under Größe; the Tafel follows it.
-  await showSheet(page);
+  // row, so 3 × 2 keeps them and the twelve fields become six. The grid is the
+  // Tafel's, set over it: typed, or a step at a time.
   await page.getByLabel('Spalten').fill('3');
-  await page.getByLabel('Zeilen').fill('2');
-  await showMaterial(page);
+  await page.getByRole('button', { name: 'Eine Zeile weniger' }).click();
   await expect(cells).toHaveCount(6);
+  await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
+  // A field has its paper's shape: three across and two down on A4 upright
+  // is a field taller than wide, here as on the sheet.
+  await expect(page.locator('.board-head')).toContainText('Feld 63,3 × 131,7 mm');
+  const shape = (await cells.first().boundingBox())!;
+  expect(shape.height / shape.width).toBeCloseTo(131.7 / 63.3, 1);
+  // Marking a field does not move the Tafel: the panel is held at the foot of the window.
+  const before = (await page.locator('.board').boundingBox())!.y;
+  await cells.nth(4).click({ position: { x: 4, y: 4 } });
+  await expect(page.getByRole('group', { name: 'Markierte Felder' })).toBeVisible();
+  expect((await page.locator('.board').boundingBox())!.y).toBe(before);
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  // Smaller again, and the card whose field went comes back to the tray, and that is said.
+  await page.getByLabel('Spalten').fill('1');
+  await expect(cells).toHaveCount(2);
+  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
+  await expect(page.getByText('1 Karte liegt wieder unter „Noch nicht auf der Tafel“.')).toBeVisible();
+  await page.getByRole('button', { name: 'Eine Spalte mehr' }).click();
+  await page.getByRole('button', { name: 'Eine Spalte mehr' }).click();
+  await expect(cells).toHaveCount(6);
+  await page.getByRole('button', { name: '„Apfel“ ins erste freie Feld legen' }).click();
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
 
   // The paper: six fields, two with a card, four free and drawn anyway.
@@ -178,8 +197,10 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
       .map((card) => ({ width: card.offsetWidth, height: card.offsetHeight })));
   expect(free!.width).toBe(full!.width);
   expect(free!.height).toBe(full!.height);
-  // The grid is the Sammlung's, so the dialog does not offer to change it.
-  await expect(page.getByLabel('Spalten')).toHaveCount(1);
+  // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
+  await expect(page.getByLabel('Spalten')).toHaveCount(0);
+  await expect(page.getByText('Feld: 63,3 × 131,7 mm.')).toBeVisible();
+  await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every
      template, so an answer given on a card sheet used to reach this paper
@@ -213,10 +234,8 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await bar.fill(names.join('\n'));
   await bar.press('Enter');
   await expect(page.locator('.tray .word__name')).toHaveCount(24);
-  await showSheet(page);
   await page.getByLabel('Spalten').fill('6');
   await page.getByLabel('Zeilen').fill('4');
-  await showMaterial(page);
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(24);
 

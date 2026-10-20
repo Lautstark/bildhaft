@@ -32,11 +32,6 @@ export interface PrintOptions {
    * button for it.
    */
   onPdf?: (pdf: Blob, settings: PrintSettings, pages: number) => Promise<void>;
-  /**
-   * A Tafel's grid, set from the sheet column: how many fields across and
-   * down. The grid is the Tafel's, not a print setting — this writes it there.
-   */
-  onBoard?: (cols: number, rows: number) => void;
   /** A Lied, when this is one: its parts as they are sung. */
   song?: PrintSong | null;
   collectionName: string;
@@ -245,7 +240,8 @@ export class Printing {
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
     }
-    this.cardSize = t('ui.card_to_cut')
+    /* On a Tafel nothing is cut: what is measured is a field. */
+    this.cardSize = t(this.options.board ? 'ui.field_size' : 'ui.card_to_cut')
       + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
   }
 

@@ -26,13 +26,14 @@
    */
   import type { Board, ProviderId, Sentence, ZoneStyle } from '../core/types.ts';
   import {
-    blockAt, boardOf, firstFree, labelColour, labelField, newZoneId,
+    blockAt, boardOf, firstFree, labelColour, labelField, MAX_BOARD_SIDE, newZoneId,
     placeOn, takeOff, zoneBorder, zoneBox, zoneJoint, zoneMap,
   } from '../core/board.ts';
   import { dissolveZone, leaveZone, setZone } from '../core/board.ts';
   import WordCard from './WordCard.svelte';
   import { activeCollection, s } from '../app/state.svelte.ts';
-  import { handleNewCard, writeBoard } from '../app/board.ts';
+  import { handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
+  import { tafelField } from '../app/print.ts';
   import { t } from '../i18n/index.ts';
 
   let { provider }: { provider: ProviderId } = $props();
@@ -67,6 +68,23 @@
   let placed = $derived(new Set(board.cells));
   let waiting = $derived(s.sentences.filter((one) => !placed.has(one.id)));
   let free = $derived(firstFree(board));
+  /* A field's shape on its paper: a Tafel of four by three on A4 upright has
+     fields twice as tall as wide, and is filled that way here. */
+  let field = $derived(tafelField());
+  const mm = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+
+  /* The grid's counters. Refreshed rather than bound, so a number being typed
+     is not put back under the finger by the write it causes. */
+  let colsInput: HTMLInputElement | undefined = $state();
+  let rowsInput: HTMLInputElement | undefined = $state();
+  $effect(() => {
+    if (colsInput && document.activeElement !== colsInput && colsInput.valueAsNumber !== board.cols) colsInput.value = String(board.cols);
+    if (rowsInput && document.activeElement !== rowsInput && rowsInput.valueAsNumber !== board.rows) rowsInput.value = String(board.rows);
+  });
+  const resize = (cols: number, rows: number) => void resizeOpenBoard(cols, rows);
+  const typed = (input: HTMLInputElement): number | null =>
+    (Number.isFinite(input.valueAsNumber) && input.valueAsNumber >= 1 && input.valueAsNumber <= MAX_BOARD_SIDE
+      ? Math.round(input.valueAsNumber) : null);
 
   /** Which card is being carried, while the drag is ours. */
   let carrying = $state<string | null>(null);
@@ -315,21 +333,24 @@
 </script>
 
 <!--
-  How many fields across and down is set in the sheet column, under „Größe":
-  it is how the page is divided. What is done on the fields themselves —
-  marking them, giving a group a name, a frame, a colour — is done here, in a
-  head that is only there while fields are marked, so the Tafel starts level
-  with the sheet beside it.
--->{#if selected.size > 0}<div class="board-head"><!--
+  How many fields across and down, over the Tafel: the grid is the Tafel's,
+  and making it smaller takes cards off it, which is work on the material and
+  not on the paper. Beside it, how big a field comes out on the paper chosen
+  under „Drucken".
+--><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}{#if field}<span class="board-head__size small faint">{t('ui.board_size', { w: mm(field.width), h: mm(field.height) })}</span>{/if}</div>
+
+{#snippet panel()}<!--
   The panel over the marked fields: how many, and the three things a group can
   have — a name, a frame, a colour behind — each with „Kein" first, each taking
   effect on the spot. „Gruppe entfernen" takes all three away — or, with only
   part of the group marked, „Aus Gruppe nehmen" takes just those fields; „Fertig" only
-  puts the marks down. In the head row rather than floating over the fields: a
-  bar over the first row covered the very tiles the next press was meant for.
---><div class="group-panel" role="group" aria-label={t('ui.selection')} onpointerdown={(event) => event.stopPropagation()}><div class="group-panel__head"><span class="group-panel__count">{selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size })}</span><button class="group-panel__done" type="button" onclick={() => { flushName(); selected = new Set(); }}>{t('ui.done')}</button></div><span class="group-panel__label">{t('ui.group_name')}</span><input bind:this={nameInput} class="field group-panel__name" type="text" placeholder={t('ui.group_name_none')} aria-label={t('ui.group_name')} maxlength="40" oninput={typedName} onblur={flushName} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); flushName(); } }} />{#each [{ key: 'frame' as const, what: t('ui.group_frame'), ownStart: '#3f88e0' }, { key: 'fill' as const, what: t('ui.group_fill'), ownStart: '#d8e9fc' }] as row (row.key)}<span class="group-panel__label">{row.what}</span><div class="group-panel__row" role="group" aria-label={row.what}><button class="group-panel__swatch group-panel__swatch--none{style[row.key] ? '' : ' group-panel__swatch--on'}" type="button" aria-label="{row.what}: {t('ui.none')}" aria-pressed={!style[row.key]} onclick={() => choose({ [row.key]: undefined })}></button>{#each ZONE_COLOURS as colour (colour.name)}<button class="group-panel__swatch{style[row.key] === colour[row.key] ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour[row.key]} aria-label={t('ui.colour_for', { what: row.what, colour: t(colour.name) })} aria-pressed={style[row.key] === colour[row.key]} onclick={() => choose({ [row.key]: colour[row.key] })}></button>{/each}<label class="group-panel__wheel{isOwn(row.key) ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: row.what })}><input class="group-panel__own" type="color" value={style[row.key] ?? row.ownStart} aria-label={t('ui.own_colour_for', { what: row.what })} onchange={(event) => choose({ [row.key]: event.currentTarget.value })} /></label></div>{/each}<div class="group-panel__foot">{#if leaving}<button class="group-panel__remove" type="button" onclick={() => { const indices = [...selected]; selected = new Set(); void writeBoard((one) => leaveZone(one, indices)); }}>{t('ui.leave_group')}</button>{:else}<button class="group-panel__remove" type="button" disabled={!editing} onclick={() => { const id = editing; selected = new Set(); if (id) void writeBoard((one) => dissolveZone(one, id)); }}>{t('ui.remove_group')}</button>{/if}</div></div></div>{/if}
+  puts the marks down. A bar held at the foot of the window, under the Tafel:
+  in the head row it pushed the whole Tafel down the moment a field was
+  marked, and a bar over the first row covered the very tiles the next press
+  was meant for.
+--><div class="group-panel" role="group" aria-label={t('ui.selection')} onpointerdown={(event) => event.stopPropagation()}><div class="group-panel__head"><span class="group-panel__count">{selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size })}</span><button class="group-panel__done" type="button" onclick={() => { flushName(); selected = new Set(); }}>{t('ui.done')}</button></div><span class="group-panel__label">{t('ui.group_name')}</span><input bind:this={nameInput} class="field group-panel__name" type="text" placeholder={t('ui.group_name_none')} aria-label={t('ui.group_name')} maxlength="40" oninput={typedName} onblur={flushName} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); flushName(); } }} />{#each [{ key: 'frame' as const, what: t('ui.group_frame'), ownStart: '#3f88e0' }, { key: 'fill' as const, what: t('ui.group_fill'), ownStart: '#d8e9fc' }] as row (row.key)}<span class="group-panel__label">{row.what}</span><div class="group-panel__row" role="group" aria-label={row.what}><button class="group-panel__swatch group-panel__swatch--none{style[row.key] ? '' : ' group-panel__swatch--on'}" type="button" aria-label="{row.what}: {t('ui.none')}" aria-pressed={!style[row.key]} onclick={() => choose({ [row.key]: undefined })}></button>{#each ZONE_COLOURS as colour (colour.name)}<button class="group-panel__swatch{style[row.key] === colour[row.key] ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour[row.key]} aria-label={t('ui.colour_for', { what: row.what, colour: t(colour.name) })} aria-pressed={style[row.key] === colour[row.key]} onclick={() => choose({ [row.key]: colour[row.key] })}></button>{/each}<label class="group-panel__wheel{isOwn(row.key) ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: row.what })}><input class="group-panel__own" type="color" value={style[row.key] ?? row.ownStart} aria-label={t('ui.own_colour_for', { what: row.what })} onchange={(event) => choose({ [row.key]: event.currentTarget.value })} /></label></div>{/each}<div class="group-panel__foot">{#if leaving}<button class="group-panel__remove" type="button" onclick={() => { const indices = [...selected]; selected = new Set(); void writeBoard((one) => leaveZone(one, indices)); }}>{t('ui.leave_group')}</button>{:else}<button class="group-panel__remove" type="button" disabled={!editing} onclick={() => { const id = editing; selected = new Set(); if (id) void writeBoard((one) => dissolveZone(one, id)); }}>{t('ui.remove_group')}</button>{/if}</div></div>{/snippet}
 
-<div bind:this={grid} class="board" role="list" style:--cols={String(board.cols)}>{#each board.cells as id, index (index)}{@const card = id ? byId.get(id) : undefined}{@const zone = map.zones[index]}{@const box = zoneBox(map, index, '4px', '12px', '-2px')}{@const zoneStyle = zone ? map.styles[zone] : undefined}<!-- A field takes the keyboard, because Space marks it and an arrow walks to
+<div bind:this={grid} class="board" role="list" style:--cols={String(board.cols)} style:--rows={String(board.rows)} style:--field={field ? String(field.width / field.height) : '1'}>{#each board.cells as id, index (index)}{@const card = id ? byId.get(id) : undefined}{@const zone = map.zones[index]}{@const box = zoneBox(map, index, '4px', '12px', '-2px')}{@const zoneStyle = zone ? map.styles[zone] : undefined}<!-- A field takes the keyboard, because Space marks it and an arrow walks to
      the next one; and it says whether it is marked, which is what the panel
      above is counting. Both are what `role="listitem"` has no vocabulary for,
      and the list is what the grid is. -->
@@ -364,3 +385,4 @@
 --><button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => void handleNewCard(index)}>+</button>{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>
 
 <!-- svelte-ignore a11y_no_static_element_interactions --><div class="tray" class:tray--over={overTray} ondragover={(event) => { over(event); overTray = true; }} ondragleave={() => { overTray = false; }} ondrop={(event) => drop(event, (id) => void writeBoard((one) => takeOff(one, id)))}><div class="tray__head"><b>{t('ui.board_tray')}</b><span class="small faint">{t('ui.board_tray_hint')}</span></div><div class="words tray__wall">{#each waiting as sentence (sentence.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === sentence.id} title={t('ui.board_drag_hint')} draggable="true" ondragstart={(event) => cardDragStart(event, sentence.id)} ondragend={clear}><WordCard {sentence} {provider} /><button class="board-card__move" type="button" aria-label={t('ui.board_put_on', { word: caption(sentence) })} disabled={free === -1} onclick={() => void writeBoard((one) => placeOn(one, sentence.id, firstFree(board)))}>↑</button></div>{/each}<button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div></div>
+{#if selected.size > 0}<div class="board-dock">{@render panel()}</div>{/if}

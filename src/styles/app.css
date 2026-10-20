@@ -1166,9 +1166,24 @@ footer.footer {
    fields are the same size as each other and as nothing else, because that is
    what a grid is; a card dropped into one takes the field's size. */
 .rows--tafel { gap: 18px; }
-.board-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; padding: 0 4px; }
-.board-head label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); }
-.board-head__n { width: 4.5em; padding: 4px 6px; }
+.board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 18px; padding: 0 4px; }
+.board-step { display: inline-flex; align-items: center; gap: 6px; }
+.board-step label { color: var(--text-dim); margin-right: 2px; }
+.board-step__btn {
+  width: 28px; height: 28px; padding: 0; cursor: pointer; font: inherit; font-size: 16px; line-height: 1;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text);
+}
+.board-step__btn:hover:not([disabled]) { border-color: var(--accent); }
+.board-step__btn[disabled] { opacity: .4; cursor: default; }
+/* The number between the two buttons, typed into as well: no spinner of its own beside them. */
+.board-step__n { width: 3em; padding: 4px 6px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.board-step__n::-webkit-inner-spin-button, .board-step__n::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.board-head__size { font-variant-numeric: tabular-nums; }
+/* The group panel, held at the foot of the window while fields are marked.
+   It lies over what is under it rather than pushing the Tafel: marking a
+   field must not move the field. */
+.board-dock { position: sticky; bottom: 12px; z-index: 20; display: flex; justify-content: center; pointer-events: none; }
+.board-dock .group-panel { pointer-events: auto; }
 /* Marking fields. A press on a field's air marks it; the card in it keeps
    its own presses, which is why the air is a little wider on a Tafel. */
 .cell { cursor: crosshair; }
@@ -1186,11 +1201,11 @@ footer.footer {
 }
 /* The frame while the pointer is drawn across fields. */
 .board__frame { position: absolute; z-index: 6; border: 2px solid var(--accent); background: rgba(255, 107, 53, .08); border-radius: 8px; pointer-events: none; }
-/* The panel over the marked fields, in the head row: how many, then the
-   three things a group can have, each row starting with „Kein". */
+/* The panel over the marked fields, a bar: how many, then the three things a
+   group can have, each row starting with „Kein", and wrapping where the
+   window is narrow. */
 .group-panel {
-  margin-left: auto;
-  display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; max-width: 100%;
   padding: 10px 14px 12px;
   background: var(--surface); color: var(--text);
   border: 1px solid var(--line); border-radius: 14px;
@@ -1198,12 +1213,10 @@ footer.footer {
   font-size: 13px;
   cursor: default;
 }
-.group-panel__head, .group-panel__foot { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
-.group-panel__head { justify-content: space-between; }
-.group-panel__foot { justify-content: flex-end; margin-top: 2px; }
+.group-panel__head, .group-panel__foot { display: flex; align-items: center; gap: 10px; }
 .group-panel__count { font-weight: 600; }
 .group-panel__label { color: var(--text-dim); }
-.group-panel__name { font: inherit; font-size: 13px; padding: 4px 8px; width: 100%; box-sizing: border-box; }
+.group-panel__name { font: inherit; font-size: 13px; padding: 4px 8px; width: 11em; box-sizing: border-box; }
 .group-panel__row { display: flex; align-items: center; gap: 7px; }
 .group-panel__swatch { width: 22px; height: 22px; padding: 0; cursor: pointer; border: 1px solid rgba(0, 0, 0, .15); border-radius: 50%; background: var(--c); }
 .group-panel__swatch--none {
@@ -1234,7 +1247,12 @@ footer.footer {
      of the main column: a 2 × 2 Tafel is four hand-sized squares, not four
      slabs across the whole screen, and a 12 × 12 one shrinks its tiles
      equally until it fits. */
-  grid-template-columns: repeat(var(--cols), minmax(0, 170px));
+  /* Each tile as wide as the window lets the whole Tafel stand in it at its
+     paper's shape: `--field` is a field's width over its height on paper,
+     and the height left for the Tafel is the window's less the typing box,
+     the Sammlung's head, the counters and the top of the tray — the cards
+     are dragged up from there, so it stays in sight. Never wider than 220px. */
+  grid-template-columns: repeat(var(--cols), minmax(0, min(220px, max(240px, 100vh - 430px) / var(--rows) * var(--field))));
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
@@ -1266,7 +1284,8 @@ footer.footer {
    ladder of slats. A card taller than that stretches every row with it. */
 .cell {
   position: relative;
-  aspect-ratio: 1;
+  box-sizing: border-box;
+  aspect-ratio: var(--field, 1);
   display: grid;
   padding: 12px;
   background: #f6f5f1;

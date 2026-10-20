@@ -1,8 +1,10 @@
 import type { Board, Collection, Sentence, Slot } from '../core/types.ts';
-import { boardOf, placeOn } from '../core/board.ts';
+import { boardOf, placeOn, placedIds, resizeBoard } from '../core/board.ts';
 import { newId, patchCollection, putSentence } from '../db/repo.ts';
 import { activeCollection, s } from './state.svelte.ts';
 import { openPicker } from './editing.ts';
+import { notify } from './notify.ts';
+import { t } from '../i18n/index.ts';
 
 /**
  * Writes to a Tafel, and the card that is made straight into a field.
@@ -24,6 +26,25 @@ export async function writeBoard(change: (board: Board) => Board): Promise<void>
   s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
   // The grid alone: the rest of the copy on screen may be behind the store.
   await patchCollection(next.id, { board });
+}
+
+/**
+ * The open Tafel at another size. A card whose field is gone goes back to the
+ * cards not yet on the Tafel — and that is said, because it happens below the
+ * counter that was pressed, where nobody is looking.
+ */
+export async function resizeOpenBoard(cols: number, rows: number): Promise<void> {
+  const open = activeCollection();
+  if (!open) return;
+  const before = placedIds(boardOf(open)).length;
+  let after = before;
+  await writeBoard((board) => {
+    const next = resizeBoard(board, cols, rows);
+    after = placedIds(next).length;
+    return next.cols === board.cols && next.rows === board.rows ? board : next;
+  });
+  const off = before - after;
+  if (off > 0) notify(off === 1 ? t('ui.board_off_one') : t('ui.board_off', { n: off }));
 }
 
 /**

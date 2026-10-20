@@ -321,6 +321,28 @@ export interface SheetOptions {
   collectionName: string;
 }
 
+/** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
+function reserveMm(creditCount: number, titled: boolean, pageNumbers: boolean): number {
+  return (creditCount > 0 ? creditAllowanceMm(creditCount) : 0)
+    + (titled ? TITLE_ALLOWANCE_MM : 0)
+    + (pageNumbers ? PAGE_NUMBER_MM : 0);
+}
+
+/**
+ * One field of a Tafel on paper, in millimetres: the page the grid is given,
+ * divided by its columns and rows. Asked by the sheet, which draws it, and by
+ * the Tafel on screen, which takes its fields' shape from it — so a field is
+ * as tall for its width while it is filled as when it is printed.
+ */
+export function tafelFieldMm(
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showPageNumbers'>,
+  grid: { cols: number; rows: number }, creditCount: number, titled: boolean,
+): { width: number; height: number } {
+  const page = printableArea(settings.paper, settings.orientation);
+  const height = page.height - reserveMm(creditCount, titled, settings.showPageNumbers);
+  return { width: page.width / grid.cols, height: height / grid.rows };
+}
+
 /**
  * One block of the printable document: the thing a page is packed out of.
  *
@@ -416,14 +438,12 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
   if (title) blocks.push({ kind: 'title', text: title });
 
-  const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
-    + (title ? TITLE_ALLOWANCE_MM : 0)
-    + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
+  const reserve = reserveMm(credits.length, Boolean(title), settings.showPageNumbers);
 
   if (board) {
     blocks.push({
       kind: 'tafel', board,
-      cellH: `${((page.height - reserve) / board.rows).toFixed(3)}mm`,
+      cellH: `${tafelFieldMm(settings, board, credits.length, Boolean(title)).height.toFixed(3)}mm`,
     });
   } else if (settings.layout === 'einkaufsliste') {
     /* The zone in millimetres, which every part of this material is measured

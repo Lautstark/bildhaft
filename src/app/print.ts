@@ -1,6 +1,6 @@
 import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
-import { boardOf, placedIds, resizeBoard, stylesOf, zonesOf } from '../core/board.ts';
-import { writeBoard } from './board.ts';
+import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
+import { METACOM_COPYRIGHT, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, removePdf, writePdf } from '../db/folder.ts';
@@ -178,7 +178,6 @@ export function printOptions(): PrintOptions | null {
       void keepPrint(print);
     },
     onPdf: (pdf, print, pages) => keepPdf(pdf, print, pages),
-    ...(board ? { onBoard: (cols: number, rows: number) => void writeBoard((one) => resizeBoard(one, cols, rows)) } : {}),
     provider: providerId(),
     attribution: provider().attribution,
     onClose: () => undefined,
@@ -195,3 +194,18 @@ export function paperOf(): Pick<PrintSettings, 'paper' | 'orientation'> | null {
 }
 
 
+
+/**
+ * One field of the open Tafel on its paper, in millimetres — what the sheet
+ * will make of it, asked the same way the sheet asks: the same credits under
+ * it, the same name over it. Null for anything that is not a Tafel.
+ */
+export function tafelField(): { width: number; height: number } | null {
+  const open = activeCollection();
+  if (!open || kind() !== 'tafel' || !s.settings) return null;
+  const board = boardOf(open);
+  const print = printFor(printBase(), kind(), board, open.print ?? {});
+  const credits = [provider().attribution, providerId() === 'metacom' && print.showCopyright ? METACOM_COPYRIGHT : null]
+    .filter(Boolean).length;
+  return tafelFieldMm(print, board, credits, print.showCollectionTitle && Boolean(open.name.trim()));
+}
