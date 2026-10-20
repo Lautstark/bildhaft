@@ -92,7 +92,11 @@
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.
--->{#if n > 0}{#if paper}<button class="collection-head__paper small faint" type="button" title={t('ui.view_print')} onclick={() => setView('print')}>{paper}</button>{/if}<span class="segmented collection-head__view" role="group" aria-label={t('ui.view')}><button type="button" aria-pressed={s.view === 'edit'} onclick={() => setView('edit')}>{t('ui.view_edit')}</button><button type="button" aria-pressed={s.view === 'print'} onclick={() => setView('print')}>{t('ui.view_print')}</button></span>{/if}<!--
+-->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied')}<!--
+  A Rezept and a Lied draw their own empty parts, so the empty state's box
+  would be a second „noch leer" over them. What it carried that they do not
+  is the way back to the choice of template, said here, small.
+--><span class="small faint collection-head__other">{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}{#if n > 0}{#if paper}<button class="collection-head__paper small faint" type="button" title={t('ui.view_print')} onclick={() => setView('print')}>{paper}</button>{/if}<span class="segmented collection-head__view" role="group" aria-label={t('ui.view')}><button type="button" aria-pressed={s.view === 'edit'} onclick={() => setView('edit')}>{t('ui.view_edit')}</button><button type="button" aria-pressed={s.view === 'print'} onclick={() => setView('print')}>{t('ui.view_print')}</button></span>{/if}<!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to

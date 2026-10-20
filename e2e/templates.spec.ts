@@ -561,6 +561,64 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
 });
 
 /**
+ * A Rezept is changed where it stands, the way a Lied is.
+ *
+ * Held here: an empty part says so, and no second „noch leer" box stands over
+ * the parts; the part the box writes into is the one outlined; each part takes
+ * lines of its own under it; „✎ Text" writes a part again in the order of the
+ * text, keeping the row of a line it keeps and taking out the one it drops;
+ * and the paper is the Rezept's to choose, as a Lied's is.
+ */
+test('a Rezept is changed part by part, and chooses its paper', async ({ page }) => {
+  await pickTemplate(page, /^Rezept/);
+  await expect(page.getByText('Noch keine Zutaten.')).toBeVisible();
+  await expect(page.getByText('Noch keine Schritte.')).toBeVisible();
+  await expect(page.locator('.empty')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Andere Vorlage wählen' })).toBeVisible();
+
+  const zutaten = page.getByRole('region', { name: 'Zutaten' });
+  const schritte = page.getByRole('region', { name: 'Schritte' });
+  await expect(zutaten).toHaveClass(/recipe__part--target/);
+  await page.locator('.recipe__parts').getByRole('button', { name: 'Schritte', exact: true }).click();
+  await expect(schritte).toHaveClass(/recipe__part--target/);
+  await expect(zutaten).not.toHaveClass(/recipe__part--target/);
+
+  // Under the part itself: the field stays for the next line.
+  await schritte.getByRole('button', { name: '+ Schritt' }).click();
+  for (const step of ['Eier in die Schüssel', 'Rühren', 'Backen']) {
+    await page.getByLabel('Neuer Schritt').fill(step);
+    await page.getByLabel('Neuer Schritt').press('Enter');
+  }
+  await expect(schritte.locator('.row')).toHaveCount(3);
+  const rows = await readSentences(page);
+  const eier = rows.find((row) => row.rawInput === 'Eier in die Schüssel')!.id;
+
+  // As text: one dropped, one new, the rest reordered — and the kept keep their rows.
+  await page.getByRole('button', { name: 'Schritte als Text bearbeiten' }).click();
+  const text = page.getByRole('textbox', { name: 'Schritte als Text bearbeiten' });
+  await expect(text).toHaveValue('Eier in die Schüssel\nRühren\nBacken');
+  await text.fill('Mehl dazu\nEier in die Schüssel\nBacken');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(schritte.locator('.row__title')).toHaveCount(3);
+  await expect.poll(async () => (await schritte.locator('.row__title').evaluateAll((fields) =>
+    fields.map((field) => field.getAttribute('placeholder'))))).toEqual(['Mehl dazu', 'Eier in die Schüssel', 'Backen']);
+  const after = await readSentences(page);
+  expect(after.find((row) => row.rawInput === 'Eier in die Schüssel')!.id).toBe(eier);
+  expect(after.map((row) => row.rawInput)).not.toContain('Rühren');
+
+  // The paper: A5 across, kept by the Rezept.
+  await showSheet(page);
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
+    .toContain('size: 210mm 148mm');
+  await page.reload();
+  await showSheet(page);
+  await expect(page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }))
+    .toHaveAttribute('aria-pressed', 'true');
+});
+
+/**
  * A Lied is pasted whole, and every line that comes back is one row.
  *
  * Held here: an empty Lied shows an empty Strophe and Refrain to begin in; a

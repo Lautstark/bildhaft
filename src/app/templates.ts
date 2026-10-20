@@ -136,14 +136,15 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     offers: () => ({ frames: true, cutLines: true }),
   },
 
-  /* One A4 page standing up, its name at the top, cards small enough that
-     the Zutaten, the Hilfsmittel and the first Schritte share it. The size
-     stays a choice, because a child who needs bigger pictures gets a second
-     page rather than smaller ones. */
+  /* Opens on one A4 page standing up, its name at the top, cards small
+     enough that the Zutaten, the Hilfsmittel and the first Schritte share it.
+     The paper is a choice, as a Lied's is — a recipe goes on the fridge in
+     A4 and into a folder in A5 — and so is the size, because a child who
+     needs bigger pictures gets a second page rather than smaller ones. */
   rezept: {
     cards: false, ownPrint: true,
     opens: (print, own) => ({
-      ...print, layout: 'rezept', paper: 'a4', orientation: 'portrait',
+      ...print, layout: 'rezept', paper: own.paper ?? 'a4', orientation: own.orientation ?? 'portrait',
       symbolSizeMm: own.symbolSizeMm ?? 20, cutMarginMm: 1.5,
       showLabel: true, labelPosition: 'below', labelSizePt: own.labelSizePt ?? 9,
       cardBorderMm: 0, cardBackground: null,
@@ -154,7 +155,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       showPageNumbers: own.showPageNumbers ?? false,
     }),
     offers: () => ({
-      colour: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null }, label: 'size',
+      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null }, label: 'size',
       title: true, pageNumbers: true,
     }),
   },

@@ -1424,13 +1424,20 @@ footer.footer {
 .recipe__box {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 16px;
+  gap: 10px;
+  padding: 8px;
   border-radius: var(--radius);
   outline: 1px solid var(--line);
 }
-.recipe__part { display: flex; flex-direction: column; gap: 10px; }
-.recipe__head { margin: 0; font-size: 15px; font-weight: 650; }
+.recipe__part { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; border-radius: var(--radius-sm); outline: 2px solid transparent; transition: outline-color .13s, background .13s; }
+/* The part the box at the top writes into, outlined: what is typed is seen
+   to land somewhere, without a word to say so. */
+.recipe__part--target { outline-color: var(--accent); background: var(--accent-soft); }
+.recipe__head { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 650; }
+.recipe__head h3 { margin: 0; font: inherit; }
+.recipe__tool { margin-left: auto; }
+.recipe__part:hover .recipe__tool, .recipe__tool:focus-visible { opacity: 1; border-color: var(--line); color: var(--text-dim); }
+.recipe__none { margin: 0; }
 /* The composer's box, smaller: it is one of three on the page, and the big
    type is for the one box a Satzstreifen has. */
 .recipe__type .composer { margin: 0; }
@@ -1541,6 +1548,7 @@ footer.footer {
    because this view is about the paper. */
 .main__inner--work { max-width: 1240px; }
 .collection-head__view { margin-left: auto; }
+.collection-head__other { margin-left: auto; white-space: nowrap; }
 .collection-head__paper { border: 0; background: transparent; padding: 2px 6px; cursor: pointer; white-space: nowrap; }
 .collection-head__paper:hover { color: var(--text); }
 .print-view {

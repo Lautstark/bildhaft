@@ -9,14 +9,12 @@
    * left, because a recipe is typed a part at a time: all the Zutaten, then
    * the Hilfsmittel, then the Schritte.
    */
-  import type { RecipePart } from '../core/types.ts';
   import { RECIPE_PARTS } from '../core/types.ts';
   import TypingBox from './TypingBox.svelte';
   import { addLines } from '../app/composing.ts';
   import { followsDefault, activeCollection, provider, providerReady, s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
-  let part = $state<RecipePart>('zutat');
   let draft = $state('');
   let waiting = $state(false);
   let ready = $derived(providerReady());
@@ -28,7 +26,7 @@
     draft = '';
     waiting = true;
     try {
-      const left = await addLines(raw, part);
+      const left = await addLines(raw, s.recipePart);
       if (left) draft = draft ? `${left}\n${draft}` : left;
     } finally {
       waiting = false;
@@ -36,13 +34,13 @@
   }
 </script>
 
-{#snippet meta()}<span class="segmented recipe__parts" role="group" aria-label={t('ui.recipe_goes_into')}>{#each RECIPE_PARTS as which (which)}<button type="button" aria-pressed={part === which} onclick={() => { part = which; }}>{t(`ui.recipe_${which}`)}</button>{/each}</span><span class="composer__provider"><span>{own ? t('ui.symbols_of_collection') : t('ui.symbols_default')}</span><b style="font-weight:600">{provider().name}{ready ? '' : ` (${t('ui.not_ready')})`}</b></span>{/snippet}
+{#snippet meta()}<span class="segmented recipe__parts" role="group" aria-label={t('ui.recipe_goes_into')}>{#each RECIPE_PARTS as which (which)}<button type="button" aria-pressed={s.recipePart === which} onclick={() => { s.recipePart = which; }}>{t(`ui.recipe_${which}`)}</button>{/each}</span><span class="composer__provider"><span>{own ? t('ui.symbols_of_collection') : t('ui.symbols_default')}</span><b style="font-weight:600">{provider().name}{ready ? '' : ` (${t('ui.not_ready')})`}</b></span>{/snippet}
 
 <TypingBox
   value={draft}
   busy={waiting}
-  placeholder={t(`ui.recipe_${part}_placeholder`)}
-  label={t(`ui.recipe_${part}_label`)}
+  placeholder={t(`ui.recipe_${s.recipePart}_placeholder`)}
+  label={t(`ui.recipe_${s.recipePart}_label`)}
   action={t('ui.translate')}
   {meta}
   focusOnMount

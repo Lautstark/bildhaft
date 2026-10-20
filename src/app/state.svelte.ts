@@ -1,5 +1,5 @@
 import { NARROW } from '@lautstark/design/svelte/sidebar';
-import type { AppSettings, Collection, ProviderId, Sentence } from '../core/types.ts';
+import type { AppSettings, Collection, ProviderId, RecipePart, Sentence } from '../core/types.ts';
 import type { CollectionKind } from '../core/types.ts';
 import { kindOf } from '../core/types.ts';
 import { TEMPLATES } from './templates.ts';
@@ -45,6 +45,9 @@ export class AppState {
      template. This session only: one left empty and opened again later shows
      its template and the way back to the choice instead. */
   choosing = $state<string | null>(null);
+  /* Which part of a Rezept the box at the top writes into. Here rather than
+     in the box, because the Rezept below marks that part. */
+  recipePart = $state<RecipePart>('zutat');
 
   draft = $state('');
   reuse = $state.raw<Sentence | null>(null);

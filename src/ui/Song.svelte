@@ -27,6 +27,7 @@
   import { confirmDialog } from './dialog.ts';
   import { addLinesToPart, addRefrain, addStrophe, partText, removePlace, rewritePart } from '../app/song.ts';
   import { activeCollection, s } from '../app/state.svelte.ts';
+  import { inTurn } from '../app/inTurn.ts';
   import { t } from '../i18n/index.ts';
 
   let { provider }: { provider: ProviderId } = $props();
@@ -73,13 +74,16 @@
     before = '';
   }
 
-  async function sendLine(): Promise<void> {
+  const send = inTurn();
+  function sendLine(): void {
     const raw = line;
     const into = typing;
-    if (into?.into !== 'part' || !raw.trim() || s.busy) return;
+    if (into?.into !== 'part' || !raw.trim()) return;
     line = '';
-    const left = await addLinesToPart(into.id, raw);
-    if (left) line = left;
+    send(async () => {
+      const left = await addLinesToPart(into.id, raw);
+      if (left) line = line ? `${left}\n${line}` : left;
+    });
   }
 
   /* A part that is not there yet is written whole, in the same field „✎ Text"
@@ -98,9 +102,12 @@
   }
 
   function lineKeys(event: KeyboardEvent): void {
-    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void sendLine(); }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendLine(); }
     if (event.key === 'Escape') { event.preventDefault(); typing = null; }
   }
+  /* Not disabled while a line is looked up: a disabled field drops the
+     focus, and the field went with it, so the next line had nowhere to go.
+     A line typed meanwhile waits until Enter finds the source free. */
   /* Left empty, the field goes; left with something in it, it stays, so
      nothing typed is lost by clicking elsewhere. A moment after, not at
      once: the click that took the focus away lands on whatever it was aimed
@@ -177,7 +184,7 @@
   function focused(node: HTMLElement): void { node.focus(); }
 </script>
 
-{#snippet adding(into: Typing, name: string)}{#if isTyping(into)}<div class="song__add"><input class="song__line-input" use:focused bind:value={line} disabled={s.busy} aria-label={t('ui.song_line_in', { part: name })} placeholder={t('ui.song_line_in', { part: name })} onkeydown={lineKeys} onblur={lineLeft} /><button class="btn sm" type="button" disabled={s.busy || !line.trim()} onclick={() => void sendLine()}>{t('ui.song_add')}</button></div>{:else}<button class="song__plus" type="button" onclick={() => startTyping(into)}>{t('ui.song_add_line')}</button>{/if}{/snippet}
+{#snippet adding(into: Typing, name: string)}{#if isTyping(into)}<div class="song__add"><input class="song__line-input" use:focused bind:value={line} aria-label={t('ui.song_line_in', { part: name })} placeholder={t('ui.song_line_in', { part: name })} onkeydown={lineKeys} onblur={lineLeft} /><button class="btn sm" type="button" disabled={!line.trim()} onclick={sendLine}>{t('ui.song_add')}</button></div>{:else}<button class="song__plus" type="button" onclick={() => startTyping(into)}>{t('ui.song_add_line')}</button>{/if}{/snippet}
 
 {#snippet part(at: SungPart, place: number)}{@const name = label(at)}<section class="song__part{at.kind === 'refrain' ? ' song__part--refrain' : ''}" aria-label={name}><div class="song__head"><h3>{name}</h3>{#if at.first && editing !== at.part.id}<button class="song__tool" type="button" aria-label={t('ui.song_edit_part', { part: name })} onclick={() => startEditing(at.part.id)}>{t('ui.song_edit')}</button>{/if}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.song_delete_part', { part: name })} aria-label={t('ui.song_delete_part', { part: name })} onclick={() => void take(at, place)}><Icon name="trash" /></button></span></div>{#if editing === at.part.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.song_edit_part', { part: name })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span class="small faint">{change || (at.kind === 'refrain' && times.size > 0 ? t('ui.song_refrain_everywhere') : '')}</span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}<div class="song__lines">{#if at.kind === 'refrain' && !at.first && !unfolded.includes(place)}<button class="song__folded" type="button" onclick={() => { unfolded = [...unfolded, place]; }}>{t('ui.song_folded', { n: at.part.lines.length })}</button>{:else}{#each at.part.lines as id, k (k)}{@const sentence = byId.get(id)}{#if sentence}<Row {sentence} {provider} sung={times.get(id) ?? 1} bare />{/if}{/each}{#if at.first}{@render adding({ into: 'part', id: at.part.id }, name)}{/if}{/if}</div>{/if}</section>{/snippet}
 
