@@ -266,6 +266,11 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await showSheet(page);
   await expect(page.getByLabel('Leere Felder gestrichelt drucken')).toBeChecked();
   await expect(page.locator('.preview-frame .ps-card__place')).toHaveCount(4);
+  // The frame's thickness, corners and colour stand right under its check, not under this one.
+  await page.getByLabel('Rahmen um jede Karte').check();
+  const colour = await page.locator('#opt-border-color').boundingBox();
+  const dashed = await page.getByLabel('Leere Felder gestrichelt drucken').boundingBox();
+  expect(colour!.y).toBeLessThan(dashed!.y);
 });
 
 /**
