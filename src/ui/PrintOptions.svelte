@@ -36,7 +36,7 @@
   let exact = $derived(cards && s.settings.sheetFit === 'card');
   let framed = $derived(s.settings.cardBorderMm > 0 || (Boolean(offer.stripFrame) && s.settings.stripFrame));
   let checks = $derived(Boolean(offer.cutLines || offer.onePerPage || offer.songChecks
-    || offer.title || offer.pageNumbers));
+    || offer.title || offer.pageNumbers || offer.guide));
 
   const set = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => s.set(key, value);
 
@@ -133,7 +133,7 @@
 -->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.title}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}<!--
   Once it prints: how big, which colour, and a line under it — in one line
   under the check, as the label's where and how big are.
--->{#if s.settings.showCollectionTitle}<div class="opt__sub">{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
+-->{#if s.settings.showCollectionTitle}<div class="opt__sub">{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}{/if}{#if offer.guide}{@render check(t('ui.shop_guide_print'), s.settings.showGuide, (next) => set('showGuide', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
   METACOM only. ARASAAC's attribution is a licence condition and prints whether
   anyone asks for it or not, so offering to switch it off would be offering
   something bildhaft will not do.

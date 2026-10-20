@@ -787,6 +787,8 @@ export interface PrintSettings {
    * Off, which prints a free field as nothing — a field left free for air.
    */
   markFreeFields: boolean;
+  /** An Einkaufsliste: the few lines under its cards that say what the sheets become. */
+  showGuide: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -825,6 +827,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   songRefrainOnce: false,
   showPageNumbers: false,
   markFreeFields: false,
+  showGuide: true,
 };
 
 /* ------------------------------------------------------------- settings --- */

@@ -48,6 +48,8 @@ export interface PrintOffer {
   pageNumbers?: boolean;
   /** A Tafel: its free fields drawn dashed, as places for cards to come. */
   freeFields?: boolean;
+  /** An Einkaufsliste: the guide under its cards. */
+  guide?: boolean;
 }
 
 /**
@@ -160,9 +162,10 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         titleSizePt: own.titleSizePt ?? 12,
         titleColour: own.titleColour !== undefined ? own.titleColour : null,
         titleLine: own.titleLine ?? false,
+        showGuide: own.showGuide ?? true,
       };
     },
-    offers: () => ({ paper: 'size', title: true }),
+    offers: () => ({ paper: 'size', title: true, guide: true }),
     /* The paper decides the millimetres again; the name over the board is
        what was just set, and stays. */
     settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, settings, null),

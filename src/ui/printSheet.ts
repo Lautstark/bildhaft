@@ -563,7 +563,7 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
       cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM * k,
     });
     const cards = deck(sentences, provider);
-    chunks(cards, SHOPPING_PER_PAGE).forEach((slots, at) => blocks.push({ kind: 'cut', slots, guide: at === 0 }));
+    chunks(cards, SHOPPING_PER_PAGE).forEach((slots, at) => blocks.push({ kind: 'cut', slots, guide: settings.showGuide && at === 0 }));
     const stored = chunks(cards, SHOPPING_PER_PAGE);
     stored.forEach((slots, at) => blocks.push({ kind: 'store', slots, page: at < stored.length - 1 }));
   } else if (settings.layout === 'rezept') {

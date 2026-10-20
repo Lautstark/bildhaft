@@ -156,7 +156,7 @@
 --><div class="ps-grid ps-cut ps-grid--page">{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}{#if block.guide}<!--
   Under the first sheet of cards, which has the room: what the three sheets
   become, for whoever is handed them without the person who printed them.
---><section class="ps-guide"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><ol><li>{t('ui.shop_guide_1')}</li><li>{t('ui.shop_guide_2')}</li><li>{t('ui.shop_guide_3')}</li><li>{t('ui.shop_guide_4')}</li><li>{t('ui.shop_guide_5')}</li></ol></section>{/if}</div>{:else if block.kind === 'store'}<!--
+--><section class="ps-guide"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><ol><li>{t('ui.shop_guide_1')}</li><li>{t('ui.shop_guide_2')}</li><li>{t('ui.shop_guide_3')}</li></ol></section>{/if}</div>{:else if block.kind === 'store'}<!--
   The storage sheet is the part most templates leave out and without which the
   material is in a bag by the third week: every card has a labelled place, with
   its symbol printed faintly so a child finds it without reading and the word so

@@ -96,7 +96,11 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(await sheet.locator('.ps-place .ps-card').first().evaluate(dashed)).toBe(false);
 
   // The second sheet says, under its cards, what the three sheets become.
-  await expect(sheet.locator('.ps-page').nth(1).locator('.ps-guide h2')).toHaveText('So wird daraus eine Einkaufsliste');
+  await expect(sheet.locator('.ps-page').nth(1).locator('.ps-guide h2')).toHaveText('So geht’s');
+  await expect(sheet.locator('.ps-guide')).toHaveCount(1);
+  await page.getByLabel('Anleitung drucken').uncheck();
+  await expect(sheet.locator('.ps-guide')).toHaveCount(0);
+  await page.getByLabel('Anleitung drucken').check();
   await expect(sheet.locator('.ps-guide')).toHaveCount(1);
   /* A sheet's own break stays out of its page box: on paper it sent the
      page's foot, and the copyright line with it, onto the next sheet. */
