@@ -156,7 +156,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
 
   /* Opens on A4 standing up, written out as it is sung, pictures small enough
      that a Strophe's longest line fits across, the Refrain on a ground of its
-     own colour — blue until it is given another. Offered what a Satzstreifen
+     own colour — blue until it is given another. No line of text over the
+     pictures unless asked for: the person singing knows the words, and the
+     sheet is for whoever reads the pictures. Offered what a Satzstreifen
      is, because a song sheet goes into an A5 folder as often as onto the
      wall. What it set for itself wins, and the household's does not reach
      it, or a 40 mm strip's frame would be the next song's. */
@@ -176,7 +178,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       cardBorderColor: own.cardBorderColor ?? print.cardBorderColor,
       cardBackground: own.cardBackground !== undefined ? own.cardBackground : null,
       showCollectionTitle: own.showCollectionTitle ?? true,
-      showSentenceText: own.showSentenceText ?? true,
+      showSentenceText: own.showSentenceText ?? false,
       showPageNumbers: own.showPageNumbers ?? false,
       songRefrainOnce: own.songRefrainOnce ?? false,
       accentColour: own.accentColour ?? '#2c66c8',

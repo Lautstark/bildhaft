@@ -613,7 +613,10 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await page.getByLabel('Überschriften drucken (Strophe, Refrain)').uncheck();
   await expect(sheet.locator('.ps-song-head')).toHaveCount(0);
 
-  // The line as written, above its pictures, as a strip has it — and off again.
+  // The line as written, above its pictures, as a strip has it: off until
+  // asked for, then on, and off again.
+  await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
+  await page.getByLabel('Satztext über der Reihe').check();
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(13);
   await page.getByLabel('Satztext über der Reihe').uncheck();
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
