@@ -142,8 +142,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      A4 sheet is only possible at 20 mm, measured rather than chosen — and a
      3 mm laminating margin, because 5 mm around a 20 mm card is a third of the
      card. Facts about this material, not preferences. So the paper is all it
-     is asked: on A3 or A5 the whole of it grows or shrinks by the same factor,
-     always lying on its side. No frame and no background, and the cut lines
+     is asked, and its name: on A3 or A5 the whole of it grows or shrinks by
+     the same factor, always lying on its side. The name over the board as
+     everywhere, its size, colour and line. No frame and no background, and the cut lines
      always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
     cards: true, ownPrint: true,
@@ -155,11 +156,16 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         symbolSizeMm: Math.round(20 * k), cutMarginMm: Math.round(3 * k * 2) / 2,
         showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2,
         cardBorderMm: 0, cardBackground: null, showCutLines: true,
-        showCollectionTitle: true, titleSizePt: 12, titleColour: null, titleLine: false,
+        showCollectionTitle: own.showCollectionTitle ?? true,
+        titleSizePt: own.titleSizePt ?? 12,
+        titleColour: own.titleColour !== undefined ? own.titleColour : null,
+        titleLine: own.titleLine ?? false,
       };
     },
-    offers: () => ({ paper: 'size' }),
-    settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, { paper: settings.paper }, null),
+    offers: () => ({ paper: 'size', title: true }),
+    /* The paper decides the millimetres again; the name over the board is
+       what was just set, and stays. */
+    settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, settings, null),
   },
 
   /* Opens on one A4 page standing up, its name at the top, cards small

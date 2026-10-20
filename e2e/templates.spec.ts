@@ -95,6 +95,13 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(await sheet.locator('.ps-cut .ps-card').first().evaluate(dashed)).toBe(true);
   expect(await sheet.locator('.ps-place .ps-card').first().evaluate(dashed)).toBe(false);
 
+  // The second sheet says, under its cards, what the three sheets become.
+  await expect(sheet.locator('.ps-page').nth(1).locator('.ps-guide h2')).toHaveText('So wird daraus eine Einkaufsliste');
+  await expect(sheet.locator('.ps-guide')).toHaveCount(1);
+  /* A sheet's own break stays out of its page box: on paper it sent the
+     page's foot, and the copyright line with it, onto the next sheet. */
+  expect(await page.locator('#print-root .ps-page .ps-board').evaluate((board) => getComputedStyle(board).breakAfter)).toBe('auto');
+
   // The basket contains its zones, with air on every side.
   const basket = await sheet.locator('.ps-cart__art path').first().boundingBox();
   const first = await sheet.locator('.ps-zones--cart .ps-zone').first().boundingBox();
@@ -112,6 +119,13 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
   await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
   await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
+  // Its name over the board is set as everywhere: size, colour, a line.
+  await page.getByLabel('Linie darunter').check();
+  await page.getByLabel('Schriftgröße des Titels').fill('20');
+  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await panel.getByRole('button', { name: 'A3', exact: true }).click();
+  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await panel.getByRole('button', { name: 'A4', exact: true }).click();
   const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
     .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
       * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);

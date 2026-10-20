@@ -288,11 +288,13 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
 
   // A page break has to be a real break, not a gap: with more cards than cells
-  // the second page starts a new sheet.
+  // the second page starts a new sheet. The page box breaks, not the grid in
+  // it — a grid breaking of its own sent the page's foot onto the next sheet.
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
   await expect(page.locator('.preview-frame .ps-grid')).toHaveCount(2);
-  expect(await page.locator('.preview-frame .ps-grid').first()
-    .evaluate((el: HTMLElement) => getComputedStyle(el).breakAfter)).toBe('page');
+  const grid1 = page.locator('.preview-frame .ps-grid').first();
+  expect(await grid1.evaluate((el: HTMLElement) => getComputedStyle(el.closest('.ps-page')!).breakAfter)).toBe('page');
+  expect(await grid1.evaluate((el: HTMLElement) => getComputedStyle(el).breakAfter)).toBe('auto');
 });
 
 test('a card frame is drawn inside the cut margin, not on it', async ({ page }) => {
