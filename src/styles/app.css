@@ -1629,13 +1629,4 @@ footer.footer {
 .templates--wide .tpl__art-box { height: 92px; }
 .templates--wide .tpl b { font-size: 14.5px; }
 .templates--wide .tpl small { font-size: 12px; }
-.tpl__mine {
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid var(--surface-3);
-  font-size: 11.5px;
-  color: var(--text-faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+

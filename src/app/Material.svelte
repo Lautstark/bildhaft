@@ -56,14 +56,6 @@
     await chooseTemplate(which);
     s.choosing = null;
   }
-
-  /** What of this kind is already there, the open one aside. */
-  function mine(which: CollectionKind): string {
-    const others = s.collections.filter((c) => c.id !== s.activeId && kindOf(c) === which);
-    if (others.length === 0) return t('ui.template_mine_none');
-    if (others.length === 1) return t('ui.template_mine_one', { name: others[0].name });
-    return t('ui.template_mine', { name: others[0].name, n: others.length - 1 });
-  }
 </script>
 
 {#if choosing}<!--
@@ -71,9 +63,8 @@
   answer is a click. No box to type into above it: every template has its own
   — the Lied a paste box, the Rezept three fields, the Tafel a grid first — so
   a shared one in front of them would be a second box that has to guess which
-  of those it is. Under each tile, what of that kind is already there, which
-  is how somebody recognises the one they mean faster than by its drawing.
---><div class="pick"><p class="pick__ask">{t('ui.empty_collection')}</p><p class="small muted pick__hint">{t('ui.empty_collection_hint')}</p><div class="templates templates--wide">{#each COLLECTION_KINDS as which (which)}<button class="tpl" type="button" onclick={() => void pick(which)}><span class="tpl__art-box"><TemplateArt kind={which} /></span><span><b>{t(`ui.template_${which}`)}</b><small>{t(`ui.template_${which}_note`)}</small></span><span class="tpl__mine">{mine(which)}</span></button>{/each}</div></div>{:else if empty}<!--
+  of those it is.
+--><div class="pick"><p class="pick__ask">{t('ui.empty_collection')}</p><p class="small muted pick__hint">{t('ui.empty_collection_hint')}</p><div class="templates templates--wide">{#each COLLECTION_KINDS as which (which)}<button class="tpl" type="button" onclick={() => void pick(which)}><span class="tpl__art-box"><TemplateArt kind={which} /></span><span><b>{t(`ui.template_${which}`)}</b><small>{t(`ui.template_${which}_note`)}</small></span></button>{/each}</div></div>{:else if empty}<!--
   What an empty Material says once its template is chosen: which one, and the
   way back to the choice while there is still nothing to convert.
 --><div class="empty"><b>{t('ui.collection_empty')}</b><small>{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></small><!--
