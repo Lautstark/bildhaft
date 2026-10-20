@@ -645,7 +645,7 @@ test('a Lied holds a repeated line once, and prints the song written out', async
  * is sung there, and „+ Refrain" sings it once more.
  */
 test('a Lied grows and shrinks part by part', async ({ page }) => {
-  await page.getByRole('button', { name: /^Lied/ }).click();
+  await pickTemplate(page, /^Lied/);
   const refrain = ['Ich geh mit meiner Laterne', 'Hier unten leuchten wir'];
   const rab = 'Rabimmel, rabammel, rabum';
   const songBox = page.getByLabel('Liedzeile eingeben');
