@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import { mockArasaac } from './arasaac-mock.ts';
-import { backToPrint, cardSheet, openLook, showSheet, translateAll } from './helpers.ts';
+import { backToPrint, cardSheet, openLook, showMaterial, showSheet, translateAll } from './helpers.ts';
 
 /** CSS reference resolution: 96px per inch. */
 const mm = (px: number) => +(px / (96 / 25.4)).toFixed(2);
@@ -559,6 +559,7 @@ test('the credit sits at the foot of every page, whatever the layout', async ({ 
  * same place on every page, full or not.
  */
 test('the foot does not move on a full page', async ({ page }) => {
+  await showMaterial(page);
   await translateAll(page, [
     'Der Hund spielt im Garten', 'Wir gehen heute schwimmen', 'Die Katze schläft',
     'Ich trinke Wasser', 'Mama kocht Suppe', 'Wir malen ein Bild', 'Papa liest ein Buch',
