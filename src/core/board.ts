@@ -415,13 +415,28 @@ export function labelColour(style: ZoneStyle | undefined): string {
   return '#666';
 }
 
-/** A colour at a little over half its light — `#rgb` and `#rrggbb` only; anything else comes back as it was. */
+/**
+ * The same hue, dark enough to read on paper and as rich as a pale fill
+ * allows — `#rgb` and `#rrggbb` only; anything else comes back as it was.
+ * Darkening each channel by half kept a pastel's greyness, so a peach group
+ * was named in a muddy brown; holding the hue and setting the lightness gives
+ * the dark orange of the same peach. A grey fill stays a grey.
+ */
 export function shade(colour: string): string {
   const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(colour.trim());
   if (!m) return colour;
   const hex = m[1].length === 3 ? [...m[1]].map((c) => c + c).join('') : m[1];
-  const part = (i: number) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.55);
-  return `rgb(${part(0)}, ${part(2)}, ${part(4)})`;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const light = (max + min) / 2;
+  const chroma = max - min;
+  const sat = chroma === 0 ? 0 : chroma / (1 - Math.abs(2 * light - 1));
+  const hue = chroma === 0 ? 0
+    : max === r ? 60 * (((g - b) / chroma) % 6)
+    : max === g ? 60 * ((b - r) / chroma + 2)
+    : 60 * ((r - g) / chroma + 4);
+  return `hsl(${Math.round((hue + 360) % 360)}, ${Math.round(Math.min(sat, 0.75) * 100)}%, 32%)`;
 }
 
 /**

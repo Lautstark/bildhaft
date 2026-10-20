@@ -186,8 +186,10 @@ describe('a group on fields', () => {
     expect(labelColour({ frame: '#f0b323', fill: '#fff1b3' })).toBe('#f0b323');
     expect(labelColour({ fill: '#fff1b3' })).toBe(shade('#fff1b3'));
     expect(labelColour({ name: 'allein' })).toBe('#666');
-    expect(shade('#ffffff')).toBe('rgb(140, 140, 140)');
-    expect(shade('#fff')).toBe('rgb(140, 140, 140)');
+    // A pale peach is named in a dark orange of its own hue, not a muddy brown.
+    expect(shade('#ffc078')).toBe('hsl(32, 75%, 32%)');
+    expect(shade('#ffffff')).toBe('hsl(0, 0%, 32%)');
+    expect(shade('#fff')).toBe('hsl(0, 0%, 32%)');
     expect(shade('tomato')).toBe('tomato');
   });
 });
