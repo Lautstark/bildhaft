@@ -107,8 +107,9 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 26mm;
-  height: 26mm;
+  /* titlePictureMm() in printSheet.ts: it goes with the name's size. */
+  width: var(--title-pic);
+  height: var(--title-pic);
   padding: 1.5mm;
   border: 0.3mm solid #d9d3d1;
   border-radius: 2.5mm;

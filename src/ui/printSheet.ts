@@ -97,6 +97,18 @@ export function applyPageSetup(paper: PaperSize, orientation: Orientation, bleed
  */
 export const METACOM_COPYRIGHT = 'METACOM Symbole © Annette Kitzinger';
 
+/** The licence notice for these symbols, when the person asked for it printed. Only METACOM has one. */
+export const copyrightFor = (provider: ProviderId, wanted: boolean): string | null =>
+  provider === 'metacom' && wanted ? METACOM_COPYRIGHT : null;
+
+/**
+ * The lines at the foot of every page: where the symbols come from, then their
+ * notice. One list, asked by the sheet that prints it and by the Tafel on
+ * screen that sizes its fields from the room it leaves.
+ */
+export const creditLines = (attribution: string | null, copyright: string | null): string[] =>
+  [attribution, copyright].filter((line): line is string => Boolean(line));
+
 /**
  * Where the printout came from, written out in full.
  *
@@ -119,21 +131,36 @@ export const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
  * page and an obviously wrong printout. Reserved on every page rather than only
  * the last, because the alternative is cards of two different sizes in one deck.
  *
- * Sized rather than guessed: the block is its own margin and rule plus two
- * lines per credit and one more. Each credit is allowed two lines, because
- * ARASAAC's is a sentence long and wraps on a narrow page where METACOM's does
- * not. The one more is for „, erstellt mit https://bildhaft.lautstark.tech",
- * which rides on the last credit's line and is kept whole, so on a narrow page
- * it can be the part that goes on to a line of its own. e2e asserts the block
- * actually fits inside this, on the narrowest paper.
+ * Sized from the credits themselves: the block's padding plus the lines its
+ * text comes to at this paper's width. It used to allow two lines per credit
+ * and one more on every paper, which ARASAAC's sentence needs on a narrow page
+ * but METACOM's one short line never does — on an A4 Tafel that was a centimetre
+ * of empty paper over the notice, taken from every field. A line is counted
+ * from its characters at a generous average width, so the estimate errs long.
+ * „, erstellt mit https://bildhaft.lautstark.tech" rides on the last credit's
+ * line and is kept whole, so it counts as a line of its own wherever it would
+ * not fit beside it. e2e asserts the block actually fits inside this, on the
+ * narrowest paper.
  */
 /** 6.5pt of type at 1.4 line-height, in millimetres. */
 const CREDIT_LINE_MM = 3.2;
-/** The block's margin-top and padding. */
-const CREDIT_CHROME_MM = 8;
+/** The block's padding-top and a little air over it. */
+const CREDIT_CHROME_MM = 3;
+/** One character of 6.5pt type, on the wide side of average. */
+const CREDIT_CHAR_MM = 1.3;
+/** „, erstellt mit https://bildhaft.lautstark.tech", the longer of its languages. */
+const CREDIT_TAIL_CHARS = 47;
 
-function creditAllowanceMm(creditCount: number): number {
-  return CREDIT_CHROME_MM + CREDIT_LINE_MM * (2 * creditCount + 1);
+function creditAllowanceMm(credits: string[], widthMm: number): number {
+  const perLine = Math.max(1, Math.floor(widthMm / CREDIT_CHAR_MM));
+  let lines = 0;
+  let left = 0;
+  for (const credit of credits) {
+    lines += Math.max(1, Math.ceil(credit.length / perLine));
+    left = perLine - (credit.length % perLine || perLine);
+  }
+  if (CREDIT_TAIL_CHARS > left) lines += 1;
+  return CREDIT_CHROME_MM + CREDIT_LINE_MM * lines;
 }
 
 /*
@@ -156,8 +183,13 @@ const TITLE_GAP_MM = 4;
 export const TITLE_RULE_GAP_MM = 1.5;
 export const TITLE_RULE_MM = 0.6;
 
-/** The title picture's box, `.ps-title__pic` in print.css. */
-export const TITLE_PICTURE_MM = 26;
+/**
+ * The title picture's box, `.ps-title__pic`: three times the title's size, so
+ * it grows and shrinks with the name beside it — 25 mm by a 24 pt name, 16 mm
+ * by a 15 pt one. The sheet sets it as `--title-pic` from here, so the room
+ * reserved and the box drawn are the one number.
+ */
+export const titlePictureMm = (titleSizePt: number): number => 3 * titleSizePt * PT_MM;
 
 /**
  * Whether a page carries the Sammlung's name, and how: not at all, as words,
@@ -172,7 +204,7 @@ export type Titled = false | 'text' | 'pictured';
  */
 function titleAllowanceMm(settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine'>, titled: Titled): number {
   const words = 2 * settings.titleSizePt * PT_MM * TITLE_LEADING;
-  return TITLE_GAP_MM + (titled === 'pictured' ? Math.max(words, TITLE_PICTURE_MM) : words)
+  return TITLE_GAP_MM + (titled === 'pictured' ? Math.max(words, titlePictureMm(settings.titleSizePt)) : words)
     + (settings.titleLine ? TITLE_RULE_GAP_MM + TITLE_RULE_MM : 0);
 }
 
@@ -373,9 +405,10 @@ export interface SheetOptions {
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
 function reserveMm(
-  settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine' | 'showPageNumbers'>, creditCount: number, titled: Titled,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'titleSizePt' | 'titleLine' | 'showPageNumbers'>,
+  credits: string[], titled: Titled,
 ): number {
-  return (creditCount > 0 ? creditAllowanceMm(creditCount) : 0)
+  return (credits.length > 0 ? creditAllowanceMm(credits, printableArea(settings.paper, settings.orientation).width) : 0)
     + (titled ? titleAllowanceMm(settings, titled) : 0)
     + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
@@ -388,10 +421,10 @@ function reserveMm(
  */
 export function tafelFieldMm(
   settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showPageNumbers' | 'titleSizePt' | 'titleLine'>,
-  grid: { cols: number; rows: number }, creditCount: number, titled: Titled,
+  grid: { cols: number; rows: number }, credits: string[], titled: Titled,
 ): { width: number; height: number } {
   const page = printableArea(settings.paper, settings.orientation);
-  const height = page.height - reserveMm(settings, creditCount, titled);
+  const height = page.height - reserveMm(settings, credits, titled);
   return { width: page.width / grid.cols, height: height / grid.rows };
 }
 
@@ -535,7 +568,7 @@ const chunks = <T,>(all: T[], per: number): T[][] => {
  */
 export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block[] {
   const { sentences, board, song, talk, settings, provider, attribution, copyright, collectionName } = options;
-  const credits = [attribution, copyright].filter((line): line is string => Boolean(line));
+  const credits = creditLines(attribution, copyright);
   const page = printableArea(settings.paper, settings.orientation);
   const blocks: Block[] = [];
 
@@ -553,12 +586,12 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
   if (title) blocks.push({ kind: 'title', text: title, picture });
   const titled: Titled = !title ? false : picture ? 'pictured' : 'text';
 
-  const reserve = reserveMm(settings, credits.length, titled);
+  const reserve = reserveMm(settings, credits, titled);
 
   if (board) {
     blocks.push({
       kind: 'tafel', board,
-      cellH: `${tafelFieldMm(settings, board, credits.length, titled).height.toFixed(3)}mm`,
+      cellH: `${tafelFieldMm(settings, board, credits, titled).height.toFixed(3)}mm`,
     });
   } else if (settings.layout === 'einkaufsliste') {
     /* The zone in millimetres, which every part of this material is measured

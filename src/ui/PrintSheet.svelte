@@ -21,7 +21,7 @@
   import PrintPicture from './PrintPicture.svelte';
   import {
     BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING, SHOPPING_SCALE,
-    TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, type Block, type SheetPlan,
+    TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, titlePictureMm, type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
 
@@ -227,6 +227,7 @@
   style:--page-bg={pageColour}
   style:--strip-w="{settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm"
   style:--title-size="{settings.titleSizePt}pt"
+  style:--title-pic="{titlePictureMm(settings.titleSizePt).toFixed(2)}mm"
   style:--title-colour={titleColour(settings)}
   style:--title-rule-gap="{TITLE_RULE_GAP_MM}mm"
   style:--title-rule="{TITLE_RULE_MM}mm"

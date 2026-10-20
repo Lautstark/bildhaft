@@ -3,7 +3,7 @@ import type { CollectionKind, PrintSettings, ProviderId, Sentence, Slot } from '
 import { symbolIdsIn } from '../core/types.ts';
 import Printable from './Printable.svelte';
 import {
-  applyPageSetup, cardRows, METACOM_COPYRIGHT, paperSize, planPages,
+  applyPageSetup, cardRows, copyrightFor, paperSize, planPages,
   printableArea, PX_PER_MM, sheetBlocks,
   type Block, type PrintBoard, type PrintSong, type PrintTalk, type SheetPlan,
 } from './printSheet.ts';
@@ -152,8 +152,7 @@ export class Printing {
     settings: this.settings,
     provider: this.options.provider,
     attribution: this.options.attribution,
-    copyright: this.options.provider === 'metacom' && this.settings.showCopyright
-      ? METACOM_COPYRIGHT : null,
+    copyright: copyrightFor(this.options.provider, this.settings.showCopyright),
     collectionName: this.options.collectionName,
     picture: this.options.picture,
   }, this.rows));

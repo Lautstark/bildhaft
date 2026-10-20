@@ -1,7 +1,7 @@
 import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
 import { titlePicture } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
-import { METACOM_COPYRIGHT, tafelFieldMm } from '../ui/printSheet.ts';
+import { copyrightFor, creditLines, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
@@ -207,8 +207,7 @@ export function tafelField(): { width: number; height: number } | null {
   if (!open || kind() !== 'tafel' || !s.settings) return null;
   const board = boardOf(open);
   const print = printFor(printBase(), kind(), board, open.print ?? {});
-  const credits = [provider().attribution, providerId() === 'metacom' && print.showCopyright ? METACOM_COPYRIGHT : null]
-    .filter(Boolean).length;
+  const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
   const titled = !print.showCollectionTitle || !open.name.trim() ? false
     : titlePicture(s.sentences) ? 'pictured' : 'text';
   return tafelFieldMm(print, board, credits, titled);

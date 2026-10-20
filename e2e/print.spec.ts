@@ -83,7 +83,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
   const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63 × 132 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63 × 136 mm.');
 });
 
 /*
@@ -261,7 +261,7 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   // A5 portrait: 210mm less 10mm at the top and 6mm at the foot, less the room ARASAAC's credit
   // needs, halved.
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
-    .toBeCloseTo(88.1, 0);
+    .toBeCloseTo(92.3, 0);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
@@ -282,7 +282,7 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(131.7, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(135.7, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);

@@ -231,9 +231,9 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
   // A field has its paper's shape: three across and two down on A4 upright
   // is a field taller than wide, here as on the sheet.
-  await expect(page.locator('.board-head')).toContainText('Feld 63,3 × 131,7 mm');
+  await expect(page.locator('.board-head')).toContainText('Feld 63,3 × 135,8 mm');
   const shape = (await cells.first().boundingBox())!;
-  expect(shape.height / shape.width).toBeCloseTo(131.7 / 63.3, 1);
+  expect(shape.height / shape.width).toBeCloseTo(135.8 / 63.3, 1);
   // Marking a field does not move the Tafel: the panel is held at the foot of the window.
   const before = (await page.locator('.board').boundingBox())!.y;
   await cells.nth(4).click({ position: { x: 4, y: 4 } });
@@ -268,7 +268,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feld: 63 × 132 mm.')).toBeVisible();
+  await expect(page.getByText('Feld: 63 × 136 mm.')).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every
