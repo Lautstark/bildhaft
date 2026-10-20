@@ -53,4 +53,8 @@
 <Footer credit={attribution}><p class="footer__links"><button class="linklike" type="button" onclick={() => { page = 'about'; }}>{t('ui.what_is')}</button><!--
   Both are legally required to be reachable and to be called exactly this.
   "Kontakt" or a line inside the About dialog would not count.
---><button class="linklike" type="button" onclick={() => { page = 'impressum'; }}>{t('ui.impressum')}</button><button class="linklike" type="button" onclick={() => { page = 'privacy'; }}>{t('ui.privacy')}</button><a href="https://github.com/Lautstark/bildhaft" target="_blank" rel="noreferrer noopener">{t('ui.source_code')}</a><a href="https://arasaac.org" target="_blank" rel="noreferrer noopener">arasaac.org</a></p></Footer>{#if page}<Legal bind:page {pages} closeLabel={CLOSE}>{#snippet children(key)}{@html pages.find((one) => one.key === key)!.html}{/snippet}</Legal>{/if}
+--><button class="linklike" type="button" onclick={() => { page = 'impressum'; }}>{t('ui.impressum')}</button><button class="linklike" type="button" onclick={() => { page = 'privacy'; }}>{t('ui.privacy')}</button><a href="https://github.com/Lautstark/bildhaft" target="_blank" rel="noreferrer noopener">{t('ui.source_code')}</a><!--
+  No arasaac.org here. The licence asks for the credit above, which names it and
+  follows the open Sammlung's source; a link in this row was always on, and
+  under METACOM pointed at a source the page is not using.
+--></p></Footer>{#if page}<Legal bind:page {pages} closeLabel={CLOSE}>{#snippet children(key)}{@html pages.find((one) => one.key === key)!.html}{/snippet}</Legal>{/if}
