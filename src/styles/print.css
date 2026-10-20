@@ -300,27 +300,8 @@
   text-decoration: none;
 }
 
-/*
- * The last line of the credit block: which collection, and where it came from.
- *
- * Held to one line, because the room a grid page reserves for this block is
- * counted in lines and a second one would come out of every card on every page.
- * A flex row rather than a width in millimetres: the tail is a fixed string
- * whose width depends on the language and the font, so the only figure that
- * would be right is the one the browser measures. The name takes what is left
- * and is clipped there; the address is never shrunk.
- */
+/* „, erstellt mit …": wraps as one piece or not at all. */
 .ps-made {
-  display: flex;
-}
-.ps-made__name {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.ps-made__tail {
-  flex: none;
   white-space: nowrap;
 }
 

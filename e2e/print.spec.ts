@@ -399,14 +399,12 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
 });
 
 /*
- * The same room, under the two things that make that line longest: the
- * narrowest paper this app offers, and a Sammlung named the way people name
- * one. The allowance gives the collection's line exactly one line, so a name
- * long enough to wrap it is a page carrying nothing but the tail of a credit —
- * which is why the name is clipped rather than the allowance made bigger, and
- * why the address has to survive the clipping intact.
+ * The same room on the narrowest paper this app offers, now that „, erstellt
+ * mit" and the address ride on the notice's own line. The collection's name is
+ * not on the credit line at all: that is the title's job, and under the title
+ * it only said the same thing twice.
  */
-test('a long name is clipped so the credit keeps to its one line', async ({ page }) => {
+test('the credit line names no collection', async ({ page }) => {
   await page.getByLabel('Name der Sammlung', { exact: true })
     .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
   await showSheet(page);
@@ -417,30 +415,14 @@ test('a long name is clipped so the credit keeps to its one line', async ({ page
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
 
-  // Five cards at one per page: five sheets, each holding the notice in its
-  // footer as well as its card.
   await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
   const spill = await page.locator('.preview-frame .ps-page').last()
     .evaluate((el: HTMLElement) => el.scrollHeight - el.clientHeight);
   expect(spill).toBe(0);
 
-  // Clipped, and clipped in the right place: the name gives way, the address
-  // is printed whole. scrollWidth is what the name would need; clientWidth is
-  // what it got.
-  const line = await page.locator('.preview-frame .ps-made').first().evaluate((made: HTMLElement) => {
-    const name = made.querySelector<HTMLElement>('.ps-made__name')!;
-    const tail = made.querySelector<HTMLElement>('.ps-made__tail')!;
-    return {
-      wanted: name.scrollWidth,
-      got: name.clientWidth,
-      tailClipped: tail.scrollWidth > tail.clientWidth,
-      lines: Math.round(made.offsetHeight / parseFloat(getComputedStyle(made).lineHeight)),
-    };
-  });
-  expect(line.wanted).toBeGreaterThan(line.got);
-  expect(line.tailClipped).toBe(false);
-  expect(line.lines).toBe(1);
-  await expect(page.locator('.preview-frame .ps-url').first()).toHaveText('https://bildhaft.lautstark.tech');
+  const credit = page.locator('.preview-frame .ps-attribution').first();
+  await expect(credit).not.toContainText('Kindergarten');
+  await expect(credit).toContainText(', erstellt mit https://bildhaft.lautstark.tech');
 });
 
 /*

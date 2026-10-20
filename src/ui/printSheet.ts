@@ -105,15 +105,13 @@ export const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
  * page and an obviously wrong printout. Reserved on every page rather than only
  * the last, because the alternative is cards of two different sizes in one deck.
  *
- * Sized rather than guessed: the block is its own margin and rule plus one line
- * per credit and one for the collection. Each credit is allowed two lines,
- * because ARASAAC's is a sentence long and wraps on a narrow page where
- * METACOM's does not. The collection's line gets one and is held to it: it
- * carries a name somebody chose, and a name long enough to wrap would otherwise
- * cost every card on every grid page 1.8mm of height to make room for a second
- * line that is usually empty. So the name is clipped instead — see .ps-made.
- * e2e asserts the block actually fits inside this, on the narrowest paper and
- * under a name long enough to be clipped.
+ * Sized rather than guessed: the block is its own margin and rule plus two
+ * lines per credit and one more. Each credit is allowed two lines, because
+ * ARASAAC's is a sentence long and wraps on a narrow page where METACOM's does
+ * not. The one more is for „, erstellt mit https://bildhaft.lautstark.tech",
+ * which rides on the last credit's line and is kept whole, so on a narrow page
+ * it can be the part that goes on to a line of its own. e2e asserts the block
+ * actually fits inside this, on the narrowest paper.
  */
 /** 7.5pt of type at 1.4 line-height, in millimetres. */
 const CREDIT_LINE_MM = 3.7;
@@ -335,7 +333,7 @@ export type Block =
   | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[] }
   | { kind: 'song-again' }
-  | { kind: 'credit'; lines: string[]; name: string };
+  | { kind: 'credit'; lines: string[] };
 
 /**
  * How many zones a block of the board holds, and how they are arranged.
@@ -508,6 +506,6 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
     }));
   }
 
-  if (credits.length > 0) blocks.push({ kind: 'credit', lines: credits, name: collectionName });
+  if (credits.length > 0) blocks.push({ kind: 'credit', lines: credits });
   return blocks;
 }

@@ -152,11 +152,11 @@
 --><section class="ps-song-part{block.part === 'refrain' ? ' ps-song-part--refrain' : ''}">{#if settings.songHeadings}<h2 class="ps-song-head">{block.part === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: block.n })}</h2>{/if}{#each block.groups as group, g (g)}<div class="ps-song-group{group.times > 1 ? ' ps-song-group--again' : ''}"><div class="ps-song-lines">{#each group.lines as line, k (k)}{#if settings.showSentenceText}<p class="ps-caption">{sentenceCaption(line)}</p>{/if}<div class="ps-song-line">{#each line.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{/each}</div>{#if group.times > 1}<span class="ps-song-times">{t('ui.song_sung', { n: group.times })}</span>{/if}</div>{/each}</section>{:else if block.kind === 'song-again'}<!--
   The Refrain once more, by reference: its colour, an arrow round, its name.
 --><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'credit'}<!--
-  The name gives way, never the address. Both are on one line and a long name
-  would push the address off it, so the name is the part allowed to be clipped —
-  an ellipsis on a name the reader chose still says which collection this is,
-  where half a URL says nothing and is not something anybody can type back in.
---><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made"><span class="ps-made__name">{block.name}</span><span class="ps-made__tail"> · {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></span></p>{/if}{/snippet}
+  The notice and where the sheet came from, and nothing else: the collection's
+  name is the title's job, and on a credit line it only repeated it. The tail
+  is held together, so on a narrow page it moves to a line of its own whole
+  rather than leaving half an address behind.
+--><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
   class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}"
