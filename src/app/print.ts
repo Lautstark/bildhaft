@@ -7,7 +7,7 @@ import { keepsPdfs, pdfFolderFor, readPdf, removePdf, writePdf } from '../db/fol
 import { download } from '@lautstark/werkzeuge/download';
 import { t } from '../i18n/index.ts';
 import { notify } from './notify.ts';
-import { openPrintDialog, type PrintOptions } from '../ui/printDialog.svelte.ts';
+import type { PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
 import { TEMPLATES } from './templates.ts';
@@ -185,9 +185,13 @@ export function printOptions(): PrintOptions | null {
   };
 }
 
-/** The sheet large, over the page. */
-export function openPrint(): void {
-  const options = printOptions();
-  if (options) openPrintDialog(options);
+/** The paper the open Sammlung prints on, as its template opens it. */
+export function paperOf(): Pick<PrintSettings, 'paper' | 'orientation'> | null {
+  const open = activeCollection();
+  if (!open || !s.settings) return null;
+  const board = kind() === 'tafel' ? boardOf(open) : null;
+  const print = printFor(printBase(), kind(), board, open.print ?? {});
+  return { paper: print.paper, orientation: print.orientation };
 }
+
 

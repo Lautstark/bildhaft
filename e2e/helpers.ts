@@ -34,12 +34,18 @@ export function rowFor(page: Page, typed: string) {
 }
 
 /**
- * The column „Blatt" beside the open Sammlung: the preview, and every setting
- * of the paper. It is always there once there is something to print, so this
- * is the wait for its preview to be laid out and nothing more.
+ * The open Sammlung's sheet: its view „Drucken", switched to in its head, and
+ * the wait for the preview to be laid out.
  */
 export async function showSheet(page: Page): Promise<void> {
-  await expect(page.locator('.sheet-col .preview-frame .ps-sheet')).toBeVisible();
+  const view = page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Drucken' });
+  if (await view.getAttribute('aria-pressed') !== 'true') await view.click();
+  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
+}
+
+/** Back to the Sammlung's material, from its sheet. */
+export async function showMaterial(page: Page): Promise<void> {
+  await page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Bearbeiten' }).click();
 }
 
 /** Older names for the same wait, from when the settings were split over two dialogs. */

@@ -207,7 +207,7 @@ test('print media shows the sheet and nothing of the UI', async ({ page }) => {
   // Hidden for printing only: the column and its preview are still there when
   // the print job returns.
   await page.emulateMedia({ media: 'screen' });
-  await expect(page.locator('.sheet-col .preview-frame .ps-sheet')).toBeVisible();
+  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
 });
 
 test('exports references only, never image data', async ({ page }) => {
@@ -482,7 +482,7 @@ test('a headed grid page takes its room from the cards, not from the paper', asy
  */
 test('the preview is cut into pages, and the column counts them', async ({ page }) => {
   const pages = page.locator('.preview-frame .ps-page');
-  const meta = page.locator('.sheet-col .pager__at');
+  const meta = page.locator('.print-view .pager__at');
 
   await expect(pages).toHaveCount(1);
   await expect(meta).toContainText('1 Seite');
@@ -513,7 +513,7 @@ test('the preview is cut into pages, and the column counts them', async ({ page 
   await expect(meta).toContainText('Seite 1 von 3');
 
   // One page at a time, turned with the arrows rather than scrolled.
-  const frame = page.locator('.sheet-col .preview-frame');
+  const frame = page.locator('.print-view .preview-frame');
   await expect(page.getByRole('button', { name: 'Vorige Seite' }).first()).toBeDisabled();
   await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
   await expect(meta).toContainText('Seite 2 von 3');
@@ -595,7 +595,7 @@ test('every page of the printable copy holds inside the paper', async ({ page })
  */
 test('saves the preview as a PDF of the same pages', async ({ page }) => {
   await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await expect(page.locator('.sheet-col .pager__at')).toContainText('Seite');
+  await expect(page.locator('.print-view .pager__at')).toContainText('Seite');
   await expect(page.locator('.preview-frame .ps-page').first()).toBeVisible();
   const pages = await page.locator('.preview-frame .ps-page').count();
   const [file] = await Promise.all([
@@ -639,4 +639,44 @@ test('a size can be typed, and scrolling does not change it', async ({ page }) =
   await page.mouse.move(box!.x + 5, box!.y + 5);
   await page.mouse.wheel(0, 120);
   await expect(size).toHaveValue('10');
+});
+
+/*
+ * The pages small, on the left, say which one is showing: by the arrows and by
+ * a press on one of them.
+ */
+test('the pages on the left follow the page being shown', async ({ page }) => {
+  await page.getByLabel('Ein Satz pro Seite').check();
+  const thumbs = page.locator('.print-view__thumb');
+  await expect(thumbs).toHaveCount(2);
+  await expect(thumbs.nth(0)).toHaveAttribute('aria-pressed', 'true');
+
+  await thumbs.nth(1).click();
+  await expect(page.locator('.print-view .pager__at')).toHaveText('Seite 2 von 2');
+  await expect(thumbs.nth(1)).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: 'Vorige Seite' }).click();
+  await expect(thumbs.nth(0)).toHaveAttribute('aria-pressed', 'true');
+});
+
+/*
+ * A Sammlung opens in the view it was left in, on this device: its sheet
+ * stays its sheet across another Sammlung and a reload. A new one opens on
+ * its material.
+ */
+test('each Sammlung opens in the view it was left in', async ({ page }) => {
+  const view = (name: string) => page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name });
+  await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  await expect(page.locator('.print-view')).toHaveCount(0);
+
+  await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
+  await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
+
+  await page.reload();
+  await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
+  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
 });

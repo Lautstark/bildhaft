@@ -28,8 +28,9 @@
   import Icon from '../pieces/Icon.svelte';
   import { activeCollection, holdsWords, kind, s } from './state.svelte.ts';
   import { answered, asking } from './asking.svelte.ts';
-  import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
+  import { confirmDeleteCollection, handleExport, openSourceSheet, setView } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
+  import { paperOf } from './print.ts';
   import { t } from '../i18n/index.ts';
 
   /* Which Sammlung a pending rename is for, captured on the keystroke rather
@@ -73,9 +74,25 @@
       ? t('ui.n_rows_one')
       : t('ui.n_rows', { n }));
 
+
+  /* „A5 hoch · 3 Seiten": the paper this Sammlung prints on, and how many
+     pages it came to the last time its sheet was laid out, when that is
+     known this session. */
+  let paper = $derived.by(() => {
+    const open = activeCollection();
+    const print = open ? paperOf() : null;
+    if (!open || !print) return '';
+    const side = print.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait');
+    const pages = s.pagesSeen[open.id];
+    return `${print.paper.toUpperCase()} ${side.toLowerCase()}${pages ? ` · ${t(pages === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pages })}` : ''}`;
+  });
 </script>
 
 <div class="collection-head"><TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
+  The two views of a Sammlung: its material to work on, its sheet to print.
+  Beside them, small, what the sheet came to the last time it was laid out —
+  what the material means on paper, without switching to see it.
+-->{#if n > 0}{#if paper}<button class="collection-head__paper small faint" type="button" title={t('ui.view_print')} onclick={() => setView('print')}>{paper}</button>{/if}<span class="segmented collection-head__view" role="group" aria-label={t('ui.view')}><button type="button" aria-pressed={s.view === 'edit'} onclick={() => setView('edit')}>{t('ui.view_edit')}</button><button type="button" aria-pressed={s.view === 'print'} onclick={() => setView('print')}>{t('ui.view_print')}</button></span>{/if}<!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to

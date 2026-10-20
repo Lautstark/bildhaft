@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openLook, showSheet, translate } from './helpers.ts';
+import { backToPrint, openLook, showMaterial, showSheet, translate } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -154,9 +154,12 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
 
   // A smaller grid keeps what still has a place. Both cards are in the first
-  // row, so 3 × 2 keeps them and the twelve fields become six.
+  // row, so 3 × 2 keeps them and the twelve fields become six. The grid is set
+  // in the view „Drucken", under Größe; the Tafel follows it.
+  await showSheet(page);
   await page.getByLabel('Spalten').fill('3');
   await page.getByLabel('Zeilen').fill('2');
+  await showMaterial(page);
   await expect(cells).toHaveCount(6);
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
 
@@ -207,8 +210,10 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await bar.fill(names.join('\n'));
   await bar.press('Enter');
   await expect(page.locator('.tray .word__name')).toHaveCount(24);
+  await showSheet(page);
   await page.getByLabel('Spalten').fill('6');
   await page.getByLabel('Zeilen').fill('4');
+  await showMaterial(page);
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(24);
 
@@ -618,7 +623,7 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   const pages = await sheet.locator('.ps-page').count();
   await page.getByRole('button', { name: 'A5', exact: true }).click();
   await expect.poll(() => sheet.locator('.ps-page').count()).toBeGreaterThan(pages);
-  await page.keyboard.press('Escape');
+  await showMaterial(page);
 
   // A part written on at the end of the song's text is taken over on leaving
   // the box — and the Refrain written again is found again as the Refrain,
@@ -654,7 +659,7 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await page.getByRole('button', { name: 'Quer' }).click();
   await page.getByLabel('Symbolgröße').fill('20');
   await expect(notice).toBeChecked();
-  await expect(page.locator('.sheet-col .ps-attribution').first()).toContainText('METACOM Symbole © Annette Kitzinger');
+  await expect(page.locator('.print-view .ps-attribution').first()).toContainText('METACOM Symbole © Annette Kitzinger');
 
   await page.reload();
   await showSheet(page);

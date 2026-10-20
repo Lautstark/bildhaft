@@ -1,10 +1,6 @@
 import { flushSync, mount, unmount } from 'svelte';
 import type { CollectionKind, PrintSettings, ProviderId, Sentence } from '../core/types.ts';
 import { symbolIdsIn } from '../core/types.ts';
-import { openSheet } from '@lautstark/design/svelte/sheet';
-import { CLOSE } from './dialog.ts';
-import PrintBody from './PrintBody.svelte';
-import PrintFoot from './PrintFoot.svelte';
 import Printable from './Printable.svelte';
 import {
   applyPageSetup, cardRows, METACOM_COPYRIGHT, paperSize, planPages,
@@ -13,7 +9,6 @@ import {
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { previewToPdf } from './pdf.ts';
-import { TEMPLATES } from '../app/templates.ts';
 import { LOCALE, t } from '../i18n/index.ts';
 
 export interface PrintOptions {
@@ -438,30 +433,4 @@ export function attachPrinting(state: Printing): () => void {
       back.state.replan();
     }
   };
-}
-
-/**
- * The sheet large: the same preview the column beside the Sammlung shows,
- * opened over the page to judge where the pages break, and to print or save
- * from. Nothing is set here — what the sheet looks like is set in the column.
- */
-export function openPrintDialog(options: PrintOptions): void {
-  const state = new Printing(options);
-  let detach: () => void = () => undefined;
-  const sheet = openSheet({
-    title: TEMPLATES[options.kind].printTitle
-      ? t(TEMPLATES[options.kind].printTitle!, { cols: options.board?.cols ?? 0, rows: options.board?.rows ?? 0 })
-      : t('ui.print_collection_title', { n: options.sentences.length }),
-    closeLabel: CLOSE,
-    wide: true,
-    state,
-    body: PrintBody,
-    foot: PrintFoot,
-    onClose: () => {
-      detach();
-      options.onClose();
-    },
-  });
-  state.close = () => sheet.close();
-  detach = attachPrinting(state);
 }

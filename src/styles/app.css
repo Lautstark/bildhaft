@@ -1441,46 +1441,54 @@ footer.footer {
 .pdf-list { list-style: none; margin: -8px 0 16px; padding: 4px 0; border-top: 1px solid var(--line); }
 .pdf-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 0; }
 
-/* ------------------------------------------------------------- the sheet */
+/* ------------------------------------------------------------ print view */
 
-/* A Sammlung and its sheet side by side: the rows on the left, „Blatt" on
-   the right, with everything about the paper in it. The page grows to hold
-   both; below the breakpoint the sheet goes under the rows. */
+/* „Drucken": the pages small on the left, the sheet large in the middle, the
+   buttons and the settings on the right — the whole width of the page,
+   because this view is about the paper. */
 .main__inner--work { max-width: 1240px; }
-.work { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; }
-.work__main { min-width: 0; }
-.sheet-col {
-  position: sticky;
-  top: 16px;
-  width: 300px;
-  max-height: calc(100vh - 32px);
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-  padding: 14px 14px 18px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  outline: 1px solid var(--line);
+.collection-head__view { margin-left: auto; }
+.collection-head__paper { border: 0; background: transparent; padding: 2px 6px; cursor: pointer; white-space: nowrap; }
+.collection-head__paper:hover { color: var(--text); }
+.print-view {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 300px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 20px;
+  /* As high as the window leaves below the head, set from the script: the
+     sheet stands whole in the middle, and only the pages on the left and the
+     settings on the right scroll, each on its own. */
+  height: var(--print-view-h, auto);
+  min-height: 420px;
 }
-.sheet-col--folded { width: 44px; padding: 8px 4px; min-height: 320px; display: flex; flex-direction: column; align-items: center; }
-.sheet-col__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-.sheet-col__head b { font-size: 14px; font-weight: 650; }
-.sheet-col--folded .sheet-col__head { flex-direction: column; margin: 0; gap: 14px; }
-.sheet-col__strip {
+.print-view__thumbs { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.print-view__thumbsheet { position: relative; width: 84px; margin: 0 auto; overflow: hidden; }
+.print-view__thumbsheet .preview-scaler { position: absolute; top: 0; left: 0; transform-origin: top left; pointer-events: none; }
+.print-view__thumb {
+  position: absolute;
+  left: 0;
+  width: 84px;
   border: 0;
   background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  writing-mode: vertical-rl;
   cursor: pointer;
+  border-radius: 1px;
 }
-/* The paper straight on the column, as it lies on a table — no grey box
-   around it inside the column's own box. */
-/* Square: a sheet of paper has corners, and a rounded frame cut them off. */
-.sheet-col__preview { height: 260px; min-height: 0; padding: 0; border-radius: 0; background: transparent; cursor: zoom-in; }
-.sheet-col__preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sheet-col .opt { margin-bottom: 12px; }
+/* Drawn inside the page, not around it: around it, the edge of the strip cut
+   the mark off and the page being shown was hard to tell. */
+.print-view__thumb[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); }
+.print-view__thumb:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: -5px; }
+.print-view__stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; min-width: 0; min-height: 0; }
+.print-view__frame { height: auto; min-height: 0; border-radius: var(--radius); }
+.print-view__panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); }
+.print-view__acts { display: grid; gap: 8px; margin-bottom: 14px; }
+.print-view__bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.print-view__bar .pager { margin: 0; }
+/* The buttons take the room they need and stay side by side; the arrows sit
+   in the middle of what is left. */
+.print-view__go { display: flex; gap: 8px; flex-wrap: nowrap; white-space: nowrap; }
+@media (max-width: 820px) { .print-view__bar { grid-template-columns: 1fr; justify-items: center; } .print-view__go { justify-content: center; } }
+.print-view__last { margin: 2px 0 0; }
+.print-view__panel .opt { margin-bottom: 12px; }
 .opt-group {
   margin: 18px 0 8px;
   padding-top: 12px;
@@ -1492,17 +1500,19 @@ footer.footer {
   color: var(--text-dim);
 }
 .print-options > .opt-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.sheet-col__acts { display: grid; gap: 8px; margin: 4px 0 6px; }
-.sheet-col__last { margin: 4px 0 0; }
-.preview-frame--big { height: calc(100vh - 290px); height: calc(100dvh - 290px); min-height: 280px; }
-.preview-frame--big + .pager { margin: 8px 0 0; }
 @media (max-width: 1100px) {
-  .work { grid-template-columns: 1fr; }
-  .sheet-col, .sheet-col--folded { position: static; width: auto; max-height: none; }
+  .print-view { grid-template-columns: minmax(0, 1fr) 280px; }
+  .print-view__thumbs { display: none; }
+}
+@media (max-width: 820px) {
+  .print-view { grid-template-columns: 1fr; grid-template-rows: none; height: auto; }
+  .print-view__panel, .print-view__thumbs { overflow: visible; }
+  .print-view__frame { height: 70vh; height: 70dvh; }
+  .collection-head { flex-wrap: wrap; }
 }
 
 /* One page at a time: the frame is turned with the arrows, not scrolled. */
-.sheet-col__preview, .preview-frame--big { overflow: hidden; }
+.print-view__frame { overflow: hidden; }
 .pager { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px 0 12px; }
 .pager__at { min-width: 9em; text-align: center; font-variant-numeric: tabular-nums; }
 .pager .btn { font-size: 18px; line-height: 1; }

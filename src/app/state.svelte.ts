@@ -45,6 +45,13 @@ export class AppState {
   draft = $state('');
   reuse = $state.raw<Sentence | null>(null);
   busy = $state(false);
+  /* Which view of the open Sammlung is showing: its material to work on, or
+     its sheet to print. A Sammlung opens in the view it was left in on this
+     device (collections.ts, `setView`), its material the first time. */
+  view = $state<'edit' | 'print'>('edit');
+  /* How many pages each Sammlung came to the last time its sheet was laid
+     out, by id — what the head says beside the switch. This session only. */
+  pagesSeen = $state.raw<Record<string, number>>({});
   /* How far a pasted text has got. Null for a single line, whose spinner in the
      composer is the whole story — see composing.ts. */
   batch = $state.raw<{ done: number; total: number } | null>(null);

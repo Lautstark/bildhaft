@@ -18,7 +18,7 @@
   import Footer from './ui/Footer.svelte';
   import Composer from './ui/Composer.svelte';
   import SongComposer from './ui/SongComposer.svelte';
-  import SheetColumn from './ui/SheetColumn.svelte';
+  import PrintView from './ui/PrintView.svelte';
   import RecipeComposer from './ui/RecipeComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
   import Banners from './app/Banners.svelte';
@@ -117,10 +117,11 @@
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
 --><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
-  The box to type into and the Sammlung's head — its name, its ⋯ — stand over
-  the Sammlung and its sheet both, at the same place in every template; the
-  sheet column starts below them, level with the material it is the paper of.
--->{#if kind() === 'lied'}<SongComposer />{:else if kind() === 'rezept'}<RecipeComposer />{:else}<Composer />{/if}<CollectionHead /><div class="work"><div class="work__main"><Material /></div><SheetColumn /></div>{/if}</div><Footer /></main></div>{/if}<!--
+  Two views of the open Sammlung, switched in its head. The box to type into
+  and the head stay where they are in both; only what is under them changes:
+  the material („Bearbeiten"), or the sheet with its pages and its settings
+  („Drucken"). The page keeps one width in both, so nothing above moves.
+-->{#if kind() === 'lied'}<SongComposer />{:else if kind() === 'rezept'}<RecipeComposer />{:else}<Composer />{/if}<CollectionHead />{#if s.view === 'print' && s.sentences.length > 0}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug
