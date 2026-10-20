@@ -254,8 +254,11 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
 
   for (const block of blocks) {
     const box = outer(block);
-    // A block that will not fit in what is left starts the page it needs.
-    if (count > 0 && used + box.top + box.height > limit + FIT_TOLERANCE) close();
+    // A block that will not fit in what is left starts the page it needs. Its
+    // margin below counts: a page is a flex column, so the last block's margin
+    // stays on the page rather than collapsing into the foot, and leaving it
+    // out let a full page push its foot that much further down than the rest.
+    if (count > 0 && used + box.top + box.height + box.bottom > limit + FIT_TOLERANCE) close();
     count += 1;
     used += box.top + box.height + box.bottom;
     // A grid page is a page by construction, and "one sentence per page" says so.

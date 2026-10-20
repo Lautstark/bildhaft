@@ -553,6 +553,31 @@ test('the credit sits at the foot of every page, whatever the layout', async ({ 
 });
 
 /*
+ * A full page is where the foot moved: the last strip on it was let on without
+ * the room under it, so the foot sat that much lower than on a page with room
+ * to spare — 7 mm under a strip, 3 mm under a Lied's part. The foot is in the
+ * same place on every page, full or not.
+ */
+test('the foot does not move on a full page', async ({ page }) => {
+  await translateAll(page, [
+    'Der Hund spielt im Garten', 'Wir gehen heute schwimmen', 'Die Katze schläft',
+    'Ich trinke Wasser', 'Mama kocht Suppe', 'Wir malen ein Bild', 'Papa liest ein Buch',
+    'Der Ball ist rot', 'Ich gehe nach Hause', 'Wir spielen draußen',
+  ]);
+  await showSheet(page);
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
+
+  const gaps = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) =>
+    [...sheet.querySelectorAll<HTMLElement>('.ps-page')].map((one) => {
+      const scale = one.getBoundingClientRect().height / one.offsetHeight;
+      const foot = one.querySelector<HTMLElement>('.ps-attribution')!.getBoundingClientRect();
+      return Math.round((one.getBoundingClientRect().bottom - foot.bottom) / scale);
+    }));
+  expect(gaps.length).toBeGreaterThan(1);
+  for (const gap of gaps) expect(gap).toBe(gaps.at(-1));
+});
+
+/*
  * The page boxes are exactly the printable area, which is the one size at which
  * being a hair too tall is fatal: a box a pixel over its page prints as two,
  * and every sheet after it is a blank with a sliver at the top.
