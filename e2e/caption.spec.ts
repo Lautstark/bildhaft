@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { rowFor, showSheet, translate, translateAll } from './helpers.ts';
+import { showSheet, translate } from './helpers.ts';
 
 /**
  * The words under a symbol.

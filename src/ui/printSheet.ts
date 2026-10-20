@@ -115,7 +115,7 @@ export const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
  */
 /** 7.5pt of type at 1.4 line-height, in millimetres. */
 const CREDIT_LINE_MM = 3.7;
-/** The block's margin-top, padding and rule. */
+/** The block's margin-top and padding. */
 const CREDIT_CHROME_MM = 8;
 
 function creditAllowanceMm(creditCount: number): number {
