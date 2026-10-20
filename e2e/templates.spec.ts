@@ -606,8 +606,11 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
   expect(after.find((row) => row.rawInput === 'Eier in die Schüssel')!.id).toBe(eier);
   expect(after.map((row) => row.rawInput)).not.toContain('Rühren');
 
-  // The paper: A5 across, kept by the Rezept.
+  // The paper: A5 across, kept by the Rezept. Nothing on it is cut apart, so
+  // the size names no card to cut out.
   await showSheet(page);
+  await expect(page.getByLabel('Symbolgröße')).toBeVisible();
+  await expect(page.getByText('Karte zum Ausschneiden')).toHaveCount(0);
   await page.getByRole('button', { name: 'A5', exact: true }).click();
   await page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }).click();
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))

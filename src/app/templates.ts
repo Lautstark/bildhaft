@@ -22,9 +22,10 @@ export interface PrintOffer {
    * How big. `symbol` is one number, with its bounds and a note under it (or
    * the card readout when there is none); `cards` is the card sheet's choice
    * of symbol, card or grid; `board` is a Tafel's readout, its grid being the
-   * Sammlung's own.
+   * Sammlung's own. `cut: false` drops the card readout: a Rezept and a Lied
+   * are not cut apart, so „Karte zum Ausschneiden" named nothing on them.
    */
-  size?: { kind: 'symbol'; max: number; fallback: number; note: string | null } | { kind: 'cards' } | { kind: 'board' };
+  size?: { kind: 'symbol'; max: number; fallback: number; note: string | null; cut?: false } | { kind: 'cards' } | { kind: 'board' };
   /** The same millimetres: a cutting margin where scissors go, air where none do. */
   margin?: 'cut' | 'air';
   /** `full`: whether, where and how big; `size`: how big only, the words always printing. */
@@ -155,7 +156,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       showPageNumbers: own.showPageNumbers ?? false,
     }),
     offers: () => ({
-      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null }, label: 'size',
+      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null, cut: false }, label: 'size',
       title: true, pageNumbers: true,
     }),
   },
@@ -195,7 +196,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       accentColour: own.accentColour ?? '#2c66c8',
     }),
     offers: () => ({
-      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: null },
+      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false },
       label: 'full', frames: true, sentence: true, songChecks: true, title: true, pageNumbers: true,
     }),
   },
