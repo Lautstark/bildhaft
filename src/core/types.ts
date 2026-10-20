@@ -389,6 +389,17 @@ export interface Collection {
   song?: Song;
 
   /**
+   * A Plauderbuch: its pages in the order they are turned, each with its
+   * question and the Aussagen to choose from. Only a `plauderbuch` has one,
+   * and one without it is a Plauderbuch nothing has been typed into yet.
+   *
+   * On the Sammlung for the reason a Lied's parts are: it is the
+   * arrangement, and the cards are rows of the Sammlung. Which page a card
+   * is on, and where on it, is a fact about the book, not about the card.
+   */
+  talk?: TalkBook;
+
+  /**
    * The PDFs bildhaft saved of this Sammlung, newest first: where each lies
    * in the Ablage folder's `pdf/`, and what it was printed on. Files, not
    * records — the PDF is in the folder and this is the list of them, so one
@@ -417,6 +428,23 @@ export interface SavedPdf {
  * than one part, or twice in one: „Rabimmel, rabammel, rabum" closes every
  * Strophe of the Laternenlied and is one row.
  */
+/**
+ * A Plauderbuch, page by page — after the Plauderplan-Drehbuch: on each page
+ * a question, a free field for the answer, and the Aussagen to choose it from.
+ *
+ * `question` and `sayings` name rows by id. A page may have no question: the
+ * last page of a Drehbuch is „fertig" and „noch mal", and nothing is asked.
+ */
+export interface TalkBook {
+  pages: TalkPage[];
+}
+
+export interface TalkPage {
+  id: string;
+  question: string | null;
+  sayings: string[];
+}
+
 export interface Song {
   parts: SongPart[];
   order: string[];
@@ -499,7 +527,7 @@ export interface BoardGroup {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied', 'plauderbuch'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /** What a Sammlung is when it has never been asked. */
@@ -596,9 +624,11 @@ export interface Override {
  *
  * `rezept` is one too, for the same reason: its Zutaten, its Hilfsmittel and
  * its numbered Schritte are one paper, not cards that happen to be laid out.
- * And `lied`: a song written out the way it is sung, part under part.
+ * And `lied`: a song written out the way it is sung, part under part. And
+ * `plauderbuch`: a page per question with free fields to velcro onto, then
+ * the cards to cut out for them.
  */
-export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied';
+export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied' | 'plauderbuch';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**

@@ -28,6 +28,7 @@
   import Icon from '../pieces/Icon.svelte';
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
   import { symbolIdFor, titlePicture } from '../core/types.ts';
+  import { pagesOf } from '../core/talk.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import { chooseTitlePicture } from './recipe.ts';
   import { answered, asking } from './asking.svelte.ts';
@@ -70,11 +71,16 @@
 
   /* A title picture is a sentence of its own, and not an entry or a card. */
   let n = $derived(s.sentences.filter((sentence) => sentence.part !== 'titel').length);
+  /* A Plauderbuch's questions stand on its pages and are not cut out: its
+     cards are its Aussagen. */
+  let sayings = $derived(pagesOf(activeCollection()?.talk).reduce((all, page) => all + page.sayings.length, 0));
   let pictured = $derived(kind() === 'rezept' || kind() === 'tafel');
   let picture = $derived(pictured ? titlePicture(s.sentences) : null);
   let pictureId = $derived(picture ? symbolIdFor(picture, providerId()) : null);
   let count = $derived(kind() === 'rezept'
     ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
+    : kind() === 'plauderbuch'
+    ? (sayings === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: sayings }))
     : holdsWords()
     ? (n === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n }))
     : n === 1
@@ -102,7 +108,7 @@
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.
--->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied')}<!--
+-->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied' || kind() === 'plauderbuch')}<!--
   A Rezept and a Lied draw their own empty parts, so the empty state's box
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.

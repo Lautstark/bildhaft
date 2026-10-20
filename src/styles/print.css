@@ -680,3 +680,125 @@
   page-break-inside: avoid;
 }
 .ps-song-again__loop { margin-right: 1.5mm; font-size: 12pt; }
+
+/* ----------------------------------------------------------- plauderbuch */
+
+/* A page of a Plauderbuch, exactly one sheet: the question on a light blue
+   band with the free field at its right, the Aussagen's fields at the foot.
+   No frames: the fields are grey grounds with soft corners, and only the
+   free field has a line, so where the answer goes is seen at once. Every
+   length is A5's times the paper's factor --talk-k. */
+.ps-talk {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: var(--talk-page);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ps-talk__band {
+  display: flex;
+  align-items: center;
+  gap: calc(4mm * var(--talk-k));
+  padding: var(--talk-air);
+  border-radius: calc(4mm * var(--talk-k));
+  background: #e6f0fb;
+}
+.ps-talk__band .ps-title__pic {
+  width: calc(var(--talk-h) * 0.8);
+  height: calc(var(--talk-h) * 0.8);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ps-talk__question {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: calc(14pt * var(--talk-k));
+  font-weight: 600;
+  line-height: 1.2;
+}
+.ps-talk__question small {
+  display: block;
+  font-size: calc(9pt * var(--talk-k));
+  font-weight: 400;
+  color: #716763;
+}
+.ps-talk__fields {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--talk-w));
+  gap: var(--talk-gap);
+  justify-content: space-between;
+}
+.ps-talk__field {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--talk-w);
+  height: var(--talk-h);
+  border-radius: calc(3.5mm * var(--talk-k));
+  background: #f2efee;
+}
+.ps-talk__field--free {
+  background: #fff;
+  box-shadow: inset 0 0 0 calc(0.5mm * var(--talk-k)) #1d1918;
+}
+/* Where the velcro dot goes. */
+.ps-talk__dot {
+  width: calc(9mm * var(--talk-k));
+  height: calc(9mm * var(--talk-k));
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #e4dfdd;
+}
+
+/* The cards to cut out: the fields' size, air round each, a dashed line
+   between them. */
+.ps-talk-cut {
+  grid-template-columns: repeat(var(--cols), calc(var(--talk-w) + 2 * var(--talk-air)));
+  grid-auto-rows: calc(var(--talk-h) + 2 * var(--talk-air));
+  align-content: start;
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ps-talk-cut__cell {
+  display: grid;
+  place-items: center;
+  outline: 0.25mm dashed #c4bcb9;
+}
+.ps-talk__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(1mm * var(--talk-k));
+  width: var(--talk-w);
+  height: var(--talk-h);
+  padding: calc(1.5mm * var(--talk-k)) calc(2mm * var(--talk-k));
+  border-radius: calc(3.5mm * var(--talk-k));
+  background: #f2efee;
+  text-align: center;
+}
+/* The picture a fixed share of the card, so the word under it always has
+   its line: an image only shrinks into a box that has a height. */
+.ps-talk__card .ps-title__pic {
+  flex: none;
+  width: 100%;
+  height: calc(var(--talk-h) * 0.6);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ps-talk__word {
+  font-size: calc(9pt * var(--talk-k));
+  font-weight: 600;
+  line-height: 1.15;
+}
+/* The picture's own height, said in millimetres: in the grid box round it a
+   percentage had no height to be a share of, and the picture stood out of
+   the card at its natural size. */
+.ps-talk__band .ps-title__pic img { width: 100%; height: calc(var(--talk-h) * 0.8); object-fit: contain; }
+.ps-talk__card .ps-title__pic img { width: 100%; height: calc(var(--talk-h) * 0.6); object-fit: contain; }

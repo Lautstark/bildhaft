@@ -106,7 +106,7 @@ describe('what a template opens the print dialog on', () => {
   /* The household remembers the layout printed last. Printed last as a
      material, that layout is not one a sentence or a card can take. */
   it('never opens a Satzstreifen or Wortkarten on a material', () => {
-    for (const layout of ['einkaufsliste', 'rezept', 'lied'] as const) {
+    for (const layout of ['einkaufsliste', 'rezept', 'lied', 'plauderbuch'] as const) {
       expect(printFor({ ...remembered, layout }, 'satzstreifen', null).layout).toBe('strip');
       expect(printFor({ ...remembered, layout }, 'wortkarten', null).layout).toBe('sheet');
     }

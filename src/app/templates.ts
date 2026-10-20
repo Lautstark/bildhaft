@@ -225,4 +225,23 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       label: 'full', frames: true, sentence: true, songChecks: true, title: true, pageNumbers: true,
     }),
   },
+
+  /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
+     into an A5 ring binder. The paper is all it is asked, and which way up;
+     the fields and the cards grow with it (talkGeometry), as an
+     Einkaufsliste's do. Always to velcro — empty fields on the pages, the
+     cards on sheets of their own — and always a free field for the answer.
+     No name over the first page: every sheet is a page of the book. Page
+     numbers as everywhere, off until asked for. */
+  plauderbuch: {
+    cards: false, ownPrint: true,
+    opens: (print, own) => ({
+      ...print, layout: 'plauderbuch',
+      paper: own.paper ?? 'a5',
+      orientation: own.orientation ?? 'landscape',
+      showCollectionTitle: false,
+      showPageNumbers: own.showPageNumbers ?? false,
+    }),
+    offers: () => ({ paper: true, pageNumbers: true }),
+  },
 };

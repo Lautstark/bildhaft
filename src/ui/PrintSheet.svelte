@@ -85,6 +85,18 @@
      with the content: a sheet handed on alone carries it too. */
   let credit = $derived(blocks.find((block) => block.kind === 'credit') ?? null);
 
+  /* A sheet of Plauderbuch cards to cut out has no foot: it is cut up, and
+     neither a notice nor a number survives the scissors. Nor is it counted —
+     „Seite 3 von 9" are the pages of the book. */
+  const bare = (held: Block[]): boolean => held.length > 0 && held.every((block) => block.kind === 'talk-cut');
+  let numbered = $derived(pages ? pages.filter((held) => !bare(held)).length : 0);
+  const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
+
+  /* The millimetres of a Plauderbuch page, for its own rules in print.css. */
+  const talkVars = (geo: { cardW: number; cardH: number; gap: number; air: number; k: number; height: number }, cols: number): string =>
+    `--talk-w:${geo.cardW.toFixed(3)}mm;--talk-h:${geo.cardH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
+    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--cols:${cols}`;
+
 </script>
 
 {#snippet shoppingZones(cols: number, rows: number, extra: string)}<div class="ps-zones{extra}" style:--cols={String(cols)}>{#each Array.from({ length: cols * rows }) as _, i (i)}<span class="ps-zone"><span class="ps-dot"></span></span>{/each}</div>{/snippet}
@@ -160,7 +172,15 @@
   is plain which lines the „2×" means.
 --><section class="ps-song-part{block.part === 'refrain' ? ' ps-song-part--refrain' : ''}">{#if settings.songHeadings}<h2 class="ps-song-head">{block.part === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: block.n })}</h2>{/if}{#each block.groups as group, g (g)}<div class="ps-song-group{group.times > 1 ? ' ps-song-group--again' : ''}"><div class="ps-song-lines">{#each group.lines as line, k (k)}{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(line)}</p>{/if}<div class="ps-song-line">{#each line.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(line)}</p>{/if}{/each}</div>{#if group.times > 1}<span class="ps-song-times">{t('ui.song_sung', { n: group.times })}</span>{/if}</div>{/each}</section>{:else if block.kind === 'song-again'}<!--
   The Refrain once more, by reference: its colour, an arrow round, its name.
---><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'credit'}<!--
+--><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'talk-page'}<!--
+  A page of a Plauderbuch: the question on its band, the free field the
+  chosen Aussage is velcroed onto, and a field with a velcro dot for each
+  Aussage. A page carried over says so under its question, and has no free
+  field of its own.
+--><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#if block.question}<PrintPicture slot={block.question} {provider} />{/if}<p class="ps-talk__question">{block.text}{#if block.again}<small>{t('ui.talk_again')}</small>{/if}</p>{#if block.free}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span>{/if}</div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
+  The cards for the fields, at the fields' size, with room round each for
+  the scissors and a dashed line where they go.
+--><section class="ps-grid ps-grid--page ps-talk-cut" style={talkVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} /><span class="ps-talk__word">{slotCaption(slot)}</span></span></span>{/each}</section>{:else if block.kind === 'credit'}<!--
   The notice and where the sheet came from, and nothing else: the collection's
   name is the title's job, and on a credit line it only repeated it. The tail
   is held together, so on a narrow page it moves to a line of its own whole
@@ -168,7 +188,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"
@@ -196,4 +216,4 @@
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.
---><div class="ps-page">{#each held as block, i (i)}{@render one(block)}{/each}{#if credit || settings.showPageNumbers}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: at + 1, total: pages.length })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+--><div class="ps-page">{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

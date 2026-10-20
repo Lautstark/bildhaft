@@ -48,6 +48,9 @@ export class AppState {
   /* Which part of a Rezept the box at the top writes into. Here rather than
      in the box, because the Rezept below marks that part. */
   recipePart = $state<RecipePart>('zutat');
+  /* Which page of a Plauderbuch the box at the top writes onto, by id —
+     the last page when it is none or no longer there. */
+  talkPage = $state<string | null>(null);
 
   draft = $state('');
   reuse = $state.raw<Sentence | null>(null);
