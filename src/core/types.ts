@@ -750,6 +750,13 @@ export interface PrintSettings {
    * bildhaft prints is one sheet, and a number on it says nothing.
    */
   showPageNumbers: boolean;
+
+  /**
+   * A Tafel: a dashed line where a field is free, so a board laminated with
+   * an empty middle shows where the Klett goes and the cards go on later.
+   * Off, which prints a free field as nothing — a field left free for air.
+   */
+  markFreeFields: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -787,6 +794,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   songRepeats: false,
   songRefrainOnce: false,
   showPageNumbers: false,
+  markFreeFields: false,
 };
 
 /* ------------------------------------------------------------- settings --- */

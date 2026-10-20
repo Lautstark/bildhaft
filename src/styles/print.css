@@ -279,6 +279,17 @@
    ended. It is the same box a card is, which is what keeps the two the same
    size. */
 .ps-card--empty { background: transparent; }
+/* Its place, when asked for: dashed where a framed card's frame would be,
+   inside the air, so a board laminated with its middle free shows where the
+   Klett goes. A darker grey than a cut line, because it has to be found
+   again through the laminate. */
+.ps-card__place {
+  box-sizing: border-box;
+  align-self: stretch;
+  flex: 1 1 auto;
+  border: 0.3mm dashed #8c8c8c;
+  border-radius: var(--card-radius);
+}
 /* A Tafel field's colour: a layer under the card that fills the cell, gap
    included, so neighbours of one colour join — inset by half a rinne where
    the block ends (see boardSheet). The grid is a stacking context so the

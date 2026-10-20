@@ -46,6 +46,8 @@ export interface PrintOffer {
   page?: boolean;
   /** „Seite 1 von 3" at the foot of each page. */
   pageNumbers?: boolean;
+  /** A Tafel: its free fields drawn dashed, as places for cards to come. */
+  freeFields?: boolean;
 }
 
 /**
@@ -113,8 +115,10 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      And the air around each card rather than the cutting margin, which on a
      Tafel is the same number under another name: what this Tafel set for
      itself when it has, otherwise from the size of a field on this paper, so
-     a crowded A5 gets less than a roomy A4. And a colour behind the whole
-     page, so a household's three boards are told apart by it. */
+     a crowded A5 gets less than a roomy A4. Its free fields dashed only
+     when this Tafel asked: a middle left free for Klett is a fact about one
+     board, and the next one's free fields may be air. And a colour behind
+     the whole page, so a household's three boards are told apart by it. */
   tafel: {
     cards: true, ownPrint: false,
     opens: (print, own, board) => {
@@ -125,11 +129,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       return {
         ...print, layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows,
         cutMarginMm: air ?? defaultAirMm(field),
+        markFreeFields: own.markFreeFields ?? false,
       };
     },
     offers: () => ({
-      paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, title: true, pageNumbers: true,
-      page: true,
+      paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, freeFields: true,
+      title: true, pageNumbers: true, page: true,
     }),
   },
 

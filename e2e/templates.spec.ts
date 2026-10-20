@@ -233,6 +233,17 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
      anyway and draw a dashed line through every field. */
   await expect(page.getByLabel('Schnittlinien')).toHaveCount(0);
   await expect(sheet.locator('.ps-sheet--cutlines')).toHaveCount(0);
+  /* A free field prints as nothing until asked; asked, each free field —
+     and only those — gets its dashed place, inside the air as a frame is. */
+  await expect(sheet.locator('.ps-card__place')).toHaveCount(0);
+  await page.getByLabel('Leere Felder gestrichelt drucken').check();
+  await expect(sheet.locator('.ps-tafel .ps-card--empty .ps-card__place')).toHaveCount(4);
+  await expect(sheet.locator('.ps-card__place')).toHaveCount(4);
+  // And it is this Tafel's: it is still there when the Tafel is opened again.
+  await page.reload();
+  await showSheet(page);
+  await expect(page.getByLabel('Leere Felder gestrichelt drucken')).toBeChecked();
+  await expect(page.locator('.preview-frame .ps-card__place')).toHaveCount(4);
 });
 
 /**

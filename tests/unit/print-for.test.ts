@@ -41,6 +41,11 @@ describe('what a template opens the print dialog on', () => {
       expect(printFor(remembered, 'tafel', own).cutMarginMm).toBe(3);
       expect(printFor(remembered, 'tafel', own, { cutMarginMm: 6 }).cutMarginMm).toBe(6);
     });
+
+    it('dashes its free fields only when this Tafel asked, not when the last one did', () => {
+      expect(printFor({ ...remembered, markFreeFields: true }, 'tafel', board).markFreeFields).toBe(false);
+      expect(printFor(remembered, 'tafel', board, { markFreeFields: true }).markFreeFields).toBe(true);
+    });
   });
 
   it('gives an Einkaufsliste its own millimetres, whatever was remembered', () => {
