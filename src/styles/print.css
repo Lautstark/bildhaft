@@ -631,3 +631,18 @@
   white-space: nowrap;
   color: #777;
 }
+
+/* A Refrain sung again, by reference: one line on the Refrain's own ground, so
+   it is found again by its colour even before it is read. */
+.ps-song-again {
+  margin: 0 0 3mm;
+  padding: 1.5mm 2mm;
+  border-radius: 2mm;
+  background: color-mix(in srgb, var(--song) 14%, #fff);
+  color: var(--song);
+  font-size: 10pt;
+  font-weight: 700;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.ps-song-again__loop { margin-right: 1.5mm; font-size: 12pt; }

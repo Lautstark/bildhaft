@@ -593,9 +593,16 @@ test('a Lied holds a repeated line once, and prints the song written out', async
 
   // What is on the sheet is the Lied's „Aussehen", set once for every paper.
   await openLook(page);
-  await page.getByLabel('Doppelte Zeilen nur einmal, mit „2×“').check();
+  await page.getByLabel('Wiederholte Zeilen nur einmal, mit Anzahl (2×, 3× …)').check();
   await expect(sheet.locator('.ps-song-times')).toHaveText(['2×', '2×']);
   await expect(sheet.locator('.ps-song-line')).toHaveCount(13);
+
+  // The Refrain written out where it is first sung, a reference after that.
+  await page.getByLabel('Refrain nur einmal ausschreiben, danach „↻ Refrain“').check();
+  await expect(sheet.locator('.ps-song-part--refrain')).toHaveCount(1);
+  await expect(sheet.locator('.ps-song-again')).toHaveText(['↻Refrain', '↻Refrain']);
+  await page.getByLabel('Refrain nur einmal ausschreiben, danach „↻ Refrain“').uncheck();
+  await expect(sheet.locator('.ps-song-part--refrain')).toHaveCount(3);
 
   await page.getByLabel('Überschriften drucken (Strophe, Refrain)').uncheck();
   await expect(sheet.locator('.ps-song-head')).toHaveCount(0);

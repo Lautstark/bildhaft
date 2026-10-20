@@ -293,7 +293,8 @@ export interface PrintBoard {
  * written out the way the song goes.
  */
 export interface PrintSong {
-  parts: { kind: SongPartKind; n: number; lines: Sentence[] }[];
+  /** `first` is the part's first time in the song: a Refrain sung again is not. */
+  parts: { kind: SongPartKind; n: number; first: boolean; lines: Sentence[] }[];
 }
 
 export interface SheetOptions {
@@ -333,6 +334,7 @@ export type Block =
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[] }
+  | { kind: 'song-again' }
   | { kind: 'credit'; lines: string[]; name: string };
 
 /**
@@ -455,6 +457,11 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
      * own group of one, which is the song written out.
      */
     for (const part of song?.parts ?? []) {
+      /* Asked for, a Refrain sung again is a reference to the one above. */
+      if (settings.songRefrainOnce && part.kind === 'refrain' && !part.first) {
+        blocks.push({ kind: 'song-again' });
+        continue;
+      }
       blocks.push({
         kind: 'song-part', part: part.kind, n: part.n,
         groups: settings.songRepeats

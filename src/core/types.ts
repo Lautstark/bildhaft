@@ -698,6 +698,13 @@ export interface PrintSettings {
   songRepeats: boolean;
 
   /**
+   * A Lied: the Refrain written out where it is first sung, and every time
+   * after that a short „↻ Refrain" in its place. Off, which writes it out
+   * every time — a small child follows the sheet line by line.
+   */
+  songRefrainOnce: boolean;
+
+  /**
    * „Seite 1 von 3" at the foot of every page. Off by default: most of what
    * bildhaft prints is one sheet, and a number on it says nothing.
    */
@@ -731,6 +738,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   accentColour: '#e3262b',
   songHeadings: true,
   songRepeats: false,
+  songRefrainOnce: false,
   showPageNumbers: false,
 };
 

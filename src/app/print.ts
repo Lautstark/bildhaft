@@ -126,7 +126,7 @@ export function printOptions(): PrintOptions | null {
      times on paper. */
   const song = kind() === 'lied' && open?.song ? {
     parts: sungParts(open.song).map((at) => ({
-      kind: at.kind, n: at.n,
+      kind: at.kind, n: at.n, first: at.first,
       lines: at.part.lines.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
     })),
   } : null;

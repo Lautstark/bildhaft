@@ -187,6 +187,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       showCollectionTitle: own.showCollectionTitle ?? true,
       showSentenceText: own.showSentenceText ?? true,
       showPageNumbers: own.showPageNumbers ?? false,
+      songRefrainOnce: own.songRefrainOnce ?? false,
       accentColour: own.accentColour ?? '#2c66c8',
     }),
     offers: () => ({
