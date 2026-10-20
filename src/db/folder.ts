@@ -337,9 +337,3 @@ export async function readPdf(path: string): Promise<Blob | null> {
     return null;
   }
 }
-
-export async function removePdf(path: string): Promise<void> {
-  const [folder, name] = path.split('/');
-  const dir = folder && name ? await pdfDir(folder, false) : null;
-  await dir?.removeEntry(name!).catch(() => undefined);
-}

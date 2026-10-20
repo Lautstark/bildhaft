@@ -3,7 +3,7 @@ import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { METACOM_COPYRIGHT, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
-import { keepsPdfs, pdfFolderFor, readPdf, removePdf, writePdf } from '../db/folder.ts';
+import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
 import { download } from '@lautstark/werkzeuge/download';
 import { t } from '../i18n/index.ts';
 import { notify } from './notify.ts';
@@ -90,17 +90,6 @@ export async function openSavedPdf(saved: SavedPdf): Promise<void> {
   const url = URL.createObjectURL(pdf);
   window.open(url, '_blank');
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
-
-/** Deletes a saved PDF from the folder and from the Sammlung's list. */
-export async function deleteSavedPdf(saved: SavedPdf): Promise<void> {
-  const open = activeCollection();
-  if (!open) return;
-  await removePdf(saved.path);
-  const pdfs = (open.pdfs ?? []).filter((p) => p.path !== saved.path);
-  const next: Collection = { ...open, pdfs, updatedAt: Date.now() };
-  s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
-  await patchCollection(next.id, { pdfs: pdfs.length > 0 ? pdfs : undefined });
 }
 
 /**

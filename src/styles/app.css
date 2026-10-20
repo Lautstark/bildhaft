@@ -1539,7 +1539,8 @@ footer.footer {
    that folds open under it. */
 .pdf-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: -6px 0 14px; }
 .pdf-list { list-style: none; margin: -8px 0 16px; padding: 4px 0; border-top: 1px solid var(--line); }
-.pdf-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 0; }
+.pdf-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.pdf-list li > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ------------------------------------------------------------ print view */
 
