@@ -53,13 +53,27 @@ export const openLook = showSheet;
 export const backToPrint = showSheet;
 
 /**
- * Turns the open, empty Sammlung into Wortkarten and types one card per word.
+ * Gives the open, empty Material its template.
+ *
+ * A Material made by „+ Neues Material" asks first; the one the page makes on
+ * its own on the first day starts as Satzstreifen and is asked through
+ * „Andere Vorlage wählen". Either way the choice is gone once it is made.
+ */
+export async function pickTemplate(page: Page, name: RegExp): Promise<void> {
+  const tiles = page.locator('.templates');
+  const other = page.getByRole('button', { name: 'Andere Vorlage wählen' });
+  await expect(tiles.or(other).first()).toBeVisible();
+  if (await other.isVisible()) await other.click();
+  await tiles.getByRole('button', { name }).click();
+  await expect(tiles).toHaveCount(0);
+}
+
+/**
+ * Turns the open, empty Material into Wortkarten and types one card per word.
  * A card sheet is the Wortkarten's alone: a Satzstreifen prints as strips.
  */
 export async function addCards(page: Page, words: string[]): Promise<void> {
-  const tile = page.locator('.templates').getByRole('button', { name: /Wortkarten/ });
-  await tile.click();
-  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await pickTemplate(page, /^Wortkarten/);
   const cards = page.locator('.words .word:not(.word--add)');
   for (const word of words) {
     const before = await cards.count();
@@ -76,8 +90,8 @@ export const FIVE_WORDS = ['Ich', 'möchte', 'Apfel', 'essen', 'schlafen'];
 /** A second Sammlung of Wortkarten, its sheet showing. */
 export async function cardSheet(page: Page, words: string[] = FIVE_WORDS): Promise<void> {
   await expect(page.locator('.sidebar')).toBeVisible();
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Karten');
   await addCards(page, words);
   await showSheet(page);

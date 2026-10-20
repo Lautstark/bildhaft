@@ -27,6 +27,8 @@
 
   let empty = $derived(s.sentences.length === 0);
   let provider = $derived(providerId());
+  /** A Material made by „+ Neues Material" that has not been told what it is yet. */
+  let choosing = $derived(s.choosing !== null && s.choosing === s.activeId);
 
   /**
    * The two templates, offered while a Sammlung is still empty.
@@ -49,11 +51,32 @@
     s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
     await patchCollection(next.id, { kind: which, board: next.board });
   }
+
+  async function pick(which: CollectionKind): Promise<void> {
+    await chooseTemplate(which);
+    s.choosing = null;
+  }
+
+  /** What of this kind is already there, the open one aside. */
+  function mine(which: CollectionKind): string {
+    const others = s.collections.filter((c) => c.id !== s.activeId && kindOf(c) === which);
+    if (others.length === 0) return t('ui.template_mine_none');
+    if (others.length === 1) return t('ui.template_mine_one', { name: others[0].name });
+    return t('ui.template_mine', { name: others[0].name, n: others.length - 1 });
+  }
 </script>
 
-{#if empty}<!--
-  What an empty Sammlung says: what it is for, and which template it is.
---><div class="empty"><b>{t('ui.empty_collection')}</b><small>{t('ui.empty_collection_hint')}</small><div class="templates">{#each COLLECTION_KINDS as which (which)}<button class="tpl {kind() === which ? 'tpl--on' : ''}" type="button" aria-pressed={kind() === which} onclick={() => void chooseTemplate(which)}><span class="tpl__art-box"><TemplateArt kind={which} /></span><span><b>{t(`ui.template_${which}`)}</b><small>{t(`ui.template_${which}_note`)}</small></span></button>{/each}</div><!--
+{#if choosing}<!--
+  A new Material asks what it should become before anything else, and the
+  answer is a click. No box to type into above it: every template has its own
+  — the Lied a paste box, the Rezept three fields, the Tafel a grid first — so
+  a shared one in front of them would be a second box that has to guess which
+  of those it is. Under each tile, what of that kind is already there, which
+  is how somebody recognises the one they mean faster than by its drawing.
+--><div class="pick"><p class="pick__ask">{t('ui.empty_collection')}</p><p class="small muted pick__hint">{t('ui.empty_collection_hint')}</p><div class="templates templates--wide">{#each COLLECTION_KINDS as which (which)}<button class="tpl" type="button" onclick={() => void pick(which)}><span class="tpl__art-box"><TemplateArt kind={which} /></span><span><b>{t(`ui.template_${which}`)}</b><small>{t(`ui.template_${which}_note`)}</small></span><span class="tpl__mine">{mine(which)}</span></button>{/each}</div></div>{:else if empty}<!--
+  What an empty Material says once its template is chosen: which one, and the
+  way back to the choice while there is still nothing to convert.
+--><div class="empty"><b>{t('ui.collection_empty')}</b><small>{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></small><!--
   The second way to start, said once and where it is useful: an empty Sammlung
   is exactly where somebody wants their own words poured in rather than typed
   again. Afterwards it lives in the ⋯, because by then the Sammlung has
@@ -63,7 +86,7 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if empty}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if holdsWords()}<div class="rows words">{#each s.sentences as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if empty}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if holdsWords()}<div class="rows words">{#each s.sentences as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other

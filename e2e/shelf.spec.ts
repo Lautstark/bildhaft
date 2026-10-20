@@ -36,7 +36,7 @@ test('a link naming a Sammlung opens it', async ({ page }) => {
   // The Sammlung the file names, opened. The name field is what says which one
   // is in front of you; the row in the sidebar is what says it arrived at all.
   await expect(page.locator('.collections__name', { hasText: 'Vom Regal' })).toBeVisible();
-  await expect(page.getByLabel('Name der Sammlung')).toHaveValue('Vom Regal');
+  await expect(page.getByLabel('Name des Materials')).toHaveValue('Vom Regal');
 
   /* And the address is clean afterwards, or a reload is a second copy of a
      Sammlung somebody may have since edited. */
@@ -75,7 +75,7 @@ test('a Sammlung made in another symbol source still shows symbols', async ({ pa
 
   await page.goto('/?sammlung=aus-einer-anderen-quelle');
 
-  await expect(page.getByLabel('Name der Sammlung')).toHaveValue('Aus einer anderen Quelle');
+  await expect(page.getByLabel('Name des Materials')).toHaveValue('Aus einer anderen Quelle');
   // Resolved on arrival, against the source actually in front of the reader:
   // one slot, carrying a picture rather than an empty frame.
   const slot = page.locator('.row').first().locator('.slot', { hasText: 'Apfel' });

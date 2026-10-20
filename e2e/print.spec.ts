@@ -200,10 +200,10 @@ test('print media shows the sheet and nothing of the UI', async ({ page }) => {
 });
 
 test('exports references only, never image data', async ({ page }) => {
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
 
   const download = page.waitForEvent('download');
-  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await page.getByRole('menuitem', { name: 'Material exportieren' }).click();
   const file = await (await download).createReadStream();
 
   let raw = '';
@@ -437,7 +437,7 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
  */
 test('the credit line names no collection', async ({ page }) => {
   await cardSheet(page);
-  await page.getByLabel('Name der Sammlung', { exact: true })
+  await page.getByLabel('Name des Materials', { exact: true })
     .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
   await showSheet(page);
 
@@ -462,7 +462,7 @@ test('the credit line names no collection', async ({ page }) => {
  * twenty, so it has to reach the printable copy and not only the preview.
  */
 test('the collection name can head the sheet', async ({ page }) => {
-  await page.getByLabel('Name der Sammlung', { exact: true }).fill('Morgenkreis');
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Morgenkreis');
   await showSheet(page);
 
   await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
@@ -722,7 +722,7 @@ test('each Sammlung opens in the view it was left in', async ({ page }) => {
   const view = (name: string) => page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name });
   await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.getByLabel('Satz eingeben')).toBeVisible();
   await expect(page.locator('.print-view')).toHaveCount(0);
 

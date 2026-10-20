@@ -23,7 +23,7 @@ import {
  */
 
 const menu = (page: Page) =>
-  page.getByRole('button', { name: 'Aktionen für diese Sammlung' });
+  page.getByRole('button', { name: 'Aktionen für dieses Material' });
 
 /** ARASAAC's credit, which is present exactly when ARASAAC drew the page. */
 const credit = (page: Page) => page.locator('.footer__credit');
@@ -39,8 +39,8 @@ const sheetRow = (page: Page, choice: '' | 'arasaac' | 'metacom') =>
 
 async function openSourceSheet(page: Page): Promise<void> {
   await menu(page).click();
-  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
-  await expect(page.getByRole('heading', { name: 'Einstellungen dieser Sammlung' })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieses Materials …' }).click();
+  await expect(page.getByRole('heading', { name: 'Einstellungen dieses Materials' })).toBeVisible();
 }
 
 async function closeSheet(page: Page): Promise<void> {
@@ -59,10 +59,10 @@ async function sidebarReady(page: Page): Promise<void> {
 /** A second Sammlung, named, so the two can be told apart in the sidebar. */
 async function newCollection(page: Page, name: string): Promise<void> {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
   // Creating is asynchronous and the focus lands at the end of it, so typing
   // before the field has it goes nowhere at all.
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   // The invented name is selected, so typing replaces it (§1.5).
   await page.keyboard.type(name);
   await expect(page.locator('.collections__name', { hasText: name })).toBeVisible();
@@ -86,7 +86,7 @@ test('the ⋯ holds what this Sammlung is set to, under the export and above the
   // that puts something *into* the Sammlung — and is not here at all, because
   // this page has no Wortschatz to pour.
   await expect(page.locator('.menu button')).toHaveText([
-    'Sammlung exportieren', 'Einstellungen dieser Sammlung …', 'Sammlung löschen',
+    'Material exportieren', 'Einstellungen dieses Materials …', 'Material löschen',
   ]);
 });
 
@@ -133,7 +133,7 @@ test('a Sammlung that answered for itself keeps its source when the default move
   await arasaacHeading(page).click();
   await page.getByRole('button', { name: 'Als Standard verwenden' }).click();
   // And say what that did — and, here, what it did not do.
-  await expect(page.locator('.toast')).toContainText('bleibt, wie sie ist');
+  await expect(page.locator('.toast')).toContainText('bleibt, wie es ist');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   // „Zweite" answered for itself, so it is untouched: still METACOM, no credit.

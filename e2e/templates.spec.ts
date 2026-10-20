@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openLook, showMaterial, showSheet, translate } from './helpers.ts';
+import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -33,10 +33,10 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
 
   // A second Sammlung, switched to the card template while it is still empty.
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Karten');
-  await page.getByRole('button', { name: /Wortkarten/ }).click();
+  await pickTemplate(page, /^Wortkarten/);
   /* Nothing is asserted here on purpose: an empty Sammlung shows its empty
      state, so the host the card wall wrote its layout onto is not even in the
      page yet. Which is the shape of the defect — it is written on a node
@@ -65,14 +65,10 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
  */
 test('an Einkaufsliste prints its three sheets, and the cart holds its zones', async ({ page }) => {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
-  const tile = page.getByRole('button', { name: /^Einkaufsliste/ });
-  await tile.click();
-  // Said out loud, because everything below fails in the same way when the
-  // template did not take, and for a completely different reason.
-  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await pickTemplate(page, /^Einkaufsliste/);
 
   await page.getByLabel('Wörter hinzufügen').fill('Apfel');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
@@ -119,12 +115,10 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // a drag that starts off screen is not a drag.
   await page.setViewportSize({ width: 1280, height: 1100 });
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
-  const tile = page.getByRole('button', { name: /^Tafel/ });
-  await tile.click();
-  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await pickTemplate(page, /^Tafel/);
   // And the sidebar says so under the name, where eleven look-alike rows are told apart.
   await expect(page.locator('.sidebar .collections [aria-current]')).toContainText('Tafel');
 
@@ -226,8 +220,9 @@ test.describe('a full Tafel', () => {
 
 test('every card of a full Tafel can be dragged from the tray, one after the other', async ({ page }) => {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await page.getByRole('button', { name: /^Tafel/ }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await pickTemplate(page, /^Tafel/);
 
   const names = Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`);
   const bar = page.getByLabel('Wörter hinzufügen');
@@ -276,8 +271,9 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
  */
 test('a Tafel field or tray „+" closed without a choice leaves no card', async ({ page }) => {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await page.getByRole('button', { name: /^Tafel/ }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await pickTemplate(page, /^Tafel/);
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -326,8 +322,9 @@ test.describe('colour on a Tafel', () => {
  */
 test('fields are marked and grouped, on screen and on paper', async ({ page }) => {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await page.getByRole('button', { name: /^Tafel/ }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await pickTemplate(page, /^Tafel/);
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Rot');
   await bar.press('Enter');
@@ -492,13 +489,11 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
  */
 test('a Rezept takes each part in its own box, and prints them in order', async ({ page }) => {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Waffeln (5–6 Stück)');
 
-  const tile = page.getByRole('button', { name: /^Rezept/ });
-  await tile.click();
-  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await pickTemplate(page, /^Rezept/);
   // Its parts have their own boxes, so the composer above would be a fourth.
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
 
@@ -561,13 +556,11 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
  */
 test('a Lied holds a repeated line once, and prints the song written out', async ({ page }) => {
   await sidebarReady(page);
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
-  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Laternenlied');
 
-  const tile = page.getByRole('button', { name: /^Lied/ });
-  await tile.click();
-  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  await pickTemplate(page, /^Lied/);
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
   // Its box stands where every other template's does: above the Sammlung's name.
   const songBox = page.getByLabel('Liedzeile eingeben');
@@ -736,7 +729,7 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
-  await page.getByRole('button', { name: /^Lied/ }).click();
+  await pickTemplate(page, /^Lied/);
   await page.getByLabel('Liedzeile eingeben').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
   await page.getByRole('button', { name: 'Übersetzen' }).click();
   await showSheet(page);

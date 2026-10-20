@@ -41,6 +41,10 @@ export class AppState {
   wordCount = $state(0);
   tagRows = $state.raw<{ name: string; count: number }[]>([]);
   sentences = $state.raw<Sentence[]>([]);
+  /* The Material „+ Neues Material" just made, while it still waits for its
+     template. This session only: one left empty and opened again later shows
+     its template and the way back to the choice instead. */
+  choosing = $state<string | null>(null);
 
   draft = $state('');
   reuse = $state.raw<Sentence | null>(null);

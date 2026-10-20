@@ -31,10 +31,10 @@ test('a new Sammlung is named for the day, and the name is selected', async ({ p
   const rows = page.locator('.sidebar__section--collections .collections__item');
   const before = await rows.count();
 
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(rows).toHaveCount(before + 1);
 
-  const title = page.getByLabel('Name der Sammlung');
+  const title = page.getByLabel('Name des Materials');
   await expect(title).toBeFocused();
 
   // Named for the day: the date is in it, whatever the separator.
@@ -58,9 +58,9 @@ test('so the first keystroke replaces the date rather than joining it', async ({
      unselected default name is a small chore charged on every creation, and
      what it looks like from the outside is this: you type, and what you get is
      your words stuck onto a date. */
-  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
 
-  const title = page.getByLabel('Name der Sammlung');
+  const title = page.getByLabel('Name des Materials');
   await expect(title).toBeFocused();
   await page.keyboard.type('Beim Essen');
 

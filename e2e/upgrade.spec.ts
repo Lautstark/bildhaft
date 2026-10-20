@@ -114,7 +114,7 @@ test('says what the upgrade carried across', async ({ page }) => {
    * The count is the point of the sentence — it is the one number somebody can
    * check against the Sammlungen in front of them. */
   await expect(page.locator('.toast'))
-    .toHaveText('Die Datenbank wurde von Version 3 auf 4 gebracht. Eine Sammlung ist mitgekommen.');
+    .toHaveText('Die Datenbank wurde von Version 3 auf 4 gebracht. Ein Material ist mitgekommen.');
   await expect(page.locator('.sidebar__section--collections .collections__item')).toContainText(['Aus Version 3']);
 });
 

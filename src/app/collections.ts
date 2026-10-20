@@ -218,6 +218,7 @@ export async function handleNewCollection(): Promise<void> {
   await refreshCollections();
   s.sentences = [];
   setActive(created.id);
+  s.choosing = created.id;
   /* Straight into the name, selected: the first keystroke replaces the date
      it was given. conventions.md §1.5, and the selecting is the half of it
      that was missing here — the name was invented and then left as a chore to

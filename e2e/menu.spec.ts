@@ -17,7 +17,7 @@ import { translate } from './helpers.ts';
  */
 
 const menu = (page: import('@playwright/test').Page) =>
-  page.getByRole('button', { name: 'Aktionen für diese Sammlung' });
+  page.getByRole('button', { name: 'Aktionen für dieses Material' });
 
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);

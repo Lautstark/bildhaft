@@ -1,6 +1,6 @@
 # ADR 0002 — The Wortschatz is a place of its own, and material has a kind
 
-**Status:** accepted · **Date:** 2026-09-02 · **Amended:** 2026-09-03, 2026-09-09 · **Applies
+**Status:** accepted · **Date:** 2026-09-02 · **Amended:** 2026-09-03, 2026-09-09, 2026-10-20 · **Applies
 to:** the sidebar shell,
 `src/db/repo.ts`'s overrides, `src/db/folder.ts`'s `woerterbuch` kind, and every
 future editor that is not the sentence editor
@@ -42,6 +42,17 @@ words a household has settled: this picture for this word, in this language.
 not already name, so the second noun is the one that is already there. The
 sidebar carries a WORTSCHATZ section above the SAMMLUNGEN, and Einstellungen
 stays at its foot.
+
+*Amended 2026-10-20: on screen it is „Material" now, in the code it stays
+`Collection`.* The argument above held while everything bildhaft made was a list
+of sentences. A Lied, a Rezept and a Tafel are not collections of anything, and
+a sidebar listing „Sammlungen" of them read wrong to the person using it. The
+noun changed in the interface texts only. `Collection`, the `sammlungen/` folder
+in the Ablage, the export format and the `?sammlung=` links that vorlaut and
+mitreden read too keep their names: renaming them would move her data and break
+links for a word nobody sees. The sidebar now also puts the five Materialien
+worked on last above the Wortschatz, and groups the rest by template once there
+are more than five.
 
 **The dictionary panel goes, rather than staying as a second door.** This said
 the opposite when it was written — the panel would keep working — and it was

@@ -24,7 +24,8 @@
    */
   import SharedSidebar from '@lautstark/design/svelte/Sidebar';
   import type { Collection } from '../core/types.ts';
-  import { sentenceCaption, kindOf } from '../core/types.ts';
+  import type { CollectionKind } from '../core/types.ts';
+  import { COLLECTION_KINDS, sentenceCaption, kindOf } from '../core/types.ts';
   import { editedLabel } from '../core/edited.ts';
   import { drawCollections } from '@lautstark/design/collections';
   import Icon from '../pieces/Icon.svelte';
@@ -55,33 +56,69 @@
   /* Both lists are drawn by drawCollections and so both emit
      `.collections__item`: the row is the same row, and sharing it is the
      point. What was missing is a way to say *which* list, and without it a
-     page-wide `.collections__item` silently means "a Sammlung or a
+     page-wide `.collections__item` silently means "a Material or a
      Wortschatz row, whichever comes first" - which is how three tests came
-     to count „Alle Wörter" as a Sammlung and one of them to click it. */
-  let wordRowsHost: HTMLElement | undefined = $state();
-  let rowsHost: HTMLElement | undefined = $state();
+     to count „Alle Wörter" as a Material and one of them to click it. So each
+     list sits in a section of its own, named by its class. */
   let searchInput: HTMLInputElement;
 
   let searching = $derived(s.query.trim().length > 0);
-  /** Which lens is open, or `undefined` when a Sammlung is showing instead. */
+  /** Which lens is open, or `undefined` when a Material is showing instead. */
   let openTag = $derived(s.wortschatz ? s.wortschatz.tag : undefined);
 
-  /* The rows are @lautstark/design/collections'. It empties the container it
-     is given, so that container is a node this component renders and never
-     fills itself — the heading above it and the button under it are this
-     sidebar's and are not shared, which is the line the package draws. The
-     additive flag it reports is ignored because bildhaft opens one Sammlung at
-     a time (§4.2) — which v1.17.0 separated from how many a line may be *in*
-     (§4.1), the question this comment used to answer and the one that is now
-     one everywhere. */
   /* Written rather than bound, and only when it actually differs: the store is
      the authority on what was typed, and assigning the same string back into a
      field somebody has the caret in is how a search box loses its place. */
   $effect(() => { if (searchInput.value !== s.query) searchInput.value = s.query; });
 
-  $effect(() => {
-    if (!wordRowsHost) return;
-    drawCollections(wordRowsHost, {
+  /**
+   * How many Materialien before the list is sorted for finding.
+   *
+   * Five fit on a screen beside everything else and are found by looking. Past
+   * that the list is put in two shapes: the five worked on last, which is most
+   * of what anybody opens, and all of them grouped by template, which is how a
+   * Lied is told from a Tafel without reading. Below it a „Zuletzt" would be
+   * the same rows twice.
+   */
+  const RECENT = 5;
+  let grouped = $derived(s.collections.length > RECENT);
+  let groups = $derived(COLLECTION_KINDS
+    .map((kind) => ({ kind, rows: s.collections.filter((c) => kindOf(c) === kind) }))
+    .filter((group) => group.rows.length > 0));
+
+  /* What is folded, remembered on this device. Sections are open until folded;
+     a template's group is folded until opened — six open groups would be the
+     long list again. */
+  const FOLDS = 'bildhaft.sidebar.folds';
+  const readFolds = (): Record<string, boolean> => {
+    try { return JSON.parse(localStorage.getItem(FOLDS) ?? '{}') as Record<string, boolean>; } catch { return {}; }
+  };
+  let folds = $state<Record<string, boolean>>(readFolds());
+  const isOpen = (id: string, otherwise = true): boolean => folds[id] ?? otherwise;
+  function toggle(id: string, otherwise = true): void {
+    folds = { ...folds, [id]: !isOpen(id, otherwise) };
+    try { localStorage.setItem(FOLDS, JSON.stringify(folds)); } catch { /* a private window keeps nothing */ }
+  }
+  const groupId = (kind: CollectionKind) => `kind:${kind}`;
+  /* A group is open by default only while it holds the Material that is
+     showing — asked, not written down, or every group visited once would stay
+     open and the list would be long again by the end of an afternoon. */
+  let showingKind = $derived.by(() => {
+    const open = s.collections.find((c) => c.id === s.activeId);
+    return open ? kindOf(open) : null;
+  });
+  const groupOpen = (kind: CollectionKind) => isOpen(groupId(kind), kind === showingKind);
+  const toggleGroup = (kind: CollectionKind) => toggle(groupId(kind), kind === showingKind);
+
+  /* The rows are @lautstark/design/collections'. It empties the container it
+     is given, so that container is a node this component renders and never
+     fills itself — the heading above it and the button under it are this
+     sidebar's and are not shared, which is the line the package draws. The
+     additive flag it reports is ignored because bildhaft opens one Material at
+     a time (§4.2). An attachment rather than an effect over a bound node,
+     because the groups come and go and each needs a host of its own. */
+  const wordRows = (node: HTMLElement) => {
+    drawCollections(node, {
       rows: [
         { id: '', name: t('ui.all_words'), count: s.wordCount },
         ...s.tagRows.map((tag) => ({ id: `#${tag.name}`, name: tag.name, count: tag.count })),
@@ -89,30 +126,28 @@
       open: openTag === undefined ? [] : [openTag === null ? '' : `#${openTag}`],
       onPick: (id: string) => openWords(id === '' ? null : id.slice(1)),
     });
-  });
+  };
 
-  $effect(() => {
-    if (!rowsHost) return;
-    drawCollections(rowsHost, {
-      rows: s.collections.map((collection) => ({
+  /**
+   * One list of Materialien. What it is and when it was last worked on, under
+   * what it is called — except inside a template's group, which already says
+   * the first. No count: how much is in a Material is said at its head once it
+   * is open, and a number here read as 0 more often than it read right.
+   */
+  const materialRows = (list: Collection[], withKind: boolean) => (node: HTMLElement) => {
+    drawCollections(node, {
+      rows: list.map((collection) => ({
         id: collection.id,
         name: collection.name,
-        /* What it is and when it was last worked on, under what it is
-           called. Eleven Sammlungen in a list look alike, and which of them
-           is the Tafel and which the strips is a question the list can
-           answer without being opened; when is the other half of finding one
-           again. No count: how much is in a Sammlung is said at its head once
-           it is open, and a number here read as 0 more often than it read
-           right. */
-        subtitle: `${t(`ui.template_${kindOf(collection)}`)} · ${edited(collection)}`,
+        subtitle: withKind ? `${t(`ui.template_${kindOf(collection)}`)} · ${edited(collection)}` : edited(collection),
       })),
       /* Nothing is open down here while the Wortschatz is showing. Two rows
          lit in two sections would say both are, and one of them is only the
-         Sammlung that will be there again when the person comes back. */
+         Material that will be there again when the person comes back. */
       open: openTag === undefined && s.activeId ? [s.activeId] : [],
       onPick: (id: string) => { s.wortschatz = null; setActive(id); s.query = ''; onNavigated(); },
     });
-  });
+  };
 
   function openWords(tag: string | null): void {
     s.wortschatz = { tag };
@@ -147,12 +182,17 @@
 
 <SharedSidebar id="sidebar" closeLabel={t('ui.close_menu')} {drawer} {collapsed} {ondismiss}
   >{#snippet brand(wired)}<Logo /><h1>bildhaft</h1><button class="btn quiet icon sidebar__collapse" type="button" {...wired} title={t('ui.hide_sidebar')} onclick={onCollapse}><Icon name="chevronLeft" /></button>{/snippet}{#snippet search()}<div class="sidebar__section"><input bind:this={searchInput} class="field" type="search" placeholder={t('ui.search_placeholder')} aria-label={t('ui.search_label')} oninput={(event) => { s.query = event.currentTarget.value; scheduleSearch(); }} /></div>{/snippet}{#snippet sections()}<!--
-  The Wortschatz, above the Sammlungen.
+  What was worked on last, above everything: it is most of what anybody opens.
+  Then the Wortschatz, above the Materialien.
 
   „Alle Wörter" is always there, including on the first day when it counts
   nothing: it is the door, and a section that appears only once somebody has
   done the thing it is the door to would never be found. „+ Neuer Tag" is not —
   a button to sort something that does not exist yet is a control that cannot
   do anything, so it waits until there is a word to sort.
---><div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{t('ui.wortschatz')}</h2><div class="collections" bind:this={wordRowsHost}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{t('ui.collections')}</h2><div class="collections" bind:this={rowsHost}></div><button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { s.wortschatz = null; void handleNewCollection(); onNavigated(); }}>{t('ui.new_collection')}</button></div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
->
+
+  Every heading is a button that folds what is under it.
+-->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.template_${group.kind}`)}</span><span class="sidebar__count">{group.rows.length}</span></button>{#if groupOpen(group.kind)}<div class="collections sidebar__group-rows" {@attach materialRows(group.rows, false)}></div>{/if}{/each}{:else}<div class="collections" {@attach materialRows(s.collections, true)}></div>{/if}{/if}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { s.wortschatz = null; void handleNewCollection(); onNavigated(); }}>{t('ui.new_collection')}</button></div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
+><!--
+  A section's heading, which is also what folds it.
+-->{#snippet fold(id: string, label: string, count?: number)}<button class="sidebar__fold" type="button" aria-expanded={isOpen(id)} onclick={() => toggle(id)}><Icon name="chevronRight" /><span>{label}</span>{#if count !== undefined}<span class="sidebar__count">{count}</span>{/if}</button>{/snippet}

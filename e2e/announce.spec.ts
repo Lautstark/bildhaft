@@ -12,7 +12,7 @@ import { translate } from './helpers.ts';
  * something the reader was already watching, so one that arrives already
  * carrying its message and leaves between messages announces nothing at all.
  *
- * Every acknowledgement this page makes went that way: "Sammlung exportiert",
+ * Every acknowledgement this page makes went that way: "Material exportiert",
  * "Eigenes Bild gespeichert", "Alle Daten gelöscht", and every failure of an
  * import or a translation. In a tool whose users are the reason it exists, that
  * is the worst place in the family for this to have been hiding.
@@ -63,12 +63,12 @@ test('a reported result lands in the live region and stays there', async ({ page
   // reader would have been watching a node that no longer exists.
   await toast.evaluate((node) => { (node as HTMLElement).dataset.watched = 'yes'; });
 
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await page.getByRole('menuitem', { name: 'Material exportieren' }).click();
   await download;
 
-  await expect(toast).toHaveText('Sammlung exportiert.');
+  await expect(toast).toHaveText('Material exportiert.');
   await expect(toast).toHaveAttribute('data-watched', 'yes');
   await expect(toast).toHaveAttribute('role', 'status');
 });

@@ -377,13 +377,13 @@ async function oneRow(page: Page, name: string): Promise<void> {
 test('the toast, carrying a message', async ({ page }) => {
   await oneRow(page, 'Am Morgen');
 
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await page.getByRole('menuitem', { name: 'Material exportieren' }).click();
   await download;
 
   const toast = page.locator('.toast');
-  await expect(toast).toHaveText('Sammlung exportiert.');
+  await expect(toast).toHaveText('Material exportiert.');
   await expect(toast).toHaveScreenshot('toast.png');
 });
 

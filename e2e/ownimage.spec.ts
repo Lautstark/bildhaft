@@ -104,8 +104,8 @@ test('carries own pictures through a backup and back', async ({ page }) => {
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
+  await page.getByRole('menuitem', { name: 'Material exportieren' }).click();
   const path = await (await download).path();
 
   const raw = await page.evaluate(async () => {
@@ -137,8 +137,8 @@ test('writes no symbol pixels into a file, only the user’s own', async ({ page
   await translate(page, 'Ich möchte einen Apfel essen');
 
   const plain = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
+  await page.getByRole('menuitem', { name: 'Material exportieren' }).click();
   let raw = '';
   for await (const chunk of await (await plain).createReadStream()) raw += chunk;
   // No own pictures in play: the file is references only, exactly as before.
@@ -149,8 +149,8 @@ test('writes no symbol pixels into a file, only the user’s own', async ({ page
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 
   const withPhoto = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Sammlung exportieren' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
+  await page.getByRole('menuitem', { name: 'Material exportieren' }).click();
   let second = '';
   for await (const chunk of await (await withPhoto).createReadStream()) second += chunk;
 

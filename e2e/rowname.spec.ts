@@ -142,7 +142,7 @@ test('the search finds a named row by its name and by what was typed', async ({ 
   await washing.fill('Hände waschen');
   await washing.press('Enter');
 
-  const search = page.getByLabel('Alle Sätze durchsuchen');
+  const search = page.getByLabel('Suchen');
 
   await search.fill('Hände');
   await expect(page.locator('.hit')).toHaveText([/Hände waschen/]);

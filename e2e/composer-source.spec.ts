@@ -35,15 +35,15 @@ test('names the default while the Sammlung is following it', async ({ page }) =>
 });
 
 test('names the Sammlung once the Sammlung has answered', async ({ page }) => {
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieses Materials …' }).click();
   await page.locator('.source[data-choice="arasaac"]').click();
   await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
 
   // The same source, and a different sentence about it: ARASAAC is this
   // Sammlung's answer now rather than the default's, so the default can move
   // without moving it — and the line has to be the thing that says so.
-  await expect(line(page)).toContainText('Symbole dieser Sammlung:');
+  await expect(line(page)).toContainText('Symbole dieses Materials:');
   await expect(line(page)).toContainText('ARASAAC');
 });
 
@@ -58,8 +58,8 @@ test('follows the source into the Sammlung it belongs to', async ({ page }) => {
 });
 
 test('says a source that cannot draw is not ready', async ({ page }) => {
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieses Materials …' }).click();
   // METACOM is not offered in the sheet without a folder, so the state has to
   // arrive the way it really does: from storage, as a restored Sicherung does.
   await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
@@ -80,7 +80,7 @@ test('says a source that cannot draw is not ready', async ({ page }) => {
   });
   await page.reload();
 
-  await expect(line(page)).toContainText('Symbole dieser Sammlung:');
+  await expect(line(page)).toContainText('Symbole dieses Materials:');
   await expect(line(page)).toContainText('METACOM (nicht bereit)');
   // And the page does not quietly draw ARASAAC instead.
   await expect(page.locator('.banner')).toContainText('kein METACOM-Ordner eingerichtet');
@@ -93,7 +93,7 @@ test('the line states and does not route', async ({ page }) => {
   await expect(line(page).getByRole('button')).toHaveCount(0);
 
   // The one door is the ⋯ beside the name, and it opens the Sammlung's sheet.
-  await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
-  await page.getByRole('menuitem', { name: 'Einstellungen dieser Sammlung …' }).click();
-  await expect(page.getByRole('heading', { name: 'Einstellungen dieser Sammlung' })).toBeVisible();
+  await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
+  await page.getByRole('menuitem', { name: 'Einstellungen dieses Materials …' }).click();
+  await expect(page.getByRole('heading', { name: 'Einstellungen dieses Materials' })).toBeVisible();
 });
