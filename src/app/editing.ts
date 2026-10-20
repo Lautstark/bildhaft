@@ -254,9 +254,11 @@ export async function handleAddSlot(sentenceId: string): Promise<void> {
 
 export async function handleReorder(sentenceId: string, from: number, to: number): Promise<void> {
   await mutateSlots(sentenceId, (slots) => {
+    /* Only a place the row has: anything else would splice in nothing. */
+    if (from < 0 || from >= slots.length || to < 0 || to >= slots.length) return slots;
     const next = [...slots];
     const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
+    next.splice(to, 0, moved!);
     return next;
   });
 }

@@ -73,19 +73,24 @@
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
   }
 
+  /* A row takes only its own slots. A symbol dragged out of another row
+     carries a place in *that* row, and read as one in this one it moved the
+     wrong slot — or, past the end, wrote an empty one that stopped the whole
+     Material from drawing. So the drop is refused, and the pointer says so. */
   function dragOver(event: DragEvent, index: number): void {
+    if (dragFrom === null) { if (event.dataTransfer) event.dataTransfer.dropEffect = 'none'; return; }
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-    if (dragFrom === null || dragFrom === index) return;
+    if (dragFrom === index) return;
     over = index;
   }
 
   function drop(event: DragEvent, index: number): void {
-    event.preventDefault();
-    const raw = event.dataTransfer?.getData('text/plain');
-    const from = dragFrom ?? (raw ? Number(raw) : NaN);
+    const from = dragFrom;
     clearDrag();
-    if (Number.isInteger(from) && from !== index) void handleReorder(sentence.id, from, index);
+    if (from === null) return;
+    event.preventDefault();
+    if (from !== index) void handleReorder(sentence.id, from, index);
   }
 
   /**

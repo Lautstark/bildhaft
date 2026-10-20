@@ -380,8 +380,15 @@ export async function adoptFolder(): Promise<'pushed' | 'pulled' | 'incomplete'>
 export async function listSentences(collectionId: string): Promise<Sentence[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('sentences', 'byCollection', collectionId);
-  return all.sort((a, b) => b.createdAt - a.createdAt); // newest on top
+  return all.map(withoutHoles).sort((a, b) => b.createdAt - a.createdAt); // newest on top
 }
+
+/* A row read back without the empty places a drop onto the wrong row wrote
+   into it before 2026-10-20: one such hole stopped the whole Material from
+   drawing. Left out on reading, and gone for good the next time the row is
+   written. */
+const withoutHoles = (sentence: Sentence): Sentence =>
+  (sentence.slots.every(Boolean) ? sentence : { ...sentence, slots: sentence.slots.filter(Boolean) });
 
 export async function putSentence(sentence: Sentence): Promise<void> {
   await claim(sentence.id, () => writeSentence(sentence));

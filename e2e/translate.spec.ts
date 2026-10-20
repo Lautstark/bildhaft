@@ -100,6 +100,56 @@ test('reorders slots by dragging', async ({ page }) => {
   await expect(row.locator('.slot__label')).toHaveText(['essen', 'Ich', 'möchte', 'Apfel']);
 });
 
+/*
+ * A symbol dragged out of one row and dropped on another is not a reorder of
+ * either. It used to be read as one: the drop took the dragged slot's place in
+ * its own row as a place in this one, moved whatever stood there, or — past the
+ * end — wrote an empty slot that stopped the whole Material from drawing after
+ * a reload. A Rezept's Schritte lost every picture to it.
+ */
+test('a symbol dropped on another row changes neither', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await translate(page, 'Ich möchte schlafen');
+  await translate(page, 'Ich möchte einen Apfel essen');
+  const long = page.locator('.row').filter({ has: page.locator('.slot__label', { hasText: 'Apfel' }) });
+  const short = page.locator('.row').filter({ has: page.locator('.slot__label', { hasText: 'schlafen' }) });
+
+  await long.locator('.slot').nth(3).dragTo(short.locator('.slot').nth(0));
+  await expect(short.locator('.slot__label')).toHaveText(['Ich', 'möchte', 'schlafen']);
+  await expect(long.locator('.slot__label')).toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
+  for (const row of await readSentences(page)) expect(row.slots.every(Boolean)).toBe(true);
+
+  await page.reload();
+  await expect(page.locator('.row')).toHaveCount(2);
+  expect(errors).toEqual([]);
+});
+
+/* And a row that already holds such a hole draws, with the hole left out. */
+test('a row stored with an empty place still draws after a reload', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await translate(page, 'Ich möchte schlafen');
+  await page.evaluate(async () => {
+    const db: IDBDatabase = await new Promise((resolve) => {
+      const request = indexedDB.open('bildhaft');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const tx = db.transaction('sentences', 'readwrite');
+    const store = tx.objectStore('sentences');
+    const all: { slots: unknown[] }[] = await new Promise((resolve) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+    });
+    const row = all[0]!;
+    store.put({ ...row, slots: [null, ...row.slots] });
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+  });
+  await page.reload();
+  await expect(page.locator('.row').first().locator('.slot__label')).toHaveText(['Ich', 'möchte', 'schlafen']);
+  expect(errors).toEqual([]);
+});
+
 test('keeps the collection after a reload', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await page.reload();
