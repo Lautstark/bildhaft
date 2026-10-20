@@ -1322,7 +1322,7 @@ footer.footer {
   box-sizing: border-box;
   aspect-ratio: var(--field, 1);
   display: grid;
-  padding: 12px;
+  padding: 10px;
   background: #f6f5f1;
   border-radius: 8px;
 }
@@ -1360,11 +1360,13 @@ footer.footer {
    push the card out of a narrow field — seven columns in an 840px main made
    the cards overlap and the blocks behind them vanish into slivers. */
 .cell .board-card { height: 100%; min-width: 0; position: relative; z-index: 1; }
-.cell .word { box-sizing: border-box; height: 100%; min-width: 0; padding: 6px; gap: 4px; }
+.cell .word { box-sizing: border-box; height: 100%; min-width: 0; padding: 4px; gap: 3px; }
 /* The picture takes the height the field leaves it and stays square, so a
    card fills its tile at any grid size — three columns or twelve — rather
    than sitting at one fixed size in the middle of whatever tile it got. */
-.cell .word__pic { flex: 1 1 0; min-height: 0; width: auto; height: auto; max-width: 100%; aspect-ratio: 1; margin: 0 auto; }
+/* As little frame around the symbol as the card's own corner needs: on a
+   field of 40 mm every pixel of padding is a pixel the symbol does not get. */
+.cell .word__pic { flex: 1 1 0; min-height: 0; width: auto; height: auto; max-width: 100%; aspect-ratio: 1; margin: 0 auto; padding: 2px; }
 .cell .word__name { font-size: 12px; text-align: center; }
 .cell__add {
   display: grid; place-items: center;
