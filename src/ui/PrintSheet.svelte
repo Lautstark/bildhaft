@@ -178,7 +178,7 @@
   material is in a bag by the third week: every card has a labelled place, with
   its symbol printed faintly so a child finds it without reading and the word so
   an adult does not have to hunt. The empty place is the information.
---><div class="ps-grid ps-store{block.page ? ' ps-grid--page' : ''}">{#each block.slots as slot (slot.id)}<div class="ps-place"><PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} /><span class="ps-place__word">{slotCaption(slot)}</span></div>{/each}</div>{:else if block.kind === 'recipe-part'}<!--
+--><div class="ps-store{block.last ? ' ps-break' : ''}">{#each block.slots as slot (slot.id)}<div class="ps-place"><PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} /><span class="ps-place__word">{slotCaption(slot)}</span></div>{/each}</div>{:else if block.kind === 'recipe-part'}<!--
   A Rezept's cards keep their word: unlike the Einkaufsliste's they are not
   handed around, they are read where they are, and „325 ml" is only on the card.
 --><section class="ps-recipe-part"><h2 class="ps-recipe-head">{t(`ui.recipe_${block.part}`)}</h2><div class="ps-recipe-cards">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></section>{:else if block.kind === 'recipe-step'}<!--

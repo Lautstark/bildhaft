@@ -99,7 +99,16 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(await sheet.locator('.ps-place .ps-card').first().evaluate(dashed)).toBe(false);
 
   // The second sheet says, under its cards, what the three sheets become.
-  await expect(sheet.locator('.ps-page').nth(1).locator('.ps-guide h2')).toHaveText('So geht’s');
+  /* The board, then the places, each under the name — they are what stays
+     and hangs — and the cards to cut last, with the guide under them. */
+  const sheets = sheet.locator('.ps-page');
+  await expect(sheets.nth(0).locator('.ps-board')).toHaveCount(1);
+  await expect(sheets.nth(1).locator('.ps-place')).toHaveCount(1);
+  await expect(sheets.nth(2).locator('.ps-cut')).toHaveCount(1);
+  await expect(sheets.nth(0).locator('.ps-title')).toHaveCount(1);
+  await expect(sheets.nth(1).locator('.ps-title')).toHaveCount(1);
+  await expect(sheets.nth(2).locator('.ps-title')).toHaveCount(0);
+  await expect(sheets.nth(2).locator('.ps-guide h2')).toHaveText('So geht’s');
   await expect(sheet.locator('.ps-guide')).toHaveCount(1);
   await page.getByLabel('Anleitung drucken').uncheck();
   await expect(sheet.locator('.ps-guide')).toHaveCount(0);
@@ -142,9 +151,9 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   // Its name over the board is set as everywhere: size, colour, a line.
   await page.getByLabel('Linie darunter').check();
   await page.getByLabel('Schriftgröße des Titels').fill('20');
-  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
   await panel.getByRole('button', { name: 'A3', exact: true }).click();
-  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
   await panel.getByRole('button', { name: 'A4', exact: true }).click();
   const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
     .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width

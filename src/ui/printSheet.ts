@@ -308,8 +308,10 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
     if (count > 0 && used + box.top + box.height + box.bottom > limit + FIT_TOLERANCE) close();
     count += 1;
     used += box.top + box.height + box.bottom;
-    // A grid page is a page by construction, and "one sentence per page" says so.
-    if (block.classList.contains('ps-grid') || block.classList.contains('ps-sentence--page')) {
+    // A grid page is a page by construction, "one sentence per page" says so,
+    // and a block that ends its sheet (an Einkaufsliste's last row of places).
+    if (block.classList.contains('ps-grid') || block.classList.contains('ps-sentence--page')
+      || block.classList.contains('ps-break')) {
       close();
     }
   }
@@ -413,7 +415,9 @@ export type Block =
   | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number; k: number }
   /* `guide`: the first sheet of cards says, under them, what the three sheets are for. */
   | { kind: 'cut'; slots: Slot[]; guide: boolean }
-  | { kind: 'store'; slots: Slot[]; page: boolean }
+  /* One row of the places: a page then holds as many rows as fit under the
+     name, and the rest go on. `last` ends the places' sheet. */
+  | { kind: 'store'; slots: Slot[]; last: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[] }
@@ -490,7 +494,7 @@ const ZONE_GAP_MM = 2;
    Kept there rather than here because it is room on the page, and the page is
    what that file is about. Change one and check the other. */
 
-/** How many cards of an Einkaufsliste go on one sheet, cut or stored. */
+/** How many cards of an Einkaufsliste go on one sheet to cut. Its places go in rows, as many as fit. */
 const SHOPPING_PER_PAGE = 35;
 
 /**
@@ -539,6 +543,7 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
    * Once, above everything, rather than per page: a header repeated on every
    * sheet would cost the grid its room on all of them, and what this answers is
    * "which collection is this printout" — a question a stack of paper asks once.
+   * An Einkaufsliste asks it twice: its board and its places hang apart.
    */
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
   /* The name as it stands in Bearbeiten: a Rezept's or a Tafel's with its
@@ -568,10 +573,17 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
       cartW: SHOPPING.cart.cols * zoneMm + (SHOPPING.cart.cols - 1) * ZONE_GAP_MM * k,
       cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM * k,
     });
+    /* The two sheets that stay, the board and the places, first, each under
+       the name; the cards to cut last, with the guide under them. */
     const cards = deck(sentences, provider);
+    if (title) blocks.push({ kind: 'title', text: title, picture });
+    /* As many places across as the page is wide; the place is its zone, and
+       the air between two is the zones' own. */
+    const zoneGap = ZONE_GAP_MM * k;
+    const across = Math.max(1, Math.floor((page.width + zoneGap) / (zoneMm + zoneGap) + 1e-6));
+    const rowsOf = chunks(cards, across);
+    rowsOf.forEach((slots, at) => blocks.push({ kind: 'store', slots, last: at === rowsOf.length - 1 }));
     chunks(cards, SHOPPING_PER_PAGE).forEach((slots, at) => blocks.push({ kind: 'cut', slots, guide: settings.showGuide && at === 0 }));
-    const stored = chunks(cards, SHOPPING_PER_PAGE);
-    stored.forEach((slots, at) => blocks.push({ kind: 'store', slots, page: at < stored.length - 1 }));
   } else if (settings.layout === 'rezept') {
     /*
      * The Zutaten and the Hilfsmittel as a block each, and every Schritt as a

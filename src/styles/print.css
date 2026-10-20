@@ -544,10 +544,10 @@
    not have to hunt. A place is a zone with a caption under it. */
 .ps-store {
   display: flex;
-  flex-wrap: wrap;
-  align-content: start;
   gap: calc(2mm * var(--shop));
 }
+/* A row of places under the one before, the zones' air apart. */
+.ps-store + .ps-store { margin-top: calc(2mm * var(--shop)); }
 .ps-place {
   display: flex;
   flex-direction: column;
