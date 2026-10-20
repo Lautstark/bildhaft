@@ -13,7 +13,7 @@
    * is true here — see the note on the provider line below.
    */
   import TypingBox from './TypingBox.svelte';
-  import { activeCollection, followsDefault, holdsWords, provider, s } from '../app/state.svelte.ts';
+  import { activeCollection, followsDefault, holdsWords, provider, providerReady, s } from '../app/state.svelte.ts';
   import { handleReuse, handleSubmit, scheduleReuseLookup } from '../app/composing.ts';
   import { t } from '../i18n/index.ts';
 
@@ -21,7 +21,7 @@
      translated into a row of symbols, a word becomes one card. Enter and
      Shift+Enter mean the same in both, which is why only the wording moves. */
   let words = $derived(holdsWords());
-  let ready = $derived(provider().isReady());
+  let ready = $derived(providerReady());
   /**
    * Which source the rows are drawn from, in the two facts that decide it: its
    * name, and *whose* answer that is.

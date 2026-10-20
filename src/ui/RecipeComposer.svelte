@@ -13,13 +13,13 @@
   import { RECIPE_PARTS } from '../core/types.ts';
   import TypingBox from './TypingBox.svelte';
   import { addLines } from '../app/composing.ts';
-  import { followsDefault, activeCollection, provider, s } from '../app/state.svelte.ts';
+  import { followsDefault, activeCollection, provider, providerReady, s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
   let part = $state<RecipePart>('zutat');
   let draft = $state('');
   let waiting = $state(false);
-  let ready = $derived(provider().isReady());
+  let ready = $derived(providerReady());
   let own = $derived(Boolean(activeCollection()) && !followsDefault());
 
   async function submit(): Promise<void> {

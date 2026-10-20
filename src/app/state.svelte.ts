@@ -3,7 +3,7 @@ import type { AppSettings, Collection, ProviderId, Sentence } from '../core/type
 import type { CollectionKind } from '../core/types.ts';
 import { kindOf } from '../core/types.ts';
 import { TEMPLATES } from './templates.ts';
-import { getProvider } from '@lautstark/bildquelle';
+import { getProvider, metacom } from '@lautstark/bildquelle';
 
 /**
  * Everything the page knows that is not already in the store.
@@ -162,6 +162,20 @@ export const providerId = (): ProviderId =>
   activeCollection()?.provider ?? s.settings?.activeProvider ?? 'arasaac';
 
 export const provider = () => getProvider(providerId());
+
+/*
+ * Whether the source in force can draw right now, as something a template can
+ * follow. `isReady()` is a plain method, so a `$derived` over it alone ran once
+ * — on load, before METACOM had finished restoring — and the composer kept
+ * saying „nicht bereit" for the rest of the session while the banner, which
+ * does subscribe, correctly showed nothing.
+ */
+let metacomVersion = $state(0);
+metacom.subscribe(() => { metacomVersion++; });
+export const providerReady = (): boolean => {
+  void metacomVersion;
+  return provider().isReady();
+};
 
 /** True while the open collection is following the default rather than answering. */
 export const followsDefault = (): boolean => !activeCollection()?.provider;

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { chooseFakeFolder, openSymbolSettings, withoutDirectoryPicker } from './metacom-folder.ts';
+import {
+  chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings, withoutDirectoryPicker,
+} from './metacom-folder.ts';
 
 /**
  * The line under the input, which names the source the rows are drawn from.
@@ -55,6 +57,41 @@ test('follows the source into the Sammlung it belongs to', async ({ page }) => {
   // Adopting moved the default, and this Sammlung follows it.
   await expect(line(page)).toContainText('Symbole (Standard):');
   await expect(line(page)).toContainText('METACOM');
+});
+
+test('stops saying „nicht bereit" once the folder has come back', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+
+  // What a reload brings back: the cached index and a stored handle. METACOM
+  // restores them asynchronously, so the composer is drawn first and the source
+  // becomes ready after — and the line was computed once, in between, and kept
+  // saying „nicht bereit" while there was no banner because nothing was wrong.
+  await page.evaluate(async ({ folder, files }) => {
+    const db: IDBDatabase = await new Promise((resolve) => {
+      const request = indexedDB.open('bildquelle');
+      request.onsuccess = () => resolve(request.result);
+    });
+    const entries = files
+      .filter((f) => f.endsWith('.png'))
+      .map((rel) => {
+        const label = (rel.split('/').pop() ?? rel).replace(/\.png$/, '');
+        return { path: `${folder}/${rel}`, label, terms: [label.toLowerCase()] };
+      });
+    const tx = db.transaction(['metacomIndex', 'metacomHandles'], 'readwrite');
+    tx.objectStore('metacomIndex').put({ key: 'metacom', rootName: folder, entries, ts: Date.now() });
+    tx.objectStore('metacomHandles').put({ key: 'metacomDir', handle: { name: folder } });
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+  }, { folder: FOLDER, files: FILES });
+  await page.reload();
+
+  await openSymbolSettings(page);
+  await expect(metacomHeading(page)).toContainText('8 Symbole');
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+
+  await expect(line(page)).toContainText('METACOM');
+  await expect(line(page)).not.toContainText('nicht bereit');
 });
 
 test('says a source that cannot draw is not ready', async ({ page }) => {

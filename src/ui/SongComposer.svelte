@@ -14,11 +14,11 @@
    */
   import TypingBox from './TypingBox.svelte';
   import { addToSong } from '../app/song.ts';
-  import { activeCollection, followsDefault, provider, s } from '../app/state.svelte.ts';
+  import { activeCollection, followsDefault, provider, providerReady, s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
   let draft = $state('');
-  let ready = $derived(provider().isReady());
+  let ready = $derived(providerReady());
   let own = $derived(Boolean(activeCollection()) && !followsDefault());
 
   /* Another Sammlung is another song: what was typed for this one stays here. */
