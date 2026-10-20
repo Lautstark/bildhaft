@@ -83,7 +83,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
   const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 128,9 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 131,7 mm.');
 });
 
 /*
@@ -258,10 +258,10 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
   const card = page.locator('.preview-frame .ps-card').first();
-  // A5 portrait: 210mm less two 10mm margins, less the room ARASAAC's credit
+  // A5 portrait: 210mm less 10mm at the top and 6mm at the foot, less the room ARASAAC's credit
   // needs, halved.
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
-    .toBeCloseTo(85.4, 0);
+    .toBeCloseTo(88.1, 0);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
@@ -274,15 +274,15 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   await expect(grid).toBeVisible();
 
   /*
-   * Six cells across a 190mm x 277mm printable area. Full width, so 63.3mm
-   * each. The height is short of 277/2 because ARASAAC's credit is a licence
+   * Six cells across a 190mm x 281mm printable area — 10mm off the top, 6mm
+   * off the foot. Full width, so 63.3mm each. The height is short of 281/2 because ARASAAC's credit is a licence
    * condition and always prints, and a grid page leaves it room rather than
    * pushing it onto a sheet of its own.
    */
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(128.9, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(131.7, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);
@@ -463,7 +463,7 @@ test('a headed grid page takes its room from the cards, not from the paper', asy
     const first = sheet.querySelector<HTMLElement>('.ps-grid')!;
     return (first.offsetTop + first.offsetHeight - title.offsetTop) / (96 / 25.4);
   });
-  expect(used).toBeLessThanOrEqual(277);
+  expect(used).toBeLessThanOrEqual(281);
 });
 
 /*
@@ -602,7 +602,7 @@ test('every page of the printable copy holds inside the paper', async ({ page })
   expect(seen.count).toBe(5);
   expect(seen.overflow).toEqual([0, 0, 0, 0, 0]);
   // Five pages of paper and nothing else — no padding, and no sixth sheet.
-  expect(seen.total).toBeCloseTo(5 * 277, 0);
+  expect(seen.total).toBeCloseTo(5 * 281, 0);
 });
 
 /*

@@ -4,8 +4,16 @@ import type {
 import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
-/** The margin @page reserves on every side. Millimetres, because the sheet is. */
+/** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
 export const PAGE_MARGIN_MM = 10;
+
+/**
+ * The margin at the foot, narrower than the rest: the only thing that stands in
+ * it is the licence line, small and grey, and it reads as a footnote when it
+ * sits close to the edge rather than as one more row of the page. 6mm and not
+ * less, because that is about the edge an ordinary printer can still reach.
+ */
+export const PAGE_MARGIN_BOTTOM_MM = 6;
 
 /**
  * Paper, in millimetres, short edge first.
@@ -37,7 +45,7 @@ export function printableArea(
   paper: PaperSize, orientation: Orientation,
 ): { width: number; height: number } {
   const { width, height } = paperSize(paper, orientation);
-  return { width: width - 2 * PAGE_MARGIN_MM, height: height - 2 * PAGE_MARGIN_MM };
+  return { width: width - 2 * PAGE_MARGIN_MM, height: height - PAGE_MARGIN_MM - PAGE_MARGIN_BOTTOM_MM };
 }
 
 /**
@@ -69,7 +77,7 @@ export function applyPageSetup(paper: PaperSize, orientation: Orientation): void
    * only cover the standard papers, and stating the millimetres keeps this rule
    * and printableArea() reading from the same table.
    */
-  style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${PAGE_MARGIN_MM}mm; }`;
+  style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_BOTTOM_MM}mm; }`;
 }
 
 /**
@@ -113,8 +121,8 @@ export const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
  * it can be the part that goes on to a line of its own. e2e asserts the block
  * actually fits inside this, on the narrowest paper.
  */
-/** 7.5pt of type at 1.4 line-height, in millimetres. */
-const CREDIT_LINE_MM = 3.7;
+/** 6.5pt of type at 1.4 line-height, in millimetres. */
+const CREDIT_LINE_MM = 3.2;
 /** The block's margin-top and padding. */
 const CREDIT_CHROME_MM = 8;
 

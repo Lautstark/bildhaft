@@ -19,7 +19,7 @@
   import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
   import PrintCard from './PrintCard.svelte';
   import {
-    BILDHAFT_URL, framePadMm, PAGE_MARGIN_MM, printableArea, SHOPPING,
+    BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING,
     type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
@@ -168,6 +168,7 @@
   style:--page-w="{page.width}mm"
   style:--page-h="{page.height}mm"
   style:--page-margin="{PAGE_MARGIN_MM}mm"
+  style:--page-margin-bottom="{PAGE_MARGIN_BOTTOM_MM}mm"
   style:--frame-w="{settings.cardBorderMm}mm"
   style:--frame-color={settings.cardBorderColor}
   style:--frame-pad="{framePadMm(settings)}mm"
