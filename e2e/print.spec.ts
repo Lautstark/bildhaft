@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import { mockArasaac } from './arasaac-mock.ts';
-import { backToPrint, openLook, showSheet, translateAll } from './helpers.ts';
+import { backToPrint, cardSheet, openLook, showSheet, translateAll } from './helpers.ts';
 
 /** CSS reference resolution: 96px per inch. */
 const mm = (px: number) => +(px / (96 / 25.4)).toFixed(2);
@@ -77,7 +77,7 @@ test('names the card a ruler will find, not just the symbol', async ({ page }) =
  * it lands on is the one thing the settings do not state anywhere.
  */
 test('a grid says what size its cells came out', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
@@ -94,7 +94,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
  * card, and here the card is the thing that was promised.
  */
 test('a card size is the card, cut line to cut line', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
   await page.getByRole('spinbutton', { name: 'Höhe' }).fill('90');
@@ -126,7 +126,7 @@ test('a card size is the card, cut line to cut line', async ({ page }) => {
 /* A square card is the usual one, and typing 60 twice is one chance in two to
    mistype it — so an empty height is an answer rather than a missing one. */
 test('an empty height means as high as it is wide', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('55');
   await page.getByRole('spinbutton', { name: 'Höhe' }).fill('');
@@ -144,24 +144,13 @@ test('an empty height means as high as it is wide', async ({ page }) => {
  * number the printout does not honour.
  */
 test('says so when the card does not fit the paper', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
   await expect(page.getByText(/^Symbol \d/)).toBeVisible();
 
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('200');
   await expect(page.getByText('Diese Karte passt nicht auf das Papier.')).toBeVisible();
-});
-
-test('card sheet collapses duplicate symbols', async ({ page }) => {
-  const strip = await page.locator('.preview-frame .ps-card').count();
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
-  const sheet = await page.locator('.preview-frame .ps-card').count();
-
-  // "Ich" and "möchte" appear in both sentences but should yield one card each.
-  expect(sheet).toBeLessThan(strip);
-  const labels = await page.locator('.preview-frame .ps-card__label').allTextContents();
-  expect(new Set(labels).size).toBe(labels.length);
 });
 
 test('always prints the ARASAAC attribution', async ({ page }) => {
@@ -264,7 +253,8 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
    * The row height is the one measurement read straight off that table, so it is
    * the one that catches a grid still dividing A4 on an A5 page.
    */
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
   const card = page.locator('.preview-frame .ps-card').first();
@@ -275,7 +265,7 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
@@ -364,20 +354,24 @@ test('a strip frame encloses the sentence text and the symbols', async ({ page }
 });
 
 /*
- * Card sheets have no strips to frame, and the sentence text they would carry
- * is not printed either — so the option has to be unavailable rather than a
+ * The template is the choice: a Satzstreifen prints as strips, cards to cut
+ * out are the Wortkarten's. So neither offers the other's layout, and a card
+ * sheet has no strips to frame — the option is not there rather than a
  * checkbox that quietly does nothing.
  */
-test('the strip frame is offered only for strips', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
-  await openLook(page);
+test('the template decides strips or cards, and each offers only its own', async ({ page }) => {
+  const settings = page.locator('.print-view__panel');
+  await expect(settings.getByRole('button', { name: 'Kartenblatt' })).toHaveCount(0);
+  await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(1);
+
+  await cardSheet(page);
+  await expect(settings.getByRole('button', { name: 'Satzstreifen' })).toHaveCount(0);
   await expect(page.getByLabel('Rahmen um jede Karte')).toHaveCount(1);
-  // Not greyed out: an option that means nothing on a card sheet is not there.
   await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(0);
 });
 
 test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the last page is full and reaches the paper's edge.
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
@@ -405,12 +399,12 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
  * it only said the same thing twice.
  */
 test('the credit line names no collection', async ({ page }) => {
+  await cardSheet(page);
   await page.getByLabel('Name der Sammlung', { exact: true })
     .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
   await showSheet(page);
 
   await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
@@ -455,10 +449,8 @@ test('the collection name can head the sheet', async ({ page }) => {
  * know about pushes its bottom row onto a sheet of its own.
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
-  await openLook(page);
+  await cardSheet(page);
   await page.getByLabel('Titel auf der ersten Seite').check();
-  await backToPrint(page);
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the first page is full and reaches the paper's edge.
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
@@ -506,8 +498,7 @@ test('the preview is cut into pages, and the column counts them', async ({ page 
   await expect(page.locator('#print-root .ps-page')).toHaveCount(2);
 
   // And one nobody forced: 90mm cards simply stop fitting.
-  await page.getByLabel('Ein Satz pro Seite').uncheck();
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByLabel('Symbolgröße').fill('90');
   await expect(pages).toHaveCount(3);
   await expect(meta).toContainText('Seite 1 von 3');
@@ -550,7 +541,7 @@ test('the credit sits at the foot of every page, whatever the layout', async ({ 
 
   // And a grid, where the room it drops into is the band every page reserves
   // so that the notice never costs a sheet of its own.
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
@@ -567,7 +558,7 @@ test('the credit sits at the foot of every page, whatever the layout', async ({ 
  * and every sheet after it is a blank with a sliver at the top.
  */
 test('every page of the printable copy holds inside the paper', async ({ page }) => {
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await cardSheet(page);
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');

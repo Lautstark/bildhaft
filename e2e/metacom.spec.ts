@@ -4,7 +4,7 @@ import {
   arasaacHeading, chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings,
   withoutDirectoryPicker,
 } from './metacom-folder.ts';
-import { showSheet, translate } from './helpers.ts';
+import { addCards, showSheet, translate } from './helpers.ts';
 
 /**
  * METACOM with a fake symbol folder.
@@ -615,10 +615,9 @@ test('a credit line does not push itself onto a page of its own', async ({ page 
   await openSymbolSettings(page);
   await chooseFakeFolder(page);
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
-  await translate(page, 'Ich möchte schlafen');
+  await addCards(page, ['Ich', 'möchte', 'schlafen']);
 
   await showSheet(page);
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   /*
    * One card per page, so the last page is full whatever the sentence yielded.

@@ -78,23 +78,6 @@ test('clearing the field gives the word back', async ({ page }) => {
   await expect(rowLabels(page).nth(2)).toHaveText('Apfel');
 });
 
-test('a card sheet keeps one card per wording, not per symbol', async ({ page }) => {
-  await translateAll(page, ['Ich möchte einen Apfel essen', 'Der Apfel ist rot']);
-
-  // Same symbol in both sentences; only the second one gets rewritten.
-  await rowFor(page, 'Der Apfel ist rot')
-    .locator('.slot', { hasText: 'Apfel' }).first().click();
-  await caption(page).fill('der Apfel');
-  await page.getByRole('button', { name: 'Fertig' }).click();
-
-  await showSheet(page);
-  await page.getByRole('button', { name: 'Kartenblatt' }).click();
-
-  const labels = await page.locator('.preview-frame .ps-card__label').allTextContents();
-  expect(labels).toContain('Apfel');
-  expect(labels).toContain('der Apfel');
-});
-
 /*
  * Enter in the picker. It is what a person reaches for after typing a caption,
  * and the dialog has no form of its own to give it a meaning.

@@ -30,7 +30,6 @@
 
   let offer = $derived(TEMPLATES[s.options.kind].offers(s.settings));
   let size = $derived(offer.size ?? null);
-  let strip = $derived(s.settings.layout === 'strip');
   let cards = $derived(size?.kind === 'cards');
   let gridded = $derived(cards && s.settings.sheetFit === 'grid');
   /* The card named in millimetres, which only a card sheet can be asked. */
@@ -94,10 +93,7 @@
 ], '')}{@render segmented([
   { label: t('ui.portrait'), active: s.settings.orientation === 'portrait', onPick: () => set('orientation', 'portrait') },
   { label: t('ui.landscape'), active: s.settings.orientation === 'landscape', onPick: () => set('orientation', 'landscape') },
-], 'margin-top:6px')}</div>{/if}{#if offer.layout || size || offer.margin || offer.label}{@render group(t('ui.group_size'))}{/if}{#if offer.layout}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.layout')}</label>{@render segmented([
-  { label: t('ui.layout_strip'), active: strip, onPick: () => set('layout', 'strip') },
-  { label: t('ui.layout_sheet'), active: !strip, onPick: () => set('layout', 'sheet') },
-], '')}<span class="small faint">{strip ? t('ui.layout_strip_note') : t('ui.layout_sheet_note')}</span></div>{/if}<!--
+], 'margin-top:6px')}</div>{/if}{#if size || offer.margin || offer.label}{@render group(t('ui.group_size'))}{/if}<!--
   How big. Cards: the symbol, the card itself, or a grid. Strips and the
   materials: the symbol. A Tafel: its grid is its own, so only the readout. The
   three are one question — which number do you have? — so they sit under one

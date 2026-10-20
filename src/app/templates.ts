@@ -15,8 +15,6 @@ import { printableArea } from '../ui/printSheet.ts';
  * mean anything for this material is not shown.
  */
 export interface PrintOffer {
-  /** Satzstreifen: print as strips, or cut into cards. */
-  layout?: boolean;
   /** The material's own colour: a Rezept's headings, a Lied's refrain ground. */
   colour?: boolean;
   paper?: boolean;
@@ -74,27 +72,22 @@ export interface Template {
   offers(settings: PrintSettings): PrintOffer;
 }
 
-/** A strip or a card sheet; anything else remembered is another template's layout. */
-const ownLayout = (print: PrintSettings, fallback: 'strip' | 'sheet'): PrintSettings =>
-  (print.layout === 'strip' || print.layout === 'sheet' ? print : { ...print, layout: fallback });
-
 const CARD_SHEET: PrintOffer = {
   paper: true, size: { kind: 'cards' }, margin: 'cut', label: 'full', frames: true, cutLines: true, title: true,
   pageNumbers: true,
 };
 
 export const TEMPLATES: Record<CollectionKind, Template> = {
-  /* Keeps whatever was chosen, strip or cards, because cutting sentences into
-     cards is a thing people actually do. */
+  /* Prints as strips, and only as strips: the template is the choice. Cards
+     to cut out are the Wortkarten's, so a remembered card sheet here — from
+     when a Satzstreifen could be printed as one — opens as strips again. */
   satzstreifen: {
     cards: false, ownPrint: false,
-    opens: (print) => ownLayout(print, 'strip'),
-    offers: (settings) => (settings.layout === 'strip'
-      ? {
-        layout: true, paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
-        margin: 'cut', label: 'full', frames: true, stripFrame: true, sentenceAbove: true, onePerPage: true, title: true, pageNumbers: true,
-      }
-      : { layout: true, ...CARD_SHEET }),
+    opens: (print) => (print.layout === 'strip' ? print : { ...print, layout: 'strip' }),
+    offers: () => ({
+      paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
+      margin: 'cut', label: 'full', frames: true, stripFrame: true, sentenceAbove: true, onePerPage: true, title: true, pageNumbers: true,
+    }),
   },
 
   /* Opens on the card sheet, and only there: a strip of one symbol is a card

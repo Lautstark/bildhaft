@@ -51,3 +51,34 @@ export async function showMaterial(page: Page): Promise<void> {
 /** Older names for the same wait, from when the settings were split over two dialogs. */
 export const openLook = showSheet;
 export const backToPrint = showSheet;
+
+/**
+ * Turns the open, empty Sammlung into Wortkarten and types one card per word.
+ * A card sheet is the Wortkarten's alone: a Satzstreifen prints as strips.
+ */
+export async function addCards(page: Page, words: string[]): Promise<void> {
+  const tile = page.locator('.templates').getByRole('button', { name: /Wortkarten/ });
+  await tile.click();
+  await expect(tile).toHaveAttribute('aria-pressed', 'true');
+  const cards = page.locator('.words .word:not(.word--add)');
+  for (const word of words) {
+    const before = await cards.count();
+    const input = page.getByLabel('Wörter hinzufügen');
+    await input.fill(word);
+    await input.press('Enter');
+    await expect(cards).toHaveCount(before + 1);
+  }
+}
+
+/** The five words of „Ich möchte einen Apfel essen" and „Ich möchte schlafen" a card sheet keeps. */
+export const FIVE_WORDS = ['Ich', 'möchte', 'Apfel', 'essen', 'schlafen'];
+
+/** A second Sammlung of Wortkarten, its sheet showing. */
+export async function cardSheet(page: Page, words: string[] = FIVE_WORDS): Promise<void> {
+  await expect(page.locator('.sidebar')).toBeVisible();
+  await page.getByRole('button', { name: '+ Neue Sammlung' }).click();
+  await expect(page.getByLabel('Name der Sammlung')).toBeFocused();
+  await page.keyboard.type('Karten');
+  await addCards(page, words);
+  await showSheet(page);
+}
