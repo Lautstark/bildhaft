@@ -725,6 +725,7 @@ img.mirrored { transform: scaleX(-1); }
 /* Where and how big, once a text prints: one line, in under its check. */
 .opt__sub { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 2px 0 6px 25px; }
 .opt__sub .opt__row input[type="number"] { width: 68px; }
+.opt__sub .swatch { width: 44px; }
 
 /* .segmented comes from components.css, grounds and phone wrap included. */
 

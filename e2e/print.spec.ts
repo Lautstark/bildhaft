@@ -504,6 +504,37 @@ test('a headed grid page takes its room from the cards, not from the paper', asy
 });
 
 /*
+ * The same room, for a heading somebody made bigger and underlined: what the
+ * grid gives up has to be measured from the heading as it is set, not from
+ * the 12 pt one it started as.
+ */
+test('a big underlined heading still takes its room from the cards', async ({ page }) => {
+  await cardSheet(page);
+  // Two lines at 30 pt, the most the room is reserved for.
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
+  await page.getByLabel('Titel auf der ersten Seite').check();
+  await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
+  await page.getByLabel('Linie darunter').check();
+  await page.getByRole('button', { name: 'Raster' }).click();
+  await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
+  await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+
+  const sheet = page.locator('.preview-frame .ps-sheet');
+  await expect(sheet.locator('.ps-title')).toHaveCSS('font-size', '40px');
+  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await expect(sheet.locator('.ps-title')).toHaveText('Kindergarten Sonnenschein – Morgenkreis');
+  // The grid ends where the credits under it begin, not inside them: they have
+  // their room reserved too, and a heading must not spend it.
+  const overlap = await sheet.evaluate((root: HTMLElement) => {
+    const grid = root.querySelector<HTMLElement>('.ps-page .ps-grid')!.getBoundingClientRect();
+    const foot = root.querySelector<HTMLElement>('.ps-page .ps-foot')!.getBoundingClientRect();
+    const scale = root.getBoundingClientRect().width / root.offsetWidth;
+    return (grid.bottom - foot.top) / scale / (96 / 25.4);
+  });
+  expect(overlap).toBeLessThanOrEqual(0);
+});
+
+/*
  * The sheet used to be one column the browser cut wherever it liked. Only a
  * card grid built pages, so a strip sheet could not show where the paper ended
  * and nothing anywhere could say how much paper a job came to — which is the

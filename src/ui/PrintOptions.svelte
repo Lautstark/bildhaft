@@ -12,7 +12,7 @@
    */
   import type { PrintSettings } from '../core/types.ts';
   import type { Snippet } from 'svelte';
-  import { METACOM_COPYRIGHT } from './printSheet.ts';
+  import { METACOM_COPYRIGHT, titleColour } from './printSheet.ts';
   import type { Printing } from './printDialog.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
   import { t } from '../i18n/index.ts';
@@ -120,7 +120,10 @@
   when there is not.
 -->{#if framed}<div class="opt--pair">{#if s.settings.cardBorderMm > 0}{@render numberOpt('opt-border', t('ui.thickness'), s.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null, (next) => set('cardBorderMm', next))}{/if}{@render numberOpt('opt-radius', t('ui.corners'), s.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null, (next) => set('cardRadiusMm', next))}{@render colorOpt('opt-border-color', t('ui.colour'), s.settings.cardBorderColor, (next) => set('cardBorderColor', next))}</div>{/if}{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}</div>{/if}{#if checks}<div class="opt"><!--
   The checks, in one place and one order. Cut lines where something is cut.
--->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.title}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
+-->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.title}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}<!--
+  Once it prints: how big, which colour, and a line under it — in one line
+  under the check, as the label's where and how big are.
+-->{#if s.settings.showCollectionTitle}<div class="opt__sub">{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
   METACOM only. ARASAAC's attribution is a licence condition and prints whether
   anyone asks for it or not, so offering to switch it off would be offering
   something bildhaft will not do.

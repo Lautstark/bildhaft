@@ -661,6 +661,16 @@ export interface PrintSettings {
    * stays whole and goes into a folder with the twenty others that look like it.
    */
   showCollectionTitle: boolean;
+  /** How big the name prints. 12 pt reads across a table; a Rezept's and a Lied's start at 15. */
+  titleSizePt: number;
+  /**
+   * The name's colour, or null for the material's own: a Rezept's or a Lied's
+   * colour where it has one, black where it has none. Null rather than a copy,
+   * so a heading nobody coloured goes along when the material's colour changes.
+   */
+  titleColour: string | null;
+  /** A line under the name, in its colour, as thick as a Rezept's always was. */
+  titleLine: boolean;
   /**
    * Strips only. A printed border around a whole sentence — the symbols and the
    * sentence text inside one line — so a strip reads as one thing and can be
@@ -746,6 +756,9 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   sentencePosition: 'above',
   sentenceSizePt: 10,
   showCollectionTitle: false,
+  titleSizePt: 12,
+  titleColour: null,
+  titleLine: false,
   stripFrame: false,
   cardBorderMm: 0,
   cardBorderColor: '#333333',

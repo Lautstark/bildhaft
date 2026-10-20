@@ -20,7 +20,7 @@
   import PrintCard from './PrintCard.svelte';
   import {
     BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING,
-    type Block, type SheetPlan,
+    TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
 
@@ -85,7 +85,7 @@
 
 {#snippet shoppingZones(cols: number, rows: number, extra: string)}<div class="ps-zones{extra}" style:--cols={String(cols)}>{#each Array.from({ length: cols * rows }) as _, i (i)}<span class="ps-zone"><span class="ps-dot"></span></span>{/each}</div>{/snippet}
 
-{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title">{block.text}</h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.sentence.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
+{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title{settings.titleLine ? ' ps-title--lined' : ''}">{block.text}</h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.sentence.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
   A flowing row, and the cards on it are sized either by the symbol inside them
   or by the millimetres somebody typed. Both flow and wrap the same way; only
   where the box's size comes from differs.
@@ -180,6 +180,10 @@
   style:--card-radius="{settings.cardRadiusMm}mm"
   style:--card-bg={settings.cardBackground ?? 'transparent'}
   style:--strip-w="{settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm"
+  style:--title-size="{settings.titleSizePt}pt"
+  style:--title-colour={titleColour(settings)}
+  style:--title-rule-gap="{TITLE_RULE_GAP_MM}mm"
+  style:--title-rule="{TITLE_RULE_MM}mm"
   style:--recipe={settings.accentColour}
   style:--song={settings.accentColour}
 >{#if pages}{#each pages as held, at (at)}<!--

@@ -542,6 +542,18 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
   const img = await sheet.locator('.ps-recipe-step .ps-card__img').last().evaluate((node) =>
     parseFloat(getComputedStyle(node).width));
   expect(img).toBeCloseTo(60 * 96 / 25.4, 0);
+
+  // The name goes along with the Rezept's colour until it is given its own,
+  // and it can be left off, as on every other template.
+  const title = sheet.locator('.ps-title');
+  await expect(title).toHaveCSS('border-bottom-style', 'solid');
+  await page.getByLabel('Farbe', { exact: true }).fill('#118833');
+  await expect(title).toHaveCSS('color', 'rgb(17, 136, 51)');
+  await page.getByLabel('Farbe des Titels').fill('#aa0000');
+  await page.getByLabel('Farbe', { exact: true }).fill('#118834');
+  await expect(title).toHaveCSS('color', 'rgb(170, 0, 0)');
+  await page.getByLabel('Titel auf der ersten Seite').uncheck();
+  await expect(title).toHaveCount(0);
 });
 
 /**

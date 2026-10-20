@@ -140,11 +140,30 @@ function creditAllowanceMm(creditCount: number): number {
  * collection is named by the person who made it and "Kindergarten Sonnenschein
  * – Morgenkreis" is the kind of name they give it.
  */
-/** 12pt of type at 1.3 line-height, in millimetres. */
-const TITLE_LINE_MM = 5.5;
+/** Millimetres in a point. */
+const PT_MM = 25.4 / 72;
+/** The heading's line-height. */
+const TITLE_LEADING = 1.3;
 /** The heading's margin-bottom. */
 const TITLE_GAP_MM = 4;
-const TITLE_ALLOWANCE_MM = TITLE_GAP_MM + 2 * TITLE_LINE_MM;
+/** The line under it, when asked for: its padding-bottom and its own thickness. */
+export const TITLE_RULE_GAP_MM = 1.5;
+export const TITLE_RULE_MM = 0.6;
+
+/** The heading as it is set, two lines of it: its size and its line are the person's to choose. */
+function titleAllowanceMm(settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine'>): number {
+  return TITLE_GAP_MM + 2 * settings.titleSizePt * PT_MM * TITLE_LEADING
+    + (settings.titleLine ? TITLE_RULE_GAP_MM + TITLE_RULE_MM : 0);
+}
+
+/**
+ * The heading's colour: its own when it was given one, else the material's —
+ * a Rezept's or a Lied's colour, black for a material that has none.
+ */
+export function titleColour(settings: Pick<PrintSettings, 'titleColour' | 'layout' | 'accentColour'>): string {
+  if (settings.titleColour !== null) return settings.titleColour;
+  return settings.layout === 'rezept' || settings.layout === 'lied' ? settings.accentColour : '#000000';
+}
 
 /** The line a page number stands on, kept free at the foot of every page when it is asked for. */
 export const PAGE_NUMBER_MM = 5;
@@ -322,10 +341,12 @@ export interface SheetOptions {
 }
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
-function reserveMm(creditCount: number, titled: boolean, pageNumbers: boolean): number {
+function reserveMm(
+  settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine' | 'showPageNumbers'>, creditCount: number, titled: boolean,
+): number {
   return (creditCount > 0 ? creditAllowanceMm(creditCount) : 0)
-    + (titled ? TITLE_ALLOWANCE_MM : 0)
-    + (pageNumbers ? PAGE_NUMBER_MM : 0);
+    + (titled ? titleAllowanceMm(settings) : 0)
+    + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
 
 /**
@@ -335,11 +356,11 @@ function reserveMm(creditCount: number, titled: boolean, pageNumbers: boolean): 
  * as tall for its width while it is filled as when it is printed.
  */
 export function tafelFieldMm(
-  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showPageNumbers'>,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showPageNumbers' | 'titleSizePt' | 'titleLine'>,
   grid: { cols: number; rows: number }, creditCount: number, titled: boolean,
 ): { width: number; height: number } {
   const page = printableArea(settings.paper, settings.orientation);
-  const height = page.height - reserveMm(creditCount, titled, settings.showPageNumbers);
+  const height = page.height - reserveMm(settings, creditCount, titled);
   return { width: page.width / grid.cols, height: height / grid.rows };
 }
 
@@ -438,7 +459,7 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
   if (title) blocks.push({ kind: 'title', text: title });
 
-  const reserve = reserveMm(credits.length, Boolean(title), settings.showPageNumbers);
+  const reserve = reserveMm(settings, credits.length, Boolean(title));
 
   if (board) {
     blocks.push({
