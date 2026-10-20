@@ -1281,16 +1281,13 @@ footer.footer {
 .group-panel__remove[disabled] { opacity: .45; cursor: default; }
 .board {
   display: grid;
-  /* Tiles up to 170px, and the board only as wide as its tiles, in the middle
-     of the main column: a 2 × 2 Tafel is four hand-sized squares, not four
-     slabs across the whole screen, and a 12 × 12 one shrinks its tiles
-     equally until it fits. */
-  /* Each tile as wide as the window lets the whole Tafel stand in it at its
-     paper's shape: `--field` is a field's width over its height on paper,
-     and the height left for the Tafel is the window's less the typing box,
-     the Sammlung's head, the counters and the top of the tray — the cards
-     are dragged up from there, so it stays in sight. Never wider than 220px. */
-  grid-template-columns: repeat(var(--cols), minmax(0, min(220px, max(240px, 100vh - 430px) / var(--rows) * var(--field))));
+  /* Tiles as big as before the fields took their paper's shape — the longer
+     side up to 200px, `--field` being a field's width over its height — and
+     the board only as wide as its tiles, in the middle of the main column; a
+     wide grid shrinks its tiles equally until it fits. Fitted to the
+     window's height instead, a 7 × 4 Tafel came out with tiles too small to
+     read, so a tall Tafel scrolls. */
+  grid-template-columns: repeat(var(--cols), minmax(0, calc(200px * min(1, var(--field)))));
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
