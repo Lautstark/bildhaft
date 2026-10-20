@@ -751,8 +751,15 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   expect(await page.locator('#print-root .ps-sheet').evaluate((el) => el.style.getPropertyValue('--page-bg')))
     .toBe('#a9cbec');
 
+  // And to the paper's edge: its page has no margin of its own, it carries it on the colour.
+  const pageRule = () => page.locator('#print-page-setup').textContent();
+  await expect.poll(pageRule).toContain('margin: 0;');
+  expect(await page.locator('#print-root .ps-page').first().evaluate((el) => el.classList.contains('ps-page--coloured')))
+    .toBe(true);
+
   await page.getByLabel('Seitenfarbe').uncheck();
   await expect.poll(background).toBe('rgb(255, 255, 255)');
+  await expect.poll(pageRule).not.toContain('margin: 0;');
 });
 
 /**

@@ -65,7 +65,12 @@ export function framePadMm(settings: PrintSettings): number {
  */
 const PAGE_STYLE_ID = 'print-page-setup';
 
-export function applyPageSetup(paper: PaperSize, orientation: Orientation): void {
+/**
+ * `bleed`: a Tafel on a colour of its own. The paper then has no margin of its
+ * own and the page box carries it inside, on the colour, so the colour reaches
+ * the paper's edge — as far as the printer can print, which is its business.
+ */
+export function applyPageSetup(paper: PaperSize, orientation: Orientation, bleed = false): void {
   const style = document.getElementById(PAGE_STYLE_ID) ?? (() => {
     const made = document.createElement('style');
     made.id = PAGE_STYLE_ID;
@@ -77,7 +82,8 @@ export function applyPageSetup(paper: PaperSize, orientation: Orientation): void
    * only cover the standard papers, and stating the millimetres keeps this rule
    * and printableArea() reading from the same table.
    */
-  style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_BOTTOM_MM}mm; }`;
+  const margin = bleed ? '0' : `${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_BOTTOM_MM}mm`;
+  style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${margin}; }`;
 }
 
 /**

@@ -432,11 +432,16 @@
   #print-root .ps-page:last-child { break-after: avoid; page-break-after: avoid; }
 
   /*
-   * A Tafel's colour, on the printable area: @page keeps its margin white, as
-   * a printer that cannot print to the edge would anyway. The saved PDF is
-   * drawn from the preview's page, margin and all, and is coloured to the edge.
+   * A Tafel's colour, to the paper's edge: its @page has no margin (see
+   * applyPageSetup), so the page box takes the margin inside, as padding on
+   * the colour — the preview's page, which the saved PDF is drawn from, is
+   * built the same way.
    */
-  #print-root .ps-page { background: var(--page-bg, transparent); }
+  #print-root .ps-page--coloured {
+    box-sizing: content-box;
+    padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
+    background: var(--page-bg);
+  }
 }
 
 /* ------------------------------------------------------- Einkaufsliste ---- */

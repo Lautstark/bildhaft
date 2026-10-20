@@ -210,7 +210,8 @@ export class Printing {
    * inside one is a re-entrant flush, and Svelte refuses it.
    */
   replan(): void {
-    applyPageSetup(this.settings.paper, this.settings.orientation);
+    applyPageSetup(this.settings.paper, this.settings.orientation,
+      Boolean(this.options.board) && this.settings.pageColour !== null);
     this.rows = null;
     this.pages = null;
     flushSync();
