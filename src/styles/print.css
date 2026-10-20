@@ -581,8 +581,13 @@
   break-inside: avoid;
   page-break-inside: avoid;
 }
-.ps-song-part--refrain {
+/* Every part on a ground of its own, so the parts stand apart at a glance:
+   a Strophe on a light grey, the Refrain on its colour. */
+.ps-song-part {
   border-radius: 2mm;
+  background: #f2f1f0;
+}
+.ps-song-part--refrain {
   background: color-mix(in srgb, var(--song) 14%, #fff);
 }
 .ps-song-head {

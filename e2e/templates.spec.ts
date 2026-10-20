@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
 import { backToPrint, openLook, showSheet, translate } from './helpers.ts';
+import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
  * The two templates share one host, and share it badly if either forgets to say
@@ -632,4 +633,30 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   ]);
   await expect(page.getByLabel('Liedtext')).toHaveValue(/Ich trag mein Licht/);
   await expect.poll(async () => (await readSentences(page)).length).toBe(7);
+});
+
+/*
+ * Whether the METACOM notice prints is the household's, in a Lied as anywhere.
+ * A Lied keeps its print to itself, and the notice — which the Sammlung does
+ * not keep — fell back off on the next change, or would not stay ticked.
+ */
+test('the copyright notice stays ticked in a Lied while other settings change', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await page.getByRole('button', { name: /^Lied/ }).click();
+  await page.getByLabel('Liedtext').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
+  await page.getByRole('button', { name: 'Übersetzen' }).click();
+  await showSheet(page);
+
+  const notice = page.getByLabel('Copyright-Hinweis drucken');
+  await notice.check();
+  await page.getByRole('button', { name: 'Quer' }).click();
+  await page.getByLabel('Symbolgröße').fill('20');
+  await expect(notice).toBeChecked();
+  await expect(page.locator('.sheet-col .ps-attribution').first()).toContainText('METACOM Symbole © Annette Kitzinger');
+
+  await page.reload();
+  await showSheet(page);
+  await expect(page.getByLabel('Copyright-Hinweis drucken')).toBeChecked();
 });

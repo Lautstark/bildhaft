@@ -630,3 +630,31 @@ test('saves the preview as a PDF of the same pages', async ({ page }) => {
   expect(size.width).toBeCloseTo(148 * 72 / 25.4, 0);
   expect(size.height).toBeCloseTo(210 * 72 / 25.4, 0);
 });
+
+/*
+ * A size is typed digit by digit, and „1" on the way to „14" is not a size.
+ * Clamped on every keystroke it became 10 and then 104. And the wheel scrolls
+ * the column — over a focused number field it used to turn the number.
+ */
+test('a size can be typed, and scrolling does not change it', async ({ page }) => {
+  const size = page.getByLabel('Symbolgröße');
+  await size.click();
+  await size.press('ControlOrMeta+a');
+  await page.keyboard.type('14');
+  await expect(size).toHaveValue('14');
+  const card = page.locator('.preview-frame .ps-card__img').first();
+  await expect.poll(() => card.evaluate((el: HTMLElement) => Math.round(el.offsetWidth / (96 / 25.4)))).toBe(14);
+
+  // Out of range, it is put right on leaving the field, not while typing.
+  await size.press('ControlOrMeta+a');
+  await page.keyboard.type('5');
+  await expect(size).toHaveValue('5');
+  await size.press('Tab');
+  await expect(size).toHaveValue('10');
+
+  await size.click();
+  const box = await size.boundingBox();
+  await page.mouse.move(box!.x + 5, box!.y + 5);
+  await page.mouse.wheel(0, 120);
+  await expect(size).toHaveValue('10');
+});

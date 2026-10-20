@@ -1400,6 +1400,11 @@ footer.footer {
 .song__head { margin: 0; font-size: 14px; font-weight: 650; color: var(--text-dim); }
 .song__lines { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .song__part--refrain .song__head { color: var(--accent-strong); }
+.song__lines {
+  padding: 8px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
 .song__part--refrain .song__lines {
   padding: 8px;
   border-radius: var(--radius);
@@ -1487,7 +1492,7 @@ footer.footer {
   color: var(--text-dim);
 }
 .print-options > .opt-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.sheet-col__acts { display: grid; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sheet-col__acts { display: grid; gap: 8px; margin: 4px 0 6px; }
 .sheet-col__last { margin: 4px 0 0; }
 .preview-frame--big { height: calc(100vh - 290px); height: calc(100dvh - 290px); min-height: 280px; }
 .preview-frame--big + .pager { margin: 8px 0 0; }

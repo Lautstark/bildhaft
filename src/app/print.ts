@@ -168,6 +168,13 @@ export function printOptions(): PrintOptions | null {
          colour and its small cards handed to the household would be the next
          Satzstreifen's symbol size. */
       if (!TEMPLATES[kind()].ownPrint) persistSettings({ ...s.settings, print });
+      /* Whether the METACOM notice prints is the household's in every
+         template, a Rezept's and a Lied's too: the Sammlung does not keep it
+         (keepPrint leaves it out), so a template that keeps its print to
+         itself lost the tick on the next preview. */
+      else if (print.showCopyright !== s.settings.print.showCopyright) {
+        persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: print.showCopyright } });
+      }
       void keepPrint(print);
     },
     onPdf: (pdf, print, pages) => keepPdf(pdf, print, pages),

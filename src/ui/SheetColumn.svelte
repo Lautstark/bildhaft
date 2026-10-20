@@ -47,6 +47,13 @@
      with every control moved in a Satzstreifen, and a preview built again
      under the control being moved loses its place and its focus. */
   let settled = $derived(s.settings !== null);
+  /* The template and the source as values, not as the Sammlung they are read
+     from: every print setting moved writes the Sammlung, and an effect that
+     read the Sammlung itself built the preview again under each one — the
+     field being typed in lost its place, and a setting the Sammlung does not
+     keep, the copyright notice, went back to what it was. */
+  let template = $derived(kind());
+  let source = $derived(providerId());
   let allPdfs = $state(false);
 
   let preview = $state.raw<Printing | null>(null);
@@ -61,7 +68,7 @@
   }
   /* A preview of its own for each Sammlung, template and source. */
   $effect(() => {
-    void [s.activeId, kind(), providerId(), settled];
+    void [s.activeId, template, source, settled];
     const options = untrack(() => printOptions());
     preview = options ? columnPreview(options) : null;
     untrack(() => { allPdfs = false; });
@@ -124,8 +131,11 @@
   Not keyed: the controls stay the same elements when the preview is built
   again under them — a grid resized, a row added — so the one being used keeps
   its focus.
---><Pager s={preview} /><PrintOptions s={preview} /><div class="sheet-col__acts">{#if preview.options.onPdf}<button class="btn primary" type="button" disabled={preview.saving || preview.preparing} onclick={() => preview?.savePdf()}>{#if preview.saving}<span class="spinner"></span> {t('ui.pdf_saving')}{:else}{t('ui.pdf_save')}{/if}</button>{/if}<button class="btn" type="button" disabled={preview.preparing} onclick={() => preview?.print()}>{#if preview.preparing}<span class="spinner"></span> {t('ui.preparing')}{:else}{t('ui.print')}{/if}</button>{#if pdfs.length > 0}<!--
+--><Pager s={preview} /><!--
+  The two things the column is for, right under what they act on: nobody has
+  to scroll past every setting to reach them.
+--><div class="sheet-col__acts">{#if preview.options.onPdf}<button class="btn primary" type="button" disabled={preview.saving || preview.preparing} onclick={() => preview?.savePdf()}>{#if preview.saving}<span class="spinner"></span> {t('ui.pdf_saving')}{:else}{t('ui.pdf_save')}{/if}</button>{/if}<button class="btn" type="button" disabled={preview.preparing} onclick={() => preview?.print()}>{#if preview.preparing}<span class="spinner"></span> {t('ui.preparing')}{:else}{t('ui.print')}{/if}</button>{#if pdfs.length > 0}<!--
   The latest PDF kept of this Sammlung, and the others folded under it. Opened
   from the folder each time, so one moved or deleted by hand says so rather
   than opening a stale copy.
---><p class="small sheet-col__last"><span class="faint">{t('ui.pdf_last')}</span> {pdfLabel(pdfs[0]!)} · <button class="linklike" type="button" onclick={() => void openSavedPdf(pdfs[0]!)}>{t('ui.pdf_open')}</button>{#if pdfs.length > 1} · <button class="linklike" type="button" aria-expanded={allPdfs} onclick={() => { allPdfs = !allPdfs; }}>{t('ui.pdf_all', { n: pdfs.length })}</button>{/if}</p>{#if allPdfs}<ul class="pdf-list" aria-label={t('ui.pdf_list_title')}>{#each pdfs as saved (saved.path)}<li><span class="small">{pdfLabel(saved)}</span><button class="btn quiet sm" type="button" onclick={() => void openSavedPdf(saved)}>{t('ui.pdf_open')}</button><button class="btn quiet sm destructive" type="button" onclick={() => void deleteSavedPdf(saved)}>{t('ui.pdf_delete')}</button></li>{/each}</ul>{/if}{/if}</div>{/if}</aside>{/if}
+--><p class="small sheet-col__last"><span class="faint">{t('ui.pdf_last')}</span> {pdfLabel(pdfs[0]!)} · <button class="linklike" type="button" onclick={() => void openSavedPdf(pdfs[0]!)}>{t('ui.pdf_open')}</button>{#if pdfs.length > 1} · <button class="linklike" type="button" aria-expanded={allPdfs} onclick={() => { allPdfs = !allPdfs; }}>{t('ui.pdf_all', { n: pdfs.length })}</button>{/if}</p>{#if allPdfs}<ul class="pdf-list" aria-label={t('ui.pdf_list_title')}>{#each pdfs as saved (saved.path)}<li><span class="small">{pdfLabel(saved)}</span><button class="btn quiet sm" type="button" onclick={() => void openSavedPdf(saved)}>{t('ui.pdf_open')}</button><button class="btn quiet sm destructive" type="button" onclick={() => void deleteSavedPdf(saved)}>{t('ui.pdf_delete')}</button></li>{/each}</ul>{/if}{/if}</div><PrintOptions s={preview} />{/if}</aside>{/if}
