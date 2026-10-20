@@ -116,6 +116,9 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
     .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
       * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);
   expect(await symbolMm()).toBeCloseTo(20, 0);
+  // A card to cut is square, its cut line included: the dashed border used to sit outside the padding top and bottom only.
+  const card = await sheet.locator('.ps-cut .ps-card').first().evaluate((node) => ({ w: node.getBoundingClientRect().width, h: node.getBoundingClientRect().height }));
+  expect(card.h).toBeCloseTo(card.w, 0);
   for (const [paper, mm] of [['A3', 28], ['A5', 14]] as const) {
     await panel.getByRole('button', { name: paper, exact: true }).click();
     await expect.poll(symbolMm).toBeCloseTo(mm, 0);
@@ -222,7 +225,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feld: 63,3 × 131,7 mm.')).toBeVisible();
+  await expect(page.getByText('Feld: 63 × 132 mm.')).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every

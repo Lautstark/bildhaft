@@ -143,7 +143,12 @@
   justify-content: center;
   gap: 1mm;
   width: calc(var(--sym) + 2 * var(--cut));
-  padding: var(--cut);
+  /* The cut line is part of the margin rather than added to it. The width
+     already holds the border (border-box); the height is the padding, the
+     symbol and the border, so the border comes off the padding — otherwise
+     every card came out 0.4 mm taller than wide, and the symbol 0.4 mm wider
+     than the room left for it. */
+  padding: max(0mm, var(--cut) - 0.2mm);
   border: 0.2mm dashed transparent;
   /* A symbol must never be split across two pages. */
   break-inside: avoid;

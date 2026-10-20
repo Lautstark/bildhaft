@@ -46,14 +46,16 @@ export interface PrintOptions {
 const PREVIEW_PADDING = 28;
 
 /**
- * A millimetre as this app's reader writes one, and no trailing zero.
+ * A millimetre as this app's reader writes one, whole: „36 × 36 mm“. A ruler
+ * on a card does not find tenths, and a 0.3 read off a measured preview
+ * looked like a card that had come out crooked.
  *
  * The locale follows the page rather than being `de-DE`: a decimal comma in an
  * English sentence is not a smaller mistake than a German word in one, and this
  * readout is a measurement somebody is about to cut paper by.
  */
 const mmText = (value: number): string =>
-  value.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
+  value.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
 
 /*
  * An element's border box, in CSS pixels.

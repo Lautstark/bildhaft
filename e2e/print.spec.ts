@@ -61,15 +61,15 @@ test('names the card a ruler will find, not just the symbol', async ({ page }) =
   await expect(hint).toHaveText('Karte zum Ausschneiden: 56 × 62 mm.');
 
   // A frame grows the card, so both figures have to grow with it. Checked to
-  // the millimetre and no finer: offsetWidth is whole pixels, which is where
-  // the tenths in the readout come from being measured a better way. The frame
+  // the millimetre and no finer, as the readout is: offsetWidth is whole
+  // pixels, and the readout rounds to whole millimetres. The frame
   // is the Sammlung's „Aussehen", the readout the print dialog's.
   await openLook(page);
   await page.getByLabel('Rahmen um jede Karte').check();
   await backToPrint(page);
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 60,3 × 65,8 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 60 × 65 mm.');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
-  expect(mm((await box()).h)).toBeCloseTo(65.8, 0);
+  expect(mm((await box()).h)).toBeCloseTo(65.4, 0);
 });
 
 /*
@@ -83,7 +83,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
   const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63,3 × 131,7 mm.');
+  await expect(hint).toHaveText('Karte zum Ausschneiden: 63 × 132 mm.');
 });
 
 /*
