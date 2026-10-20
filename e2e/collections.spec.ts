@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
+import { pickTemplate } from './helpers.ts';
 
 /*
  * Making a Sammlung, and what the page does with the name it just invented.
@@ -33,6 +34,9 @@ test('a new Sammlung is named for the day, and the name is selected', async ({ p
 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(rows).toHaveCount(before + 1);
+  // Named once its template is chosen: the choice comes first, on its own.
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Satzstreifen/);
 
   const title = page.getByLabel('Name des Materials');
   await expect(title).toBeFocused();
@@ -59,6 +63,8 @@ test('so the first keystroke replaces the date rather than joining it', async ({
      what it looks like from the outside is this: you type, and what you get is
      your words stuck onto a date. */
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Satzstreifen/);
 
   const title = page.getByLabel('Name des Materials');
   await expect(title).toBeFocused();

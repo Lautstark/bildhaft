@@ -91,8 +91,31 @@ export const FIVE_WORDS = ['Ich', 'möchte', 'Apfel', 'essen', 'schlafen'];
 export async function cardSheet(page: Page, words: string[] = FIVE_WORDS): Promise<void> {
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Wortkarten/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Karten');
   await addCards(page, words);
   await showSheet(page);
+}
+
+/**
+ * Waits until some Sammlung has written a print setting down. The sheet shows
+ * a change before it is kept, so a reload straight after a click can come
+ * first and find the old value.
+ */
+export async function untilKept(page: Page, key: string, value: unknown): Promise<void> {
+  await expect.poll(() => page.evaluate(async ([k, v]) => {
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('bildhaft');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const rows: { print?: Record<string, unknown> }[] = await new Promise((resolve) => {
+      const req = db.transaction('collections').objectStore('collections').getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+    db.close();
+    return rows.some((row) => row.print?.[k as string] === v);
+  }, [key, value] as const)).toBe(true);
 }

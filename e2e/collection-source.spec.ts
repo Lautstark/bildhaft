@@ -3,6 +3,7 @@ import { mockArasaac } from './arasaac-mock.ts';
 import {
   arasaacHeading, chooseFakeFolder, openSymbolSettings, withoutDirectoryPicker,
 } from './metacom-folder.ts';
+import { pickTemplate } from './helpers.ts';
 
 /**
  * A Sammlung's own symbol source: the sheet behind its ⋯, and what it changes.
@@ -60,6 +61,8 @@ async function sidebarReady(page: Page): Promise<void> {
 async function newCollection(page: Page, name: string): Promise<void> {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Satzstreifen/);
   // Creating is asynchronous and the focus lands at the end of it, so typing
   // before the field has it goes nowhere at all.
   await expect(page.getByLabel('Name des Materials')).toBeFocused();

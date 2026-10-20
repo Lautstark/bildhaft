@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate } from './helpers.ts';
+import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -34,9 +34,12 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
   // A second Sammlung, switched to the card template while it is still empty.
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  // The choice is the whole page: no name, no count above it yet.
+  await expect(page.locator('.templates')).toBeVisible();
+  await expect(page.locator('.collection-head')).toHaveCount(0);
+  await pickTemplate(page, /^Wortkarten/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Karten');
-  await pickTemplate(page, /^Wortkarten/);
   /* Nothing is asserted here on purpose: an empty Sammlung shows its empty
      state, so the host the card wall wrote its layout onto is not even in the
      page yet. Which is the shape of the defect — it is written on a node
@@ -66,9 +69,9 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
 test('an Einkaufsliste prints its three sheets, and the cart holds its zones', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Einkaufsliste/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
   await page.getByLabel('Wörter hinzufügen').fill('Apfel');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
@@ -95,6 +98,17 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(await sheet.locator('.ps-cut .ps-card').first().evaluate(dashed)).toBe(true);
   expect(await sheet.locator('.ps-place .ps-card').first().evaluate(dashed)).toBe(false);
 
+  // The second sheet says, under its cards, what the three sheets become.
+  await expect(sheet.locator('.ps-page').nth(1).locator('.ps-guide h2')).toHaveText('So geht’s');
+  await expect(sheet.locator('.ps-guide')).toHaveCount(1);
+  await page.getByLabel('Anleitung drucken').uncheck();
+  await expect(sheet.locator('.ps-guide')).toHaveCount(0);
+  await page.getByLabel('Anleitung drucken').check();
+  await expect(sheet.locator('.ps-guide')).toHaveCount(1);
+  /* A sheet's own break stays out of its page box: on paper it sent the
+     page's foot, and the copyright line with it, onto the next sheet. */
+  expect(await page.locator('#print-root .ps-page .ps-board').evaluate((board) => getComputedStyle(board).breakAfter)).toBe('auto');
+
   // The basket contains its zones, with air on every side.
   const basket = await sheet.locator('.ps-cart__art path').first().boundingBox();
   const first = await sheet.locator('.ps-zones--cart .ps-zone').first().boundingBox();
@@ -112,6 +126,13 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
   await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
   await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
+  // Its name over the board is set as everywhere: size, colour, a line.
+  await page.getByLabel('Linie darunter').check();
+  await page.getByLabel('Schriftgröße des Titels').fill('20');
+  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await panel.getByRole('button', { name: 'A3', exact: true }).click();
+  await expect(sheet.locator('.ps-title')).toHaveCSS('border-bottom-style', 'solid');
+  await panel.getByRole('button', { name: 'A4', exact: true }).click();
   const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
     .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
       * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);
@@ -148,9 +169,9 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await page.setViewportSize({ width: 1280, height: 1100 });
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   // And the sidebar says so under the name, where eleven look-alike rows are told apart.
   await expect(page.locator('.sidebar .collections [aria-current]')).toContainText('Tafel');
 
@@ -240,6 +261,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(sheet.locator('.ps-tafel .ps-card--empty .ps-card__place')).toHaveCount(4);
   await expect(sheet.locator('.ps-card__place')).toHaveCount(4);
   // And it is this Tafel's: it is still there when the Tafel is opened again.
+  await untilKept(page, 'markFreeFields', true);
   await page.reload();
   await showSheet(page);
   await expect(page.getByLabel('Leere Felder gestrichelt drucken')).toBeChecked();
@@ -264,8 +286,9 @@ test.describe('a full Tafel', () => {
 test('every card of a full Tafel can be dragged from the tray, one after the other', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
   const names = Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`);
   const bar = page.getByLabel('Wörter hinzufügen');
@@ -315,8 +338,9 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
 test('a Tafel field or tray „+" closed without a choice leaves no card', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -366,8 +390,9 @@ test.describe('colour on a Tafel', () => {
 test('fields are marked and grouped, on screen and on paper', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Rot');
   await bar.press('Enter');
@@ -533,10 +558,10 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
 test('a Rezept takes each part in its own box, and prints them in order', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Rezept/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Waffeln (5–6 Stück)');
-
-  await pickTemplate(page, /^Rezept/);
   // Its parts have their own boxes, so the composer above would be a fourth.
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
 
@@ -654,6 +679,7 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
   await page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }).click();
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
     .toContain('size: 210mm 148mm');
+  await untilKept(page, 'orientation', 'landscape');
   await page.reload();
   await showSheet(page);
   await expect(page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }))
@@ -710,8 +736,9 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
 test('a Tafel prints its name with a picture, on a colour of its own', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -811,10 +838,10 @@ test('a group colour reaches over from field to field in the scaled preview', as
 test('a Lied holds a repeated line once, and prints the song written out', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Lied/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Laternenlied');
-
-  await pickTemplate(page, /^Lied/);
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
   // Its box stands where every other template's does: above the Sammlung's name.
   const songBox = page.getByLabel('Liedzeile eingeben');

@@ -161,7 +161,10 @@
   The cards carry no word. A card that is handed around in a shop has one job,
   and a word under it makes the picture smaller rather than clearer — the word
   is on the board nowhere and on the storage sheet always.
---><div class="ps-grid ps-cut ps-grid--page">{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}</div>{:else if block.kind === 'store'}<!--
+--><div class="ps-grid ps-cut ps-grid--page">{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}{#if block.guide}<!--
+  Under the first sheet of cards, which has the room: what the three sheets
+  become, for whoever is handed them without the person who printed them.
+--><section class="ps-guide"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><ol><li>{t('ui.shop_guide_1')}</li><li>{t('ui.shop_guide_2')}</li><li>{t('ui.shop_guide_3')}</li></ol></section>{/if}</div>{:else if block.kind === 'store'}<!--
   The storage sheet is the part most templates leave out and without which the
   material is in a bag by the third week: every card has a labelled place, with
   its symbol printed faintly so a child finds it without reading and the word so
@@ -196,7 +199,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"

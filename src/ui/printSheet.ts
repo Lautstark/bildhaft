@@ -411,7 +411,8 @@ export type Block =
   | { kind: 'grid'; slots: Slot[]; cols: number; cellH: string; page: boolean }
   | { kind: 'tafel'; board: PrintBoard; cellH: string }
   | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number; k: number }
-  | { kind: 'cut'; slots: Slot[] }
+  /* `guide`: the first sheet of cards says, under them, what the three sheets are for. */
+  | { kind: 'cut'; slots: Slot[]; guide: boolean }
   | { kind: 'store'; slots: Slot[]; page: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
@@ -568,7 +569,7 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
       cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM * k,
     });
     const cards = deck(sentences, provider);
-    for (const slots of chunks(cards, SHOPPING_PER_PAGE)) blocks.push({ kind: 'cut', slots });
+    chunks(cards, SHOPPING_PER_PAGE).forEach((slots, at) => blocks.push({ kind: 'cut', slots, guide: settings.showGuide && at === 0 }));
     const stored = chunks(cards, SHOPPING_PER_PAGE);
     stored.forEach((slots, at) => blocks.push({ kind: 'store', slots, page: at < stored.length - 1 }));
   } else if (settings.layout === 'rezept') {

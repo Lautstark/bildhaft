@@ -68,6 +68,13 @@
   break-after: page;
   page-break-after: always;
 }
+/* Inside a page box the page is what breaks. A block asking for a break of its
+   own there sent the page's foot — the copyright line — onto the next sheet. */
+.ps-page .ps-grid--page,
+.ps-page .ps-sentence--page {
+  break-after: auto;
+  page-break-after: auto;
+}
 
 
 /*
@@ -442,6 +449,10 @@
     padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
     background: var(--page-bg);
   }
+
+  /* shadows .toast: a line of acknowledgement still standing when the print
+     starts is not part of the sheet, and only on paper is it taken away. */
+  .toast { display: none !important; }
 }
 
 /* ------------------------------------------------------- Einkaufsliste ---- */
@@ -453,6 +464,9 @@
    millimetre here is an A4 sheet's, times --shop: the factor the paper puts on
    the whole material (SHOPPING_SCALE). */
 .ps-sheet { --shop: 1; --zone: calc(var(--sym) + 2 * var(--cut) + 3mm * var(--shop)); }
+
+/* The board stands under its name with room to breathe, not against it. */
+.ps-sheet--shop .ps-title { margin-bottom: calc(8mm * var(--shop)); }
 
 .ps-board {
   display: flex;
@@ -508,6 +522,19 @@
   flex-wrap: wrap;
   align-content: start;
 }
+
+/* What the sheets are for, under the first sheet of cards: a line of its own
+   across the page, below the last row. */
+.ps-guide {
+  flex: 0 0 100%;
+  margin-top: calc(10mm * var(--shop));
+  font-size: calc(9pt * var(--shop));
+  line-height: 1.4;
+  color: #333;
+}
+.ps-guide__head { margin: 0 0 calc(2mm * var(--shop)); font-size: calc(11pt * var(--shop)); font-weight: 700; color: #000; }
+.ps-guide ol { margin: 0; padding-left: 1.4em; max-width: calc(190mm * var(--shop)); }
+.ps-guide li + li { margin-top: calc(1mm * var(--shop)); }
 
 /* Where each card lives when it is not on the board. Symbol and word, both:
    the symbol so a child finds it without reading, the word so an adult does
