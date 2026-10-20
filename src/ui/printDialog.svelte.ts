@@ -1,5 +1,5 @@
 import { flushSync, mount, unmount } from 'svelte';
-import type { CollectionKind, PrintSettings, ProviderId, Sentence } from '../core/types.ts';
+import type { CollectionKind, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
 import { symbolIdsIn } from '../core/types.ts';
 import Printable from './Printable.svelte';
 import {
@@ -36,6 +36,8 @@ export interface PrintOptions {
   /** A Lied, when this is one: its parts as they are sung. */
   song?: PrintSong | null;
   collectionName: string;
+  /** A Tafel's title picture: not among `sentences`, which are its placed cards. */
+  picture?: Slot | null;
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
   provider: ProviderId;
@@ -150,6 +152,7 @@ export class Printing {
     copyright: this.options.provider === 'metacom' && this.settings.showCopyright
       ? METACOM_COPYRIGHT : null,
     collectionName: this.options.collectionName,
+    picture: this.options.picture,
   }, this.rows));
 
   plan: SheetPlan = $derived.by(() => ({ rows: this.rows, pages: this.pages }));
@@ -358,8 +361,9 @@ function mountPrintable(entry: { state: Printing; printable: ReturnType<typeof m
    measured, and a label set in a fallback face is not the same height as the
    same label in the real one. */
 async function ready(state: Printing): Promise<void> {
-  const { provider, sentences } = state.options;
-  await warmSymbols(provider, symbolIdsIn(sentences, provider));
+  const { provider, sentences, picture } = state.options;
+  /* A Tafel's title picture is not among its cards, and is drawn all the same. */
+  await warmSymbols(provider, symbolIdsIn(picture ? [...sentences, { slots: [picture] }] : sentences, provider));
   await document.fonts?.ready;
   state.replan();
   // Two frames so the printable copy is laid out before anything reads it.

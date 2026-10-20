@@ -42,6 +42,8 @@ export interface PrintOffer {
   /** Lied: the headings over the parts, and „2×". */
   songChecks?: boolean;
   title?: boolean;
+  /** The colour of the whole page, behind everything on it: a Tafel's. */
+  page?: boolean;
   /** „Seite 1 von 3" at the foot of each page. */
   pageNumbers?: boolean;
 }
@@ -111,7 +113,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      And the air around each card rather than the cutting margin, which on a
      Tafel is the same number under another name: what this Tafel set for
      itself when it has, otherwise from the size of a field on this paper, so
-     a crowded A5 gets less than a roomy A4. */
+     a crowded A5 gets less than a roomy A4. And a colour behind the whole
+     page, so a household's three boards are told apart by it. */
   tafel: {
     cards: true, ownPrint: false,
     opens: (print, own, board) => {
@@ -126,6 +129,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     },
     offers: () => ({
       paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, title: true, pageNumbers: true,
+      page: true,
     }),
   },
 

@@ -1,4 +1,5 @@
 import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
+import { titlePicture } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { METACOM_COPYRIGHT, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
@@ -137,6 +138,7 @@ export function printOptions(): PrintOptions | null {
     } : null,
     song,
     collectionName: open?.name ?? 'bildhaft',
+    picture: board ? titlePicture(s.sentences) : null,
     /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
        layout says. Strips are a shape for a sentence: a strip of one symbol
        is a card with the wrong margins, so the stored preference here is not
@@ -196,5 +198,7 @@ export function tafelField(): { width: number; height: number } | null {
   const print = printFor(printBase(), kind(), board, open.print ?? {});
   const credits = [provider().attribution, providerId() === 'metacom' && print.showCopyright ? METACOM_COPYRIGHT : null]
     .filter(Boolean).length;
-  return tafelFieldMm(print, board, credits, print.showCollectionTitle && Boolean(open.name.trim()));
+  const titled = !print.showCollectionTitle || !open.name.trim() ? false
+    : titlePicture(s.sentences) ? 'pictured' : 'text';
+  return tafelFieldMm(print, board, credits, titled);
 }

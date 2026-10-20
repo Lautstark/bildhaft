@@ -150,9 +150,23 @@ const TITLE_GAP_MM = 4;
 export const TITLE_RULE_GAP_MM = 1.5;
 export const TITLE_RULE_MM = 0.6;
 
-/** The heading as it is set, two lines of it: its size and its line are the person's to choose. */
-function titleAllowanceMm(settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine'>): number {
-  return TITLE_GAP_MM + 2 * settings.titleSizePt * PT_MM * TITLE_LEADING
+/** The title picture's box, `.ps-title__pic` in print.css. */
+export const TITLE_PICTURE_MM = 26;
+
+/**
+ * Whether a page carries the Sammlung's name, and how: not at all, as words,
+ * or as words beside its picture.
+ */
+export type Titled = false | 'text' | 'pictured';
+
+/**
+ * The heading as it is set, two lines of it: its size and its line are the
+ * person's to choose. With its picture it is as tall as the taller of the two,
+ * which on a Tafel is the picture, and every field is shorter by it.
+ */
+function titleAllowanceMm(settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine'>, titled: Titled): number {
+  const words = 2 * settings.titleSizePt * PT_MM * TITLE_LEADING;
+  return TITLE_GAP_MM + (titled === 'pictured' ? Math.max(words, TITLE_PICTURE_MM) : words)
     + (settings.titleLine ? TITLE_RULE_GAP_MM + TITLE_RULE_MM : 0);
 }
 
@@ -338,14 +352,16 @@ export interface SheetOptions {
   /** The METACOM notice, when the user has asked for it. */
   copyright: string | null;
   collectionName: string;
+  /** A Tafel's title picture, printed before its name. A Rezept's is found among its rows. */
+  picture?: Slot | null;
 }
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
 function reserveMm(
-  settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine' | 'showPageNumbers'>, creditCount: number, titled: boolean,
+  settings: Pick<PrintSettings, 'titleSizePt' | 'titleLine' | 'showPageNumbers'>, creditCount: number, titled: Titled,
 ): number {
   return (creditCount > 0 ? creditAllowanceMm(creditCount) : 0)
-    + (titled ? titleAllowanceMm(settings) : 0)
+    + (titled ? titleAllowanceMm(settings, titled) : 0)
     + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
 
@@ -357,7 +373,7 @@ function reserveMm(
  */
 export function tafelFieldMm(
   settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showPageNumbers' | 'titleSizePt' | 'titleLine'>,
-  grid: { cols: number; rows: number }, creditCount: number, titled: boolean,
+  grid: { cols: number; rows: number }, creditCount: number, titled: Titled,
 ): { width: number; height: number } {
   const page = printableArea(settings.paper, settings.orientation);
   const height = page.height - reserveMm(settings, creditCount, titled);
@@ -375,7 +391,7 @@ export function tafelFieldMm(
  * shows cannot differ, because neither worked anything out on its own.
  */
 export type Block =
-  /* `picture`: a Rezept's title picture, printed before the name. */
+  /* `picture`: a Rezept's or a Tafel's title picture, printed before the name. */
   | { kind: 'title'; text: string; picture?: Slot | null }
   | { kind: 'strip'; sentence: Sentence; page: boolean; framed: boolean }
   | { kind: 'row'; slots: Slot[] }
@@ -466,17 +482,19 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
    * "which collection is this printout" — a question a stack of paper asks once.
    */
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
-  /* The name as it stands in Bearbeiten: a Rezept's with its picture, when
-     it was given one. The picture goes and comes with the name. */
-  const picture = settings.layout === 'rezept' ? titlePicture(sentences) : null;
+  /* The name as it stands in Bearbeiten: a Rezept's or a Tafel's with its
+     picture, when it was given one. The picture goes and comes with the name.
+     A Tafel's comes from outside, because its cards are only the placed ones. */
+  const picture = settings.layout === 'rezept' ? titlePicture(sentences) : options.picture ?? null;
   if (title) blocks.push({ kind: 'title', text: title, picture });
+  const titled: Titled = !title ? false : picture ? 'pictured' : 'text';
 
-  const reserve = reserveMm(settings, credits.length, Boolean(title));
+  const reserve = reserveMm(settings, credits.length, titled);
 
   if (board) {
     blocks.push({
       kind: 'tafel', board,
-      cellH: `${tafelFieldMm(settings, board, credits.length, Boolean(title)).height.toFixed(3)}mm`,
+      cellH: `${tafelFieldMm(settings, board, credits.length, titled).height.toFixed(3)}mm`,
     });
   } else if (settings.layout === 'einkaufsliste') {
     /* The zone in millimetres, which every part of this material is measured

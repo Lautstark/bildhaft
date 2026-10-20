@@ -690,6 +690,61 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
 });
 
 /**
+ * A Tafel can have a picture beside its name and a colour behind its page —
+ * what tells a household's boards apart. The picture is chosen as a Rezept's
+ * is, prints with the name, and is no card: it waits in no tray. A field gives
+ * up the picture's height, so the grid still fits its page. The colour is the
+ * Tafel's alone, on the page it prints, and gone again when switched off.
+ */
+test('a Tafel prints its name with a picture, on a colour of its own', async ({ page }) => {
+  await sidebarReady(page);
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await pickTemplate(page, /^Tafel/);
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill('Apfel');
+  await bar.press('Enter');
+  await page.getByRole('button', { name: '„Apfel“ ins erste freie Feld legen' }).click();
+  await expect(page.locator('.tray .word__name')).toHaveCount(0);
+  // A Tafel prints no name until asked; the picture comes and goes with it.
+  await showSheet(page);
+  await page.getByLabel('Titel auf der ersten Seite').check();
+  await showMaterial(page);
+  const size = page.locator('.board-head__size');
+  const plain = await size.innerText();
+
+  await page.getByRole('button', { name: 'Bild zum Titel wählen' }).click();
+  await page.getByLabel('Symbol suchen').fill('Banane');
+  await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await expect(page.getByRole('button', { name: 'Bild zum Titel ändern' }).locator('img')).toBeVisible();
+  // No card: neither in the tray nor in the count.
+  await expect(page.locator('.tray .word__name')).toHaveCount(0);
+  await expect(page.locator('.collection-head')).toContainText('1 Karte');
+  // The fields are as wide as before and shorter by the picture.
+  const mmOf = (text: string) => text.match(/([\d,]+) × ([\d,]+)/)!.slice(1).map((n) => Number(n.replace(',', '.')));
+  await expect(size).not.toHaveText(plain);
+  const [w0, h0] = mmOf(plain);
+  const [w1, h1] = mmOf(await size.innerText());
+  expect(w1).toBe(w0);
+  expect(h1).toBeLessThan(h0);
+
+  await showSheet(page);
+  const sheet = page.locator('.preview-frame');
+  await expect(sheet.locator('.ps-title .ps-title__pic img')).toBeVisible();
+  const background = () => sheet.locator('.ps-page').first().evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(await background()).toBe('rgb(255, 255, 255)');
+
+  await page.getByLabel('Seitenfarbe').check();
+  await expect.poll(background).toBe('rgb(169, 203, 236)');
+  // The printer's copy too, not only the preview.
+  expect(await page.locator('#print-root .ps-sheet').evaluate((el) => el.style.getPropertyValue('--page-bg')))
+    .toBe('#a9cbec');
+
+  await page.getByLabel('Seitenfarbe').uncheck();
+  await expect.poll(background).toBe('rgb(255, 255, 255)');
+});
+
+/**
  * A Lied is pasted whole, and every line that comes back is one row.
  *
  * Held here: an empty Lied shows an empty Strophe and Refrain to begin in; a

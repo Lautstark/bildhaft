@@ -238,9 +238,10 @@ export interface Sentence {
    * poured in from the Wortschatz, or made in another template — is a card,
    * and the Zutaten are where a card of a recipe is first looked for.
    *
-   * `titel` is the picture beside a Rezept's name: one sentence holding one
-   * field, so the picker, an own picture, the folder and the export treat it
-   * as they treat every other field. It is in none of the three parts.
+   * `titel` is the picture beside a Rezept's or a Tafel's name: one sentence
+   * holding one field, so the picker, an own picture, the folder and the
+   * export treat it as they treat every other field. It is in none of a
+   * Rezept's three parts, and on no field of a Tafel.
    */
   part?: RecipePart | 'titel';
 }
@@ -252,7 +253,7 @@ export type RecipePart = (typeof RECIPE_PARTS)[number];
 /** Which part of a Rezept a sentence is in. */
 export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | 'titel' => sentence.part ?? 'zutat';
 
-/** The field of a Rezept's title picture, when one is chosen. */
+/** The field of a Rezept's or a Tafel's title picture, when one is chosen. */
 export const titlePicture = (sentences: readonly Sentence[]): Slot | null =>
   sentences.find((sentence) => sentence.part === 'titel')?.slots
     .find((slot) => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean))) ?? null;
@@ -701,6 +702,12 @@ export interface PrintSettings {
   cardRadiusMm: number;
   /** A CSS colour behind the symbol, or null for the paper. */
   cardBackground: string | null;
+  /**
+   * A Tafel's own colour, behind the whole page, or null for the paper. What
+   * tells three boards apart from across the kitchen: the cards on it keep
+   * their own background, so a white card stands on the colour.
+   */
+  pageColour: string | null;
 
   /**
    * Print the METACOM copyright notice at the foot of the sheet.
@@ -773,6 +780,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   cardBorderColor: '#333333',
   cardRadiusMm: 2,
   cardBackground: null,
+  pageColour: null,
   showCopyright: false,
   accentColour: '#e3262b',
   songHeadings: true,

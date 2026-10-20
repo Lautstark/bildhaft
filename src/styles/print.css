@@ -358,7 +358,7 @@
      round it rather than taken out of it. */
   box-sizing: content-box;
   padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
-  background: #fff;
+  background: var(--page-bg, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18), 0 10px 30px rgba(0, 0, 0, .12);
 }
 .preview-scaler .ps-page + .ps-page {
@@ -419,6 +419,13 @@
    * parent was asking for on every page but the last.
    */
   #print-root .ps-page:last-child { break-after: avoid; page-break-after: avoid; }
+
+  /*
+   * A Tafel's colour, on the printable area: @page keeps its margin white, as
+   * a printer that cannot print to the edge would anyway. The saved PDF is
+   * drawn from the preview's page, margin and all, and is coloured to the edge.
+   */
+  #print-root .ps-page { background: var(--page-bg, transparent); }
 }
 
 /* ------------------------------------------------------- Einkaufsliste ---- */

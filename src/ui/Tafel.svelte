@@ -66,7 +66,8 @@
   let map = $derived(zoneMap(board));
   let byId = $derived(new Map(s.sentences.map((one) => [one.id, one])));
   let placed = $derived(new Set(board.cells));
-  let waiting = $derived(s.sentences.filter((one) => !placed.has(one.id)));
+  /* The title picture is a row of the Sammlung but no card: it waits nowhere. */
+  let waiting = $derived(s.sentences.filter((one) => !placed.has(one.id) && one.part !== 'titel'));
   let free = $derived(firstFree(board));
   /* A field's shape on its paper: a Tafel of four by three on A4 upright has
      fields twice as tall as wide, and is filled that way here. */

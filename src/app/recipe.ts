@@ -74,10 +74,11 @@ export async function rewritePart(part: RecipePart, text: string): Promise<strin
 }
 
 /**
- * The picture beside a Rezept's name, chosen in the picker every field has.
- * Its sentence is made the first time it is asked for, with one empty field;
- * a field left empty is taken out again when the picker closes, as any field
- * added by hand is, and the Rezept then has no picture.
+ * The picture beside a Rezept's or a Tafel's name, chosen in the picker every
+ * field has. Its sentence is made the first time it is asked for, with one
+ * empty field; a field left empty is taken out again when the picker closes,
+ * as any field added by hand is, and the Sammlung then has no picture. Here
+ * with the Rezept, where it came first; a Tafel's is the same sentence.
  */
 export async function chooseTitlePicture(): Promise<void> {
   const collectionId = s.activeId;

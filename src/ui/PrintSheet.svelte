@@ -33,6 +33,9 @@
   } = $props();
 
   let page = $derived(printableArea(settings.paper, settings.orientation));
+  /* A Tafel's colour behind its page. Only a Tafel's: the setting cannot be
+     reached from any other template, and must not arrive in one either. */
+  let pageColour = $derived(blocks.some((block) => block.kind === 'tafel') ? settings.pageColour : null);
 
   /* A sentence's own words, over its row or under it — a strip and a song line alike. */
   const captionAt = (where: 'above' | 'below'): boolean =>
@@ -181,6 +184,7 @@
   style:--frame-pad="{framePadMm(settings)}mm"
   style:--card-radius="{settings.cardRadiusMm}mm"
   style:--card-bg={settings.cardBackground ?? 'transparent'}
+  style:--page-bg={pageColour}
   style:--strip-w="{settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm"
   style:--title-size="{settings.titleSizePt}pt"
   style:--title-colour={titleColour(settings)}
