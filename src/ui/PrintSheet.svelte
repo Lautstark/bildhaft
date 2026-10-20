@@ -33,6 +33,10 @@
 
   let page = $derived(printableArea(settings.paper, settings.orientation));
 
+  /* A sentence's own words, over its row or under it — a strip and a song line alike. */
+  const captionAt = (where: 'above' | 'below'): boolean =>
+    settings.showSentenceText && settings.sentencePosition === where;
+
   /* The piece of frame that turns an inner corner of a block, in millimetres.
      The same shape the screen draws in pixels — see Tafel.svelte. */
   const printJoint = (corner: 'tl' | 'tr' | 'br' | 'bl', colour: string): Record<string, string> => {
@@ -81,7 +85,7 @@
 
 {#snippet shoppingZones(cols: number, rows: number, extra: string)}<div class="ps-zones{extra}" style:--cols={String(cols)}>{#each Array.from({ length: cols * rows }) as _, i (i)}<span class="ps-zone"><span class="ps-dot"></span></span>{/each}</div>{/snippet}
 
-{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title">{block.text}</h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if settings.showSentenceText}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.sentence.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></div>{:else if block.kind === 'row'}<!--
+{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title">{block.text}</h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.sentence.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
   A flowing row, and the cards on it are sized either by the symbol inside them
   or by the millimetres somebody typed. Both flow and wrap the same way; only
   where the box's size comes from differs.
@@ -149,7 +153,7 @@
   a child finds it again on the sheet without reading its name. Lines folded
   under „2×" share a bar down their right side with the count beside it, so it
   is plain which lines the „2×" means.
---><section class="ps-song-part{block.part === 'refrain' ? ' ps-song-part--refrain' : ''}">{#if settings.songHeadings}<h2 class="ps-song-head">{block.part === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: block.n })}</h2>{/if}{#each block.groups as group, g (g)}<div class="ps-song-group{group.times > 1 ? ' ps-song-group--again' : ''}"><div class="ps-song-lines">{#each group.lines as line, k (k)}{#if settings.showSentenceText}<p class="ps-caption">{sentenceCaption(line)}</p>{/if}<div class="ps-song-line">{#each line.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{/each}</div>{#if group.times > 1}<span class="ps-song-times">{t('ui.song_sung', { n: group.times })}</span>{/if}</div>{/each}</section>{:else if block.kind === 'song-again'}<!--
+--><section class="ps-song-part{block.part === 'refrain' ? ' ps-song-part--refrain' : ''}">{#if settings.songHeadings}<h2 class="ps-song-head">{block.part === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: block.n })}</h2>{/if}{#each block.groups as group, g (g)}<div class="ps-song-group{group.times > 1 ? ' ps-song-group--again' : ''}"><div class="ps-song-lines">{#each group.lines as line, k (k)}{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(line)}</p>{/if}<div class="ps-song-line">{#each line.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(line)}</p>{/if}{/each}</div>{#if group.times > 1}<span class="ps-song-times">{t('ui.song_sung', { n: group.times })}</span>{/if}</div>{/each}</section>{:else if block.kind === 'song-again'}<!--
   The Refrain once more, by reference: its colour, an arrow round, its name.
 --><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'credit'}<!--
   The notice and where the sheet came from, and nothing else: the collection's
@@ -165,6 +169,7 @@
   style:--card-w="{settings.cardWidthMm}mm"
   style:--card-h="{settings.cardHeightMm ?? settings.cardWidthMm}mm"
   style:--label="{settings.labelSizePt}pt"
+  style:--sentence="{settings.sentenceSizePt}pt"
   style:--page-w="{page.width}mm"
   style:--page-h="{page.height}mm"
   style:--page-margin="{PAGE_MARGIN_MM}mm"

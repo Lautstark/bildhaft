@@ -101,15 +101,16 @@
 }
 
 /*
- * No rule under the caption, and only a hair of space: the cards below already
- * carry their cut margin, so anything more here reads as a gap between the
- * sentence and the row it belongs to.
+ * No rule under the caption, and only a hair of space: the cards beside it
+ * already carry their cut margin, so anything more here reads as a gap between
+ * the sentence and the row it belongs to. Under the row the hair is above it.
  */
 .ps-caption {
   margin: 0 0 0.5mm;
-  font-size: 10pt;
+  font-size: var(--sentence);
   color: #444;
 }
+.ps-caption--below { margin: 0.5mm 0 0; }
 
 /*
  * A frame around the whole strip — sentence and symbols inside one line, drawn

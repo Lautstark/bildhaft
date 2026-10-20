@@ -354,6 +354,43 @@ test('a strip frame encloses the sentence text and the symbols', async ({ page }
 });
 
 /*
+ * The sentence text is asked what the label is asked, the same way and beside
+ * it: whether, over the row or under it, and how big. Where and how big are
+ * there only while it prints, as the label's are — and the label's size has
+ * left „Größe“ to stand under its own check.
+ */
+test('the sentence text prints over or under its row, at its own size', async ({ page }) => {
+  const strip = page.locator('.preview-frame .ps-sentence').first();
+  const captionBelowRow = () => strip.evaluate((el: HTMLElement) => {
+    const caption = el.querySelector('.ps-caption')!.getBoundingClientRect();
+    const row = el.querySelector('.ps-row')!.getBoundingClientRect();
+    return caption.top >= row.bottom;
+  });
+  const sentence = page.locator('.opt__sub', { has: page.getByLabel('Schriftgröße des Satztexts') });
+
+  await expect.poll(captionBelowRow).toBe(false);
+  await sentence.getByRole('button', { name: 'unten' }).click();
+  await expect.poll(captionBelowRow).toBe(true);
+  await expect(page.locator('#print-root .ps-sentence').first().locator('.ps-caption')).toHaveClass(/ps-caption--below/);
+
+  // In points, as typed: 72 to the inch, the browser's 96 pixels to it.
+  const pt = (el: HTMLElement) => (parseFloat(getComputedStyle(el).fontSize) * 72) / 96;
+  await page.getByLabel('Schriftgröße des Satztexts').fill('14');
+  await expect.poll(() => strip.locator('.ps-caption').evaluate(pt)).toBeCloseTo(14, 1);
+  // Its own size, not the label's.
+  expect(await page.locator('.preview-frame .ps-card__label').first().evaluate(pt)).toBeCloseTo(11, 1);
+
+  await page.getByLabel('Satztext drucken').uncheck();
+  await expect(strip.locator('.ps-caption')).toHaveCount(0);
+  await expect(page.getByLabel('Schriftgröße des Satztexts')).toHaveCount(0);
+
+  await expect(page.getByLabel('Schriftgröße der Beschriftung')).toBeVisible();
+  await page.getByLabel('Beschriftung drucken').uncheck();
+  await expect(page.getByLabel('Schriftgröße der Beschriftung')).toHaveCount(0);
+  await expect(page.getByLabel('Schriftgröße', { exact: true })).toHaveCount(0);
+});
+
+/*
  * The template is the choice: a Satzstreifen prints as strips, cards to cut
  * out are the Wortkarten's. So neither offers the other's layout, and a card
  * sheet has no strips to frame — the option is not there rather than a

@@ -35,7 +35,7 @@
   /* The card named in millimetres, which only a card sheet can be asked. */
   let exact = $derived(cards && s.settings.sheetFit === 'card');
   let framed = $derived(s.settings.cardBorderMm > 0 || (Boolean(offer.stripFrame) && s.settings.stripFrame));
-  let checks = $derived(Boolean(offer.cutLines || offer.sentenceAbove || offer.onePerPage || offer.songChecks
+  let checks = $derived(Boolean(offer.cutLines || offer.onePerPage || offer.songChecks
     || offer.title || offer.pageNumbers));
 
   const set = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => s.set(key, value);
@@ -64,7 +64,9 @@
   });
 </script>
 
-{#snippet numberOpt(id: string, label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, hint: string | null, onInput: (next: number) => void, extra?: Snippet)}<div class="opt"><label for={id}>{label}</label><div class="opt__row"><input class="field" {id} type="number" {min} {max} {step} {value} aria-label={label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} onwheel={leaveOnWheel} /><span class="opt__unit">{unit}</span></div>{#if hint !== null}<span class="small faint">{hint}</span>{:else if extra}{@render extra()}{/if}</div>{/snippet}
+{#snippet numberField(id: string, label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void)}<div class="opt__row"><input class="field" {id} type="number" {min} {max} {step} {value} aria-label={label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} onwheel={leaveOnWheel} /><span class="opt__unit">{unit}</span></div>{/snippet}
+
+{#snippet numberOpt(id: string, label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, hint: string | null, onInput: (next: number) => void, extra?: Snippet)}<div class="opt"><label for={id}>{label}</label>{@render numberField(id, label, value, min, max, step, fallback, unit, onInput)}{#if hint !== null}<span class="small faint">{hint}</span>{:else if extra}{@render extra()}{/if}</div>{/snippet}
 
 {#snippet check(label: string, checked: boolean, onToggle: (next: boolean) => void)}<label class="opt__check"><input type="checkbox" {checked} onchange={(event) => onToggle(event.currentTarget.checked)} />{label}</label>{/snippet}
 
@@ -93,7 +95,7 @@
 ], '')}{@render segmented([
   { label: t('ui.portrait'), active: s.settings.orientation === 'portrait', onPick: () => set('orientation', 'portrait') },
   { label: t('ui.landscape'), active: s.settings.orientation === 'landscape', onPick: () => set('orientation', 'landscape') },
-], 'margin-top:6px')}</div>{/if}{#if size || offer.margin || offer.label}{@render group(t('ui.group_size'))}{/if}<!--
+], 'margin-top:6px')}</div>{/if}{#if size || offer.margin || offer.label === 'size'}{@render group(t('ui.group_size'))}{/if}<!--
   How big. Cards: the symbol, the card itself, or a grid. Strips and the
   materials: the symbol. A Tafel: its grid is its own, so only the readout. The
   three are one question — which number do you have? — so they sit under one
@@ -107,10 +109,20 @@
   margin where scissors go, air where nothing is cut. Against a symbol size they
   are added around the card, against a card size they are taken out of it — so
   the note says which, where the number is.
--->{#if offer.margin === 'cut'}{@render numberOpt('opt-cut', t('ui.cut_margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}{#if offer.margin === 'air'}{@render numberOpt('opt-cut', t('ui.card_air'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', t('ui.card_air_note'), (next) => set('cutMarginMm', next))}{/if}{#if offer.label}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, offer.label === 'size' ? 24 : 40, 0.5, offer.label === 'size' ? 9 : 11, 'pt', null, (next) => set('labelSizePt', next))}{/if}{#if offer.colour || offer.label === 'full' || offer.frames || checks || s.options.provider === 'metacom'}{@render group(t('ui.group_look'))}{/if}{#if offer.colour}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/if}{#if offer.label === 'full'}<div class="opt">{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}{@render segmented([
-  { label: t('ui.label_below'), active: s.settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
+-->{#if offer.margin === 'cut'}{@render numberOpt('opt-cut', t('ui.cut_margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}{#if offer.margin === 'air'}{@render numberOpt('opt-cut', t('ui.card_air'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', t('ui.card_air_note'), (next) => set('cutMarginMm', next))}{/if}<!--
+  A Rezept's words always print, so how big they are is all it is asked, and
+  that is a size. Where they can be left off, how big sits under whether.
+-->{#if offer.label === 'size'}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/if}{#if offer.colour || offer.label === 'full' || offer.sentence || offer.frames || checks || s.options.provider === 'metacom'}{@render group(t('ui.group_look'))}{/if}{#if offer.colour}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/if}<!--
+  The two texts a material can print, built alike and one under the other: the
+  label on each card and the sentence over its row. Whether, then — once it
+  prints — where and how big, in one line under the check.
+-->{#if offer.label === 'full' || offer.sentence}<div class="opt">{#if offer.label === 'full'}{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}<div class="opt__sub">{@render segmented([
   { label: t('ui.label_above'), active: s.settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
-], 'margin-top:6px')}{/if}</div>{/if}{#if offer.frames}<div class="opt">{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
+  { label: t('ui.label_below'), active: s.settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
+], '')}{@render numberField('opt-label', t('ui.label_size'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => set('labelSizePt', next))}</div>{/if}{/if}{#if offer.sentence}{@render check(t('ui.print_sentence'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{#if s.settings.showSentenceText}<div class="opt__sub">{@render segmented([
+  { label: t('ui.label_above'), active: s.settings.sentencePosition === 'above', onPick: () => set('sentencePosition', 'above') },
+  { label: t('ui.label_below'), active: s.settings.sentencePosition === 'below', onPick: () => set('sentencePosition', 'below') },
+], '')}{@render numberField('opt-sentence', t('ui.sentence_size'), s.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => set('sentenceSizePt', next))}</div>{/if}{/if}</div>{/if}{#if offer.frames}<div class="opt">{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
   A frame around the whole sentence is a strip's alone: a card sheet has no
   sentence to frame and a Tafel is one sheet already.
 -->{#if offer.stripFrame}{@render check(t('ui.frame_strip'), s.settings.stripFrame, (next) => set('stripFrame', next))}{/if}<!--
@@ -120,7 +132,7 @@
   when there is not.
 -->{#if framed}<div class="opt--pair">{#if s.settings.cardBorderMm > 0}{@render numberOpt('opt-border', t('ui.thickness'), s.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null, (next) => set('cardBorderMm', next))}{/if}{@render numberOpt('opt-radius', t('ui.corners'), s.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null, (next) => set('cardRadiusMm', next))}{@render colorOpt('opt-border-color', t('ui.colour'), s.settings.cardBorderColor, (next) => set('cardBorderColor', next))}</div>{/if}{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}</div>{/if}{#if checks}<div class="opt"><!--
   The checks, in one place and one order. Cut lines where something is cut.
--->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.sentenceAbove}{@render check(t('ui.sentence_above'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.title}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
+-->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.title}{@render check(t('ui.collection_title'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
   METACOM only. ARASAAC's attribution is a licence condition and prints whether
   anyone asks for it or not, so offering to switch it off would be offering
   something bildhaft will not do.

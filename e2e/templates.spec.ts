@@ -616,9 +616,9 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   // The line as written, above its pictures, as a strip has it: off until
   // asked for, then on, and off again.
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
-  await page.getByLabel('Satztext über der Reihe').check();
+  await page.getByLabel('Satztext drucken').check();
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(13);
-  await page.getByLabel('Satztext über der Reihe').uncheck();
+  await page.getByLabel('Satztext drucken').uncheck();
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
 
   // A song sheet is printed on A5 as often as on A4: the paper is the Lied's to choose.

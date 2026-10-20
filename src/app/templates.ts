@@ -33,8 +33,8 @@ export interface PrintOffer {
   /** A frame around a whole strip, as well as around each card. */
   stripFrame?: boolean;
   cutLines?: boolean;
-  /** The line as written, above its pictures: a strip's, a Lied's. */
-  sentenceAbove?: boolean;
+  /** The line as written, over or under its pictures, and how big: a strip's, a Lied's. */
+  sentence?: boolean;
   /** Satzstreifen as strips: one to a page. */
   onePerPage?: boolean;
   /** Lied: the headings over the parts, and „2×". */
@@ -86,7 +86,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     opens: (print) => (print.layout === 'strip' ? print : { ...print, layout: 'strip' }),
     offers: () => ({
       paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
-      margin: 'cut', label: 'full', frames: true, stripFrame: true, sentenceAbove: true, onePerPage: true, title: true, pageNumbers: true,
+      margin: 'cut', label: 'full', frames: true, stripFrame: true, sentence: true, onePerPage: true, title: true, pageNumbers: true,
     }),
   },
 
@@ -179,13 +179,15 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       cardBackground: own.cardBackground !== undefined ? own.cardBackground : null,
       showCollectionTitle: own.showCollectionTitle ?? true,
       showSentenceText: own.showSentenceText ?? false,
+      sentencePosition: own.sentencePosition ?? 'above',
+      sentenceSizePt: own.sentenceSizePt ?? 10,
       showPageNumbers: own.showPageNumbers ?? false,
       songRefrainOnce: own.songRefrainOnce ?? false,
       accentColour: own.accentColour ?? '#2c66c8',
     }),
     offers: () => ({
       colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: null },
-      label: 'full', frames: true, sentenceAbove: true, songChecks: true, title: true, pageNumbers: true,
+      label: 'full', frames: true, sentence: true, songChecks: true, title: true, pageNumbers: true,
     }),
   },
 };

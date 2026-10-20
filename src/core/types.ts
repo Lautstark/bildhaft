@@ -646,6 +646,13 @@ export interface PrintSettings {
   onePerPage: boolean;
   showSentenceText: boolean;
   /**
+   * Over the row or under it — the same two places the label has on its card,
+   * asked the same way, beside it.
+   */
+  sentencePosition: LabelPosition;
+  /** It was 10 pt for every sheet until it was asked; 10 pt is where it starts. */
+  sentenceSizePt: number;
+  /**
    * Print the collection's name once, at the top of the first page.
    *
    * Off by default: most printouts are cut up the moment they leave the
@@ -736,6 +743,8 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   showCutLines: true,
   onePerPage: false,
   showSentenceText: true,
+  sentencePosition: 'above',
+  sentenceSizePt: 10,
   showCollectionTitle: false,
   stripFrame: false,
   cardBorderMm: 0,
