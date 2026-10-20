@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foldRepeats, readSong, songText, sungParts, timesSung, withoutLine } from '../../src/core/song.ts';
+import { foldRepeats, readSong, sungParts, timesSung, withoutLine } from '../../src/core/song.ts';
 import type { Song } from '../../src/core/types.ts';
 
 /**
@@ -79,13 +79,6 @@ describe('a song as it is stored', () => {
     expect(timesSung(song).get('x')).toBe(3);
     expect(timesSung(song).get('a')).toBe(3);
     expect(timesSung(song).get('d')).toBe(1);
-  });
-
-  it('writes itself out so that reading it back gives the same parts', () => {
-    const text = songText(song, (id) => id.toUpperCase());
-    const back = readSong(text);
-    expect(back.order).toEqual([0, 1, 0, 2, 0]);
-    expect(back.parts.map((part) => part.kind)).toEqual(['refrain', 'strophe', 'strophe']);
   });
 
   it('lets go of a row, and of a part left empty by it', () => {

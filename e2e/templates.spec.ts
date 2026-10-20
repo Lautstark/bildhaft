@@ -171,10 +171,13 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(sheet.locator('.ps-tafel .ps-card--empty')).toHaveCount(4);
   await expect(sheet.locator('.ps-tafel .ps-card__label')).toHaveText(['Banane', 'Apfel']);
   // A free field is exactly the size of a full one, or the grid is not a grid.
-  const full = await sheet.locator('.ps-tafel .ps-card').first().boundingBox();
-  const free = await sheet.locator('.ps-tafel .ps-card--empty').first().boundingBox();
-  expect(Math.round(free!.width)).toBe(Math.round(full!.width));
-  expect(Math.round(free!.height)).toBe(Math.round(full!.height));
+  /* Read in one go, as laid out: a box asked for one card at a time came
+     back null when the preview was built again between the two. */
+  const [full, free] = await sheet.locator('.ps-tafel').first().evaluate((tafel) =>
+    [tafel.querySelector<HTMLElement>('.ps-card')!, tafel.querySelector<HTMLElement>('.ps-card--empty')!]
+      .map((card) => ({ width: card.offsetWidth, height: card.offsetHeight })));
+  expect(free!.width).toBe(full!.width);
+  expect(free!.height).toBe(full!.height);
   // The grid is the Sammlung's, so the dialog does not offer to change it.
   await expect(page.getByLabel('Spalten')).toHaveCount(1);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
@@ -530,12 +533,12 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
 /**
  * A Lied is pasted whole, and every line that comes back is one row.
  *
- * Held here: a song pasted without a blank line is cut into its Refrain and
- * its Strophen; a line sung four times is one row, says so, and a name given
- * to it in one place stands in all four; the song sent again from „Text
- * bearbeiten" keeps that row and its name rather than making new ones; and the
- * paper writes the song out as it is sung — the Refrain every time, on its own
- * ground — with the headings and the „2×" as the dialog asks.
+ * Held here: an empty Lied shows an empty Strophe and Refrain to begin in; a
+ * song pasted without a blank line is cut into its Refrain and its Strophen,
+ * and the box is empty again after, as every box is; a line sung four times
+ * is one row and says so; and the paper writes the song out as it is sung —
+ * the Refrain every time, on its own ground — with the headings and the „2×"
+ * as the dialog asks. The test after this one changes the song.
  */
 test('a Lied holds a repeated line once, and prints the song written out', async ({ page }) => {
   await sidebarReady(page);
@@ -548,9 +551,13 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await expect(tile).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
   // Its box stands where every other template's does: above the Sammlung's name.
-  const box = await page.getByLabel('Liedtext').boundingBox();
+  const songBox = page.getByLabel('Liedzeile eingeben');
+  const box = await songBox.boundingBox();
   const head = await page.locator('.collection-head').boundingBox();
   expect(box!.y).toBeLessThan(head!.y);
+  // Empty, it shows the parts to begin in, the way an empty Tafel shows its grid.
+  await expect(page.locator('.song__head h3')).toHaveText(['Strophe 1', 'Refrain']);
+  await expect(page.getByText('Noch keine Zeile.')).toHaveCount(2);
 
   const refrain = ['Ich geh mit meiner Laterne', 'Dort oben leuchten die Sterne', 'Hier unten leuchten wir'];
   const rab = 'Rabimmel, rabammel, rabum';
@@ -558,34 +565,21 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   const text = [
     ...refrain, ...verse('Mein Licht geht aus'), ...refrain, ...verse('Mein Licht ist klein'), ...refrain,
   ].join('\n');
-  // Enter is a new line in a song; the arrow — or leaving the box — takes it.
-  await page.getByLabel('Liedtext').fill(text);
+  await songBox.fill(text);
   await page.getByRole('button', { name: 'Übersetzen' }).click();
 
-  await expect(page.locator('.song__head'))
+  await expect(page.locator('.song__head h3'))
     .toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
+  await expect(songBox).toHaveValue('');
   // The first Refrain open, the two after it folded: the same rows, not drawn again.
   await expect(page.locator('.song__folded')).toHaveText(Array(2).fill('Refrain · 3 Zeilen · aufklappen'));
   await expect.poll(async () => (await readSentences(page)).length).toBe(6);
 
-  const rabRows = page.locator('.row').filter({ has: page.locator(`input[placeholder="${rab}"]`) });
+  // A line is its symbols: nothing to name it by, the words are under them.
+  const rabRows = page.locator(`.row[aria-label="${rab}"]`);
   await expect(rabRows).toHaveCount(4);
   await expect(rabRows.locator('.row__sung')).toHaveText(Array(4).fill('4×'));
-  const rabNames = () => rabRows.locator('.row__title')
-    .evaluateAll((fields) => fields.map((field) => (field as HTMLInputElement).value));
-
-  await rabRows.first().locator('.row__title').fill('Rabimmel!');
-  await rabRows.first().locator('.row__title').press('Tab');
-  await expect.poll(() => rabNames()).toEqual(Array(4).fill('Rabimmel!'));
-
-  // The box holds the song: pressed, it is the whole text; left unchanged, it
-  // changes nothing — no new rows, and the name stays where it was given.
-  await page.getByLabel('Liedtext').click();
-  await expect(page.getByLabel('Liedtext')).toHaveValue(new RegExp(`^${refrain[0]}\\n`));
-  await page.locator('.collection-head').click();
-  await expect(page.locator('.song__head')).toHaveCount(5);
-  expect((await readSentences(page)).filter((row) => row.rawInput === rab)).toHaveLength(1);
-  await expect.poll(() => rabNames()).toEqual(Array(4).fill('Rabimmel!'));
+  await expect(page.locator('.song .row__title')).toHaveCount(0);
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
@@ -628,19 +622,90 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await expect.poll(() => sheet.locator('.ps-page').count()).toBeGreaterThan(pages);
   await showMaterial(page);
 
-  // A part written on at the end of the song's text is taken over on leaving
-  // the box — and the Refrain written again is found again as the Refrain,
-  // on rows it had.
-  const songBox = page.getByLabel('Liedtext');
-  await songBox.click();
-  const whole = await songBox.inputValue();
-  await songBox.fill(`${whole}\n\n${[...verse('Ich trag mein Licht'), '', ...refrain].join('\n')}`);
-  await page.locator('.collection-head').click();
-  await expect(page.locator('.song__head')).toHaveText([
-    'Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Strophe 3', 'Refrain',
-  ]);
-  await expect(page.getByLabel('Liedtext')).toHaveValue(/Ich trag mein Licht/);
-  await expect.poll(async () => (await readSentences(page)).length).toBe(7);
+});
+
+/**
+ * A Lied is changed where it stands, the way the box only ever adds.
+ *
+ * The box puts a line at the end of the last Strophe; „✎ Text" writes one
+ * part again, keeping the rows of the lines it keeps; „+ Strophe" is followed
+ * by the Refrain as the Strophen before it are; × takes a Refrain out where it
+ * is sung there, and „+ Refrain" sings it once more.
+ */
+test('a Lied grows and shrinks part by part', async ({ page }) => {
+  await page.getByRole('button', { name: /^Lied/ }).click();
+  const refrain = ['Ich geh mit meiner Laterne', 'Hier unten leuchten wir'];
+  const rab = 'Rabimmel, rabammel, rabum';
+  const songBox = page.getByLabel('Liedzeile eingeben');
+  await songBox.fill([...refrain, 'Mein Licht geht aus', rab, ...refrain, 'Mein Licht ist klein', rab, ...refrain].join('\n'));
+  await page.getByRole('button', { name: 'Übersetzen' }).click();
+  const heads = page.locator('.song__head h3');
+  await expect(heads).toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
+  await expect.poll(async () => (await readSentences(page)).length).toBe(5);
+  const rabId = (await readSentences(page)).find((row) => row.rawInput === rab)!.id;
+
+  // The box adds, at the end of the last Strophe, and is empty again.
+  await songBox.fill('Mein Licht ist hell');
+  await songBox.press('Enter');
+  await expect(songBox).toHaveValue('');
+  const strophe2 = page.getByRole('region', { name: 'Strophe 2' });
+  await expect(strophe2.locator('.row')).toHaveCount(3);
+  await expect(strophe2.locator('.row').last()).toHaveAttribute('aria-label', 'Mein Licht ist hell');
+
+  // One part as text: what changes is said before it is taken, and a line it
+  // keeps keeps its row.
+  await page.getByRole('button', { name: 'Strophe 2 als Text bearbeiten' }).click();
+  const part = page.getByLabel('Strophe 2 als Text bearbeiten', { exact: true }).and(page.locator('textarea'));
+  await expect(part).toHaveValue(`Mein Licht ist klein\n${rab}\nMein Licht ist hell`);
+  await part.fill(`Mein Licht ist klein\n${rab}`);
+  await expect(page.getByText('Bei „Fertig“: 1 entfernt.')).toBeVisible();
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(strophe2.locator('.row')).toHaveCount(2);
+  await expect.poll(async () => (await readSentences(page)).map((row) => row.rawInput)).not.toContain('Mein Licht ist hell');
+  expect((await readSentences(page)).find((row) => row.rawInput === rab)!.id).toBe(rabId);
+
+  // A new Strophe is written whole, in the field „✎ Text" opens, and the
+  // Refrain follows it as it follows the others.
+  await page.getByRole('button', { name: '+ Strophe' }).click();
+  const written = page.getByRole('textbox', { name: 'Strophe 3 als Text bearbeiten' });
+  await expect(written).toBeFocused();
+  await written.fill(`Ich trag mein Licht\n${rab}`);
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(heads).toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Strophe 3', 'Refrain']);
+  await expect(page.getByRole('region', { name: 'Strophe 3' }).locator('.row')).toHaveCount(2);
+  await expect.poll(async () => (await readSentences(page)).length).toBe(6);
+
+  // The Refrain out where it is sung last — asked first, and said that it
+  // stays where else it is sung — and sung once more.
+  await page.getByRole('button', { name: 'Refrain löschen' }).last().click();
+  const ask = page.getByRole('dialog');
+  await expect(ask).toContainText('„Refrain“ wird hier nicht mehr gesungen, an den 3 anderen Stellen schon.');
+  await ask.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(heads).toHaveCount(7);
+  await page.getByRole('button', { name: 'Refrain löschen' }).last().click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
+  await expect(heads).toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Strophe 3']);
+  await page.getByRole('button', { name: '+ Refrain' }).click();
+  await expect(heads).toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Strophe 3', 'Refrain']);
+  await expect.poll(async () => (await readSentences(page)).length).toBe(6);
+
+  // A Strophe out takes with it the lines only it had.
+  await page.getByRole('button', { name: 'Strophe 1 löschen' }).click();
+  await expect(page.getByRole('dialog')).toContainText('„Strophe 1“ und die Zeilen darin werden aus dem Lied gelöscht.');
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
+  await expect(heads).toHaveText(['Refrain', 'Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
+  await expect.poll(async () => (await readSentences(page)).map((row) => row.rawInput)).not.toContain('Mein Licht geht aus');
+
+  // Anywhere in between: a Strophe after the first Refrain, numbered by where it stands.
+  await page.getByRole('button', { name: 'Strophe an Stelle 2 einfügen' }).click();
+  await page.getByRole('textbox', { name: 'Strophe 1 als Text bearbeiten' }).fill('Ein Lichtermeer');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(heads).toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Strophe 3', 'Refrain']);
+  await expect(page.getByRole('region', { name: 'Strophe 1' }).locator('.row'))
+    .toHaveAttribute('aria-label', 'Ein Lichtermeer');
+  // And the Refrain sung between two Strophen.
+  await page.getByRole('button', { name: 'Refrain an Stelle 5 einfügen' }).click();
+  await expect(heads).toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Refrain', 'Strophe 3', 'Refrain']);
 });
 
 /*
@@ -653,7 +718,7 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await chooseFakeFolder(page);
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await page.getByRole('button', { name: /^Lied/ }).click();
-  await page.getByLabel('Liedtext').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
+  await page.getByLabel('Liedzeile eingeben').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
   await page.getByRole('button', { name: 'Übersetzen' }).click();
   await showSheet(page);
 

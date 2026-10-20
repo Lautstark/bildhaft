@@ -168,18 +168,6 @@ export function foldRepeats<T>(lines: readonly T[]): { lines: T[]; times: number
   return out;
 }
 
-/**
- * The song written out again, for the box it is edited in: every part where
- * it is sung, a blank line between parts. Read back by `readSong`, it is the
- * same song — the blank lines say where each part ends.
- */
-export function songText(song: Song, textOf: (id: string) => string | undefined): string {
-  return sungParts(song)
-    .map(({ part }) => part.lines.map(textOf).filter((line): line is string => Boolean(line)).join('\n'))
-    .filter(Boolean)
-    .join('\n\n');
-}
-
 /** The song without one row, and without any part that leaves empty. */
 export function withoutLine(song: Song, id: string): Song {
   const parts = song.parts

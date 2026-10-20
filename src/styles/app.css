@@ -1404,7 +1404,36 @@ footer.footer {
 /* The part's name over its lines rather than beside them, so the lines have
    the whole width — a line of six symbols wrapped in a column it did not need. */
 .song__part { display: grid; gap: 6px; }
-.song__head { margin: 0; font-size: 14px; font-weight: 650; color: var(--text-dim); }
+.song__head { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 650; color: var(--text-dim); }
+.song__head h3 { margin: 0; font: inherit; color: inherit; }
+/* The part's tools are quiet until the part is pointed at or tabbed into:
+   the song is what is read, the tools are for now and then. */
+.song__tool { border: 1px solid transparent; background: transparent; color: var(--text-faint); font: inherit; font-size: 12.5px; font-weight: 600; padding: 0 9px; border-radius: 999px; cursor: pointer; opacity: .55; transition: opacity .13s; }
+.song__part:hover .song__tool, .song__tool:focus-visible { opacity: 1; border-color: var(--line); color: var(--text-dim); }
+.song__acts { margin-left: auto; opacity: 0; transition: opacity .13s; }
+.song__part:hover .song__acts, .song__acts:focus-within { opacity: 1; }
+/* Between two parts, the place to put another: faint until pointed at, so
+   the song reads as a song and not as a form. */
+.song__gap { display: flex; gap: 8px; justify-content: center; margin: -6px 0; opacity: .4; transition: opacity .13s; }
+.song__gap:hover, .song__gap:focus-within { opacity: 1; }
+@media (hover: none) { .song__gap { opacity: .7; } .song__acts { opacity: 1; } }
+.song__plus { align-self: flex-start; border: 1px dashed var(--line); background: transparent; color: var(--text-dim); font: inherit; font-size: 13px; padding: 2px 12px; border-radius: 999px; cursor: pointer; }
+.song__plus:hover { color: var(--text); border-color: var(--text-dim); }
+.song__plus--part { padding: 6px 16px; font-size: 14px; }
+.song__more { display: flex; gap: 8px; flex-wrap: wrap; }
+.song__none { margin: 2px 6px; }
+.song__add { display: flex; gap: 8px; align-items: center; }
+.song__line-input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 7px 11px; border: 1.5px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); outline: none; }
+.song__edit { display: grid; gap: 8px; padding: 8px; border-radius: var(--radius); outline: 2px solid var(--accent); background: var(--surface-2); }
+.song__text { width: 100%; font: inherit; font-size: 15px; line-height: 1.6; padding: 8px 11px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); resize: vertical; }
+.song__edit-acts { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.song__edit-acts > span { margin-right: auto; }
+/* A Lied's line is its symbols: the trash and the „3×" sit beside them,
+   not on a line of their own over them. */
+.row--bare { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: start; padding-top: 10px; }
+.row--bare > .row__head { grid-column: 2; grid-row: 1; margin: 0; }
+.row--bare > :not(.row__head) { grid-column: 1; }
+.row__spacer { flex: 1; }
 .song__lines { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .song__part--refrain .song__head { color: var(--accent-strong); }
 .song__lines {
