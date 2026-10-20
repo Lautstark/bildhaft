@@ -263,3 +263,48 @@ test('crosses a symbol out for a negation, and keeps it crossed', async ({ page 
   await expect(page.locator('.preview-frame .ps-card .negate')).toHaveCount(1);
   await expect(page.locator('#print-root .ps-card .negate')).toHaveCount(1);
 });
+
+test('mirrors a symbol in its one field, and keeps it mirrored', async ({ page }) => {
+  await translate(page, 'Ich möchte schlafen');
+
+  const row = page.locator('.row').first();
+  const slot = row.locator('.slot', { hasText: 'schlafen' });
+  /* The transform the picture is drawn with, as the browser computed it: a
+     class that no rule turns into a mirror would pass a class check. */
+  const turned = (image: ReturnType<typeof page.locator>) =>
+    image.evaluate((img) => getComputedStyle(img).transform);
+  const MIRRORED = 'matrix(-1, 0, 0, 1, 0, 0)';
+  await expect.poll(() => turned(slot.locator('img'))).toBe('none');
+
+  await slot.click();
+  await page.getByLabel('Symbol spiegeln').check();
+  // Like crossing out, it is not a choice of symbol: the dialog stays open.
+  await expect(page.locator('dialog.sheet')).toBeVisible();
+  await expect.poll(() => turned(slot.locator('img'))).toBe(MIRRORED);
+  // Its own field only — the other words in the row are drawn as they were.
+  await expect.poll(() => turned(row.locator('.slot', { hasText: 'Ich' }).locator('img'))).toBe('none');
+
+  // Crossed out as well, the cross is laid over the box and is not turned with it.
+  await page.getByLabel('Symbol durchstreichen').check();
+  await expect.poll(() => slot.locator('.negate').evaluate((el) => getComputedStyle(el).transform)).toBe('none');
+
+  await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('dialog.sheet')).toHaveCount(0);
+
+  await page.reload();
+  const again = page.locator('.row').first().locator('.slot', { hasText: 'schlafen' });
+  await expect.poll(() => turned(again.locator('img'))).toBe(MIRRORED);
+  // Opening the field again shows the box ticked, so it can be unticked.
+  await again.click();
+  await expect(page.getByLabel('Symbol spiegeln')).toBeChecked();
+  await page.locator('.sheet .foot').getByRole('button', { name: 'Fertig' }).click();
+
+  // On paper too: the preview is what the PDF is drawn from.
+  await showSheet(page);
+  const card = (where: string) => page.locator(`${where} .ps-card`, { hasText: 'schlafen' }).locator('img');
+  await expect.poll(() => turned(card('.preview-frame'))).toBe(MIRRORED);
+  // The printed copy is not laid out on screen, and an element that is not laid
+  // out reports no transform at all — so it is read as the printer sees it.
+  await page.emulateMedia({ media: 'print' });
+  await expect.poll(() => turned(card('#print-root'))).toBe(MIRRORED);
+});

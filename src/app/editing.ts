@@ -82,6 +82,7 @@ export function openPicker(sentenceId: string, slotId: string): void {
     onOwnImage: (picture, name) => void handleOwnImage(picture, name),
     onClearOwnImage: () => void handleClearOwnImage(),
     onNegate: (negated) => void handleNegate(negated),
+    onMirror: (mirrored) => void handleMirror(mirrored),
     onLabel: (label) => void handleLabel(label),
     onRemove: () => void handleRemoveSlot(),
     onClose: () => void handleClosePicker(),
@@ -190,6 +191,14 @@ async function handleNegate(negated: boolean): Promise<void> {
   const { sentenceId, slotId } = s.picker;
   await mutateSlots(sentenceId, (slots) =>
     slots.map((sl) => (sl.id === slotId ? { ...sl, negated } : sl)));
+}
+
+/* The same as negation, for the same reason: it does not settle the dialog. */
+async function handleMirror(mirrored: boolean): Promise<void> {
+  if (!s.picker) return;
+  const { sentenceId, slotId } = s.picker;
+  await mutateSlots(sentenceId, (slots) =>
+    slots.map((sl) => (sl.id === slotId ? { ...sl, mirrored } : sl)));
 }
 
 /*

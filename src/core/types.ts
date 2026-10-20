@@ -82,6 +82,14 @@ export interface Slot {
   negated?: boolean;
 
   /**
+   * The symbol drawn the other way round, left for right — a figure walking
+   * towards the next word rather than away from it. Like `negated` a property
+   * of this one field, not of the word: the same symbol elsewhere is left as
+   * it is. The cross over a negated symbol is not mirrored with it.
+   */
+  mirrored?: boolean;
+
+  /**
    * An image of the user's own, by id. Kept in this browser rather than
    * referenced on disk, so moving or deleting the original file changes
    * nothing — which is the whole difference between this and a symbol source.

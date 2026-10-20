@@ -231,6 +231,7 @@
          this. Nothing to do, and nothing to pretend. */
       onClearOwnImage: () => undefined,
       onNegate: () => undefined,
+      onMirror: () => undefined,
       onRemove: () => undefined,
       onClose: () => undefined,
     });

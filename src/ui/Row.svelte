@@ -33,6 +33,7 @@
     `${slot.ownImage ? t('ui.own_picture') : originHint(slot.origin)}`
     + `${symbolLabel ? ` · ${symbolLabel}` : ''}`
     + `${slot.negated ? ` · ${t('ui.crossed_out')}` : ''}`
+    + `${slot.mirrored ? ` · ${t('ui.mirrored')}` : ''}`
     /* A rewritten caption is named in full here, because the tile clips it
        to one line and the paper does not. */
     + `${slot.label?.trim() ? `\n${t('ui.text_label_value', { text: slot.label.trim() })}` : ''}`
@@ -151,4 +152,4 @@
   ondragleave={() => { if (over === index) over = null; }}
   ondrop={(event) => drop(event, index)}
   ondragend={clearDrag}
-><span class="slot__img"><SymbolPicture {provider} id={symbolIdFor(slot, provider)} alt={slot.sourceToken} onUnreadable={(id) => void noteUnreadable(id)} />{#if slot.negated}<NegationCross />{/if}</span><span class="slot__label">{slotCaption(slot)}</span></div>{/each}<button class="slot-add" type="button" title={t('ui.add_slot')} onclick={() => void handleAddSlot(sentence.id)}>+</button></div></article>
+><span class="slot__img"><SymbolPicture {provider} id={symbolIdFor(slot, provider)} alt={slot.sourceToken} mirrored={slot.mirrored} onUnreadable={(id) => void noteUnreadable(id)} />{#if slot.negated}<NegationCross />{/if}</span><span class="slot__label">{slotCaption(slot)}</span></div>{/each}<button class="slot-add" type="button" title={t('ui.add_slot')} onclick={() => void handleAddSlot(sentence.id)}>+</button></div></article>

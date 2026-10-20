@@ -22,6 +22,8 @@ export interface PickerHandlers {
   onClearOwnImage: () => void;
   /** Lays a red cross over the symbol — METACOM's "nicht". Leaves the dialog open. */
   onNegate: (negated: boolean) => void;
+  /** Draws the symbol left for right. Leaves the dialog open, like `onNegate`. */
+  onMirror: (mirrored: boolean) => void;
   /**
    * The words that go with the symbol. Empty means the word the sentence used.
    * Leaves the dialog open: the wording is a property of the field, and a
@@ -54,6 +56,7 @@ export class Picking {
   cropFailed = $state('');
   caption = $state('');
   negated = $state(false);
+  mirrored = $state(false);
   /** A picture waiting to be cut, and then nothing else on the sheet is shown.
    *  It carries the source's own MIME, which is what the shared output policy's
    *  `'source'` type preserves — so nothing beside it has to remember the file. */
@@ -100,6 +103,7 @@ export class Picking {
     this.suggested = this.stored;
     this.caption = slot.label ?? '';
     this.negated = slot.negated ?? false;
+    this.mirrored = slot.mirrored ?? false;
   }
 
   idleMessage(): string {

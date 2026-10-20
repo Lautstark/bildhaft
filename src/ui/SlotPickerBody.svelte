@@ -178,7 +178,8 @@
   Negation is a property of the field, not a different symbol, so it does not
   settle the dialog the way picking one does: cross it out, see it, carry on.
   Hidden for a field that has nothing in it yet — there is nothing to cross.
---><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label></div>{/if}<!--
+  Mirroring is the same kind of thing and sits on the same line.
+--><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label><label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; s.handlers.onMirror(s.mirrored); }} />{t('ui.mirror')}</label></div>{/if}<!--
   The square a picture of the user's own is cut to, last in `between` and in the
   place it has always had: under the three rows, over the pictures.
 

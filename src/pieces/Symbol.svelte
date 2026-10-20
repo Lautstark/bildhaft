@@ -18,12 +18,15 @@
   import { onSymbolReset, peekSymbolUrl, resolveSymbolUrl } from '../ui/symbols.ts';
   import { t } from '../i18n/index.ts';
 
-  let { provider, id, alt, placeholder = '+', onUnreadable }: {
+  let { provider, id, alt, placeholder = '+', mirrored = false, onUnreadable }: {
     provider: ProviderId;
     id: string | null | undefined;
     /** Shown as a tooltip. See the note on alt below. */
     alt: string;
     placeholder?: string;
+    /** Draws the picture left for right. Only the picture: the box around it,
+     *  and the negation cross laid over that box, stay as they are. */
+    mirrored?: boolean;
     /** Reports a symbol that could not be read, so the app can explain a row of them. */
     onUnreadable?: (id: string) => void;
   } = $props();
@@ -72,4 +75,4 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<span class="slot__img-inner">{#if showing === 'ready' && url}<img src={url} alt="" title={alt} loading="lazy" draggable="false" onerror={failed} />{:else if showing === 'loading'}<span class="slot__blank" aria-hidden="true"><span class="spinner"></span></span>{:else if showing === 'error'}<span class="slot__blank slot__blank--error" role="button" tabindex="0" title={t('ui.symbol_failed')} onclick={again} onkeydown={retryKeys}>↻</span>{:else}<span class="slot__blank" aria-hidden="true">{placeholder}</span>{/if}</span>
+<span class="slot__img-inner">{#if showing === 'ready' && url}<img src={url} alt="" title={alt} class:mirrored loading="lazy" draggable="false" onerror={failed} />{:else if showing === 'loading'}<span class="slot__blank" aria-hidden="true"><span class="spinner"></span></span>{:else if showing === 'error'}<span class="slot__blank slot__blank--error" role="button" tabindex="0" title={t('ui.symbol_failed')} onclick={again} onkeydown={retryKeys}>↻</span>{:else}<span class="slot__blank" aria-hidden="true">{placeholder}</span>{/if}</span>

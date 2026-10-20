@@ -68,6 +68,6 @@
 --><div class="ps-card__img">{#if url}<!--
   alt is empty on purpose: a broken image would otherwise print its alt text
   inside the card, duplicating the label below it.
---><img src={url} alt="" onerror={() => { url = null; }} />{:else}<div class="ps-card__blank"></div>{/if}{#if slot.negated}<NegationCross />{/if}</div>{#if settings.showLabel}<div class="ps-card__label">{label}</div>{/if}{/snippet}
+--><img src={url} alt="" class:mirrored={slot.mirrored} onerror={() => { url = null; }} />{:else}<div class="ps-card__blank"></div>{/if}{#if slot.negated}<NegationCross />{/if}</div>{#if settings.showLabel}<div class="ps-card__label">{label}</div>{/if}{/snippet}
 
 <div class="ps-card{settings.labelPosition === 'above' ? ' ps-card--label-above' : ''}{fill || exact ? ' ps-card--fill' : ''}{exact ? ' ps-card--exact' : ''}{framed ? ' ps-card--framed' : ''}" style:--card-bg={background}>{#if block}{#each block.joints as joint, at (at)}<div class="ps-joint" style={asStyle(joint)}></div>{/each}<div class="ps-block" style:--zone={block.fill} style:inset={block.inset} style:border-radius={block.borderRadius} style:border-color={block.frame ?? 'transparent'} style:border-width={block.borderWidth} style:clip-path={block.clipPath}></div>{/if}{#if framed}<div class="ps-card__frame">{@render contents()}</div>{:else}{@render contents()}{/if}{#if block?.shield}<!-- The name, as a shield on the block's top left edge, on the group's first field. --><div class="ps-shield" style:--shield={block.shield.colour}>{block.shield.text}</div>{/if}</div>

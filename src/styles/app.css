@@ -357,6 +357,9 @@ kbd {
   pointer-events: none;
 }
 .slot__img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* One rule for every place a symbol is drawn, the row, the card and the paper:
+   the picture turned left for right, and nothing laid over it. */
+img.mirrored { transform: scaleX(-1); }
 
 /* The negation cross, laid over whatever box it is put in. Sized by that box
    rather than by a length of its own, so one rule serves the 68px chip on
@@ -472,12 +475,13 @@ kbd {
 .picker__caption > span { display: block; margin-bottom: 4px; }
 
 /* Negation sits below the own-image row and above the suggestions: it applies
-   to whichever symbol is chosen, so it belongs with neither. */
+   to whichever symbol is chosen, so it belongs with neither. Mirroring shares
+   its line, with more room between the two than inside either. */
 .picker__negate {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 8px 18px;
   margin-top: 10px;
 }
 
