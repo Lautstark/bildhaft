@@ -117,6 +117,9 @@
   A frame around the whole sentence is a strip's alone: a card sheet has no
   sentence to frame and a Tafel is one sheet already.
 -->{#if offer.stripFrame}{@render check(t('ui.frame_strip'), s.settings.stripFrame, (next) => set('stripFrame', next))}{/if}<!--
+  A Tafel's free fields, beside the card frame because it is the same
+  question asked of the places without a card: a line, or none.
+-->{#if offer.freeFields}{@render check(t('ui.free_fields_dashed'), s.settings.markFreeFields, (next) => set('markFreeFields', next))}{/if}<!--
   Corners and colour belong to whichever frame is switched on — both are drawn
   with the same pen. Thickness is the card frame's alone: the strip takes its
   own from that number when there is one, and a line thin enough to cut along
