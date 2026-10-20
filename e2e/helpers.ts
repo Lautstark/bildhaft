@@ -98,3 +98,24 @@ export async function cardSheet(page: Page, words: string[] = FIVE_WORDS): Promi
   await addCards(page, words);
   await showSheet(page);
 }
+
+/**
+ * Waits until some Sammlung has written a print setting down. The sheet shows
+ * a change before it is kept, so a reload straight after a click can come
+ * first and find the old value.
+ */
+export async function untilKept(page: Page, key: string, value: unknown): Promise<void> {
+  await expect.poll(() => page.evaluate(async ([k, v]) => {
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('bildhaft');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const rows: { print?: Record<string, unknown> }[] = await new Promise((resolve) => {
+      const req = db.transaction('collections').objectStore('collections').getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+    db.close();
+    return rows.some((row) => row.print?.[k as string] === v);
+  }, [key, value] as const)).toBe(true);
+}

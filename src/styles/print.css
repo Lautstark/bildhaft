@@ -445,7 +445,8 @@
    */
   #print-root .ps-page { background: var(--page-bg, transparent); }
 
-  /* A line of acknowledgement still standing when the print starts is not part of the sheet. */
+  /* shadows .toast: a line of acknowledgement still standing when the print
+     starts is not part of the sheet, and only on paper is it taken away. */
   .toast { display: none !important; }
 }
 

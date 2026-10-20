@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate } from './helpers.ts';
+import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -261,6 +261,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(sheet.locator('.ps-tafel .ps-card--empty .ps-card__place')).toHaveCount(4);
   await expect(sheet.locator('.ps-card__place')).toHaveCount(4);
   // And it is this Tafel's: it is still there when the Tafel is opened again.
+  await untilKept(page, 'markFreeFields', true);
   await page.reload();
   await showSheet(page);
   await expect(page.getByLabel('Leere Felder gestrichelt drucken')).toBeChecked();
@@ -678,20 +679,7 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
   await page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }).click();
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
     .toContain('size: 210mm 148mm');
-  // Kept, before the reload asks for it: the page shows the paper before it is written down.
-  await expect.poll(() => page.evaluate(async () => {
-    const db: IDBDatabase = await new Promise((resolve, reject) => {
-      const req = indexedDB.open('bildhaft');
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    const rows: { print?: { orientation?: string } }[] = await new Promise((resolve) => {
-      const req = db.transaction('collections').objectStore('collections').getAll();
-      req.onsuccess = () => resolve(req.result);
-    });
-    db.close();
-    return rows.some((row) => row.print?.orientation === 'landscape');
-  })).toBe(true);
+  await untilKept(page, 'orientation', 'landscape');
   await page.reload();
   await showSheet(page);
   await expect(page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }))
