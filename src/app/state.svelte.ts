@@ -32,7 +32,6 @@ import { getProvider } from '@lautstark/bildquelle';
 export class AppState {
   settings = $state.raw<AppSettings | null>(null);
   collections = $state.raw<Collection[]>([]);
-  counts = $state.raw<Record<string, number>>({});
   activeId = $state<string | null>(null);
   /* Which of the two nouns the main area is showing. `null` is a Sammlung —
      `activeId` stays put while the Wortschatz is open, so leaving it comes
@@ -46,10 +45,6 @@ export class AppState {
   draft = $state('');
   reuse = $state.raw<Sentence | null>(null);
   busy = $state(false);
-  /* A Lied's box: what is typed into it, and which Lied's text is open in it
-     for editing — by id, so opening another Sammlung does not carry it along. */
-  songDraft = $state('');
-  songEditing = $state<string | null>(null);
   /* How far a pasted text has got. Null for a single line, whose spinner in the
      composer is the whole story — see composing.ts. */
   batch = $state.raw<{ done: number; total: number } | null>(null);

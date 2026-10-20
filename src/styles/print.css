@@ -609,3 +609,25 @@
   flex-wrap: wrap;
   align-items: flex-start;
 }
+
+/* ------------------------------------------------------------ the footer */
+
+/* One line at the foot of every page: the licence notice on the left, the page
+   number on the right. Its room is kept free on every page by planPages, so
+   it never pushes content over. */
+.ps-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4mm;
+}
+.ps-foot .ps-attribution { margin-top: 0; flex: 1; min-width: 0; }
+.ps-page__n {
+  flex: none;
+  margin: 0 0 0 auto;
+  font-size: 7.5pt;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: #777;
+}

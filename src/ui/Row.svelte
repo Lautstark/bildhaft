@@ -7,18 +7,16 @@
   import SymbolPicture from '../pieces/Symbol.svelte';
   import { symbolIdFor } from '../ui/symbols.ts';
   import { confirmDeleteSentence, handleAddSlot, handleRename, handleReorder, noteUnreadable, openPicker } from '../app/editing.ts';
-  import { openPrint } from '../app/print.ts';
   import { t } from '../i18n/index.ts';
 
-  /* `step` is set when the row is one of a Rezept's Schritte: it is numbered,
-     and it has no printer of its own, because a recipe prints whole — one
-     Schritt on its own would be a strip, and that is the other template. */
+  /* `step` is set when the row is one of a Rezept's Schritte: it is numbered.
+     No row has a printer of its own any more: everything prints from the
+     sheet column beside the Sammlung. */
   let { sentence, provider, step, sung }: {
     sentence: Sentence; provider: ProviderId; step?: number;
     /* Set when the row is a line of a Lied: how often it is sung there. A
        line sung more than once says so, because changing it here changes it
-       everywhere it is sung — which is the point, and a surprise if unsaid.
-       No printer either: a Lied prints whole, as a recipe does. */
+       everywhere it is sung — which is the point, and a surprise if unsaid. */
     sung?: number;
   } = $props();
 
@@ -136,7 +134,7 @@
   let typedLine = $derived(sentence.title?.trim() ? t('ui.typed_line', { text: sentence.rawInput }) : null);
 </script>
 
-<article class="row"><header class="row__head">{#if step !== undefined}<span class="row__step" aria-hidden="true">{step}</span>{/if}<TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions">{#if step === undefined && sung === undefined}<button class="btn quiet icon" type="button" title={t('ui.print_row')} onclick={() => openPrint([sentence.id])}><Icon name="printer" /></button>{/if}<button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
+<article class="row"><header class="row__head">{#if step !== undefined}<span class="row__step" aria-hidden="true">{step}</span>{/if}<TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions"><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
   class="slot"
   class:slot--empty={!symbolIdFor(slot, provider)}
   class:slot--dragging={dragFrom === index}

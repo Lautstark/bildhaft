@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { PDFDocument } from 'pdf-lib';
 import { mockArasaac } from './arasaac-mock.ts';
-import { translateAll } from './helpers.ts';
+import { backToPrint, openLook, showSheet, translateAll } from './helpers.ts';
 
 /** CSS reference resolution: 96px per inch. */
 const mm = (px: number) => +(px / (96 / 25.4)).toFixed(2);
@@ -9,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
   await page.goto('/');
   await translateAll(page, ['Ich möchte einen Apfel essen', 'Ich möchte schlafen']);
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
 });
 
@@ -60,8 +62,11 @@ test('names the card a ruler will find, not just the symbol', async ({ page }) =
 
   // A frame grows the card, so both figures have to grow with it. Checked to
   // the millimetre and no finer: offsetWidth is whole pixels, which is where
-  // the tenths in the readout come from being measured a better way.
+  // the tenths in the readout come from being measured a better way. The frame
+  // is the Sammlung's „Aussehen", the readout the print dialog's.
+  await openLook(page);
   await page.getByLabel('Rahmen um jede Karte').check();
+  await backToPrint(page);
   await expect(hint).toHaveText('Karte zum Ausschneiden: 60,3 × 65,8 mm.');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
   expect(mm((await box()).h)).toBeCloseTo(65.8, 0);
@@ -196,19 +201,16 @@ test('print media shows the sheet and nothing of the UI', async ({ page }) => {
   expect(await shown('#print-root')).toBe(true);
   expect(await page.locator('#print-root .ps-card').count()).toBeGreaterThan(0);
 
-  // The two pieces of UI, one of which is not inside #app-root.
+  // The UI, the column with the sheet's settings included, is all in #app-root.
   expect(await shown('#app-root')).toBe(false);
-  expect(await shown('dialog.sheet')).toBe(false);
 
-  // Hidden for printing only: the dialog is never closed behind the user's back,
-  // so the settings and the preview are still there when the print job returns.
+  // Hidden for printing only: the column and its preview are still there when
+  // the print job returns.
   await page.emulateMedia({ media: 'screen' });
-  await expect(page.locator('dialog.sheet')).toBeVisible();
-  await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
+  await expect(page.locator('.sheet-col .preview-frame .ps-sheet')).toBeVisible();
 });
 
 test('exports references only, never image data', async ({ page }) => {
-  await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
   await page.getByRole('button', { name: 'Aktionen für diese Sammlung' }).click();
 
   const download = page.waitForEvent('download');
@@ -310,21 +312,23 @@ test('a card frame is drawn inside the cut margin, not on it', async ({ page }) 
   const card = page.locator('.preview-frame .ps-card').first();
   expect(mm(await card.evaluate((el: HTMLElement) => el.offsetWidth))).toBeCloseTo(46, 0);
 
+  await openLook(page);
   await page.getByLabel('Rahmen um jede Karte').check();
   const frame = page.locator('.preview-frame .ps-card__frame').first();
   await expect(frame).toHaveCount(1);
 
   // The frame must sit strictly inside the card, or the scissors go through it.
-  const boxes = await card.evaluate((el: HTMLElement) => {
+  // Polled, as everything read off the preview right after a change: it lays
+  // its pages out again, and a card read while that happens is one replaced.
+  const inside = () => card.evaluate((el: HTMLElement) => {
     const outer = el.getBoundingClientRect();
-    const inner = el.querySelector('.ps-card__frame')!.getBoundingClientRect();
-    return { outer: outer.left, inner: inner.left, outerRight: outer.right, innerRight: inner.right };
+    const inner = el.querySelector('.ps-card__frame')?.getBoundingClientRect();
+    return Boolean(inner) && inner!.left > outer.left && inner!.right < outer.right;
   });
-  expect(boxes.inner).toBeGreaterThan(boxes.outer);
-  expect(boxes.innerRight).toBeLessThan(boxes.outerRight);
+  await expect.poll(inside).toBe(true);
 
   await page.getByLabel('Hintergrundfarbe').check();
-  expect(await frame.evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor))
+  await expect.poll(() => frame.evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor))
     .not.toBe('rgba(0, 0, 0, 0)');
 
   // And it reaches the printable copy, not only the preview.
@@ -340,20 +344,22 @@ test('a strip frame encloses the sentence text and the symbols', async ({ page }
   const strip = page.locator('.preview-frame .ps-sentence').first();
   expect(await strip.evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('none');
 
+  await openLook(page);
   await page.getByLabel('Rahmen um den ganzen Streifen').check();
-  expect(await strip.evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('solid');
+  // Polled: the preview lays its pages out again after a change, and a strip
+  // read while that happens is one already replaced.
+  await expect.poll(() => strip.evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('solid');
 
-  const boxes = await strip.evaluate((el: HTMLElement) => {
+  const encloses = () => strip.evaluate((el: HTMLElement) => {
     const outer = el.getBoundingClientRect();
-    const caption = el.querySelector('.ps-caption')!.getBoundingClientRect();
-    const row = el.querySelector('.ps-row')!.getBoundingClientRect();
-    return { top: outer.top, bottom: outer.bottom, capTop: caption.top, rowBottom: row.bottom };
+    const caption = el.querySelector('.ps-caption')?.getBoundingClientRect();
+    const row = el.querySelector('.ps-row')?.getBoundingClientRect();
+    return Boolean(caption && row) && caption!.top > outer.top && row!.bottom < outer.bottom;
   });
-  expect(boxes.capTop).toBeGreaterThan(boxes.top);
-  expect(boxes.rowBottom).toBeLessThan(boxes.bottom);
+  await expect.poll(encloses).toBe(true);
 
   // And it reaches the printable copy, not only the preview.
-  expect(await page.locator('#print-root .ps-sentence').first()
+  await expect.poll(() => page.locator('#print-root .ps-sentence').first()
     .evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('solid');
 });
 
@@ -364,6 +370,8 @@ test('a strip frame encloses the sentence text and the symbols', async ({ page }
  */
 test('the strip frame is offered only for strips', async ({ page }) => {
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
+  await openLook(page);
+  await expect(page.getByLabel('Rahmen um jede Karte')).toHaveCount(1);
   // Not greyed out: an option that means nothing on a card sheet is not there.
   await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(0);
 });
@@ -399,11 +407,9 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
  * why the address has to survive the clipping intact.
  */
 test('a long name is clipped so the credit keeps to its one line', async ({ page }) => {
-  await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
-  await expect(page.locator('dialog.sheet')).toBeHidden();
   await page.getByLabel('Name der Sammlung', { exact: true })
     .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
 
   await page.getByRole('button', { name: 'A5', exact: true }).click();
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
@@ -411,8 +417,8 @@ test('a long name is clipped so the credit keeps to its one line', async ({ page
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
 
-  // Five cards at one per page: five sheets, and the last of them holds the
-  // notice as well as its card.
+  // Five cards at one per page: five sheets, each holding the notice in its
+  // footer as well as its card.
   await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
   const spill = await page.locator('.preview-frame .ps-page').last()
     .evaluate((el: HTMLElement) => el.scrollHeight - el.clientHeight);
@@ -421,7 +427,7 @@ test('a long name is clipped so the credit keeps to its one line', async ({ page
   // Clipped, and clipped in the right place: the name gives way, the address
   // is printed whole. scrollWidth is what the name would need; clientWidth is
   // what it got.
-  const line = await page.locator('.preview-frame .ps-made').evaluate((made: HTMLElement) => {
+  const line = await page.locator('.preview-frame .ps-made').first().evaluate((made: HTMLElement) => {
     const name = made.querySelector<HTMLElement>('.ps-made__name')!;
     const tail = made.querySelector<HTMLElement>('.ps-made__tail')!;
     return {
@@ -434,7 +440,7 @@ test('a long name is clipped so the credit keeps to its one line', async ({ page
   expect(line.wanted).toBeGreaterThan(line.got);
   expect(line.tailClipped).toBe(false);
   expect(line.lines).toBe(1);
-  await expect(page.locator('.preview-frame .ps-url')).toHaveText('https://bildhaft.lautstark.tech');
+  await expect(page.locator('.preview-frame .ps-url').first()).toHaveText('https://bildhaft.lautstark.tech');
 });
 
 /*
@@ -443,15 +449,15 @@ test('a long name is clipped so the credit keeps to its one line', async ({ page
  * twenty, so it has to reach the printable copy and not only the preview.
  */
 test('the collection name can head the sheet', async ({ page }) => {
-  await page.locator('.sheet .foot').getByRole('button', { name: 'Schließen' }).click();
-  await expect(page.locator('dialog.sheet')).toBeHidden();
   await page.getByLabel('Name der Sammlung', { exact: true }).fill('Morgenkreis');
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
 
   await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
 
-  await page.getByLabel('Name der Sammlung auf der ersten Seite').check();
+  await openLook(page);
+  await page.getByLabel('Titel auf der ersten Seite').check();
   await expect(page.locator('.preview-frame .ps-title')).toHaveText('Morgenkreis');
+  await backToPrint(page);
   await expect(page.locator('#print-root .ps-title')).toHaveText('Morgenkreis');
 
   // Once, above everything — not a running header. Two sentences broken onto a
@@ -467,7 +473,9 @@ test('the collection name can head the sheet', async ({ page }) => {
  * know about pushes its bottom row onto a sheet of its own.
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
-  await page.getByLabel('Name der Sammlung auf der ersten Seite').check();
+  await openLook(page);
+  await page.getByLabel('Titel auf der ersten Seite').check();
+  await backToPrint(page);
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the first page is full and reaches the paper's edge.
@@ -490,9 +498,9 @@ test('a headed grid page takes its room from the cards, not from the paper', asy
  * and nothing anywhere could say how much paper a job came to — which is the
  * question somebody standing at a shared printer is actually asking.
  */
-test('the preview is cut into pages, and the footer counts them', async ({ page }) => {
+test('the preview is cut into pages, and the column counts them', async ({ page }) => {
   const pages = page.locator('.preview-frame .ps-page');
-  const meta = page.locator('.sheet .foot .small.faint').first();
+  const meta = page.locator('.sheet-col .pager__at');
 
   await expect(pages).toHaveCount(1);
   await expect(meta).toContainText('1 Seite');
@@ -510,7 +518,7 @@ test('the preview is cut into pages, and the footer counts them', async ({ page 
   // A forced break.
   await page.getByLabel('Ein Satz pro Seite').check();
   await expect(pages).toHaveCount(2);
-  await expect(meta).toContainText('2 Seiten');
+  await expect(meta).toContainText('Seite 1 von 2');
   // One plan, applied to both copies: the preview and the printer cannot
   // disagree about where a page ends, because neither worked it out alone.
   await expect(page.locator('#print-root .ps-page')).toHaveCount(2);
@@ -520,36 +528,43 @@ test('the preview is cut into pages, and the footer counts them', async ({ page 
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByLabel('Symbolgröße').fill('90');
   await expect(pages).toHaveCount(3);
-  await expect(meta).toContainText('3 Seiten');
+  await expect(meta).toContainText('Seite 1 von 3');
+
+  // One page at a time, turned with the arrows rather than scrolled.
+  const frame = page.locator('.sheet-col .preview-frame');
+  await expect(page.getByRole('button', { name: 'Vorige Seite' }).first()).toBeDisabled();
+  await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
+  await expect(meta).toContainText('Seite 2 von 3');
+  await expect.poll(() => frame.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
+  await expect(meta).toContainText('Seite 3 von 3');
+  await expect(page.getByRole('button', { name: 'Nächste Seite' }).first()).toBeDisabled();
 });
 
 /*
  * ARASAAC's credit is a licence condition, and METACOM's is what makes material
- * lawful to hand out. Under the last strip on a half-empty page it reads as
- * something that got left behind; at the foot of the page it reads as the
- * notice it is.
+ * lawful to hand out. So it is the footer of every page — a sheet handed on
+ * alone carries it too — at the very foot, not under the last strip on a
+ * half-empty page, where it reads as something that got left behind.
  */
-test('the credit block sits at the foot of the last page, whatever the layout', async ({ page }) => {
-  const foot = () => page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
-    const pages = sheet.querySelectorAll<HTMLElement>('.ps-page');
-    const last = pages[pages.length - 1]!;
-    const credit = sheet.querySelector<HTMLElement>('.ps-attribution')!;
-    // The foot of the printable area, not of the box: in the preview a page
-    // carries the paper's own margin as padding, and the notice is printed
-    // inside that margin like everything else.
-    const pad = parseFloat(getComputedStyle(last).paddingBottom);
-    return {
-      onLast: last.contains(credit),
-      // In whole pixels, which is what offsetTop and offsetHeight are: at 96dpi
-      // one of them is a quarter of a millimetre.
-      gap: (last.offsetTop + last.offsetHeight - pad) - (credit.offsetTop + credit.offsetHeight),
-    };
-  });
+test('the credit sits at the foot of every page, whatever the layout', async ({ page }) => {
+  const foot = () => page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) =>
+    [...sheet.querySelectorAll<HTMLElement>('.ps-page')].map((one) => {
+      const credit = one.querySelector<HTMLElement>('.ps-attribution');
+      if (!credit) return null;
+      // The foot of the printable area, not of the box: in the preview a page
+      // carries the paper's own margin as padding, and the notice is printed
+      // inside that margin like everything else. In whole pixels, which is what
+      // offsetTop and offsetHeight are: at 96dpi one is a quarter of a millimetre.
+      const pad = parseFloat(getComputedStyle(one).paddingBottom);
+      const bottom = credit.getBoundingClientRect().bottom - one.getBoundingClientRect().top;
+      const scale = one.getBoundingClientRect().height / one.offsetHeight;
+      return Math.round(one.offsetHeight - pad - bottom / scale);
+    }));
 
   // A strip sheet with most of the page still empty.
-  const strip = await foot();
-  expect(strip.onLast).toBe(true);
-  expect(Math.abs(strip.gap)).toBeLessThanOrEqual(1);
+  await expect.poll(foot).toEqual([expect.any(Number)]);
+  expect(Math.abs((await foot())[0]!)).toBeLessThanOrEqual(1);
 
   // And a grid, where the room it drops into is the band every page reserves
   // so that the notice never costs a sheet of its own.
@@ -560,8 +575,8 @@ test('the credit block sits at the foot of the last page, whatever the layout', 
   await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
 
   const grid = await foot();
-  expect(grid.onLast).toBe(true);
-  expect(Math.abs(grid.gap)).toBeLessThanOrEqual(1);
+  expect(grid).toHaveLength(5);
+  for (const gap of grid) expect(Math.abs(gap ?? Infinity)).toBeLessThanOrEqual(1);
 });
 
 /*
@@ -589,4 +604,29 @@ test('every page of the printable copy holds inside the paper', async ({ page })
   expect(seen.overflow).toEqual([0, 0, 0, 0, 0]);
   // Five pages of paper and nothing else — no padding, and no sixth sheet.
   expect(seen.total).toBeCloseTo(5 * 277, 0);
+});
+
+/*
+ * bildhaft makes the PDF itself, from the preview. Without a folder to keep it
+ * in, it is downloaded — and it is the preview: the same number of pages, on
+ * the same paper, named for the day and the paper.
+ */
+test('saves the preview as a PDF of the same pages', async ({ page }) => {
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await expect(page.locator('.sheet-col .pager__at')).toContainText('Seite');
+  await expect(page.locator('.preview-frame .ps-page').first()).toBeVisible();
+  const pages = await page.locator('.preview-frame .ps-page').count();
+  const [file] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Als PDF speichern' }).click(),
+  ]);
+  expect(file.suggestedFilename()).toMatch(/^.+ \d{4}-\d{2}-\d{2} A5 hoch\.pdf$/);
+  const bytes = await readFile(await file.path());
+  expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  const pdf = await PDFDocument.load(bytes);
+  expect(pdf.getPageCount()).toBe(pages);
+  // A5 standing up, in points.
+  const size = pdf.getPage(0).getSize();
+  expect(size.width).toBeCloseTo(148 * 72 / 25.4, 0);
+  expect(size.height).toBeCloseTo(210 * 72 / 25.4, 0);
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { translate } from './helpers.ts';
+import { showSheet, translate } from './helpers.ts';
 
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
@@ -258,7 +258,7 @@ test('crosses a symbol out for a negation, and keeps it crossed', async ({ page 
     .locator('.negate')).toHaveCount(1);
 
   // And it has to reach paper — the cross is the whole point of the feature.
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
   await expect(page.locator('.preview-frame .ps-card .negate')).toHaveCount(1);
   await expect(page.locator('#print-root .ps-card .negate')).toHaveCount(1);

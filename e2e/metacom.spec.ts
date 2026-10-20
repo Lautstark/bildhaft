@@ -4,7 +4,7 @@ import {
   arasaacHeading, chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings,
   withoutDirectoryPicker,
 } from './metacom-folder.ts';
-import { translate } from './helpers.ts';
+import { showSheet, translate } from './helpers.ts';
 
 /**
  * METACOM with a fake symbol folder.
@@ -597,7 +597,7 @@ test('the copyright notice is offered for METACOM, and only on request', async (
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await translate(page, 'Ich möchte schlafen');
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-sheet')).toBeVisible();
 
   // Nothing is claimed on the user's behalf: printing from a licence you own
@@ -617,7 +617,7 @@ test('a credit line does not push itself onto a page of its own', async ({ page 
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await translate(page, 'Ich möchte schlafen');
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   /*

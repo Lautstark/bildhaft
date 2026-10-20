@@ -32,3 +32,16 @@ export function rowFor(page: Page, typed: string) {
   return page.locator('.row')
     .filter({ has: page.locator(`.row__title[placeholder="${typed}"]`) });
 }
+
+/**
+ * The column „Blatt" beside the open Sammlung: the preview, and every setting
+ * of the paper. It is always there once there is something to print, so this
+ * is the wait for its preview to be laid out and nothing more.
+ */
+export async function showSheet(page: Page): Promise<void> {
+  await expect(page.locator('.sheet-col .preview-frame .ps-sheet')).toBeVisible();
+}
+
+/** Older names for the same wait, from when the settings were split over two dialogs. */
+export const openLook = showSheet;
+export const backToPrint = showSheet;

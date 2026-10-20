@@ -30,7 +30,6 @@
   import { answered, asking } from './asking.svelte.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
-  import { openPrint } from './print.ts';
   import { t } from '../i18n/index.ts';
 
   /* Which Sammlung a pending rename is for, captured on the keystroke rather
@@ -73,9 +72,10 @@
     : n === 1
       ? t('ui.n_rows_one')
       : t('ui.n_rows', { n }));
+
 </script>
 
-<div class="collection-head"><TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><button class="btn quiet sm" type="button" disabled={n === 0} onclick={() => openPrint(s.sentences.map((x) => x.id))}>{t('ui.print')}</button><!--
+<div class="collection-head"><TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to

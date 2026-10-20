@@ -18,6 +18,8 @@
   import Footer from './ui/Footer.svelte';
   import Composer from './ui/Composer.svelte';
   import SongComposer from './ui/SongComposer.svelte';
+  import SheetColumn from './ui/SheetColumn.svelte';
+  import RecipeComposer from './ui/RecipeComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
   import Banners from './app/Banners.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
@@ -26,7 +28,6 @@
   import { notify, useToast } from './app/notify.ts';
   import { persistSettings } from './app/settings.ts';
   import { activeCollection, kind, MOBILE_QUERY, s } from './app/state.svelte.ts';
-  import { TEMPLATES } from './app/templates.ts';
   import { t } from './i18n/index.ts';
 
   let toast: HTMLElement;
@@ -115,7 +116,11 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner"><Banners />{#if s.wortschatz}<Wortschatz />{:else}{#if kind() === 'lied'}<SongComposer />{:else if TEMPLATES[kind()].composer}<Composer />{/if}<CollectionHead /><Material />{/if}</div><Footer /></main></div>{/if}<!--
+--><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
+  The box to type into and the Sammlung's head — its name, its ⋯ — stand over
+  the Sammlung and its sheet both, at the same place in every template; the
+  sheet column starts below them, level with the material it is the paper of.
+-->{#if kind() === 'lied'}<SongComposer />{:else if kind() === 'rezept'}<RecipeComposer />{:else}<Composer />{/if}<CollectionHead /><div class="work"><div class="work__main"><Material /></div><SheetColumn /></div>{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

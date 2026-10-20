@@ -21,4 +21,4 @@
   });
 </script>
 
-<span class="small faint">{meta}</span><div class="spacer"></div><button class="btn" type="button" onclick={() => s.close()}>{t('ui.close')}</button><button class="btn primary" type="button" disabled={s.preparing} onclick={() => s.print()}>{#if s.preparing}<span class="spinner"></span> {t('ui.preparing')}{:else}{t('ui.print')}{/if}</button>
+<span class="small faint">{meta}</span><div class="spacer"></div>{#if s.options.onPdf}<button class="btn" type="button" disabled={s.saving || s.preparing} onclick={() => s.savePdf()}>{#if s.saving}<span class="spinner"></span> {t('ui.pdf_saving')}{:else}{t('ui.pdf_save')}{/if}</button>{/if}<button class="btn primary" type="button" disabled={s.preparing} onclick={() => s.print()}>{#if s.preparing}<span class="spinner"></span> {t('ui.preparing')}{:else}{t('ui.print')}{/if}</button>

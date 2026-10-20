@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mockArasaac, readSentences } from './arasaac-mock.ts';
-import { rowFor, translate, translateAll } from './helpers.ts';
+import { rowFor, showSheet, translate, translateAll } from './helpers.ts';
 
 /**
  * What a row is called.
@@ -43,7 +43,7 @@ test('names a row, prints the name, and keeps it across a reload', async ({ page
   await page.reload();
   await expect(name(page)).toHaveValue('Hände waschen');
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-caption')).toHaveText(['Hände waschen']);
 });
 

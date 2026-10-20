@@ -1393,15 +1393,11 @@ footer.footer {
    Satzstreifen's own. The Refrain stands on a ground of the accent, as it
    does on paper, so it is found again at a glance wherever it comes back. */
 .song { display: flex; flex-direction: column; gap: 14px; }
-.song__type .composer__meta { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .song__bar { display: flex; justify-content: flex-end; }
-.song__part {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-.song__head { margin: 0; padding-top: 12px; font-size: 14px; font-weight: 650; color: var(--text-dim); }
+/* The part's name over its lines rather than beside them, so the lines have
+   the whole width — a line of six symbols wrapped in a column it did not need. */
+.song__part { display: grid; gap: 6px; }
+.song__head { margin: 0; font-size: 14px; font-weight: 650; color: var(--text-dim); }
 .song__lines { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .song__part--refrain .song__head { color: var(--accent-strong); }
 .song__part--refrain .song__lines {
@@ -1431,7 +1427,77 @@ footer.footer {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-@media (max-width: 820px) {
-  .song__part { grid-template-columns: 1fr; gap: 4px; }
-  .song__head { padding-top: 0; }
+
+/* -------------------------------------------------------------- saved PDFs */
+
+/* The latest PDF of a Sammlung, one quiet line under its name, and the list
+   that folds open under it. */
+.pdf-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: -6px 0 14px; }
+.pdf-list { list-style: none; margin: -8px 0 16px; padding: 4px 0; border-top: 1px solid var(--line); }
+.pdf-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 0; }
+
+/* ------------------------------------------------------------- the sheet */
+
+/* A Sammlung and its sheet side by side: the rows on the left, „Blatt" on
+   the right, with everything about the paper in it. The page grows to hold
+   both; below the breakpoint the sheet goes under the rows. */
+.main__inner--work { max-width: 1240px; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; }
+.work__main { min-width: 0; }
+.sheet-col {
+  position: sticky;
+  top: 16px;
+  width: 300px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 14px 14px 18px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  outline: 1px solid var(--line);
 }
+.sheet-col--folded { width: 44px; padding: 8px 4px; min-height: 320px; display: flex; flex-direction: column; align-items: center; }
+.sheet-col__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.sheet-col__head b { font-size: 14px; font-weight: 650; }
+.sheet-col--folded .sheet-col__head { flex-direction: column; margin: 0; gap: 14px; }
+.sheet-col__strip {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  writing-mode: vertical-rl;
+  cursor: pointer;
+}
+/* The paper straight on the column, as it lies on a table — no grey box
+   around it inside the column's own box. */
+/* Square: a sheet of paper has corners, and a rounded frame cut them off. */
+.sheet-col__preview { height: 260px; min-height: 0; padding: 0; border-radius: 0; background: transparent; cursor: zoom-in; }
+.sheet-col__preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sheet-col .opt { margin-bottom: 12px; }
+.opt-group {
+  margin: 18px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.print-options > .opt-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.sheet-col__acts { display: grid; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.sheet-col__last { margin: 4px 0 0; }
+.preview-frame--big { height: calc(100vh - 290px); height: calc(100dvh - 290px); min-height: 280px; }
+.preview-frame--big + .pager { margin: 8px 0 0; }
+@media (max-width: 1100px) {
+  .work { grid-template-columns: 1fr; }
+  .sheet-col, .sheet-col--folded { position: static; width: auto; max-height: none; }
+}
+
+/* One page at a time: the frame is turned with the arrows, not scrolled. */
+.sheet-col__preview, .preview-frame--big { overflow: hidden; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px 0 12px; }
+.pager__at { min-width: 9em; text-align: center; font-variant-numeric: tabular-nums; }
+.pager .btn { font-size: 18px; line-height: 1; }

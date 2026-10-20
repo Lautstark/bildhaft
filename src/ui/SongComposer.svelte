@@ -1,52 +1,87 @@
 <script lang="ts">
   /**
    * A Lied's box, where every other template has its composer: at the top,
-   * above the Sammlung's name. The song is pasted here whole, and comes back
-   * here whole from „Text bearbeiten" to be changed and sent again.
+   * above the Sammlung's name — and it holds the song.
    *
-   * Only there while it is needed — before anything is pasted, and while the
-   * text is open for editing. A Lied is not added to line by line the way a
-   * Satzstreifen is, so a box always open above a finished song would be a
-   * box that does nothing but invite a second song into the first.
+   * Not a box that adds lines, as a Satzstreifen's does: a song is written
+   * as a whole, and its shape — which parts, in what order — is its text.
+   * So the box shows the song's text, folded to its first lines; pressed, it
+   * opens tall to the whole song; left, it folds again and what was changed
+   * is taken over. The arrow takes it over too. Enter is a new line here,
+   * because a blank line is what ends a part; Escape drops what was typed.
+   *
+   * The song is read again from its whole text each time, so a line it
+   * already had keeps its row and its symbols.
    */
   import TypingBox from './TypingBox.svelte';
-  import { writeSong } from '../app/song.ts';
-  import { activeCollection, s } from '../app/state.svelte.ts';
+  import { currentSongText, writeSong } from '../app/song.ts';
+  import { activeCollection, followsDefault, provider, s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
-  let song = $derived(activeCollection()?.song ?? null);
-  let editing = $derived(s.songEditing !== null && s.songEditing === s.activeId);
-  let waiting = $state(false);
+  /* The two heights the box takes: about two lines folded, most of the
+     window open. */
+  const FOLDED_PX = 56;
+  const openPx = (): number => Math.max(240, Math.round(window.innerHeight * 0.62));
 
-  async function submit(): Promise<void> {
-    const raw = s.songDraft;
-    if (!raw.trim() || s.busy) return;
+  let song = $derived(activeCollection()?.song ?? null);
+  /* What the song says now, written out — the box's text whenever it is not
+     being edited. Read from the rows, so a line renamed elsewhere shows here. */
+  let written = $derived.by(() => { void song; void s.sentences; return currentSongText(); });
+  let open = $state(false);
+  let draft = $state('');
+  let waiting = $state(false);
+  let ready = $derived(provider().isReady());
+  let own = $derived(Boolean(activeCollection()) && !followsDefault());
+
+  /* Another Sammlung is another song: whatever was open in the box closes. */
+  $effect(() => { void s.activeId; open = false; draft = ''; });
+
+  async function apply(): Promise<void> {
+    const raw = draft;
+    if (waiting || s.busy || !raw.trim() || raw.trim() === written.trim()) return;
     waiting = true;
     try {
       const left = await writeSong(raw);
-      s.songDraft = left;
-      if (!left) s.songEditing = null;
+      /* What could not be written stays in the box, open, to be sent again. */
+      if (left) { draft = left; open = true; }
     } finally {
       waiting = false;
     }
   }
 
-  function cancel(): void {
-    s.songEditing = null;
-    s.songDraft = '';
+  function focus(): void {
+    if (!open) draft = written;
+    open = true;
+  }
+  /* Typing opens the box too, with what was typed: text can arrive without a
+     focus first — pasted by a shortcut, put in by an assistive tool — and a
+     folded box would have shown the song again over it. */
+
+  function blur(): void {
+    open = false;
+    void apply();
+  }
+
+  function escape(): void {
+    draft = written;
   }
 </script>
 
-{#snippet meta()}<span>{t('ui.song_paste_note')}</span>{#if editing && song}<button class="linklike" type="button" onclick={cancel}>{t('ui.cancel')}</button>{/if}{/snippet}
+{#snippet meta()}<span>{open ? t('ui.song_open_note') : song ? t('ui.song_folded_note') : t('ui.song_paste_note')}</span><span class="composer__provider"><span>{own ? t('ui.symbols_of_collection') : t('ui.symbols_default')}</span><b style="font-weight:600">{provider().name}{ready ? '' : ` (${t('ui.not_ready')})`}</b></span>{/snippet}
 
-{#if !song || editing}<div class="song__type"><TypingBox
-  value={s.songDraft}
+<div class="song__type{open ? ' song__type--open' : ''}"><TypingBox
+  value={open ? draft : written}
   busy={waiting}
   placeholder={t('ui.song_paste_placeholder')}
   label={t('ui.song_paste_label')}
   action={t('ui.translate')}
   {meta}
-  focusOnMount
-  onChange={(value) => { s.songDraft = value; }}
-  onSubmit={() => void submit()}
-/></div>{/if}
+  focusOnMount={!song}
+  maxHeight={open ? openPx() : FOLDED_PX}
+  enterSubmits={false}
+  onFocus={focus}
+  onBlur={blur}
+  onEscape={escape}
+  onChange={(value) => { draft = value; open = true; }}
+  onSubmit={() => void apply()}
+/></div>

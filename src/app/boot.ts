@@ -52,6 +52,10 @@ export function boot(say: (message: string) => void): void {
        sentence in the open collection — work that changes nothing. */
     s.previousProvider = wanted.provider ?? loaded.activeProvider;
     setActive(wanted.id);
+    /* The Wortschatz's counts in the sidebar are read in the same pass as the
+       list, and nothing else asked for them at start: „Alle Wörter" said 0
+       until something happened to refresh the list. */
+    void refreshCollections();
 
     // Only judge the symbol source once it has had its chance to come back.
     metacom.restore().catch(() => undefined).finally(() => { s.sourceSettled = true; });

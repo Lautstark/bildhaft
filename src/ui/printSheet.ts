@@ -72,11 +72,6 @@ export function applyPageSetup(paper: PaperSize, orientation: Orientation): void
   style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${PAGE_MARGIN_MM}mm; }`;
 }
 
-/** Puts the paper back to the stylesheet's default when the dialog goes away. */
-export function clearPageSetup(): void {
-  document.getElementById(PAGE_STYLE_ID)?.remove();
-}
-
 /**
  * METACOM's copyright notice, in the wording its terms give.
  *
@@ -144,6 +139,9 @@ const TITLE_LINE_MM = 5.5;
 /** The heading's margin-bottom. */
 const TITLE_GAP_MM = 4;
 const TITLE_ALLOWANCE_MM = TITLE_GAP_MM + 2 * TITLE_LINE_MM;
+
+/** The line a page number stands on, kept free at the foot of every page when it is asked for. */
+export const PAGE_NUMBER_MM = 5;
 
 /* --------------------------------------------------------------- pages --- */
 
@@ -235,15 +233,19 @@ const FIT_TOLERANCE = 0.5;
  * now, applied by the component in the paint before this one.
  */
 export function planPages(sheet: HTMLElement, settings: PrintSettings): number[] {
-  const limit = printableArea(settings.paper, settings.orientation).height * PX_PER_MM;
   const blocks = [...sheet.children] as HTMLElement[];
   /*
-   * The credit block is not packed with the rest. It belongs at the foot of the
-   * last page — a licence notice on a page of its own is a wasted sheet, and one
-   * floating half-way up a short last page reads as something that got left
-   * behind. So it is set aside here and placed once the pages are known.
+   * The credit block is not packed with the rest. It is the foot of every
+   * page — one line with the page number at its right — so that a sheet
+   * handed on alone still carries the notice its symbols need. Its room is
+   * taken off every page, and it is drawn there, not here.
    */
   const credit = blocks.at(-1)?.classList.contains('ps-attribution') ? blocks.pop()! : null;
+  const foot = Math.max(
+    credit ? outer(credit).top + outer(credit).height : 0,
+    settings.showPageNumbers ? PAGE_NUMBER_MM * PX_PER_MM : 0,
+  );
+  const limit = printableArea(settings.paper, settings.orientation).height * PX_PER_MM - foot;
 
   const pages: number[] = [];
   const filled: number[] = [];
@@ -265,14 +267,6 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
   }
   if (count > 0) close();
   if (pages.length === 0) { pages.push(0); filled.push(0); }
-
-  if (credit) {
-    const box = outer(credit);
-    // Pinned to the foot of its page, so only its own height has to fit.
-    if (filled[filled.length - 1]! + box.height > limit + FIT_TOLERANCE) pages.push(1);
-    else pages[pages.length - 1]! += 1;
-  }
-
   return pages;
 }
 
@@ -412,7 +406,8 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
   if (title) blocks.push({ kind: 'title', text: title });
 
   const reserve = (credits.length > 0 ? creditAllowanceMm(credits.length) : 0)
-    + (title ? TITLE_ALLOWANCE_MM : 0);
+    + (title ? TITLE_ALLOWANCE_MM : 0)
+    + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 
   if (board) {
     blocks.push({

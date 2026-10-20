@@ -370,8 +370,25 @@ export interface Collection {
    */
   song?: Song;
 
+  /**
+   * The PDFs bildhaft saved of this Sammlung, newest first: where each lies
+   * in the Ablage folder's `pdf/`, and what it was printed on. Files, not
+   * records — the PDF is in the folder and this is the list of them, so one
+   * deleted by hand is gone from it the next time it is opened.
+   */
+  pdfs?: SavedPdf[];
+
   createdAt: number;
   updatedAt: number;
+}
+
+/** A PDF saved of a Sammlung: its path under `pdf/`, when, and on what paper. */
+export interface SavedPdf {
+  path: string;
+  at: number;
+  paper: PaperSize;
+  orientation: Orientation;
+  pages: number;
 }
 
 /**
@@ -679,6 +696,12 @@ export interface PrintSettings {
    * sheet line by line and does not go back up it.
    */
   songRepeats: boolean;
+
+  /**
+   * „Seite 1 von 3" at the foot of every page. Off by default: most of what
+   * bildhaft prints is one sheet, and a number on it says nothing.
+   */
+  showPageNumbers: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -708,6 +731,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   accentColour: '#e3262b',
   songHeadings: true,
   songRepeats: false,
+  showPageNumbers: false,
 };
 
 /* ------------------------------------------------------------- settings --- */

@@ -42,6 +42,8 @@ export interface PrintOffer {
   /** Lied: the headings over the parts, and „2×". */
   songChecks?: boolean;
   title?: boolean;
+  /** „Seite 1 von 3" at the foot of each page. */
+  pageNumbers?: boolean;
 }
 
 /**
@@ -53,8 +55,6 @@ export interface PrintOffer {
  * Lied that cannot be printed on A5.
  */
 export interface Template {
-  /** Typed into with the shared composer at the top. The others bring their own box. */
-  composer: boolean;
   /** Holds one-word cards: the wall of cards, the tray, the counter that says „Karten". */
   cards: boolean;
   /**
@@ -82,18 +82,19 @@ const ownLayout = (print: PrintSettings, fallback: 'strip' | 'sheet'): PrintSett
 
 const CARD_SHEET: PrintOffer = {
   paper: true, size: { kind: 'cards' }, margin: 'cut', label: 'full', frames: true, cutLines: true, title: true,
+  pageNumbers: true,
 };
 
 export const TEMPLATES: Record<CollectionKind, Template> = {
   /* Keeps whatever was chosen, strip or cards, because cutting sentences into
      cards is a thing people actually do. */
   satzstreifen: {
-    composer: true, cards: false, ownPrint: false, printTitle: null,
+    cards: false, ownPrint: false, printTitle: null,
     opens: (print) => ownLayout(print, 'strip'),
     offers: (settings) => (settings.layout === 'strip'
       ? {
         layout: true, paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
-        margin: 'cut', label: 'full', frames: true, stripFrame: true, sentenceAbove: true, onePerPage: true, title: true,
+        margin: 'cut', label: 'full', frames: true, stripFrame: true, sentenceAbove: true, onePerPage: true, title: true, pageNumbers: true,
       }
       : { layout: true, ...CARD_SHEET }),
   },
@@ -102,7 +103,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      with the wrong margins, so a remembered strip here is the other
      template's setting arriving in this one. */
   wortkarten: {
-    composer: true, cards: true, ownPrint: false, printTitle: null,
+    cards: true, ownPrint: false, printTitle: null,
     opens: (print) => (print.layout === 'sheet' ? print : { ...print, layout: 'sheet' }),
     offers: () => CARD_SHEET,
   },
@@ -114,7 +115,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      itself when it has, otherwise from the size of a field on this paper, so
      a crowded A5 gets less than a roomy A4. */
   tafel: {
-    composer: true, cards: true, ownPrint: false, printTitle: 'ui.print_board_title',
+    cards: true, ownPrint: false, printTitle: 'ui.print_board_title',
     opens: (print, own, board) => {
       const grid = board ?? boardOf({});
       const page = printableArea(print.paper, print.orientation);
@@ -126,7 +127,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       };
     },
     offers: () => ({
-      paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, title: true,
+      paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, title: true, pageNumbers: true,
     }),
   },
 
@@ -135,7 +136,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      laminating margin, because 5 mm around a 20 mm card is a third of the
      card. Facts about this material, not preferences. */
   einkaufsliste: {
-    composer: true, cards: true, ownPrint: false, printTitle: null,
+    cards: true, ownPrint: false, printTitle: null,
     opens: (print) => ({
       ...print, layout: 'einkaufsliste', paper: 'a4', orientation: 'landscape',
       symbolSizeMm: 20, cutMarginMm: 3, showLabel: true, showCollectionTitle: true,
@@ -148,15 +149,17 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      stays a choice, because a child who needs bigger pictures gets a second
      page rather than smaller ones. */
   rezept: {
-    composer: false, cards: false, ownPrint: true, printTitle: 'ui.print_recipe_title',
+    cards: false, ownPrint: true, printTitle: 'ui.print_recipe_title',
     opens: (print, own) => ({
       ...print, layout: 'rezept', paper: 'a4', orientation: 'portrait',
       symbolSizeMm: own.symbolSizeMm ?? 20, cutMarginMm: 1.5,
       showLabel: true, labelPosition: 'below', labelSizePt: own.labelSizePt ?? 9,
       cardBorderMm: 0, cardBackground: null, showCollectionTitle: true,
+      showPageNumbers: own.showPageNumbers ?? false,
     }),
     offers: () => ({
       colour: true, size: { kind: 'symbol', max: 60, fallback: 20, note: 'ui.recipe_size_note' }, label: 'size',
+      pageNumbers: true,
     }),
   },
 
@@ -167,7 +170,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      wall. What it set for itself wins, and the household's does not reach
      it, or a 40 mm strip's frame would be the next song's. */
   lied: {
-    composer: false, cards: false, ownPrint: true, printTitle: 'ui.print_song_title',
+    cards: false, ownPrint: true, printTitle: 'ui.print_song_title',
     opens: (print, own) => ({
       ...print, layout: 'lied',
       paper: own.paper ?? 'a4',
@@ -183,11 +186,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       cardBackground: own.cardBackground !== undefined ? own.cardBackground : null,
       showCollectionTitle: own.showCollectionTitle ?? true,
       showSentenceText: own.showSentenceText ?? true,
+      showPageNumbers: own.showPageNumbers ?? false,
       accentColour: own.accentColour ?? '#2c66c8',
     }),
     offers: () => ({
       colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: 'ui.song_size_note' },
-      label: 'full', frames: true, sentenceAbove: true, songChecks: true, title: true,
+      label: 'full', frames: true, sentenceAbove: true, songChecks: true, title: true, pageNumbers: true,
     }),
   },
 };

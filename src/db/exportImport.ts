@@ -72,6 +72,8 @@ async function fromDataUrl(data: string): Promise<Blob> {
 function portable(collection: Collection): Collection {
   const copy = { ...collection };
   delete copy.provider;
+  /* Files in this household's folder; somebody else's folder does not have them. */
+  delete copy.pdfs;
   return copy;
 }
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { rowFor, translate, translateAll } from './helpers.ts';
+import { rowFor, showSheet, translate, translateAll } from './helpers.ts';
 
 /**
  * The words under a symbol.
@@ -37,7 +37,7 @@ test('prints a rewritten caption, and keeps it across a reload', async ({ page }
   await page.reload();
   await expect(rowLabels(page)).toHaveText(['Ich', 'möchte', 'der Apfel', 'essen']);
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-card__label')).toContainText(['der Apfel']);
 });
 
@@ -87,7 +87,7 @@ test('a card sheet keeps one card per wording, not per symbol', async ({ page })
   await caption(page).fill('der Apfel');
   await page.getByRole('button', { name: 'Fertig' }).click();
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   await page.getByRole('button', { name: 'Kartenblatt' }).click();
 
   const labels = await page.locator('.preview-frame .ps-card__label').allTextContents();

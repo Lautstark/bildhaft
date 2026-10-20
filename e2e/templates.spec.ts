@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { translate } from './helpers.ts';
+import { backToPrint, openLook, showSheet, translate } from './helpers.ts';
 
 /**
  * The two templates share one host, and share it badly if either forgets to say
@@ -77,7 +77,7 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   await page.getByLabel('Wörter hinzufügen').press('Enter');
   await expect(page.locator('.word__name')).toHaveText(['Apfel']);
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   const sheet = page.locator('.preview-frame');
 
   // The board first: if this is not there the template never took, and every
@@ -160,7 +160,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
 
   // The paper: six fields, two with a card, four free and drawn anyway.
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect(sheet.locator('.ps-tafel')).toHaveCount(1);
   await expect(sheet.locator('.ps-tafel .ps-card')).toHaveCount(6);
@@ -426,7 +426,7 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await page.mouse.up();
   await expect(cells.nth(1).locator('.word__name')).toHaveText('Blau');
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   const printed = page.locator('.preview-frame .ps-tafel .ps-card');
   await expect(page.locator('.preview-frame .ps-block')).toHaveCount(5);
   await expect(printed.nth(0).locator('.ps-block')).toHaveCSS('background-color', 'rgb(255, 241, 179)');
@@ -445,9 +445,9 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await expect(airInput).toHaveValue('5');
   await airInput.fill('3');
   await expect(printed.nth(0).locator('.ps-block')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Schließen', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  // Kept by the Tafel: there after the page is loaded again.
+  await page.reload();
+  await showSheet(page);
   await expect(page.getByLabel('Rand um jede Karte')).toHaveValue('3');
 });
 });
@@ -483,6 +483,8 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
   expect(eier?.slots[0]?.sourceToken).toBe('Eier');
   expect(eier?.slots[0]?.chosen).toBe(String(idForTerm('Eier')));
 
+  // One box at the top; the switch in front of it says which part a line goes into.
+  await page.locator('.recipe__parts').getByRole('button', { name: 'Hilfsmittel', exact: true }).click();
   await page.getByLabel('Hilfsmittel hinzufügen').fill('Schüssel');
   await page.getByLabel('Hilfsmittel hinzufügen').press('Enter');
   await expect(page.getByRole('region', { name: 'Hilfsmittel' }).locator('.word__name'))
@@ -491,6 +493,7 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
 
   // Two submissions, so the order is the one they were typed in and not a batch's.
   const schritte = page.getByRole('region', { name: 'Schritte' });
+  await page.locator('.recipe__parts').getByRole('button', { name: 'Schritte', exact: true }).click();
   for (const [at, step] of ['Eier in die Schüssel', 'Rühren'].entries()) {
     await page.getByLabel('Schritt hinzufügen').fill(step);
     await page.getByLabel('Schritt hinzufügen').press('Enter');
@@ -500,7 +503,7 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
   expect(await schritte.locator('.row__title').evaluateAll((fields) =>
     fields.map((field) => field.getAttribute('placeholder')))).toEqual(['Eier in die Schüssel', 'Rühren']);
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect(sheet.locator('.ps-title')).toHaveText('Waffeln (5–6 Stück)');
   await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten', 'Hilfsmittel', 'Schritte']);
@@ -549,8 +552,9 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   const text = [
     ...refrain, ...verse('Mein Licht geht aus'), ...refrain, ...verse('Mein Licht ist klein'), ...refrain,
   ].join('\n');
+  // Enter is a new line in a song; the arrow — or leaving the box — takes it.
   await page.getByLabel('Liedtext').fill(text);
-  await page.getByLabel('Liedtext').press('Enter');
+  await page.getByRole('button', { name: 'Übersetzen' }).click();
 
   await expect(page.locator('.song__head'))
     .toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
@@ -568,15 +572,16 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await rabRows.first().locator('.row__title').press('Tab');
   await expect.poll(() => rabNames()).toEqual(Array(4).fill('Rabimmel!'));
 
-  // Sent again unchanged: no new rows, and the name stays where it was given.
-  await page.getByRole('button', { name: 'Text bearbeiten' }).click();
+  // The box holds the song: pressed, it is the whole text; left unchanged, it
+  // changes nothing — no new rows, and the name stays where it was given.
+  await page.getByLabel('Liedtext').click();
   await expect(page.getByLabel('Liedtext')).toHaveValue(new RegExp(`^${refrain[0]}\\n`));
-  await page.getByLabel('Liedtext').press('Enter');
+  await page.locator('.collection-head').click();
   await expect(page.locator('.song__head')).toHaveCount(5);
   expect((await readSentences(page)).filter((row) => row.rawInput === rab)).toHaveLength(1);
   await expect.poll(() => rabNames()).toEqual(Array(4).fill('Rabimmel!'));
 
-  await page.getByRole('button', { name: 'Drucken', exact: true }).click();
+  await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect(sheet.locator('.ps-title')).toHaveText('Laternenlied');
   await expect(sheet.locator('.ps-song-part')).toHaveCount(5);
@@ -586,6 +591,8 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await expect(sheet.locator('.ps-song-line')).toHaveCount(17);
   await expect(sheet.locator('.ps-song-times')).toHaveCount(0);
 
+  // What is on the sheet is the Lied's „Aussehen", set once for every paper.
+  await openLook(page);
   await page.getByLabel('Doppelte Zeilen nur einmal, mit „2×“').check();
   await expect(sheet.locator('.ps-song-times')).toHaveText(['2×', '2×']);
   await expect(sheet.locator('.ps-song-line')).toHaveCount(13);
@@ -599,7 +606,23 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
 
   // A song sheet is printed on A5 as often as on A4: the paper is the Lied's to choose.
+  await backToPrint(page);
   const pages = await sheet.locator('.ps-page').count();
   await page.getByRole('button', { name: 'A5', exact: true }).click();
   await expect.poll(() => sheet.locator('.ps-page').count()).toBeGreaterThan(pages);
+  await page.keyboard.press('Escape');
+
+  // A part written on at the end of the song's text is taken over on leaving
+  // the box — and the Refrain written again is found again as the Refrain,
+  // on rows it had.
+  const songBox = page.getByLabel('Liedtext');
+  await songBox.click();
+  const whole = await songBox.inputValue();
+  await songBox.fill(`${whole}\n\n${[...verse('Ich trag mein Licht'), '', ...refrain].join('\n')}`);
+  await page.locator('.collection-head').click();
+  await expect(page.locator('.song__head')).toHaveText([
+    'Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain', 'Strophe 3', 'Refrain',
+  ]);
+  await expect(page.getByLabel('Liedtext')).toHaveValue(/Ich trag mein Licht/);
+  await expect.poll(async () => (await readSentences(page)).length).toBe(7);
 });

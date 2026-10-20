@@ -121,8 +121,8 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/Material.svelte' },
   // A Rezept's three parts: the heading over each, and the box under it.
   { prefix: 'ui.recipe_', from: RECIPE_PARTS, where: 'ui/Recipe.svelte' },
-  { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_label`), where: 'ui/Recipe.svelte' },
-  { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_placeholder`), where: 'ui/Recipe.svelte' },
+  { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_label`), where: 'ui/RecipeComposer.svelte' },
+  { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_placeholder`), where: 'ui/RecipeComposer.svelte' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

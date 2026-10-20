@@ -21,7 +21,10 @@
   /** Past this the box scrolls instead of growing. */
   const MAX_INPUT_HEIGHT = 190;
 
-  let { value, busy, placeholder, label, action, meta, after, onChange, onSubmit, focusOnMount = false }: {
+  let {
+    value, busy, placeholder, label, action, meta, after, onChange, onSubmit, focusOnMount = false,
+    maxHeight = MAX_INPUT_HEIGHT, enterSubmits = true, onFocus, onBlur, onEscape,
+  }: {
     value: string;
     busy: boolean;
     placeholder: string;
@@ -35,6 +38,13 @@
     onChange: (value: string) => void;
     onSubmit: () => void;
     focusOnMount?: boolean;
+    /** Past this the box scrolls instead of growing. A Lied's grows tall while it is being edited. */
+    maxHeight?: number;
+    /** False where a line break is the point — a song, whose blank lines are its parts. */
+    enterSubmits?: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onEscape?: () => void;
   } = $props();
 
   let input: HTMLTextAreaElement;
@@ -51,7 +61,7 @@
   function grow(): void {
     if (!input || window.innerHeight === 0 || document.visibilityState === 'hidden') return;
     input.style.height = '0px';
-    input.style.height = `${Math.min(input.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+    input.style.height = `${Math.min(input.scrollHeight, maxHeight)}px`;
   }
 
   /* The value is the store's, so the field is written from outside too — a
@@ -59,6 +69,12 @@
      the caret would jump to the end on every keystroke. */
   $effect(() => {
     if (input.value !== value) { input.value = value; grow(); }
+  });
+
+  /* A box that is allowed to grow, or told to shrink again, measures again. */
+  $effect(() => {
+    void maxHeight;
+    grow();
   });
 
   $effect(() => {
@@ -78,11 +94,17 @@
   });
 
   const keydown = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    if (event.key === 'Escape' && onEscape) {
+      event.preventDefault();
+      onEscape();
+      input.blur();
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && enterSubmits) {
       event.preventDefault();
       onSubmit();
     }
   };
 </script>
 
-<div class="composer"><div class="composer__box"><textarea bind:this={input} class="composer__input" rows="1" {placeholder} aria-label={label} spellcheck="true" lang={LANG} oninput={() => { onChange(input.value); grow(); }} onkeydown={keydown}></textarea><button class="btn primary composer__go" type="button" aria-label={action} title={action} disabled={busy || !value.trim()} onclick={onSubmit}><span>{#if busy}<span class="spinner"></span>{:else}<Icon name="arrow" />{/if}</span></button></div><div class="composer__meta">{@render meta()}</div>{@render after?.()}</div>
+<div class="composer"><div class="composer__box"><textarea bind:this={input} class="composer__input" rows="1" {placeholder} aria-label={label} spellcheck="true" lang={LANG} oninput={() => { onChange(input.value); grow(); }} onkeydown={keydown} onfocus={onFocus} onblur={onBlur}></textarea><button class="btn primary composer__go" type="button" aria-label={action} title={action} disabled={busy || !value.trim()} onclick={onSubmit}><span>{#if busy}<span class="spinner"></span>{:else}<Icon name="arrow" />{/if}</span></button></div><div class="composer__meta">{@render meta()}</div>{@render after?.()}</div>

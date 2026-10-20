@@ -7,11 +7,12 @@ import PrintBody from './PrintBody.svelte';
 import PrintFoot from './PrintFoot.svelte';
 import Printable from './Printable.svelte';
 import {
-  applyPageSetup, cardRows, clearPageSetup, METACOM_COPYRIGHT, paperSize, planPages,
+  applyPageSetup, cardRows, METACOM_COPYRIGHT, paperSize, planPages,
   printableArea, PX_PER_MM, sheetBlocks,
   type Block, type PrintBoard, type PrintSong, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
+import { previewToPdf } from './pdf.ts';
 import { TEMPLATES } from '../app/templates.ts';
 import { LOCALE, t } from '../i18n/index.ts';
 
@@ -30,6 +31,17 @@ export interface PrintOptions {
    * offered — the paper, the margins and the frames still are.
    */
   board?: PrintBoard | null;
+  /**
+   * Keeps the PDF bildhaft made of the preview: into the Ablage folder beside
+   * the Sammlung, or as a download where there is none. Absent offers no
+   * button for it.
+   */
+  onPdf?: (pdf: Blob, settings: PrintSettings, pages: number) => Promise<void>;
+  /**
+   * A Tafel's grid, set from the sheet column: how many fields across and
+   * down. The grid is the Tafel's, not a print setting — this writes it there.
+   */
+  onBoard?: (cols: number, rows: number) => void;
   /** A Lied, when this is one: its parts as they are sung. */
   song?: PrintSong | null;
   collectionName: string;
@@ -88,7 +100,11 @@ export class Printing {
   /* Declared ahead of the derived fields below, which read it: a class field's
      initializer runs before a constructor's body, so a parameter property would
      be assigned after them. */
-  readonly options: PrintOptions;
+  /* Raw state, so that the content can be replaced under a live preview
+     (`update`) and the blocks follow — the rows change as their symbols are
+     looked up, and building the whole preview again for that lost the page
+     being looked at and the control being used. */
+  options = $state.raw<PrintOptions>({} as PrintOptions);
 
   settings = $state.raw<PrintSettings>({} as PrintSettings);
   /** How many cards each row of a flowing card sheet came out with. */
@@ -97,6 +113,15 @@ export class Printing {
   pages = $state.raw<number[] | null>(null);
   /** How many sheets of paper this comes to. Measured, never guessed. */
   pageCount = $state(1);
+  /** Which page the preview shows. One at a time, turned with the arrows. */
+  pageAt = $state(0);
+  /**
+   * How the preview fits its frame. `frame`: a page within the frame's own
+   * size, as the big preview does. `width`: the frame's whole width, and the
+   * frame as high as the page then is — up to `maxHeight` — so a page lying
+   * on its side leaves no empty band under it, as in the column.
+   */
+  fit: { kind: 'frame' } | { kind: 'width'; maxHeight: number } = { kind: 'frame' };
   preparing = $state(false);
   /**
    * What the scissors will leave, said where the size is set.
@@ -138,11 +163,25 @@ export class Printing {
 
   /** Filled in by the opener, which owns the sheet and the print job. */
   print: () => void = () => undefined;
+  /** Makes the PDF of the preview and hands it to `onPdf`. */
+  savePdf: () => void = () => undefined;
+  saving = $state(false);
   close: () => void = () => undefined;
 
   constructor(options: PrintOptions) {
     this.options = options;
     this.settings = options.settings;
+  }
+
+  /**
+   * New content for the same preview: rows changed, a grid resized, a song
+   * rewritten. The settings stay the ones on screen — they are what is being
+   * edited here — and the pages are planned again a task later, outside
+   * whatever effect noticed the change.
+   */
+  update(options: PrintOptions): void {
+    this.options = { ...options, settings: this.settings };
+    window.setTimeout(() => this.replan());
   }
 
   set<K extends keyof PrintSettings>(key: K, value: PrintSettings[K]): void {
@@ -183,6 +222,9 @@ export class Printing {
     flushSync();
     this.pageCount = this.pages.length;
     this.measureCard();
+    /* Now, and again once the frame has its size: a preview made while its
+       frame is still being laid out measures it a frame late. */
+    this.rescale();
     requestAnimationFrame(() => this.rescale());
   }
 
@@ -257,84 +299,169 @@ export class Printing {
   rescale(): void {
     const sheet = this.sheet;
     if (!sheet || !this.frame || !this.scaler || !this.sizer) return;
-    const availableWidth = this.frame.clientWidth - PREVIEW_PADDING;
-    const availableHeight = this.frame.clientHeight - PREVIEW_PADDING;
-    // Fit one full A4 page, so page breaks and the overall grid are judgeable.
-    // Further pages scroll rather than shrinking the whole preview.
+    // The whole sheet, margin included — which is what a page box in the preview is.
     const pageHeight = paperSize(this.settings.paper, this.settings.orientation).height * PX_PER_MM;
-    const scale = Math.min(1, availableWidth / sheet.offsetWidth, availableHeight / pageHeight);
+    let scale: number;
+    if (this.fit.kind === 'width') {
+      scale = Math.min(1, this.frame.clientWidth / sheet.offsetWidth, this.fit.maxHeight / pageHeight);
+      this.frame.style.height = `${Math.ceil(pageHeight * scale)}px`;
+    } else {
+      // Fit one full page, so page breaks and the overall grid are judgeable.
+      const availableWidth = this.frame.clientWidth - PREVIEW_PADDING;
+      const availableHeight = this.frame.clientHeight - PREVIEW_PADDING;
+      scale = Math.min(1, availableWidth / sheet.offsetWidth, availableHeight / pageHeight);
+    }
     this.scaler.style.transform = `scale(${scale})`;
     this.sizer.style.height = `${sheet.offsetHeight * scale}px`;
+    this.showPage(this.pageAt);
+  }
+
+  /**
+   * Turns the preview to a page: the frame shows one page at a time and is
+   * not scrolled by hand, so a page is always seen whole and the arrows say
+   * where in the job it is. Kept inside the pages there are — a sheet that
+   * shrinks to two pages while the third was showing shows the second.
+   */
+  showPage(at: number): void {
+    const pages = this.holder?.querySelectorAll<HTMLElement>('.ps-page') ?? [];
+    this.pageAt = Math.max(0, Math.min(Math.max(pages.length, 1) - 1, at));
+    if (!this.frame) return;
+    const page = pages[this.pageAt];
+    if (!page || !pages[0]) { this.frame.scrollTop = 0; return; }
+    /* Measured in the sheet's own layout and scaled, not off the screen: a
+       dialog still growing open reports rectangles mid-animation, and the
+       page came to rest with its top edge cut off. */
+    const scale = Number(/scale\(([\d.]+)\)/.exec(this.scaler?.style.transform ?? '')?.[1] ?? 1);
+    this.frame.scrollTop = (page.offsetTop - pages[0].offsetTop) * scale;
   }
 }
 
-export function openPrintDialog(options: PrintOptions): void {
+/*
+ * Whose copy is in #print-root. The column beside a Sammlung holds it while
+ * nothing else is open, so the browser's own print (Ctrl+P too) prints what the
+ * column shows; the big preview takes it while it is open and hands it back.
+ * A stack because that is the whole of the arrangement: one on top, the one
+ * underneath waiting.
+ */
+const owners: { state: Printing; printable: ReturnType<typeof mount> | null }[] = [];
+
+function mountPrintable(entry: { state: Printing; printable: ReturnType<typeof mount> | null }): void {
   const printRoot = document.getElementById('print-root');
-  const state = new Printing(options);
+  if (!printRoot) return;
+  printRoot.replaceChildren();
+  /* The actual printable DOM: the same component and the same plan, hidden on
+     screen and revealed by @media print. A second instance rather than a moved
+     one, so neither copy can steal nodes from the other — and mounted into
+     #print-root, which index.html puts outside #app-root because that is what
+     @media print hides. */
+  entry.printable = mount(Printable, { target: printRoot, props: { s: entry.state } });
+}
 
-  async function run(): Promise<void> {
-    state.preparing = true;
-    // Never open the print dialog over half-loaded images. Asked the same way
-    // the sheet asks it, so an own picture cannot be missed here and drawn
-    // there.
-    await warmSymbols(options.provider, symbolIdsIn(options.sentences, options.provider));
-    await document.fonts?.ready;
-    /*
-     * Laid out again now that the type is the type. The page plan is measured,
-     * and a label set in a fallback face is not the same height as the same
-     * label in the real one — so a plan made before the fonts arrived can put a
-     * break where the printer would not.
-     */
-    state.replan();
-    // Two frames so the printable copy is laid out before the dialog opens.
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+/* Never open the browser's print over half-loaded images. Asked the same way
+   the sheet asks it, so an own picture cannot be missed here and drawn there.
+   Then laid out again now that the type is the type: the page plan is
+   measured, and a label set in a fallback face is not the same height as the
+   same label in the real one. */
+async function ready(state: Printing): Promise<void> {
+  const { provider, sentences } = state.options;
+  await warmSymbols(provider, symbolIdsIn(sentences, provider));
+  await document.fonts?.ready;
+  state.replan();
+  // Two frames so the printable copy is laid out before anything reads it.
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+async function run(state: Printing): Promise<void> {
+  if (state.preparing) return;
+  state.preparing = true;
+  try {
+    await ready(state);
+  } finally {
     state.preparing = false;
-    window.print();
   }
+  window.print();
+}
 
-  let watching: ResizeObserver | null = null;
-  let closed = false;
+/* The preview's pages are what the PDF is drawn from, made ready the way the
+   printer's copy is. */
+async function keep(state: Printing): Promise<void> {
+  if (!state.options.onPdf || state.saving) return;
+  state.saving = true;
+  try {
+    await ready(state);
+    const pages = [...(state.holder?.querySelectorAll<HTMLElement>('.ps-page') ?? [])];
+    const pdf = await previewToPdf(pages, state.settings);
+    await state.options.onPdf(pdf, state.settings, pages.length);
+  } finally {
+    state.saving = false;
+  }
+}
 
+/**
+ * Makes a preview live: its printable copy in #print-root, its print and PDF
+ * buttons wired, its pages planned, its scale kept to its frame. Hands back
+ * what undoes all of it — and gives #print-root back to whoever had it before.
+ *
+ * Called once the preview's boxes are bound, which for a component is from an
+ * effect, after its first paint.
+ */
+export function attachPrinting(state: Printing): () => void {
+  const below = owners.at(-1);
+  if (below?.printable) { void unmount(below.printable); below.printable = null; }
+  const entry = { state, printable: null as ReturnType<typeof mount> | null };
+  owners.push(entry);
+  mountPrintable(entry);
+  state.print = () => void run(state);
+  state.savePdf = () => void keep(state);
+  /* mount() draws, but the effects that hand back the preview's boxes have
+     not run yet — and nothing can be measured until they have. */
+  flushSync();
+  const watching = state.frame ? new ResizeObserver(() => state.rescale()) : null;
+  if (state.frame) watching!.observe(state.frame);
+  state.replan();
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    watching?.disconnect();
+    const at = owners.indexOf(entry);
+    if (at !== -1) owners.splice(at, 1);
+    if (entry.printable) void unmount(entry.printable);
+    document.getElementById('print-root')?.replaceChildren();
+    /* The @page rule is left as it is: a preview built again attaches a task
+       later and writes its own, and clearing it in between left a moment in
+       which the printer was told no paper at all. */
+    const back = owners.at(-1);
+    if (back) {
+      mountPrintable(back);
+      flushSync();
+      back.state.replan();
+    }
+  };
+}
+
+/**
+ * The sheet large: the same preview the column beside the Sammlung shows,
+ * opened over the page to judge where the pages break, and to print or save
+ * from. Nothing is set here — what the sheet looks like is set in the column.
+ */
+export function openPrintDialog(options: PrintOptions): void {
+  const state = new Printing(options);
+  let detach: () => void = () => undefined;
   const sheet = openSheet({
     title: TEMPLATES[options.kind].printTitle
       ? t(TEMPLATES[options.kind].printTitle!, { cols: options.board?.cols ?? 0, rows: options.board?.rows ?? 0 })
-      : options.sentences.length === 1
-        ? t('ui.print_row_title')
-        : t('ui.print_collection_title', { n: options.sentences.length }),
+      : t('ui.print_collection_title', { n: options.sentences.length }),
     closeLabel: CLOSE,
     wide: true,
     state,
     body: PrintBody,
     foot: PrintFoot,
     onClose: () => {
-      if (closed) return;
-      closed = true;
-      watching?.disconnect();
-      // The printable copy belongs to this dialog; it must not outlive it, and
-      // neither does the paper orientation it asked for.
-      void unmount(printable);
-      printRoot?.replaceChildren();
-      clearPageSetup();
+      detach();
       options.onClose();
     },
   });
-
-  state.print = () => void run();
   state.close = () => sheet.close();
-
-  /* The actual printable DOM: the same component and the same plan, hidden on
-     screen and revealed by @media print. A second instance rather than a moved
-     one, so neither copy can steal nodes from the other — and mounted into
-     #print-root, which index.html puts outside #app-root because that is what
-     @media print hides. */
-  const printable = mount(Printable, { target: printRoot!, props: { s: state } });
-
-  /* mount() draws, but the effects that hand back the preview's boxes have not
-     run yet — and nothing can be measured until they have. */
-  flushSync();
-  if (state.frame) {
-    watching = new ResizeObserver(() => state.rescale());
-    watching.observe(state.frame);
-  }
-  state.replan();
+  detach = attachPrinting(state);
 }

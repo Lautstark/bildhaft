@@ -64,14 +64,18 @@
   /** The blocks of each page, or one page holding all of them while unplanned. */
   let pages = $derived.by(() => {
     if (!plan.pages) return null;
+    const body = blocks.filter((block) => block.kind !== 'credit');
     const out: Block[][] = [];
     let taken = 0;
-    for (const count of plan.pages) { out.push(blocks.slice(taken, taken + count)); taken += count; }
+    for (const count of plan.pages) { out.push(body.slice(taken, taken + count)); taken += count; }
     // Cannot happen, and is checked anyway: a block the plan did not account
     // for would be a symbol silently missing from a printout.
-    if (taken < blocks.length && out.length > 0) out[out.length - 1]!.push(...blocks.slice(taken));
+    if (taken < body.length && out.length > 0) out[out.length - 1]!.push(...body.slice(taken));
     return out;
   });
+  /* The licence notice, drawn at the foot of every page rather than packed
+     with the content: a sheet handed on alone carries it too. */
+  let credit = $derived(blocks.find((block) => block.kind === 'credit') ?? null);
 
 </script>
 
@@ -170,4 +174,7 @@
   style:--strip-w="{settings.cardBorderMm > 0 ? settings.cardBorderMm : 0.5}mm"
   style:--recipe={settings.accentColour}
   style:--song={settings.accentColour}
->{#if pages}{#each pages as held, at (at)}<div class="ps-page">{#each held as block, i (i)}{@render one(block)}{/each}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+>{#if pages}{#each pages as held, at (at)}<!--
+  One line at the foot of every page: the licence notice on the left, the page
+  number on the right — the usual footer of handed-out material.
+--><div class="ps-page">{#each held as block, i (i)}{@render one(block)}{/each}{#if credit || settings.showPageNumbers}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: at + 1, total: pages.length })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

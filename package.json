@@ -24,7 +24,9 @@
     "@lautstark/design": "github:Lautstark/design#v1.40.3",
     "@lautstark/sicherung": "github:Lautstark/sicherung#v1.18.0",
     "@lautstark/werkzeuge": "github:Lautstark/werkzeuge#v2.0.1",
-    "idb": "^8.0.3"
+    "idb": "^8.0.3",
+    "modern-screenshot": "4.7.0",
+    "pdf-lib": "1.17.1"
   },
   "devDependencies": {
     "@lautstark/toolchain": "github:Lautstark/toolchain#v4.1.0",

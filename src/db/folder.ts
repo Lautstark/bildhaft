@@ -278,3 +278,68 @@ export const toldByOthers = () => {
   const said = announcedFolder();
   return said && said.app !== APP ? said : null;
 };
+
+/* ------------------------------------------------------------------ PDFs */
+
+/*
+ * The PDFs bildhaft makes of a Sammlung, in `<folder>/bildhaft/pdf/<Sammlung>/`.
+ *
+ * Plain files a person opens in the Finder, not records: nothing here is read
+ * back into the store, and a PDF moved or deleted by hand is simply gone from
+ * the list the next time it is asked for. Only where the folder is the store —
+ * a folder halfway through adoption is not a place to start writing into.
+ */
+const PDF_DIR = 'pdf';
+
+/** A folder name a Sammlung can have on every system: no slashes, no reserved characters. */
+export const pdfFolderFor = (name: string): string =>
+  name.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Sammlung';
+
+async function pdfDir(folder: string, create: boolean): Promise<FileSystemDirectoryHandle | null> {
+  const root = ablage.handle();
+  if (!root || !isStore()) return null;
+  try {
+    const app = await root.getDirectoryHandle(APP, { create });
+    const pdfs = await app.getDirectoryHandle(PDF_DIR, { create });
+    return await pdfs.getDirectoryHandle(folder, { create });
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a PDF can be kept in the folder at all, rather than downloaded. */
+export const keepsPdfs = (): boolean => Boolean(ablage.handle()) && isStore();
+
+/**
+ * Writes a PDF under a name not yet taken in its folder — „… (2).pdf" when
+ * the same paper was saved twice in a day — and answers the path it got,
+ * relative to the PDF folder, or null where there is no folder to write to.
+ */
+export async function writePdf(folder: string, stem: string, pdf: Blob): Promise<string | null> {
+  const dir = await pdfDir(folder, true);
+  if (!dir) return null;
+  let name = `${stem}.pdf`;
+  for (let n = 2; await dir.getFileHandle(name).then(() => true, () => false); n += 1) name = `${stem} (${n}).pdf`;
+  const file = await dir.getFileHandle(name, { create: true });
+  const out = await file.createWritable();
+  await out.write(pdf);
+  await out.close();
+  return `${folder}/${name}`;
+}
+
+export async function readPdf(path: string): Promise<Blob | null> {
+  const [folder, name] = path.split('/');
+  const dir = folder && name ? await pdfDir(folder, false) : null;
+  if (!dir || !name) return null;
+  try {
+    return await (await dir.getFileHandle(name)).getFile();
+  } catch {
+    return null;
+  }
+}
+
+export async function removePdf(path: string): Promise<void> {
+  const [folder, name] = path.split('/');
+  const dir = folder && name ? await pdfDir(folder, false) : null;
+  await dir?.removeEntry(name!).catch(() => undefined);
+}

@@ -1,8 +1,13 @@
-import type { Board, Collection, CollectionKind, PrintSettings, Sentence } from '../core/types.ts';
-import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
+import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
+import { boardOf, placedIds, resizeBoard, stylesOf, zonesOf } from '../core/board.ts';
+import { writeBoard } from './board.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
-import { openPrintDialog } from '../ui/printDialog.svelte.ts';
+import { keepsPdfs, pdfFolderFor, readPdf, removePdf, writePdf } from '../db/folder.ts';
+import { download } from '@lautstark/werkzeuge/download';
+import { t } from '../i18n/index.ts';
+import { notify } from './notify.ts';
+import { openPrintDialog, type PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
 import { TEMPLATES } from './templates.ts';
@@ -44,7 +49,68 @@ function printBase(): PrintSettings {
   return { ...s.settings!.print, ...own, showCopyright: s.settings!.print.showCopyright };
 }
 
-export function openPrint(ids: string[]): void {
+/** „2026-10-19 A5 hoch": what a saved PDF is called — its day, its paper. */
+export function pdfStem(at: Date, print: Pick<PrintSettings, 'paper' | 'orientation'>): string {
+  const day = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
+  const side = (print.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait')).toLowerCase();
+  return `${day} ${print.paper.toUpperCase()} ${side}`;
+}
+
+/**
+ * A PDF of the open Sammlung, kept: into the Ablage folder beside it, and
+ * onto its list, where the folder is the store; downloaded where it is not —
+ * a browser on its own has nowhere to keep a file it could open again.
+ */
+async function keepPdf(pdf: Blob, print: PrintSettings, pages: number): Promise<void> {
+  const open = activeCollection();
+  if (!open) return;
+  const now = new Date();
+  const stem = pdfStem(now, print);
+  if (!keepsPdfs()) {
+    download(pdf, `${pdfFolderFor(open.name)} ${stem}.pdf`);
+    return;
+  }
+  const path = await writePdf(pdfFolderFor(open.name), stem, pdf);
+  if (!path) {
+    download(pdf, `${pdfFolderFor(open.name)} ${stem}.pdf`);
+    return;
+  }
+  const saved: SavedPdf = { path, at: now.getTime(), paper: print.paper, orientation: print.orientation, pages };
+  const pdfs = [saved, ...(open.pdfs ?? [])];
+  const next: Collection = { ...open, pdfs, updatedAt: Date.now() };
+  s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
+  await patchCollection(next.id, { pdfs });
+  notify(t('ui.pdf_saved', { name: path.split('/').pop() ?? path }));
+}
+
+/** Opens a saved PDF in a new tab, or says that it is no longer there. */
+export async function openSavedPdf(saved: SavedPdf): Promise<void> {
+  const pdf = await readPdf(saved.path);
+  if (!pdf) { notify(t('ui.pdf_gone')); return; }
+  const url = URL.createObjectURL(pdf);
+  window.open(url, '_blank');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Deletes a saved PDF from the folder and from the Sammlung's list. */
+export async function deleteSavedPdf(saved: SavedPdf): Promise<void> {
+  const open = activeCollection();
+  if (!open) return;
+  await removePdf(saved.path);
+  const pdfs = (open.pdfs ?? []).filter((p) => p.path !== saved.path);
+  const next: Collection = { ...open, pdfs, updatedAt: Date.now() };
+  s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
+  await patchCollection(next.id, { pdfs: pdfs.length > 0 ? pdfs : undefined });
+}
+
+/**
+ * What the open Sammlung prints, put together for a preview: the rows in the
+ * order the paper wants them, the Tafel's grid or the Lied's parts, and the
+ * settings it opens on. One answer for the column beside the Sammlung and for
+ * the big preview, so the two can never show different sheets. Null when
+ * there is nothing to print.
+ */
+export function printOptions(): PrintOptions | null {
   const byId = new Map(s.sentences.map((sentence) => [sentence.id, sentence]));
   /* A Tafel prints whole and in its own order: the fields, free ones
      included, and nothing from the tray. What is asked for is ignored on
@@ -70,11 +136,10 @@ export function openPrint(ids: string[]): void {
       ? [...new Set(song.parts.flatMap((part) => part.lines))]
     : kind() === 'rezept'
       ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
-      : ids.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x));
-  if ((chosen.length === 0 && !board) || !s.settings) return;
+      : s.sentences;
+  if ((chosen.length === 0 && !board) || !s.settings) return null;
 
-
-  openPrintDialog({
+  return {
     sentences: chosen,
     kind: kind(),
     board: board ? {
@@ -105,9 +170,17 @@ export function openPrint(ids: string[]): void {
       if (!TEMPLATES[kind()].ownPrint) persistSettings({ ...s.settings, print });
       void keepPrint(print);
     },
+    onPdf: (pdf, print, pages) => keepPdf(pdf, print, pages),
+    ...(board ? { onBoard: (cols: number, rows: number) => void writeBoard((one) => resizeBoard(one, cols, rows)) } : {}),
     provider: providerId(),
     attribution: provider().attribution,
     onClose: () => undefined,
-  });
+  };
+}
+
+/** The sheet large, over the page. */
+export function openPrint(): void {
+  const options = printOptions();
+  if (options) openPrintDialog(options);
 }
 

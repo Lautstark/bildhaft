@@ -4,7 +4,7 @@ import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { resolveSlotsForProvider } from '../core/match.ts';
 import { withTimeout } from '../core/timeout.ts';
 import {
-  clearEverything, countSentences, createCollection, deleteCollectionDeep,
+  clearEverything, createCollection, deleteCollectionDeep,
   isWriting, mark, writtenSince,
   libraryTotals, listCollections, listOverrides, listSentences, overrideMap,
   putSentence, saveCollectionProvider, saveSettings, searchSentences,
@@ -91,10 +91,7 @@ export function setActive(id: string): void {
 export async function refreshCollections(): Promise<void> {
   const since = mark();
   const all = await listCollections();
-  const entries = await Promise.all(
-    all.map(async (c) => [c.id, await countSentences(c.id)] as const));
   s.collections = all.map(keepUnwritten(s.collections, since));
-  s.counts = Object.fromEntries(entries);
 
   /* The Wortschatz counts come from the same pass, because they change for
      the same reasons: a correction in a Sammlung files a word, and the row

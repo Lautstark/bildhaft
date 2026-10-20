@@ -23,7 +23,9 @@
    * is drawn below the breakpoint only.
    */
   import SharedSidebar from '@lautstark/design/svelte/Sidebar';
+  import type { Collection } from '../core/types.ts';
   import { sentenceCaption, kindOf } from '../core/types.ts';
+  import { editedLabel } from '../core/edited.ts';
   import { drawCollections } from '@lautstark/design/collections';
   import Icon from '../pieces/Icon.svelte';
   import Logo from '../pieces/Logo.svelte';
@@ -31,7 +33,7 @@
   import { handleNewCollection, scheduleSearch, setActive } from '../app/collections.ts';
   import { handleNewTag } from '../app/words.ts';
   import { openAppSettings } from '../app/settings.ts';
-  import { t } from '../i18n/index.ts';
+  import { LOCALE, t } from '../i18n/index.ts';
 
   let {
     onNavigated,
@@ -95,13 +97,14 @@
       rows: s.collections.map((collection) => ({
         id: collection.id,
         name: collection.name,
-        count: s.counts[collection.id] ?? 0,
-        /* What it is, under what it is called. Eleven Sammlungen in a list
-           look alike, and which of them is the Tafel and which the strips
-           is a question the list can answer without being opened. Every
-           row says it, the Satzstreifen too — a line that only some rows
-           have reads as a warning on those. */
-        subtitle: t(`ui.template_${kindOf(collection)}`),
+        /* What it is and when it was last worked on, under what it is
+           called. Eleven Sammlungen in a list look alike, and which of them
+           is the Tafel and which the strips is a question the list can
+           answer without being opened; when is the other half of finding one
+           again. No count: how much is in a Sammlung is said at its head once
+           it is open, and a number here read as 0 more often than it read
+           right. */
+        subtitle: `${t(`ui.template_${kindOf(collection)}`)} · ${edited(collection)}`,
       })),
       /* Nothing is open down here while the Wortschatz is showing. Two rows
          lit in two sections would say both are, and one of them is only the
@@ -125,6 +128,21 @@
 
   const where = (collectionId: string) =>
     s.collections.find((c) => c.id === collectionId)?.name ?? '—';
+
+  /* The Sammlung's own stamp, which moves when something is added to it,
+     it is renamed, or its template, grid or print is changed. Not its rows':
+     a row is written again whenever its symbols are looked up afresh, so a
+     Sammlung nobody touched for a month read „heute" after a reload. */
+  const edited = (collection: Collection): string => editedLabel(
+    collection.updatedAt,
+    Date.now(),
+    {
+      today: t('ui.edited_today'),
+      yesterday: t('ui.edited_yesterday'),
+      daysAgo: (n) => t('ui.edited_days', { n }),
+      date: (at) => at.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    },
+  );
 </script>
 
 <SharedSidebar id="sidebar" closeLabel={t('ui.close_menu')} {drawer} {collapsed} {ondismiss}

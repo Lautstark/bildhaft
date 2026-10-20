@@ -57,7 +57,7 @@ const dropCrop = (page: Page) =>
 const kept = (page: Page) => page.locator('.row').first().locator('.slot').nth(2).locator('img');
 
 /**
- * The same stripe, to within a value or two.
+ * The pixel is the same stripe, to within a value or two.
  *
  * Exact equality was right while the square was a byte-for-byte copy of the
  * source. It is not any more: the square is cut on a Display P3 canvas so that
@@ -68,11 +68,19 @@ const kept = (page: Page) => page.locator('.row').first().locator('.slot').nth(2
  * What these assertions read a pixel for is which stripe of the fixture it is,
  * and the stripes are 120 apart. A tolerance of two keeps that question exactly
  * as sharp as it was while saying that the last bit is not the subject.
+ *
+ * Polled: a field's picture is drawn again after a crop is kept — its symbol
+ * looked up afresh, four swaps on main as here — and a picture read between
+ * one drawing and the next has not been decoded yet and reads black. Read
+ * once, the test won that race on main and lost it now and then with the
+ * sheet column beside the rows giving the browser more to draw. What is asked
+ * is what the picture settles on.
  */
-function expectStripe(seen: number[], want: number[]): void {
-  const near = seen.length === want.length
-    && want.every((value, i) => Math.abs(seen[i]! - value) <= 2);
-  expect(near, `${JSON.stringify(seen)} is not ${JSON.stringify(want)}`).toBe(true);
+async function expectPixel(image: Locator, x: number, y: number, want: number[]): Promise<void> {
+  await expect.poll(async () => {
+    const seen = await pixelAt(image, x, y);
+    return want.every((value, i) => Math.abs(seen[i]! - value) <= 2) ? 'match' : JSON.stringify(seen);
+  }).toBe('match');
 }
 
 /**
@@ -182,8 +190,8 @@ test('the square it opens on is the middle of the picture', async ({ page }) => 
    * from either end would have red or blue in it; a picture squashed to fit
    * rather than cut would have all three.
    */
-  expectStripe(await pixelAt(image, 0, 6), GREEN);
-  expectStripe(await pixelAt(image, -1, 6), GREEN);
+  await expectPixel(image, 0, 6, GREEN);
+  await expectPixel(image, -1, 6, GREEN);
 });
 
 test('dragging the picture moves what is kept, the other way', async ({ page }) => {
@@ -213,8 +221,8 @@ test('dragging the picture moves what is kept, the other way', async ({ page }) 
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 12);
   // Hard against the left edge: the first six columns are the red stripe.
-  expectStripe(await pixelAt(image, 0, 6), RED);
-  expectStripe(await pixelAt(image, -1, 6), GREEN);
+  await expectPixel(image, 0, 6, RED);
+  await expectPixel(image, -1, 6, GREEN);
 });
 
 test('the arrow keys move it too, and stop at the edge', async ({ page }) => {
@@ -232,7 +240,7 @@ test('the arrow keys move it too, and stop at the edge', async ({ page }) => {
 
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 12);
-  expectStripe(await pixelAt(image, 0, 6), RED);
+  await expectPixel(image, 0, 6, RED);
 });
 
 test('Enter keeps the square too, the way it means Fertig everywhere else',
@@ -249,7 +257,7 @@ test('Enter keeps the square too, the way it means Fertig everywhere else',
 
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 12);
-  expectStripe(await pixelAt(image, 0, 6), GREEN);
+  await expectPixel(image, 0, 6, GREEN);
 });
 
 test('the slider takes a smaller square', async ({ page }) => {
@@ -269,8 +277,8 @@ test('the slider takes a smaller square', async ({ page }) => {
   const image = kept(page);
   await expect(image).toHaveJSProperty('naturalWidth', 6);
   await expect(image).toHaveJSProperty('naturalHeight', 6);
-  expectStripe(await pixelAt(image, 0, 3), GREEN);
-  expectStripe(await pixelAt(image, -1, 3), GREEN);
+  await expectPixel(image, 0, 3, GREEN);
+  await expectPixel(image, -1, 3, GREEN);
 });
 
 /**
@@ -298,7 +306,9 @@ test('a photograph keeps the colours it came with', async ({ page }) => {
   // is what the box holds until the stored picture arrives in it.
   await expect(kept(page)).toHaveJSProperty('naturalWidth', 4);
 
-  const seen = await kept(page).evaluate((element: HTMLImageElement) => {
+  /* Polled, for the reason `expectPixel` is: the picture is drawn again
+     after a crop is kept, and one read between drawings reads black. */
+  const read = () => kept(page).evaluate((element: HTMLImageElement) => {
     const canvas = document.createElement('canvas');
     canvas.width = element.naturalWidth;
     canvas.height = element.naturalHeight;
@@ -308,14 +318,14 @@ test('a photograph keeps the colours it came with', async ({ page }) => {
     const { data } = context.getImageData(1, 1, 1, 1);
     return [data[0], data[1], data[2]];
   });
-
   /*
    * The picture that went in reads (254, 0, 0) here. Through an sRGB canvas it
    * came out (233, 51, 35) — the same red as far as sRGB is concerned, and
    * visibly flatter than the one that was chosen. Loose on the blue channel
    * only: that is JPEG-grade rounding, and 51 of green is not.
    */
-  expect(seen[0]).toBeGreaterThan(250);
-  expect(seen[1]).toBeLessThan(10);
-  expect(seen[2]).toBeLessThan(10);
+  await expect.poll(async () => {
+    const seen = await read();
+    return seen[0]! > 250 && seen[1]! < 10 && seen[2]! < 10 ? 'p3 red' : JSON.stringify(seen);
+  }).toBe('p3 red');
 });
