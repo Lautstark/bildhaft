@@ -122,7 +122,10 @@
   and the head stay where they are in both; only what is under them changes:
   the material („Bearbeiten"), or the sheet with its pages and its settings
   („Drucken"). The page keeps one width in both, so nothing above moves.
--->{#if s.choosing === s.activeId}{:else if kind() === 'lied'}<SongComposer />{:else if kind() === 'rezept'}<RecipeComposer />{:else if kind() === 'plauderbuch'}<TalkComposer />{:else}<Composer />{/if}<CollectionHead />{#if s.view === 'print' && s.sentences.length > 0}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+  While a new Material still waits for its template there is neither: the
+  choice is the whole page, and a name with „0 Zeilen" above it would only be
+  something to read before it.
+-->{#if s.choosing === s.activeId}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.view === 'print' && s.sentences.length > 0}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

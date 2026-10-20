@@ -91,6 +91,8 @@ export const FIVE_WORDS = ['Ich', 'möchte', 'Apfel', 'essen', 'schlafen'];
 export async function cardSheet(page: Page, words: string[] = FIVE_WORDS): Promise<void> {
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Wortkarten/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Karten');
   await addCards(page, words);

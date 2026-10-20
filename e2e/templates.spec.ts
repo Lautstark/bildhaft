@@ -34,9 +34,12 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
   // A second Sammlung, switched to the card template while it is still empty.
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  // The choice is the whole page: no name, no count above it yet.
+  await expect(page.locator('.templates')).toBeVisible();
+  await expect(page.locator('.collection-head')).toHaveCount(0);
+  await pickTemplate(page, /^Wortkarten/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Karten');
-  await pickTemplate(page, /^Wortkarten/);
   /* Nothing is asserted here on purpose: an empty Sammlung shows its empty
      state, so the host the card wall wrote its layout onto is not even in the
      page yet. Which is the shape of the defect — it is written on a node
@@ -66,9 +69,9 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
 test('an Einkaufsliste prints its three sheets, and the cart holds its zones', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Einkaufsliste/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
   await page.getByLabel('Wörter hinzufügen').fill('Apfel');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
@@ -166,9 +169,9 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await page.setViewportSize({ width: 1280, height: 1100 });
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   // And the sidebar says so under the name, where eleven look-alike rows are told apart.
   await expect(page.locator('.sidebar .collections [aria-current]')).toContainText('Tafel');
 
@@ -282,8 +285,9 @@ test.describe('a full Tafel', () => {
 test('every card of a full Tafel can be dragged from the tray, one after the other', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
   const names = Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`);
   const bar = page.getByLabel('Wörter hinzufügen');
@@ -333,8 +337,9 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
 test('a Tafel field or tray „+" closed without a choice leaves no card', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -384,8 +389,9 @@ test.describe('colour on a Tafel', () => {
 test('fields are marked and grouped, on screen and on paper', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Rot');
   await bar.press('Enter');
@@ -551,10 +557,10 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
 test('a Rezept takes each part in its own box, and prints them in order', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Rezept/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Waffeln (5–6 Stück)');
-
-  await pickTemplate(page, /^Rezept/);
   // Its parts have their own boxes, so the composer above would be a fourth.
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
 
@@ -742,8 +748,9 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
 test('a Tafel prints its name with a picture, on a colour of its own', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
+  await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
+  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -800,10 +807,10 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
 test('a Lied holds a repeated line once, and prints the song written out', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Lied/);
   await expect(page.getByLabel('Name des Materials')).toBeFocused();
   await page.keyboard.type('Laternenlied');
-
-  await pickTemplate(page, /^Lied/);
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
   // Its box stands where every other template's does: above the Sammlung's name.
   const songBox = page.getByLabel('Liedzeile eingeben');

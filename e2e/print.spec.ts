@@ -756,7 +756,7 @@ test('each Sammlung opens in the view it was left in', async ({ page }) => {
   await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.getByLabel('Satz eingeben')).toBeVisible();
+  await expect(page.locator('.templates')).toBeVisible();
   await expect(page.locator('.print-view')).toHaveCount(0);
 
   await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
