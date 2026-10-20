@@ -237,8 +237,12 @@ export interface Sentence {
    * Absent reads as a Zutat (`partOf()`). A card that arrives without one —
    * poured in from the Wortschatz, or made in another template — is a card,
    * and the Zutaten are where a card of a recipe is first looked for.
+   *
+   * `titel` is the picture beside a Rezept's name: one sentence holding one
+   * field, so the picker, an own picture, the folder and the export treat it
+   * as they treat every other field. It is in none of the three parts.
    */
-  part?: RecipePart;
+  part?: RecipePart | 'titel';
 }
 
 /** The three parts of a Rezept, in the order they are shown and printed. */
@@ -246,7 +250,12 @@ export const RECIPE_PARTS = ['zutat', 'hilfsmittel', 'schritt'] as const;
 export type RecipePart = (typeof RECIPE_PARTS)[number];
 
 /** Which part of a Rezept a sentence is in. */
-export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart => sentence.part ?? 'zutat';
+export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | 'titel' => sentence.part ?? 'zutat';
+
+/** The field of a Rezept's title picture, when one is chosen. */
+export const titlePicture = (sentences: readonly Sentence[]): Slot | null =>
+  sentences.find((sentence) => sentence.part === 'titel')?.slots
+    .find((slot) => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean))) ?? null;
 
 /**
  * What a row is called, on screen, on paper and in the sidebar. One expression,

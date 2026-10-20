@@ -26,7 +26,10 @@
   import TitleField from '@lautstark/design/svelte/TitleField';
   import { renameCollection } from '../db/repo.ts';
   import Icon from '../pieces/Icon.svelte';
-  import { activeCollection, holdsWords, kind, s } from './state.svelte.ts';
+  import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
+  import { symbolIdFor, titlePicture } from '../core/types.ts';
+  import SymbolPicture from '../pieces/Symbol.svelte';
+  import { chooseTitlePicture } from './recipe.ts';
   import { answered, asking } from './asking.svelte.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet, setView } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
@@ -65,7 +68,10 @@
     s.collections = s.collections.map((c) => (c.id === s.activeId ? { ...c, name } : c));
   }
 
-  let n = $derived(s.sentences.length);
+  /* A Rezept's title picture is a sentence of its own, and not an entry. */
+  let n = $derived(s.sentences.filter((sentence) => sentence.part !== 'titel').length);
+  let picture = $derived(kind() === 'rezept' ? titlePicture(s.sentences) : null);
+  let pictureId = $derived(picture ? symbolIdFor(picture, providerId()) : null);
   let count = $derived(kind() === 'rezept'
     ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
     : holdsWords()
@@ -88,7 +94,10 @@
   });
 </script>
 
-<div class="collection-head"><TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
+<div class="collection-head">{#if kind() === 'rezept'}<!--
+  The picture beside a Rezept's name: chosen here, in the picker every field
+  has, and printed with the name when the name is printed.
+--><button class="collection-head__pic{pictureId ? '' : ' collection-head__pic--empty'}" type="button" aria-label={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} title={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} onclick={() => void chooseTitlePicture()}>{#if pictureId}<SymbolPicture provider={providerId()} id={pictureId} alt={t('ui.title_picture')} mirrored={picture?.mirrored} />{:else}{t('ui.title_picture_empty')}{/if}</button>{/if}<TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.

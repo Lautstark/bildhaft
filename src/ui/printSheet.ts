@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, SongPartKind, ZoneStyle,
 } from '../core/types.ts';
-import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
+import { partOf, slotCaption, symbolIdFor, titlePicture } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
@@ -375,7 +375,8 @@ export function tafelFieldMm(
  * shows cannot differ, because neither worked anything out on its own.
  */
 export type Block =
-  | { kind: 'title'; text: string }
+  /* `picture`: a Rezept's title picture, printed before the name. */
+  | { kind: 'title'; text: string; picture?: Slot | null }
   | { kind: 'strip'; sentence: Sentence; page: boolean; framed: boolean }
   | { kind: 'row'; slots: Slot[] }
   | { kind: 'grid'; slots: Slot[]; cols: number; cellH: string; page: boolean }
@@ -465,7 +466,10 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
    * "which collection is this printout" — a question a stack of paper asks once.
    */
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
-  if (title) blocks.push({ kind: 'title', text: title });
+  /* The name as it stands in Bearbeiten: a Rezept's with its picture, when
+     it was given one. The picture goes and comes with the name. */
+  const picture = settings.layout === 'rezept' ? titlePicture(sentences) : null;
+  if (title) blocks.push({ kind: 'title', text: title, picture });
 
   const reserve = reserveMm(settings, credits.length, Boolean(title));
 

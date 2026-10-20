@@ -1549,6 +1549,10 @@ footer.footer {
 .main__inner--work { max-width: 1240px; }
 .collection-head__view { margin-left: auto; }
 .collection-head__other { margin-left: auto; white-space: nowrap; }
+/* A Rezept's title picture, before its name: a field like any other, small. */
+.collection-head__pic { flex: none; width: 44px; height: 44px; padding: 3px; border: 0; border-radius: var(--radius-sm); background: #fff; outline: 1px solid var(--line); cursor: pointer; display: grid; place-items: center; overflow: hidden; }
+.collection-head__pic img { max-width: 100%; max-height: 100%; }
+.collection-head__pic--empty { background: transparent; outline: 1.5px dashed var(--line); color: var(--text-faint); font: inherit; font-size: 11.5px; line-height: 1.1; }
 .collection-head__paper { border: 0; background: transparent; padding: 2px 6px; cursor: pointer; white-space: nowrap; }
 .collection-head__paper:hover { color: var(--text); }
 .print-view {

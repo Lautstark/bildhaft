@@ -90,6 +90,24 @@
   padding-bottom: var(--title-rule-gap);
   border-bottom: var(--title-rule) solid currentColor;
 }
+/* A Rezept's name with its picture before it, as it stands in Bearbeiten. */
+.ps-title--pictured {
+  display: flex;
+  align-items: center;
+  gap: 5mm;
+}
+.ps-title__pic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26mm;
+  height: 26mm;
+  padding: 1.5mm;
+  border: 0.3mm solid #d9d3d1;
+  border-radius: 2.5mm;
+  background: #fff;
+}
+.ps-title__pic img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
 .ps-sentence {
   break-inside: avoid;
@@ -512,12 +530,19 @@
   page-break-inside: avoid;
 }
 .ps-recipe-part { margin-bottom: 4mm; }
+/* Each part under a band in the Rezept's colour, so where the Schritte
+   begin is seen from across the kitchen. */
 .ps-recipe-head {
-  margin: 0 0 1.5mm;
-  font-size: 10pt;
+  margin: 0 0 2mm;
+  padding: 1mm 3mm;
+  border-radius: 1.2mm;
+  background: var(--recipe);
+  color: #fff;
+  font-size: 11pt;
   line-height: 1.3;
   font-weight: 700;
-  color: var(--recipe);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .ps-recipe-cards {
   display: flex;

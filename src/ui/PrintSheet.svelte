@@ -18,6 +18,7 @@
   import { sentenceCaption, slotCaption } from '../core/types.ts';
   import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
   import PrintCard from './PrintCard.svelte';
+  import PrintPicture from './PrintPicture.svelte';
   import {
     BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING, SHOPPING_SCALE,
     TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, type Block, type SheetPlan,
@@ -85,7 +86,7 @@
 
 {#snippet shoppingZones(cols: number, rows: number, extra: string)}<div class="ps-zones{extra}" style:--cols={String(cols)}>{#each Array.from({ length: cols * rows }) as _, i (i)}<span class="ps-zone"><span class="ps-dot"></span></span>{/each}</div>{/snippet}
 
-{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title{settings.titleLine ? ' ps-title--lined' : ''}">{block.text}</h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.sentence.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
+{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title{settings.titleLine ? ' ps-title--lined' : ''}{block.picture ? ' ps-title--pictured' : ''}">{#if block.picture}<PrintPicture slot={block.picture} {provider} />{/if}<span>{block.text}</span></h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.sentence.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
   A flowing row, and the cards on it are sized either by the symbol inside them
   or by the millimetres somebody typed. Both flow and wrap the same way; only
   where the box's size comes from differs.

@@ -650,6 +650,46 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
 });
 
 /**
+ * A Rezept's name can have a picture, set beside it in Bearbeiten and printed
+ * with it: the sheet shows the name as it stands there, and „Titel auf der
+ * ersten Seite" prints both or neither. Each part is printed under a band in
+ * the Rezept's colour. The picture is not one of the entries.
+ */
+test('a Rezept prints its name with the picture it was given, and its parts under bands', async ({ page }) => {
+  await pickTemplate(page, /^Rezept/);
+  await page.getByLabel('Zutat hinzufügen').fill('2 Eier');
+  await page.getByLabel('Zutat hinzufügen').press('Enter');
+  await expect(page.getByRole('region', { name: 'Zutaten' }).locator('.word')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Bild zum Titel wählen' }).click();
+  await page.getByLabel('Symbol suchen').fill('Banane');
+  await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await expect(page.getByRole('button', { name: 'Bild zum Titel ändern' }).locator('img')).toBeVisible();
+  await expect(page.locator('.collection-head')).toContainText('1 Eintrag');
+
+  await showSheet(page);
+  const sheet = page.locator('.preview-frame');
+  await expect(sheet.locator('.ps-title .ps-title__pic img')).toBeVisible();
+  await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten']);
+  expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
+    .toBe('rgb(255, 255, 255)');
+
+  await page.getByLabel('Titel auf der ersten Seite').uncheck();
+  await expect(sheet.locator('.ps-title')).toHaveCount(0);
+  await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
+
+  // Taken out again in the picker, the name prints alone.
+  await page.getByLabel('Titel auf der ersten Seite').check();
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Bild zum Titel ändern' }).click();
+  await page.getByRole('button', { name: 'Feld entfernen' }).click();
+  await expect(page.getByRole('button', { name: 'Bild zum Titel wählen' })).toBeVisible();
+  await showSheet(page);
+  await expect(sheet.locator('.ps-title')).toBeVisible();
+  await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
+});
+
+/**
  * A Lied is pasted whole, and every line that comes back is one row.
  *
  * Held here: an empty Lied shows an empty Strophe and Refrain to begin in; a
