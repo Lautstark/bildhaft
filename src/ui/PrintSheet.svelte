@@ -41,10 +41,18 @@
   const captionAt = (where: 'above' | 'below'): boolean =>
     settings.showSentenceText && settings.sentencePosition === where;
 
+  /* How far a field's layer reaches into the next field of its group. A hair
+     was not enough: the preview draws the page scaled down, a third of a
+     millimetre came to less than a pixel there, and the softened edges of two
+     layers let the page show through as a pale line between every two fields
+     of a block. As far as the block steps in at its ends, so the layers always
+     overlap by a whole step, at any scale. */
+  const ZONE_OVERLAP = '-1mm';
+
   /* The piece of frame that turns an inner corner of a block, in millimetres.
      The same shape the screen draws in pixels — see Tafel.svelte. */
   const printJoint = (corner: 'tl' | 'tr' | 'br' | 'bl', colour: string): Record<string, string> => {
-    const j = zoneJoint(corner, '1mm', '-0.3mm', '0.6mm');
+    const j = zoneJoint(corner, '1mm', ZONE_OVERLAP, '0.6mm');
     return {
       ...j.position, width: j.size, height: j.size,
       backgroundImage: `linear-gradient(${colour}, ${colour}), linear-gradient(${colour}, ${colour})`,
@@ -116,7 +124,7 @@
 
   One page and never more: the grid is the Sammlung's own size, and a Tafel that
   needed a second sheet would be two Tafeln.
---><div class="ps-grid ps-tafel" style:--cols={String(block.board.cols)} style:--cell-h={block.cellH}>{#each block.board.cells as sentence, index (index)}{@const slot = sentence?.slots[0]}{@const zone = block.board.zones?.[index]}{@const map = { cols: block.board.cols, rows: block.board.rows, zones: block.board.zones ?? [], styles: block.board.styles ?? {} }}{@const zoneStyle = zone ? map.styles[zone] : undefined}{@const box = zone ? zoneBox(map, index, '1mm', '3mm', '-0.3mm') : null}{@const laid = box && zone ? {
+--><div class="ps-grid ps-tafel" style:--cols={String(block.board.cols)} style:--cell-h={block.cellH}>{#each block.board.cells as sentence, index (index)}{@const slot = sentence?.slots[0]}{@const zone = block.board.zones?.[index]}{@const map = { cols: block.board.cols, rows: block.board.rows, zones: block.board.zones ?? [], styles: block.board.styles ?? {} }}{@const zoneStyle = zone ? map.styles[zone] : undefined}{@const box = zone ? zoneBox(map, index, '1mm', '3mm', ZONE_OVERLAP) : null}{@const laid = box && zone ? {
   fill: zoneStyle?.fill ?? 'transparent',
   frame: zoneStyle?.frame ?? null,
   inset: box.inset,

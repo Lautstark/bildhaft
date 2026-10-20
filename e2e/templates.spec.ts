@@ -756,6 +756,42 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
 });
 
 /**
+ * A group's colour is one surface on paper, not one patch per field. The
+ * preview draws the page scaled down, and each field's layer has to reach far
+ * enough into its neighbour's that the two still overlap there — at a third of
+ * a millimetre they met in less than a pixel, and a pale line ran between every
+ * two fields of a coloured block.
+ */
+test('a group colour reaches over from field to field in the scaled preview', async ({ page }) => {
+  const now = Date.now();
+  const card = (id: string, word: string) => ({
+    id, normalizedInput: word, rawInput: word, createdAt: now, updatedAt: now,
+    slots: [{ id: `${id}-slot`, sourceToken: word, concept: word, origin: 'manual', choice: {}, candidates: {} }],
+  });
+  const tafel = {
+    format: 'bildhaft.collection', version: 3, exportedAt: new Date(now).toISOString(), notice: '',
+    sentences: [card('a', 'Brot'), card('b', 'Käse')],
+    collection: {
+      id: 'c', name: 'Flächen', createdAt: now, updatedAt: now, kind: 'tafel',
+      board: { cols: 2, rows: 1, cells: ['a', 'b'], zones: ['g1', 'g1'], styles: { g1: { fill: '#79aee3' } } },
+    },
+  };
+  await page.getByRole('complementary').getByRole('button', { name: 'Einstellungen' }).click();
+  await page.locator('input[type=file][accept*=json]').setInputFiles({
+    name: 'flaechen.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(tafel)),
+  });
+  await page.keyboard.press('Escape');
+  await page.getByRole('complementary').getByText('Flächen', { exact: true }).click();
+  await showSheet(page);
+
+  const blocks = page.locator('.preview-frame .ps-tafel .ps-block');
+  await expect(blocks).toHaveCount(2);
+  const [left, right] = await blocks.evaluateAll((all) => all.map((one) => one.getBoundingClientRect().toJSON()));
+  // On screen, after the preview's scaling: a whole pixel of overlap at the least.
+  expect(left.right - right.left).toBeGreaterThanOrEqual(1);
+});
+
+/**
  * A Lied is pasted whole, and every line that comes back is one row.
  *
  * Held here: an empty Lied shows an empty Strophe and Refrain to begin in; a
