@@ -479,6 +479,9 @@
   border: 0.3mm solid #c9c9c9;
   border-radius: 2mm;
 }
+/* A place already has its frame and is not cut out, so the sheet's cut lines
+   stop at its card. */
+.ps-sheet--cutlines .ps-place .ps-card { border-color: transparent; }
 .ps-place__word {
   font-size: calc(var(--label) * 0.85);
   line-height: 1.1;

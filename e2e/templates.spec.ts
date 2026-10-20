@@ -90,6 +90,10 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   // A card carries no word; a place carries the word and the picture.
   await expect(sheet.locator('.ps-cut .ps-card__label')).toHaveCount(0);
   await expect(sheet.locator('.ps-place__word')).toHaveText(['Apfel']);
+  // Cut lines go round the cards to cut and nowhere else: a place is not cut out.
+  const dashed = (card: HTMLElement) => getComputedStyle(card).borderTopColor !== 'rgba(0, 0, 0, 0)';
+  expect(await sheet.locator('.ps-cut .ps-card').first().evaluate(dashed)).toBe(true);
+  expect(await sheet.locator('.ps-place .ps-card').first().evaluate(dashed)).toBe(false);
 
   // The basket contains its zones, with air on every side.
   const basket = await sheet.locator('.ps-cart__art path').first().boundingBox();
