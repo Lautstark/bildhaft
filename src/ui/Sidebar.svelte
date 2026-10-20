@@ -87,7 +87,8 @@
     .filter((group) => group.rows.length > 0));
 
   /**
-   * What is open: only what holds the thing that is showing.
+   * What is open: only what holds the thing that is showing, and never
+   * „Zuletzt" by itself.
    *
    * Everything else is folded, and nothing is remembered. A press on a heading
    * opens or folds it until something else is opened, and then the sidebar
@@ -103,7 +104,8 @@
   const holds = (id: string): boolean => {
     if (id === 'words') return s.wortschatz !== null;
     if (id === 'collections') return showingKind !== null;
-    if (id === 'recent') return showingKind !== null && s.collections.slice(0, RECENT).some((c) => c.id === s.activeId);
+    /* „Zuletzt" waits to be asked: the open one is already lit in its group. */
+    if (id === 'recent') return false;
     return id === groupId(showingKind ?? 'satzstreifen') && showingKind !== null;
   };
   let pressed = $state<Record<string, boolean>>({});
