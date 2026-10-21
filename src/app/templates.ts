@@ -92,6 +92,11 @@ const CARD_SHEET: PrintOffer = {
   pageNumbers: true,
 };
 
+/* An Einkaufsliste's own colours until it is given others: a light green page,
+   its cart and its name in a darker one — the first one made, Markt. */
+const SHOP_PAGE = '#d9ebd3';
+const SHOP_GREEN = '#3d7d3a';
+
 export const TEMPLATES: Record<CollectionKind, Template> = {
   /* Prints as strips, and only as strips: the template is the choice. Cards
      to cut out are the Wortkarten's, so a remembered card sheet here — from
@@ -164,12 +169,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2,
         cardBorderMm: 0, cardBackground: null, showCutLines: true,
         showCollectionTitle: own.showCollectionTitle ?? true,
-        titleSizePt: own.titleSizePt ?? 12,
-        titleColour: own.titleColour !== undefined ? own.titleColour : null,
-        titleLine: own.titleLine ?? false,
+        titleSizePt: own.titleSizePt ?? 15,
+        titleColour: own.titleColour !== undefined ? own.titleColour : SHOP_GREEN,
+        titleLine: own.titleLine ?? true,
         showGuide: own.showGuide ?? true,
-        pageColour: own.pageColour !== undefined ? own.pageColour : null,
-        cartColour: own.cartColour !== undefined ? own.cartColour : null,
+        pageColour: own.pageColour !== undefined ? own.pageColour : SHOP_PAGE,
+        cartColour: own.cartColour !== undefined ? own.cartColour : SHOP_GREEN,
       };
     },
     offers: () => ({ paper: 'size', page: true, cart: true, title: true, guide: true }),

@@ -66,7 +66,7 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
  * the cart is drawn *around* its zones, and a basket that does not contain them
  * is a printout somebody discovers with scissors in their hand.
  */
-test('an Einkaufsliste prints its three sheets, and the cart holds its zones', async ({ page }) => {
+test('an Einkaufsliste prints its guide and three sheets, and the cart holds its zones', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
@@ -83,8 +83,8 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   // The board first: if this is not there the template never took, and every
   // count below would fail for a reason that has nothing to do with printing.
   await expect(sheet.locator('.ps-board')).toHaveCount(1);
-  // Three sheets: the board, the cards, the places.
-  await expect(sheet.locator('.ps-page')).toHaveCount(3);
+  // The guide, then three sheets: the board, the places, the cards.
+  await expect(sheet.locator('.ps-page')).toHaveCount(4);
 
   // Fifteen to shop from and fifteen in the cart — measured, not chosen.
   await expect(sheet.locator('.ps-board > .ps-zones .ps-zone')).toHaveCount(15);
@@ -98,22 +98,23 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   expect(await sheet.locator('.ps-cut .ps-card').first().evaluate(dashed)).toBe(true);
   expect(await sheet.locator('.ps-place .ps-card').first().evaluate(dashed)).toBe(false);
 
-  // The second sheet says, under its cards, what the three sheets become.
-  /* The board, then the places, each under the name — they are what stays
-     and hangs — and the cards to cut last, with the guide under them. */
+  /* The guide on a page of its own, nothing else on it, not even a foot.
+     Then the board and the places, each under the name — they are what
+     stays and hangs — and the cards to cut last. */
   const sheets = sheet.locator('.ps-page');
-  await expect(sheets.nth(0).locator('.ps-board')).toHaveCount(1);
-  await expect(sheets.nth(1).locator('.ps-place')).toHaveCount(1);
-  await expect(sheets.nth(2).locator('.ps-cut')).toHaveCount(1);
-  await expect(sheets.nth(0).locator('.ps-title')).toHaveCount(1);
+  await expect(sheets.nth(0).locator('.ps-guide h2')).toHaveText('So wird daraus eine Einkaufsliste');
+  await expect(sheets.nth(0).locator('.ps-title, .ps-card, .ps-foot')).toHaveCount(0);
+  await expect(sheets.nth(1).locator('.ps-board')).toHaveCount(1);
+  await expect(sheets.nth(2).locator('.ps-place')).toHaveCount(1);
+  await expect(sheets.nth(3).locator('.ps-cut')).toHaveCount(1);
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCount(1);
-  await expect(sheets.nth(2).locator('.ps-title')).toHaveCount(0);
-  await expect(sheets.nth(2).locator('.ps-guide h2')).toHaveText('So geht’s');
-  await expect(sheet.locator('.ps-guide')).toHaveCount(1);
+  await expect(sheets.nth(2).locator('.ps-title')).toHaveCount(1);
+  await expect(sheets.nth(3).locator('.ps-title')).toHaveCount(0);
   await page.getByLabel('Anleitung drucken').uncheck();
   await expect(sheet.locator('.ps-guide')).toHaveCount(0);
+  await expect(sheets).toHaveCount(3);
   await page.getByLabel('Anleitung drucken').check();
-  await expect(sheet.locator('.ps-guide')).toHaveCount(1);
+  await expect(sheets).toHaveCount(4);
   /* A sheet's own break stays out of its page box: on paper it sent the
      page's foot, and the copyright line with it, onto the next sheet. */
   expect(await page.locator('#print-root .ps-page .ps-board').evaluate((board) => getComputedStyle(board).breakAfter)).toBe('auto');
@@ -135,18 +136,24 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
   await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
   await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
-  /* A colour behind the board's page, as a Tafel has, and the cart in a
-     colour to go with it. The board's page only: the cards are cut up. */
-  await page.getByLabel('Seitenfarbe').check();
-  const bg = (at: number) => sheet.locator('.ps-page').nth(at).evaluate((one) => getComputedStyle(one).backgroundColor);
-  await expect.poll(() => bg(0)).toBe('rgb(169, 203, 236)');
-  expect(await bg(1)).toBe('rgb(255, 255, 255)');
-  expect(await sheet.locator('.ps-page').first().locator('.ps-zone').first()
+  /* Green until it is told otherwise: a light page behind the board, as a
+     Tafel's colour, the cart and the name in a darker green. The board's
+     page only: the places and the cards stay white. */
+  const bg = (at: number) => sheets.nth(at).evaluate((one) => getComputedStyle(one).backgroundColor);
+  const stroke = () => sheet.locator('.ps-cart__art').evaluate((art) => getComputedStyle(art).stroke);
+  await expect(page.getByLabel('Seitenfarbe')).toBeChecked();
+  expect(await bg(1)).toBe('rgb(217, 235, 211)');
+  expect(await bg(2)).toBe('rgb(255, 255, 255)');
+  expect(await stroke()).toBe('rgb(61, 125, 58)');
+  await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(61, 125, 58)');
+  expect(await sheets.nth(1).locator('.ps-zone').first()
     .evaluate((zone) => getComputedStyle(zone).backgroundColor)).toBe('rgb(255, 255, 255)');
   await page.getByLabel('Farbe des Wagens').fill('#2c66c8');
-  await expect.poll(() => sheet.locator('.ps-cart__art').evaluate((art) => getComputedStyle(art).stroke)).toBe('rgb(44, 102, 200)');
+  await expect.poll(stroke).toBe('rgb(44, 102, 200)');
   await page.getByLabel('Seitenfarbe').uncheck();
-  await expect.poll(() => bg(0)).toBe('rgb(255, 255, 255)');
+  await expect.poll(() => bg(1)).toBe('rgb(255, 255, 255)');
+  await page.getByLabel('Seitenfarbe').check();
+  await expect.poll(() => bg(1)).toBe('rgb(217, 235, 211)');
 
   // Its name over the board is set as everywhere: size, colour, a line.
   await page.getByLabel('Linie darunter').check();
@@ -165,15 +172,44 @@ test('an Einkaufsliste prints its three sheets, and the cart holds its zones', a
   for (const [paper, mm] of [['A3', 28], ['A5', 14]] as const) {
     await panel.getByRole('button', { name: paper, exact: true }).click();
     await expect.poll(symbolMm).toBeCloseTo(mm, 0);
-    // Still three sheets: nothing outgrows its page on any paper.
-    await expect(sheet.locator('.ps-page')).toHaveCount(3);
-    const fits = await sheet.locator('.ps-page').first().evaluate((sheetPage) =>
+    // Still the guide and three sheets: nothing outgrows its page on any paper.
+    await expect(sheets).toHaveCount(4);
+    const fits = await sheets.nth(1).evaluate((sheetPage) =>
       [...sheetPage.querySelectorAll('.ps-zone')].every((zone) => {
         const outer = sheetPage.getBoundingClientRect(); const box = zone.getBoundingClientRect();
         return box.right <= outer.right && box.bottom <= outer.bottom;
       }));
     expect(fits).toBe(true);
   }
+});
+
+/**
+ * A long Einkaufsliste: the places go on over as many sheets as they need,
+ * each under the name, and the cards to cut fill their sheet edge to edge
+ * rather than stopping at a fixed count.
+ */
+test('a long Einkaufsliste names every sheet of places, and packs its cards', async ({ page }) => {
+  await sidebarReady(page);
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Einkaufsliste/);
+  for (let n = 1; n <= 40; n++) {
+    await page.getByLabel('Wörter hinzufügen').fill(`Ding${n}`);
+    await page.getByLabel('Wörter hinzufügen').press('Enter');
+    await expect(page.locator('.word__name')).toHaveCount(n);
+  }
+  await showSheet(page);
+  const sheets = page.locator('.preview-frame .ps-page');
+  await page.locator('.print-view__panel').getByRole('button', { name: 'A5', exact: true }).click();
+  // On A5 the places take two sheets, and both carry the name.
+  const placed = sheets.filter({ has: page.locator('.ps-place') });
+  await expect(placed).toHaveCount(2);
+  for (const at of [0, 1]) await expect(placed.nth(at).locator('.ps-title')).toHaveCount(1);
+  await expect(page.locator('.preview-frame .ps-place')).toHaveCount(40);
+  // All forty cards to cut go on one A5 sheet: more than the thirty-five it used to stop at.
+  const cut = sheets.filter({ has: page.locator('.ps-cut') });
+  await expect(cut).toHaveCount(1);
+  await expect(cut.locator('.ps-card')).toHaveCount(40);
 });
 
 /**

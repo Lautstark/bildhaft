@@ -520,25 +520,23 @@
 }
 .ps-zones--cart { position: relative; }
 
-/* The cards to cut. No word — the picture is the card. */
-.ps-cut {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: start;
-}
+/* The cards to cut, a row at a time, edge to edge. No word — the picture is the card. */
+.ps-cut { display: flex; }
 
-/* What the sheets are for, under the first sheet of cards: a line of its own
-   across the page, below the last row. */
+/* What the sheets become and how, on a page of its own before them: the
+   making and the using side by side, as the sheet lies on its side. */
 .ps-guide {
-  flex: 0 0 100%;
-  margin-top: calc(10mm * var(--shop));
-  font-size: calc(9pt * var(--shop));
-  line-height: 1.4;
-  color: #333;
+  font-size: calc(11pt * var(--shop));
+  line-height: 1.45;
+  color: #222;
 }
-.ps-guide__head { margin: 0 0 calc(2mm * var(--shop)); font-size: calc(11pt * var(--shop)); font-weight: 700; color: #000; }
-.ps-guide ol { margin: 0; padding-left: 1.4em; max-width: calc(190mm * var(--shop)); }
-.ps-guide li + li { margin-top: calc(1mm * var(--shop)); }
+.ps-guide__head { margin: 0 0 calc(4mm * var(--shop)); font-size: calc(18pt * var(--shop)); line-height: 1.2; font-weight: 700; color: #000; }
+.ps-guide h3 { margin: calc(5mm * var(--shop)) 0 calc(1.5mm * var(--shop)); font-size: calc(12pt * var(--shop)); font-weight: 700; color: #000; }
+.ps-guide p { margin: 0; max-width: calc(200mm * var(--shop)); }
+.ps-guide__cols { display: grid; grid-template-columns: 1fr 1fr; gap: calc(12mm * var(--shop)); }
+.ps-guide ol { margin: 0; padding-left: 1.4em; }
+.ps-guide li + li { margin-top: calc(1.5mm * var(--shop)); }
+.ps-guide__tip { margin-top: calc(3mm * var(--shop)) !important; font-style: italic; color: #444; }
 
 /* Where each card lives when it is not on the board. Symbol and word, both:
    the symbol so a child finds it without reading, the word so an adult does

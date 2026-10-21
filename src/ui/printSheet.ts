@@ -331,13 +331,23 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
 
   const close = () => { pages.push(count); filled.push(used); count = 0; used = 0; };
 
+  /* A block that wants the name over its page — an Einkaufsliste's places —
+     and starts a page without it gets it drawn there, so its room is kept. */
+  const heading = blocks.find((block) => block.classList.contains('ps-title'));
+  const headingBox = heading ? outer(heading) : null;
+  const headingH = headingBox ? headingBox.top + headingBox.height + headingBox.bottom : 0;
+  let previous: HTMLElement | null = null;
+
   for (const block of blocks) {
     const box = outer(block);
     // A block that will not fit in what is left starts the page it needs. Its
     // margin below counts: a page is a flex column, so the last block's margin
     // stays on the page rather than collapsing into the foot, and leaving it
     // out let a full page push its foot that much further down than the rest.
+    const headed = block.classList.contains('ps-titled') && previous !== heading;
     if (count > 0 && used + box.top + box.height + box.bottom > limit + FIT_TOLERANCE) close();
+    if (count === 0 && headed) used += headingH;
+    previous = block;
     count += 1;
     used += box.top + box.height + box.bottom;
     // A grid page is a page by construction, "one sentence per page" says so,
@@ -447,7 +457,10 @@ export type Block =
   | { kind: 'tafel'; board: PrintBoard; cellH: string }
   | { kind: 'shopping-board'; zoneMm: number; cartW: number; cartH: number; k: number }
   /* `guide`: the first sheet of cards says, under them, what the three sheets are for. */
-  | { kind: 'cut'; slots: Slot[]; guide: boolean }
+  /* One row of cards to cut: a page holds as many rows as fit. `last` ends the cards. */
+  | { kind: 'cut'; slots: Slot[]; last: boolean }
+  /* A page of its own, before everything: what the sheets become, and how. */
+  | { kind: 'shop-guide' }
   /* One row of the places: a page then holds as many rows as fit under the
      name, and the rest go on. `last` ends the places' sheet. */
   | { kind: 'store'; slots: Slot[]; last: boolean }
@@ -527,9 +540,6 @@ const ZONE_GAP_MM = 2;
    Kept there rather than here because it is room on the page, and the page is
    what that file is about. Change one and check the other. */
 
-/** How many cards of an Einkaufsliste go on one sheet to cut. Its places go in rows, as many as fit. */
-const SHOPPING_PER_PAGE = 35;
-
 /**
  * The cards a deck comes to, with the duplicates collapsed.
  *
@@ -606,8 +616,11 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
       cartW: SHOPPING.cart.cols * zoneMm + (SHOPPING.cart.cols - 1) * ZONE_GAP_MM * k,
       cartH: SHOPPING.cart.rows * zoneMm + (SHOPPING.cart.rows - 1) * ZONE_GAP_MM * k,
     });
-    /* The two sheets that stay, the board and the places, first, each under
-       the name; the cards to cut last, with the guide under them. */
+    /* The guide on a page of its own, before everything, the name included;
+       then the two sheets that stay, the board and the places, each under the
+       name — every sheet of places, which planPages keeps room for and the
+       sheet draws; the cards to cut last. */
+    if (settings.showGuide) blocks.unshift({ kind: 'shop-guide' });
     const cards = deck(sentences, provider);
     if (title) blocks.push({ kind: 'title', text: title, picture });
     /* As many places across as the page is wide; the place is its zone, and
@@ -616,7 +629,12 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
     const across = Math.max(1, Math.floor((page.width + zoneGap) / (zoneMm + zoneGap) + 1e-6));
     const rowsOf = chunks(cards, across);
     rowsOf.forEach((slots, at) => blocks.push({ kind: 'store', slots, last: at === rowsOf.length - 1 }));
-    chunks(cards, SHOPPING_PER_PAGE).forEach((slots, at) => blocks.push({ kind: 'cut', slots, guide: settings.showGuide && at === 0 }));
+    /* The cards edge to edge, their cutting margins touching: as many across
+       as the page is wide, and as many rows as the page is tall, which
+       planPages measures. */
+    const cardMm = settings.symbolSizeMm + 2 * settings.cutMarginMm;
+    const cutRows = chunks(cards, Math.max(1, Math.floor(page.width / cardMm + 1e-6)));
+    cutRows.forEach((slots, at) => blocks.push({ kind: 'cut', slots, last: at === cutRows.length - 1 }));
   } else if (settings.layout === 'rezept') {
     /*
      * The Zutaten and the Hilfsmittel as a block each, and every Schritt as a

@@ -101,11 +101,15 @@
   /* The licence notice, drawn at the foot of every page rather than packed
      with the content: a sheet handed on alone carries it too. */
   let credit = $derived(blocks.find((block) => block.kind === 'credit') ?? null);
+  /* The name, drawn again over a sheet of places that starts without it. */
+  let heading = $derived(blocks.find((block) => block.kind === 'title') ?? null);
 
   /* A sheet of Plauderbuch cards to cut out has no foot: it is cut up, and
      neither a notice nor a number survives the scissors. Nor is it counted —
-     „Seite 3 von 9" are the pages of the book. */
-  const bare = (held: Block[]): boolean => held.length > 0 && held.every((block) => block.kind === 'talk-cut');
+     „Seite 3 von 9" are the pages of the book. An Einkaufsliste's guide
+     neither: it is about the material, and carries none of it. */
+  const bare = (held: Block[]): boolean => held.length > 0
+    && held.every((block) => block.kind === 'talk-cut' || block.kind === 'shop-guide');
   let numbered = $derived(pages ? pages.filter((held) => !bare(held)).length : 0);
   const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
 
@@ -170,15 +174,12 @@
   The cards carry no word. A card that is handed around in a shop has one job,
   and a word under it makes the picture smaller rather than clearer — the word
   is on the board nowhere and on the storage sheet always.
---><div class="ps-grid ps-cut ps-grid--page">{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}{#if block.guide}<!--
-  Under the first sheet of cards, which has the room: what the three sheets
-  become, for whoever is handed them without the person who printed them.
---><section class="ps-guide"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><ol><li>{t('ui.shop_guide_1')}</li><li>{t('ui.shop_guide_2')}</li><li>{t('ui.shop_guide_3')}</li></ol></section>{/if}</div>{:else if block.kind === 'store'}<!--
+--><div class="ps-cut{block.last ? ' ps-break' : ''}">{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}</div>{:else if block.kind === 'store'}<!--
   The storage sheet is the part most templates leave out and without which the
   material is in a bag by the third week: every card has a labelled place, with
   its symbol printed faintly so a child finds it without reading and the word so
   an adult does not have to hunt. The empty place is the information.
---><div class="ps-store{block.last ? ' ps-break' : ''}">{#each block.slots as slot (slot.id)}<div class="ps-place"><PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} /><span class="ps-place__word">{slotCaption(slot)}</span></div>{/each}</div>{:else if block.kind === 'recipe-part'}<!--
+--><div class="ps-store ps-titled{block.last ? ' ps-break' : ''}">{#each block.slots as slot (slot.id)}<div class="ps-place"><PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} /><span class="ps-place__word">{slotCaption(slot)}</span></div>{/each}</div>{:else if block.kind === 'recipe-part'}<!--
   A Rezept's cards keep their word: unlike the Einkaufsliste's they are not
   handed around, they are read where they are, and „325 ml" is only on the card.
 --><section class="ps-recipe-part"><h2 class="ps-recipe-head">{t(`ui.recipe_${block.part}`)}</h2><div class="ps-recipe-cards">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></section>{:else if block.kind === 'recipe-step'}<!--
@@ -200,7 +201,10 @@
 --><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#if block.question}<PrintPicture slot={block.question} {provider} />{/if}<p class="ps-talk__question">{block.text}{#if block.again}<small>{t('ui.talk_again')}</small>{/if}</p>{#if block.free}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span>{/if}</div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
   The cards for the fields, at the fields' size, with room round each for
   the scissors and a dashed line where they go.
---><section class="ps-grid ps-grid--page ps-talk-cut" style={talkVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} /><span class="ps-talk__word">{slotCaption(slot)}</span></span></span>{/each}</section>{:else if block.kind === 'credit'}<!--
+--><section class="ps-grid ps-grid--page ps-talk-cut" style={talkVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} /><span class="ps-talk__word">{slotCaption(slot)}</span></span></span>{/each}</section>{:else if block.kind === 'shop-guide'}<!--
+  A page of its own and the first: what the sheets become and how, for
+  whoever is handed them without the person who printed them.
+--><section class="ps-guide ps-break"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><p>{t('ui.shop_guide_intro')}</p><h3>{t('ui.shop_guide_need')}</h3><p>{t('ui.shop_guide_need_text')}</p><div class="ps-guide__cols"><div><h3>{t('ui.shop_guide_make')}</h3><ol><li>{t('ui.shop_guide_make_1')}</li><li>{t('ui.shop_guide_make_2')}</li><li>{t('ui.shop_guide_make_3')}</li><li>{t('ui.shop_guide_make_4')}</li></ol><p class="ps-guide__tip">{t('ui.shop_guide_tip')}</p></div><div><h3>{t('ui.shop_guide_use')}</h3><ol><li>{t('ui.shop_guide_use_1')}</li><li>{t('ui.shop_guide_use_2')}</li><li>{t('ui.shop_guide_use_3')}</li></ol></div></div></section>{:else if block.kind === 'credit'}<!--
   The notice and where the sheet came from, and nothing else: the collection's
   name is the title's job, and on a credit line it only repeated it. The tail
   is held together, so on a narrow page it moves to a line of its own whole
@@ -238,4 +242,4 @@
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.
---><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+--><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if heading && held[0]?.kind === 'store'}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
