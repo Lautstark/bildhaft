@@ -8,6 +8,9 @@ import { SOURCE_STATUS_CODES } from '../../src/ui/symbolSources.ts';
 import { TOPICS } from '../../src/core/tags.ts';
 import { COLLECTION_KINDS, RECIPE_PARTS } from '../../src/core/types.ts';
 
+/** The parts of a Rezept that are cards rather than rows. */
+const CARD_PARTS = RECIPE_PARTS.filter((p) => p !== 'schritt');
+
 /**
  * The table and the calls, held to each other.
  *
@@ -121,11 +124,10 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/Material.svelte' },
   // The same templates in the plural, heading their groups in the sidebar.
   { prefix: 'ui.group_', from: COLLECTION_KINDS, where: 'ui/Sidebar.svelte' },
-  // A Rezept's three parts: the heading over each, and the box under it.
+  // A Rezept's three parts: the heading over each; the „+" of the two parts
+  // that are cards.
   { prefix: 'ui.recipe_', from: RECIPE_PARTS, where: 'ui/Recipe.svelte' },
-  { prefix: 'ui.recipe_', from: RECIPE_PARTS.flatMap((p) => [`${p}_none`, `${p}_add`, `${p}_new`]), where: 'ui/Recipe.svelte' },
-  { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_label`), where: 'ui/RecipeComposer.svelte' },
-  { prefix: 'ui.recipe_', from: RECIPE_PARTS.map((p) => `${p}_placeholder`), where: 'ui/RecipeComposer.svelte' },
+  { prefix: 'ui.recipe_', from: CARD_PARTS.map((p) => `${p}_label`), where: 'ui/Recipe.svelte' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

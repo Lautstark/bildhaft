@@ -1,4 +1,4 @@
-import type { RecipePart, Sentence } from '../core/types.ts';
+import type { RecipePart, Sentence, Slot } from '../core/types.ts';
 import { partOf, sentenceCaption, slotCaption } from '../core/types.ts';
 import { deleteSentence, newId, putSentence } from '../db/repo.ts';
 import { handleAddSlot, openPicker } from './editing.ts';
@@ -7,8 +7,9 @@ import { s } from './state.svelte.ts';
 
 /**
  * A Rezept changed part by part, where the part stands — the way a Lied is.
- * The box at the top still adds to the part chosen under it; these are the
- * part's own „+ Zutat" and „✎ Text".
+ * There is no box at the top: a Zutat or a Hilfsmittel is a card made by
+ * its part's „+", as a Wortkarte is, a Schritt a line typed under „+ Schritt", and every
+ * part can be written again as text with „✎ Text".
  */
 
 const linesOf = (text: string): string[] => text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -29,6 +30,48 @@ export const partText = (part: RecipePart): string => entriesOf(part).map(shown)
 /** Lines typed under a part, at its end. Hands back what could not be added. */
 export function addToPart(part: RecipePart, text: string): Promise<string> {
   return addLines(text, part);
+}
+
+/**
+ * A new Zutat or Hilfsmittel: an empty card at the end of its part, with the
+ * picker open on it. Closed without a choice, the card goes again, as the
+ * „+" card of a Wortkarten-Sammlung's does.
+ */
+export async function addCard(part: RecipePart): Promise<void> {
+  const collectionId = s.activeId;
+  if (!collectionId) return;
+  const slot: Slot = {
+    id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
+  };
+  const now = Date.now();
+  const sentence: Sentence = {
+    id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
+    collectionId, createdAt: now, updatedAt: now, part,
+  };
+  await putSentence(sentence);
+  s.sentences = [...s.sentences, sentence];
+  openPicker(sentence.id, slot.id);
+}
+
+/**
+ * An entry dragged to another place in its part. The order is the entries'
+ * age, so the moved ones are given new ones — counted up from the oldest the
+ * part has, which keeps every other part where it was.
+ */
+export async function moveEntry(part: RecipePart, from: number, to: number): Promise<void> {
+  const list = entriesOf(part);
+  if (from === to || !list[from] || !list[to]) return;
+  const base = list[0]!.createdAt;
+  const [moved] = list.splice(from, 1);
+  list.splice(to, 0, moved!);
+  const placed = new Map<string, Sentence>();
+  for (const [at, sentence] of list.entries()) {
+    if (sentence.createdAt === base + at) continue;
+    const next = { ...sentence, createdAt: base + at };
+    await putSentence(next);
+    placed.set(next.id, next);
+  }
+  s.sentences = s.sentences.map((sentence) => placed.get(sentence.id) ?? sentence);
 }
 
 /**

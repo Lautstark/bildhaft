@@ -606,59 +606,86 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
 });
 
 /**
- * A Rezept is three parts with a box each, and the paper keeps them apart.
- *
- * Held here: a line lands in the part whose box it was typed into and nowhere
- * else; a Zutat's amount stays on the card and off the lookup, so „2 Eier"
- * gets the picture for „Eier"; the Schritte read top to bottom in the order
- * they were typed, numbered, which is the reverse of a Satzstreifen; and the
- * paper carries the three headings, the numbers and the name — and, with
- * pictures too big for one page, goes on to a second rather than shrinking.
+ * A Zutat or a Hilfsmittel added by its part's „+", as a Wortkarte is: the
+ * picture first, then, with the card opened again, its text in the picker.
  */
-test('a Rezept takes each part in its own box, and prints them in order', async ({ page }) => {
+async function addRecipeCard(page: Page, part: 'Zutat' | 'Hilfsmittel', word: string, text?: string): Promise<void> {
+  await page.getByRole('button', { name: `${part} hinzufügen` }).click();
+  await page.getByLabel('Symbol suchen').fill(word);
+  await page.locator('.picker__item', { hasText: word }).first().click();
+  if (!text) return;
+  await page.getByRole('button', { name: `Bild für „${word}“ ändern` }).click();
+  await page.getByLabel('Text zum Symbol').fill(text);
+  await page.getByRole('button', { name: 'Fertig' }).click();
+}
+
+/**
+ * A Rezept is three parts, each filled where it stands, and the paper keeps
+ * them apart.
+ *
+ * Held here: there is no box at the top; a Zutat is a Wortkarte, its picture
+ * searched first and its text („2 Eier") written in the picker; a line written in „✎ Text" keeps its amount off the
+ * lookup, so „325 ml Milch" gets the picture for „Milch"; the Schritte read
+ * top to bottom in the order they were typed, numbered, which is the reverse
+ * of a Satzstreifen; cards and Schritte are dragged into another order, and
+ * the paper follows; and the paper carries the three headings, the numbers
+ * and the name — and, with pictures too big for one page, goes on to a
+ * second rather than shrinking.
+ */
+test('a Rezept takes each part where it stands, and prints them in order', async ({ page }) => {
   await sidebarReady(page);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Rezept/);
   await page.getByLabel('Name des Materials').fill('Waffeln (5–6 Stück)');
-  // Its parts have their own boxes, so the composer above would be a fourth.
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
 
   const zutaten = page.getByRole('region', { name: 'Zutaten' });
-  await page.getByLabel('Zutat hinzufügen').fill('2 Eier\n325 ml Milch');
-  await page.getByLabel('Zutat hinzufügen').press('Enter');
+  await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
+  await expect(zutaten.locator('.word__name')).toHaveText(['2 Eier']);
+
+  await page.getByRole('button', { name: 'Zutaten als Text bearbeiten' }).click();
+  const text = page.getByRole('textbox', { name: 'Zutaten als Text bearbeiten' });
+  await expect(text).toHaveValue('2 Eier');
+  await text.fill('2 Eier\n325 ml Milch');
+  await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(zutaten.locator('.word__name')).toHaveText(['2 Eier', '325 ml Milch']);
+  const milch = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === '325 ml Milch'));
+  expect(milch?.slots[0]?.sourceToken).toBe('Milch');
+  expect(milch?.slots[0]?.chosen).toBe(String(idForTerm('Milch')));
 
-  const eier = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === '2 Eier'));
-  expect(eier?.slots[0]?.sourceToken).toBe('Eier');
-  expect(eier?.slots[0]?.chosen).toBe(String(idForTerm('Eier')));
-
-  // One box at the top; the switch in front of it says which part a line goes into.
-  await page.locator('.recipe__parts').getByRole('button', { name: 'Hilfsmittel', exact: true }).click();
-  await page.getByLabel('Hilfsmittel hinzufügen').fill('Schüssel');
-  await page.getByLabel('Hilfsmittel hinzufügen').press('Enter');
-  await expect(page.getByRole('region', { name: 'Hilfsmittel' }).locator('.word__name'))
-    .toHaveText(['Schüssel']);
-  await expect(zutaten.locator('.word__name')).toHaveCount(2);
+  const hilfsmittel = page.getByRole('region', { name: 'Hilfsmittel' });
+  await addRecipeCard(page, 'Hilfsmittel', 'Schüssel');
+  await expect(hilfsmittel.locator('.word__name')).toHaveText(['Schüssel']);
+  await expect(zutaten.locator('.recipe__entry')).toHaveCount(2);
 
   // Two submissions, so the order is the one they were typed in and not a batch's.
   const schritte = page.getByRole('region', { name: 'Schritte' });
-  await page.locator('.recipe__parts').getByRole('button', { name: 'Schritte', exact: true }).click();
+  await schritte.getByRole('button', { name: '+ Schritt' }).click();
   for (const [at, step] of ['Eier in die Schüssel', 'Rühren'].entries()) {
-    await page.getByLabel('Schritt hinzufügen').fill(step);
-    await page.getByLabel('Schritt hinzufügen').press('Enter');
+    await page.getByLabel('Neuer Schritt').fill(step);
+    await page.getByLabel('Neuer Schritt').press('Enter');
     await expect(schritte.locator('.row')).toHaveCount(at + 1);
   }
   await expect(schritte.locator('.row__step')).toHaveText(['1', '2']);
-  expect(await schritte.locator('.row__title').evaluateAll((fields) =>
-    fields.map((field) => field.getAttribute('placeholder')))).toEqual(['Eier in die Schüssel', 'Rühren']);
+  const steps = () => schritte.locator('.row__title').evaluateAll((fields) =>
+    fields.map((field) => field.getAttribute('placeholder')));
+  expect(await steps()).toEqual(['Eier in die Schüssel', 'Rühren']);
+
+  // Dragged: a card as a whole, a Schritt by its number.
+  await zutaten.locator('.recipe__entry').nth(1).dragTo(zutaten.locator('.recipe__entry').nth(0));
+  await expect(zutaten.locator('.word__name')).toHaveText(['325 ml Milch', '2 Eier']);
+  await schritte.locator('.row__step').nth(1).dragTo(schritte.locator('.slot').first());
+  await expect.poll(steps).toEqual(['Rühren', 'Eier in die Schüssel']);
+  await expect(schritte.locator('.row__step')).toHaveText(['1', '2']);
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect(sheet.locator('.ps-title')).toHaveText('Waffeln (5–6 Stück)');
   await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten', 'Hilfsmittel', 'Schritte']);
   await expect(sheet.locator('.ps-recipe-cards').first().locator('.ps-card__label'))
-    .toHaveText(['2 Eier', '325 ml Milch']);
+    .toHaveText(['325 ml Milch', '2 Eier']);
+  await expect(sheet.locator('.ps-recipe-step').first()).toContainText('Rühren');
   await expect(sheet.locator('.ps-recipe-step__n')).toHaveText(['1', '2']);
   await expect(sheet.locator('.ps-page')).toHaveCount(1);
 
@@ -686,25 +713,19 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
 /**
  * A Rezept is changed where it stands, the way a Lied is.
  *
- * Held here: an empty part says so, and no second „noch leer" box stands over
- * the parts; the part the box writes into is the one outlined; each part takes
- * lines of its own under it; „✎ Text" writes a part again in the order of the
+ * Held here: an empty part says so, or offers its „+" card, and no second
+ * „noch leer" box stands over the parts; the Schritte take lines under them; „✎ Text" writes a part again in the order of the
  * text, keeping the row of a line it keeps and taking out the one it drops;
  * and the paper is the Rezept's to choose, as a Lied's is.
  */
 test('a Rezept is changed part by part, and chooses its paper', async ({ page }) => {
   await pickTemplate(page, /^Rezept/);
-  await expect(page.getByText('Noch keine Zutaten.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Zutat hinzufügen' })).toBeVisible();
   await expect(page.getByText('Noch keine Schritte.')).toBeVisible();
   await expect(page.locator('.empty')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Andere Vorlage wählen' })).toBeVisible();
 
-  const zutaten = page.getByRole('region', { name: 'Zutaten' });
   const schritte = page.getByRole('region', { name: 'Schritte' });
-  await expect(zutaten).toHaveClass(/recipe__part--target/);
-  await page.locator('.recipe__parts').getByRole('button', { name: 'Schritte', exact: true }).click();
-  await expect(schritte).toHaveClass(/recipe__part--target/);
-  await expect(zutaten).not.toHaveClass(/recipe__part--target/);
 
   // Under the part itself: the field stays for the next line.
   await schritte.getByRole('button', { name: '+ Schritt' }).click();
@@ -753,9 +774,8 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
  */
 test('a Rezept prints its name with the picture it was given, and its parts under bands', async ({ page }) => {
   await pickTemplate(page, /^Rezept/);
-  await page.getByLabel('Zutat hinzufügen').fill('2 Eier');
-  await page.getByLabel('Zutat hinzufügen').press('Enter');
-  await expect(page.getByRole('region', { name: 'Zutaten' }).locator('.word')).toHaveCount(1);
+  await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
+  await expect(page.getByRole('region', { name: 'Zutaten' }).locator('.recipe__entry')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'Bild zum Titel wählen' }).click();
   await page.getByLabel('Symbol suchen').fill('Banane');
