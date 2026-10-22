@@ -67,7 +67,7 @@
 
   /* The templates whose box stands under their head, in „Bearbeiten" only,
      with their title under it. One template at a time (2026-10-22). */
-  const BOX_UNDER_HEAD: CollectionKind[] = ['satzstreifen', 'wortkarten'];
+  const BOX_UNDER_HEAD: CollectionKind[] = ['satzstreifen', 'wortkarten', 'einkaufsliste'];
 
   /** „Drucken" is shown only once there is something to print. */
   let printing = $derived(s.view === 'print' && contentOf(s.sentences).length > 0);
@@ -135,7 +135,7 @@
   choice is the whole page, and a name with „0 Zeilen" above it would only be
   something to read before it.
 
-  A Satzstreifen and Wortkarten have their head first and the box under it,
+  A Satzstreifen, Wortkarten and an Einkaufsliste have their head first and the box under it,
   in „Bearbeiten" only, then the title as the heading of what follows, as on
   the paper: the box is part of what the switch swaps, so „Drucken" has none and
   the head still stands where it stood. Under the head because that is where

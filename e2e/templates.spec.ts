@@ -1202,3 +1202,18 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
   await expect(page.locator('.title-line')).toHaveCount(0);
 });
+
+/* An Einkaufsliste is typed as Wortkarten are: under its head, a list. */
+test('an Einkaufsliste takes a list under its head, its title under the box', async ({ page }) => {
+  await pickTemplate(page, /^Einkaufsliste/);
+  const box = page.getByLabel('Wörter hinzufügen');
+  await box.fill('Milch, Brot, Äpfel');
+  await expect(page.locator('.composer__count')).toHaveText('3 Karten');
+  await box.press('Enter');
+  await expect(page.locator('.words .word:not(.word--add)')).toHaveCount(3);
+  const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
+  expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
+  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  await showSheet(page);
+  await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
+});
