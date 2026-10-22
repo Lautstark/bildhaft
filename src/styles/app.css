@@ -1417,6 +1417,10 @@ footer.footer {
    room the grid needed. The page scrolls instead, and a drag that has to
    cross the fold scrolls it too, which browsers do at the edge. */
 .tray { display: flex; flex-direction: column; gap: 10px; }
+/* A free field being typed into: a line in the field's middle, and the way to the picker under it. */
+.cell__type { position: absolute; inset: 6px; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; text-align: center; }
+.cell__input { min-width: 0; padding: 6px 8px; border: 2px solid var(--accent); border-radius: 6px; background: #fff; color: #222; font: inherit; font-size: 15px; text-align: center; }
+.cell__input:focus { outline: none; }
 .tray__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
 .tray__head b { font-size: 13px; }
 .tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius-md); }

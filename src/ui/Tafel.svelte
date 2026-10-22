@@ -2,11 +2,13 @@
   /**
    * The Tafel on screen: a grid of fields, and under it the cards not yet on it.
    *
-   * Two places for one set of cards. The composer puts every new word into the
-   * tray, because typing ten words is fast and deciding where each one goes is
-   * a different act done afterwards, by hand: a card is dragged into a field,
-   * from field to field (they swap), or back into the tray. A field left free is
-   * left free on paper too.
+   * Two places for one set of cards, and a way to type into each. A free field
+   * pressed becomes a line to type in, and what is typed there lies there —
+   * the next words in the next free fields. What is typed into the box under
+   * the head waits in the tray: typing ten words is fast and deciding where
+   * each one goes is a different act done afterwards, by hand: a card is
+   * dragged into a field, from field to field (they swap), or back into the
+   * tray. A field left free is left free on paper too.
    *
    * A group is fields that lie together, drawn apart from the rest — what a
    * Symboltafel sets its colours or its feelings apart with. A group has a
@@ -31,8 +33,9 @@
   } from '../core/board.ts';
   import { dissolveZone, leaveZone, setZone } from '../core/board.ts';
   import WordCard from './WordCard.svelte';
+  import TitleLine from './TitleLine.svelte';
   import { activeCollection, s } from '../app/state.svelte.ts';
-  import { handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
+  import { addIntoFields, handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
   import { tafelField } from '../app/print.ts';
   import { t } from '../i18n/index.ts';
 
@@ -86,6 +89,21 @@
   const typed = (input: HTMLInputElement): number | null =>
     (Number.isFinite(input.valueAsNumber) && input.valueAsNumber >= 1 && input.valueAsNumber <= MAX_BOARD_SIDE
       ? Math.round(input.valueAsNumber) : null);
+
+  /** The free field being typed into, and what is typed there. */
+  let typingAt = $state<number | null>(null);
+  let fieldText = $state('');
+  const focus = (node: HTMLInputElement) => { node.focus(); };
+
+  async function typeInto(index: number): Promise<void> {
+    const text = fieldText;
+    typingAt = null;
+    fieldText = '';
+    if (!text.trim()) return;
+    const left = await addIntoFields(text, index);
+    /* What could not be looked up comes back into the field, as it does into the box. */
+    if (left) { fieldText = left; typingAt = index; }
+  }
 
   /** Which card is being carried, while the drag is ours. */
   let carrying = $state<string | null>(null);
@@ -338,7 +356,9 @@
   and making it smaller takes cards off it, which is work on the material and
   not on the paper. Beside it, how big a field comes out on the paper chosen
   under „Drucken".
---><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}{#if field}<span class="board-head__size small faint">{t('ui.board_size', { w: mm(field.width), h: mm(field.height) })}</span>{/if}</div>
+--><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}{#if field}<span class="board-head__size small faint">{t('ui.board_size', { w: mm(field.width), h: mm(field.height) })}</span>{/if}</div><!--
+  The title under the grid's counters, as the heading of the Tafel itself.
+--><TitleLine />
 
 {#snippet panel()}<!--
   The panel over the marked fields: how many, and the three things a group can
@@ -383,7 +403,10 @@
 --><div class="cell__shield" style:--shield={labelColour(zoneStyle)}>{zoneStyle.name}</div>{/if}{/if}{#if card && id}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === id} draggable="true" ondragstart={(event) => cardDragStart(event, id)} ondragend={clear}><WordCard sentence={card} {provider} /><button class="board-card__move" type="button" aria-label={t('ui.board_take_off', { word: caption(card) })} onclick={() => void writeBoard((one) => takeOff(one, id))}>↓</button></div>{:else}<!--
   A field with nothing in it is also where a card that does not exist yet can be
   made — the same „+" the wall ends with, in the place the card is going to lie.
---><button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => void handleNewCard(index)}>+</button>{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>
+--><!--
+  Pressed, it is a line to type in; the picker, for somebody with a picture in
+  mind rather than a word, is one press further.
+-->{#if typingAt === index}<div class="cell__type"><input use:focus class="cell__input" type="text" bind:value={fieldText} placeholder={t('ui.board_type_placeholder')} aria-label={t('ui.board_type_here', { n: index + 1 })} disabled={s.busy} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void typeInto(index); } else if (event.key === 'Escape') { typingAt = null; fieldText = ''; } }} onblur={() => { if (!fieldText.trim()) typingAt = null; }} /><button class="linklike small" type="button" onpointerdown={(event) => event.preventDefault()} onclick={() => { typingAt = null; fieldText = ''; void handleNewCard(index); }}>{t('ui.board_pick_here')}</button></div>{:else}<button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => { fieldText = ''; typingAt = index; }}>+</button>{/if}{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>
 
 <!-- svelte-ignore a11y_no_static_element_interactions --><div class="tray" class:tray--over={overTray} ondragover={(event) => { over(event); overTray = true; }} ondragleave={() => { overTray = false; }} ondrop={(event) => drop(event, (id) => void writeBoard((one) => takeOff(one, id)))}><div class="tray__head"><b>{t('ui.board_tray')}</b><span class="small faint">{t('ui.board_tray_hint')}</span></div><div class="words tray__wall">{#each waiting as sentence (sentence.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === sentence.id} title={t('ui.board_drag_hint')} draggable="true" ondragstart={(event) => cardDragStart(event, sentence.id)} ondragend={clear}><WordCard {sentence} {provider} /><button class="board-card__move" type="button" aria-label={t('ui.board_put_on', { word: caption(sentence) })} disabled={free === -1} onclick={() => void writeBoard((one) => placeOn(one, sentence.id, firstFree(board)))}>↑</button></div>{/each}<button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div></div>
 {#if selected.size > 0}<div class="board-dock">{@render panel()}</div>{/if}

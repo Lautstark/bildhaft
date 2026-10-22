@@ -39,6 +39,7 @@
    */
   let own = $derived(Boolean(activeCollection()) && !followsDefault());
 
+
   /* What Enter will make, said once it is more than one: a pasted text is
      where that is not obvious from looking at the box. Cards are shown one by
      one as well, because where a comma cuts is the thing to check. */

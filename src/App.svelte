@@ -66,8 +66,10 @@
     : activeCollection()?.name ?? 'bildhaft');
 
   /* The templates whose box stands under their head, in „Bearbeiten" only,
-     with their title under it. One template at a time (2026-10-22). */
-  const BOX_UNDER_HEAD: CollectionKind[] = ['satzstreifen', 'wortkarten', 'einkaufsliste'];
+     with their title under it — a Tafel's under its columns and rows, which
+     are about the grid the title heads (Tafel.svelte). On a Tafel what is
+     typed there waits in its tray. One template at a time (2026-10-22). */
+  const BOX_UNDER_HEAD: CollectionKind[] = ['satzstreifen', 'wortkarten', 'einkaufsliste', 'tafel'];
 
   /** „Drucken" is shown only once there is something to print. */
   let printing = $derived(s.view === 'print' && contentOf(s.sentences).length > 0);
@@ -141,7 +143,7 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead />{#if !printing}<Composer /><TitleLine />{/if}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead />{#if !printing}<Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{/if}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

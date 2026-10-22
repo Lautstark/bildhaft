@@ -74,7 +74,9 @@
   /* A Plauderbuch's questions stand on its pages and are not cut out: its
      cards are its Aussagen. */
   let sayings = $derived(pagesOf(activeCollection()?.talk).reduce((all, page) => all + page.sayings.length, 0));
-  let pictured = $derived(kind() === 'rezept' || kind() === 'tafel');
+  /* A Rezept's title picture, beside its name, until a Rezept has the title
+     line the others have (TitleLine.svelte), where its symbols are chosen. */
+  let pictured = $derived(kind() === 'rezept');
   let picture = $derived(pictured ? titlePicture(s.sentences) : null);
   let pictureId = $derived(picture ? symbolIdFor(picture, providerId()) : null);
   let count = $derived(kind() === 'rezept'
@@ -102,13 +104,13 @@
 </script>
 
 <div class="collection-head">{#if pictured}<!--
-  The picture beside a Rezept's or a Tafel's name: chosen here, in the picker
+  The picture beside a Rezept's name: chosen here, in the picker
   every field has, and printed with the name when the name is printed.
 --><button class="collection-head__pic{pictureId ? '' : ' collection-head__pic--empty'}" type="button" aria-label={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} title={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} onclick={() => void chooseTitlePicture()}>{#if pictureId}<SymbolPicture provider={providerId()} id={pictureId} alt={t('ui.title_picture')} mirrored={picture?.mirrored} />{:else}{t('ui.title_picture_empty')}{/if}</button>{/if}<TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.
--->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied' || kind() === 'plauderbuch')}<!--
+-->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied' || kind() === 'plauderbuch' || kind() === 'tafel')}<!--
   A Rezept and a Lied draw their own empty parts, so the empty state's box
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.

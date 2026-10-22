@@ -409,9 +409,11 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
   await bar.press('Enter');
   await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
 
-  // In a field: the picker opens on a card lying there, and closing it takes
-  // the card away again and leaves the field free.
+  // In a field: its „+" is a line to type in, the picker one press further;
+  // the picker opens on a card lying there, and closing it takes the card
+  // away again and leaves the field free.
   await page.getByRole('button', { name: 'Neue Karte in Feld 3' }).click();
+  await page.getByRole('button', { name: 'Bild suchen' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -566,11 +568,12 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await expect(zoned).toHaveCount(5);
   await page.keyboard.press('Escape');
 
-  // Nothing was put into a mode: a free field's „+" still opens the picker,
-  // and a card is still dragged into a grouped field.
+  // Nothing was put into a mode: a free field's „+" still opens its line to
+  // type in, and a card is still dragged into a grouped field.
   await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByLabel('Wort für Feld 2')).toBeFocused();
   await page.keyboard.press('Escape');
+  await expect(page.getByLabel('Wort für Feld 2')).toHaveCount(0);
   await page.getByLabel('Wörter hinzufügen').fill('Blau');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
   const card = page.locator('.tray .board-card').filter({ hasText: 'Blau' }).locator('.word__pic');
@@ -816,10 +819,11 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   const size = page.locator('.board-head__size');
   const plain = await size.innerText();
 
-  await page.getByRole('button', { name: 'Bild zum Titel wählen' }).click();
+  // Chosen in the title line under the head, as on every template with one.
+  await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
-  await expect(page.getByRole('button', { name: 'Bild zum Titel ändern' }).locator('img')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
   // No card: neither in the tray nor in the count.
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
   await expect(page.locator('.collection-head')).toContainText('1 Karte');
@@ -1216,4 +1220,33 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
   expect(await top('.composer')).toBeLessThan(await top('.title-line'));
   await showSheet(page);
   await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
+});
+
+/*
+ * A Tafel is typed into where the card goes: a free field pressed is a line
+ * to type in, and the word lies in that field — a list in the next free
+ * fields from there. The box under the head, as everywhere, puts its cards
+ * into the tray, to be placed by hand.
+ */
+test('a word typed into a free field lies there, a list in the next free fields', async ({ page }) => {
+  await pickTemplate(page, /^Tafel/);
+  await expect(page.locator('.title-line')).toBeVisible();
+  const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
+  expect(await top('.composer')).toBeLessThan(await top('.board-head'));
+  expect(await top('.board-head')).toBeLessThan(await top('.title-line'));
+  expect(await top('.title-line')).toBeLessThan(await top('.board'));
+
+  await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
+  const line = page.getByLabel('Wort für Feld 2');
+  await line.fill('Apfel, Banane');
+  await line.press('Enter');
+  const cells = page.locator('.board .cell');
+  await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
+  await expect(cells.nth(2).locator('.word__name')).toHaveText('Banane');
+  await expect(cells.nth(0)).toHaveClass(/cell--free/);
+
+  const box = page.getByLabel('Wörter hinzufügen');
+  await box.fill('Kiwi');
+  await box.press('Enter');
+  await expect(page.locator('.tray .word__name')).toHaveText(['Kiwi']);
 });

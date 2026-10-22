@@ -3,6 +3,7 @@ import { boardOf, placeOn, placedIds, resizeBoard } from '../core/board.ts';
 import { newId, patchCollection, putSentence } from '../db/repo.ts';
 import { activeCollection, s } from './state.svelte.ts';
 import { openPicker } from './editing.ts';
+import { addLines, splitWords } from './composing.ts';
 import { notify } from './notify.ts';
 import { t } from '../i18n/index.ts';
 
@@ -65,4 +66,21 @@ export async function handleNewCard(at?: number): Promise<void> {
   s.sentences = [sentence, ...s.sentences];
   if (at !== undefined) await writeBoard((board) => placeOn(board, sentence.id, at));
   openPicker(sentence.id, slot.id);
+}
+
+/**
+ * Words typed into a free field of the open Tafel: the first lies in that
+ * field, each after it in the next free field from there, and what finds no
+ * field waits under the Tafel. Hands back what could not be looked up, for
+ * the field to show again.
+ */
+export async function addIntoFields(text: string, at: number): Promise<string> {
+  const ids = new Map<string, string>();
+  const left = await addLines(text, undefined, (line, sentence) => ids.set(line, sentence.id));
+  const made = splitWords(text).map((line) => ids.get(line)).filter((id): id is string => Boolean(id));
+  await writeBoard((board) => made.reduce((next, id) => {
+    const after = next.cells.findIndex((cell, index) => index >= at && cell === null);
+    return placeOn(next, id, after);
+  }, board));
+  return left;
 }
