@@ -11,7 +11,7 @@ import { notify } from './notify.ts';
 import type { PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
-import { openPrint } from './templates.ts';
+import { openPrint, settle } from './templates.ts';
 
 /**
  * The print settings a template opens on — its entry in `TEMPLATES` says
@@ -229,6 +229,32 @@ export function printOptions(): PrintOptions | null {
     provider: providerId(),
     attribution: provider().attribution,
     onClose: () => undefined,
+  };
+}
+
+/**
+ * The open Sammlung's print, to be set where it is edited: what Bearbeiten's
+ * Gestaltung reads and writes. The same settings the print view opens on and
+ * kept the same way, so a frame set in Bearbeiten is the frame Drucken shows.
+ * Nothing is measured here, so there is no card size to report.
+ */
+export function materialPrint(): {
+  settings: PrintSettings; set: <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => void;
+  /** Several at once, as one change: „Farbe" is the title's and the frame's. */
+  patch: (next: Partial<PrintSettings>) => void;
+  cardSize: string; cardWarn: boolean; options: Pick<PrintOptions, 'kind' | 'provider'>;
+} | null {
+  const open = activeCollection();
+  if (!open || !s.settings) return null;
+  const which = kind();
+  const board = which === 'tafel' ? boardOf(open) : null;
+  const settings = printFor(printBase(), which, board, open.print ?? {});
+  return {
+    settings,
+    set: (key, value) => void keepPrint(settle(which, { ...settings, [key]: value }, board)),
+    patch: (next) => void keepPrint(settle(which, { ...settings, ...next }, board)),
+    cardSize: '', cardWarn: false,
+    options: { kind: which, provider: providerId() },
   };
 }
 

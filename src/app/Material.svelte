@@ -17,12 +17,15 @@
   import Row from '../ui/Row.svelte';
   import WordCard from '../ui/WordCard.svelte';
   import TemplateArt from '../ui/TemplateArt.svelte';
+  import LookBar from '../ui/LookBar.svelte';
   import Tafel from '../ui/Tafel.svelte';
   import Recipe from '../ui/Recipe.svelte';
   import Song from '../ui/Song.svelte';
   import Talk from '../ui/Talk.svelte';
   import { handleNewCard } from './board.ts';
   import { openWortschatzSheet } from './words.ts';
+  import { materialPrint } from './print.ts';
+  import { TEMPLATES } from './templates.ts';
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -30,6 +33,26 @@
   let content = $derived(contentOf(s.sentences));
   let empty = $derived(content.length === 0);
   let provider = $derived(providerId());
+  /** About what a millimetre of the printed card is on the wall's card. */
+  const SCREEN_MM = 2.6;
+  /** A point in millimetres. */
+  const PT_MM = 25.4 / 72;
+
+  /* The look, where its template sets it here: the wall is drawn as it
+     prints, and Gestaltung above it says how. */
+  let look = $derived(!TEMPLATES[kind()].lookInEdit ? null : materialPrint());
+  let paper = $derived(look ? {
+    '--paper': look.settings.pageColour ?? '#fff',
+    '--card-bg': look.settings.cardBackground ?? 'transparent',
+    '--card-border': look.settings.cardBorderMm > 0
+      ? `${Math.max(1, look.settings.cardBorderMm * SCREEN_MM)}px solid ${look.settings.cardBorderColor}` : '',
+    '--card-radius': `${look.settings.cardRadiusMm * SCREEN_MM}px`,
+    '--text-colour': look.settings.textColour,
+    '--label-size': `${look.settings.labelSizePt * PT_MM * SCREEN_MM}px`,
+    /* A card of a size somebody typed has that shape here too. */
+    '--card-ratio': look.settings.sheetFit === 'card'
+      ? `${look.settings.cardWidthMm} / ${look.settings.cardHeightMm ?? look.settings.cardWidthMm}` : '',
+  } : null);
   /** A Material made by „+ Neues Material" that has not been told what it is yet. */
   let choosing = $derived(s.choosing !== null && s.choosing === s.activeId);
 
@@ -80,7 +103,7 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}{#if look}<LookBar s={look} />{/if}<div class="rows words{look ? ' words--look' : ''}{look && look.settings.labelPosition === 'above' ? ' words--label-above' : ''}{look && !look.settings.showLabel ? ' words--label-off' : ''}{look?.settings.sheetFit === 'card' ? ' words--shaped' : ''}" style={paper ? Object.entries(paper).filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join(';') : undefined}>{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other

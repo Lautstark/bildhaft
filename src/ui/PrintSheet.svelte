@@ -225,6 +225,7 @@
   style:--page-margin-bottom="{PAGE_MARGIN_BOTTOM_MM}mm"
   style:--frame-w="{settings.cardBorderMm}mm"
   style:--frame-color={settings.cardBorderColor}
+  style:--text-colour={settings.textColour}
   style:--frame-pad="{framePadMm(settings)}mm"
   style:--card-radius="{settings.cardRadiusMm}mm"
   style:--card-bg={settings.cardBackground ?? 'transparent'}

@@ -19,6 +19,11 @@
   import { t } from '../i18n/index.ts';
 
   let { s }: { s: Printing } = $props();
+  /* A template whose look is set in Bearbeiten (LookBar) keeps here only what
+     fits it to the paper: the frame, the colours, whether and where the word
+     prints are not asked again, and the type's points stand together under
+     „Schrift" — they are what gets smaller when the paper does. */
+  let fitting = $derived(Boolean(TEMPLATES[s.options.kind].lookInEdit));
 
   /** What "give the cards a background" starts as before anyone picks a colour. */
   const DEFAULT_CARD_BACKGROUND = '#fff3bf';
@@ -47,11 +52,12 @@
    * asked a second time, so a heading can never stand over nothing, nor an
    * option without its heading.
    */
-  type Group = 'paper' | 'size' | 'look' | 'own' | 'foot';
+  type Group = 'paper' | 'size' | 'font' | 'look' | 'own' | 'foot';
   /* The groups in their order, each with its heading: the base, then what
      only this template has under its name, and the foot of the page last. */
   const GROUPS: Record<Group, () => string> = {
-    paper: () => t('ui.group_paper'), size: () => t('ui.group_size'), look: () => t('ui.group_look'),
+    paper: () => t('ui.group_paper'), size: () => t('ui.group_size'), font: () => t('ui.group_font'),
+    look: () => (fitting ? t('ui.group_title') : t('ui.group_look')),
     own: () => t(`ui.template_${s.options.kind}`), foot: () => t('ui.group_foot'),
   };
   /* A setting that is on or off. */
@@ -65,11 +71,14 @@
     { group: 'size', shown: () => size?.kind === 'symbol', draw: symbolOpt },
     { group: 'size', shown: () => size?.kind === 'board', draw: boardOpt },
     { group: 'size', shown: () => Boolean(offer.margin), draw: marginOpt },
+    { group: 'font', shown: () => fitting && Boolean(offer.label) && s.settings.showLabel, draw: labelSizeOpt },
+    { group: 'font', shown: () => fitting && Boolean(offer.title) && s.settings.showCollectionTitle, draw: titleSizeOpt },
     { group: 'look', shown: () => Boolean(offer.title), draw: titleOpt },
-    { group: 'look', shown: () => Boolean(offer.label), draw: labelOpt },
-    { group: 'look', shown: () => Boolean(offer.frames), draw: framesOpt },
-    { group: 'look', shown: () => Boolean(offer.background), draw: backgroundOpt },
-    { group: 'look', shown: () => Boolean(offer.page), draw: pageColourOpt },
+    { group: 'look', shown: () => Boolean(offer.label) && !fitting, draw: labelOpt },
+    { group: 'look', shown: () => Boolean(offer.frames) && !fitting, draw: framesOpt },
+    { group: 'look', shown: () => Boolean(offer.background) && !fitting, draw: backgroundOpt },
+    { group: 'look', shown: () => Boolean(offer.page) && !fitting, draw: pageColourOpt },
+    { group: 'look', shown: () => Boolean(offer.label || offer.sentence) && !fitting, draw: textColourOpt },
     { group: 'foot', shown: () => Boolean(offer.pageNumbers), toggle: 'showPageNumbers', label: 'ui.page_numbers' },
     { group: 'foot', shown: () => s.options.provider === 'metacom', draw: copyrightOpt },
     { group: 'own', shown: () => Boolean(offer.colour), draw: colourOpt },
@@ -162,7 +171,13 @@
 --><div class="opt">{@render check(t('ui.title_print'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{#if s.settings.showCollectionTitle}<div class="opt__sub">{#if offer.title === 'pages'}{@render segmented([
   { label: t('ui.title_first'), active: !s.settings.titleEvery, onPick: () => set('titleEvery', false) },
   { label: t('ui.title_every'), active: s.settings.titleEvery, onPick: () => set('titleEvery', true) },
-], '')}{/if}{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}</div>{/snippet}
+], '')}{/if}{#if !fitting}{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}{/if}</div>{/if}</div>{/snippet}
+
+{#snippet labelSizeOpt()}{@render numberOpt('opt-label', t('ui.font_word'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', null, (next) => set('labelSizePt', next))}{/snippet}
+
+{#snippet titleSizeOpt()}{@render numberOpt('opt-title-size', t('ui.font_title'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', null, (next) => set('titleSizePt', next))}{/snippet}
+
+{#snippet textColourOpt()}{@render colorOpt('opt-text-colour', t('ui.text_colour'), s.settings.textColour, (next) => set('textColour', next))}{/snippet}
 
 {#snippet colourOpt()}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/snippet}
 

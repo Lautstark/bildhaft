@@ -1700,3 +1700,45 @@ footer.footer {
 .talk__sayings { cursor: auto; }
 .talk__page .song__plus { cursor: pointer; }
 .talk__more { display: flex; justify-content: center; }
+
+/* The look bar over a wall drawn as it prints: one line of buttons, each a
+   setting, a colour shown as a dot and picked from the palette under it. */
+.look-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.look-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; min-height: 30px; box-sizing: border-box;
+  font: inherit; font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: 99px; background: var(--surface);
+}
+.look-chip--on { border-color: var(--accent); }
+.look-chip input[type="checkbox"] { margin: 0; accent-color: var(--accent); }
+.look-chip__check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.look-chip__more { font: inherit; font-size: 11px; padding: 0 2px; border: 0; background: none; color: var(--text-dim); cursor: pointer; }
+.look-chip .segmented--small button { padding: 1px 8px; font-size: 12px; }
+.look-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0, 0, 0, .25); }
+.look-dot--none { background: transparent; background-image: linear-gradient(135deg, transparent 45%, var(--text-dim) 45%, var(--text-dim) 55%, transparent 55%); border-color: var(--line); }
+.look-pick { position: relative; display: inline-flex; }
+.look-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-2, var(--surface));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
+.look-pop--form { display: flex; flex-direction: column; gap: 8px; font-size: 13px; white-space: nowrap; }
+.look-pop--form label { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.look-pop--form input[type="number"] { width: 64px; }
+
+/* Wortkarten in Bearbeiten, drawn as they print: on the page's colour, each
+   card with its background, frame and corners, the word above or below. The
+   frame's millimetres are drawn at about what they are on a card this size. */
+.words--look { background: var(--paper); padding: 14px; border-radius: var(--radius-md); }
+.words--look .word { aspect-ratio: var(--card-ratio, auto); background: var(--card-bg); border: var(--card-border, 1px dashed rgba(0, 0, 0, .18)); border-radius: var(--card-radius); color: #222; }
+.words--look .word__pic { background: transparent; }
+.words--shaped .word__pic { flex: 1 1 0; min-height: 0; aspect-ratio: auto; }
+.words--look .word__name { font-size: var(--label-size); text-align: center; }
+.words--label-above .word { flex-direction: column-reverse; justify-content: flex-end; }
+/* Not printed, but still the card's name: faint rather than gone, so a card
+   still asking for its picture says which word it is. */
+.words--label-off .word__name { opacity: .3; }
+.words--look .word--add { background: transparent; border: 1px dashed rgba(0, 0, 0, .25); color: #777; }
+.look-dot-btn { display: inline-grid; place-items: center; padding: 2px; border: 0; background: none; cursor: pointer; border-radius: 50%; }
+.look-dot-btn:hover .look-dot, .look-dot-btn[aria-expanded="true"] .look-dot { outline: 2px solid var(--accent); outline-offset: 1px; }
+.words--look .word__name { color: var(--text-colour, #222); }

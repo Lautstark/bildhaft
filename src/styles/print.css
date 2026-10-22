@@ -26,7 +26,7 @@
   padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
   box-sizing: border-box;
   background: #fff;
-  color: #000;
+  color: var(--text-colour, #000);
   font-family: var(--font);
   /* Symbols are the product. Never let the browser drop their colour. */
   print-color-adjust: exact;

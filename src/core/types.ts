@@ -755,6 +755,12 @@ export interface PrintSettings {
   cardBorderMm: number;
   cardBorderColor: string;
   cardRadiusMm: number;
+  /**
+   * The colour of everything written on the paper but the title: the word on
+   * each card, a strip's sentence, a Lied's lines. The title has its own
+   * (`titleColour`), and the two are picked apart.
+   */
+  textColour: string;
   /** A CSS colour behind the symbol, or null for the paper. */
   cardBackground: string | null;
   /**
@@ -846,6 +852,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   cardBorderMm: 0,
   cardBorderColor: '#333333',
   cardRadiusMm: 2,
+  textColour: '#000000',
   cardBackground: null,
   pageColour: null,
   showCopyright: false,

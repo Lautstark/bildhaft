@@ -92,6 +92,13 @@ export interface Template {
   /** What it always prints with, whatever was set: worked out from the rest, so it follows it. */
   fixed?(settings: PrintSettings, board: Grid | null): Partial<PrintSettings>;
   offers(settings: PrintSettings): PrintOffer;
+  /**
+   * The look is set in Bearbeiten, where the material is drawn as it prints:
+   * the word, the frames, the card's background and the page's colour. They
+   * describe the material, not the paper, so they stand beside it rather
+   * than in the print column. Template by template, as each is drawn so.
+   */
+  lookInEdit?: true;
 }
 
 /** The columns and rows of a Tafel, which its print is measured from. */
@@ -150,6 +157,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      template's setting arriving in this one. */
   wortkarten: {
     cards: true,
+    lookInEdit: true,
     fixed: () => ({ layout: 'sheet' }),
     offers: () => ({ ...BASE, size: { kind: 'cards' }, margin: 'cut', cutLines: true }),
   },

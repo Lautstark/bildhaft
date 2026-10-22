@@ -405,8 +405,41 @@ test('the template decides strips or cards, and each offers only its own', async
 
   await cardSheet(page);
   await expect(settings.getByRole('button', { name: 'Satzstreifen' })).toHaveCount(0);
-  await expect(page.getByLabel('Rahmen um jede Karte')).toHaveCount(1);
   await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(0);
+});
+
+/*
+ * Wortkarten set their look in Bearbeiten, where the wall is drawn as it
+ * prints: the frame and background set there are on the wall's cards at once,
+ * and on the sheet in Drucken — which no longer asks for them.
+ */
+test('Wortkarten set their look in Bearbeiten, and print it', async ({ page }) => {
+  await cardSheet(page);
+  await expect(page.getByLabel('Rahmen um jede Karte')).toHaveCount(0);
+  await expect(page.getByLabel('Hintergrundfarbe')).toHaveCount(0);
+  await expect(page.getByLabel('Farbe des Titels')).toHaveCount(0);
+
+  await showMaterial(page);
+  const bar = page.getByRole('group', { name: 'Gestaltung' });
+  await bar.getByLabel('Rahmen', { exact: true }).check();
+  await bar.getByRole('button', { name: 'Hintergrund', exact: true }).click();
+  await bar.getByRole('button', { name: 'Hintergrund Gelb' }).click();
+  await bar.getByRole('button', { name: 'Rahmenfarbe' }).click();
+  await bar.getByRole('button', { name: 'Rahmenfarbe Blau' }).click();
+  await bar.getByRole('button', { name: 'Text', exact: true }).click();
+  await bar.getByRole('button', { name: 'Text Rot' }).click();
+  const card = page.locator('.words--look .word').first();
+  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe('rgb(63, 136, 224)');
+  await expect(card.locator('.word__name')).toHaveCSS('color', 'rgb(221, 74, 68)');
+  await expect.poll(() => card.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 241, 179)');
+  await untilKept(page, 'cardBorderColor', '#3f88e0');
+
+  /* In Drucken: the same frame, and the word's points under „Schrift". */
+  await showSheet(page);
+  await expect(page.locator('.preview-frame .ps-card__frame').first()).toBeVisible();
+  await expect(page.locator('.preview-frame .ps-card__label').first()).toHaveCSS('color', 'rgb(221, 74, 68)');
+  await expect(page.locator('.print-view__panel .opt-group')).toContainText(['Schrift']);
+  await expect(page.getByRole('spinbutton', { name: 'Wort' })).toHaveValue('11');
 });
 
 test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {
@@ -638,8 +671,11 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
   await page.getByLabel('Titel drucken').check();
-  await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
-  await page.getByLabel('Linie darunter').check();
+  await page.getByRole('spinbutton', { name: 'Titel', exact: true }).fill('30');
+  // The line is the title's look, set in Bearbeiten with the Wortkarten' others.
+  await showMaterial(page);
+  await page.getByLabel('Titellinie').check();
+  await showSheet(page);
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
