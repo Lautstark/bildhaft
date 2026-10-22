@@ -683,7 +683,7 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
   await page.getByLabel('Farbe des Titels').fill('#aa0000');
   await page.getByLabel('Farbe', { exact: true }).fill('#118834');
   await expect(title).toHaveCSS('color', 'rgb(170, 0, 0)');
-  await page.getByRole('button', { name: 'Aus', exact: true }).click();
+  await page.getByLabel('Titel drucken').uncheck();
   await expect(title).toHaveCount(0);
 });
 
@@ -774,12 +774,12 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
   expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
     .toBe('rgb(255, 255, 255)');
 
-  await page.getByRole('button', { name: 'Aus', exact: true }).click();
+  await page.getByLabel('Titel drucken').uncheck();
   await expect(sheet.locator('.ps-title')).toHaveCount(0);
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
 
   // Taken out again in the picker, the name prints alone.
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
   await page.getByRole('button', { name: 'Bild zum Titel ändern' }).click();
   await page.getByRole('button', { name: 'Feld entfernen' }).click();
@@ -810,8 +810,8 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   // A Tafel prints no name until asked; the picture comes and goes with it.
   // One sheet, so it is asked whether, not where.
   await showSheet(page);
+  await page.getByLabel('Titel drucken').check();
   await expect(page.getByRole('button', { name: 'Jede Seite', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'An', exact: true }).click();
   await showMaterial(page);
   const size = page.locator('.board-head__size');
   const plain = await size.innerText();

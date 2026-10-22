@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
-   * What a material can be asked about its paper, in three groups and one
-   * order for every template: Papier, Größe, Titel, Gestaltung, Seite.
+   * What a material can be asked about its paper, in one order for every
+   * template: Papier, Größe, Gestaltung, a group named after the template for
+   * what only it has, and the Fußzeile last.
    *
    * Which controls a material has is its template's to say (`offers` in
    * app/templates.ts); where they stand and how they look is said here, once,
@@ -46,30 +47,43 @@
    * asked a second time, so a heading can never stand over nothing, nor an
    * option without its heading.
    */
-  type Group = 'paper' | 'size' | 'title' | 'look' | 'page';
-  /* The groups in their order, each with its heading. */
-  const GROUPS: Record<Group, string> = {
-    paper: 'ui.group_paper', size: 'ui.group_size', title: 'ui.group_title', look: 'ui.group_look', page: 'ui.group_page',
+  type Group = 'paper' | 'size' | 'look' | 'own' | 'foot';
+  /* The groups in their order, each with its heading: the base, then what
+     only this template has under its name, and the foot of the page last. */
+  const GROUPS: Record<Group, () => string> = {
+    paper: () => t('ui.group_paper'), size: () => t('ui.group_size'), look: () => t('ui.group_look'),
+    own: () => t(`ui.template_${s.options.kind}`), foot: () => t('ui.group_foot'),
   };
-  interface Option { group: Group; shown: () => boolean; draw: Snippet }
+  /* A setting that is on or off. */
+  type Switch = { [K in keyof PrintSettings]: PrintSettings[K] extends boolean ? K : never }[keyof PrintSettings];
+  /* An option is drawn by its own snippet, or — when it is one check — named
+     by its setting and its label and drawn by `toggleOpt`. */
+  type Option = { group: Group; shown: () => boolean } & ({ draw: Snippet } | { toggle: Switch; label: string });
   const OPTIONS: Option[] = [
     { group: 'paper', shown: () => Boolean(offer.paper), draw: paperOpt },
     { group: 'size', shown: () => cards, draw: cardsOpt },
     { group: 'size', shown: () => size?.kind === 'symbol', draw: symbolOpt },
     { group: 'size', shown: () => size?.kind === 'board', draw: boardOpt },
     { group: 'size', shown: () => Boolean(offer.margin), draw: marginOpt },
-    { group: 'size', shown: () => offer.label === 'size', draw: labelSizeOpt },
-    { group: 'title', shown: () => Boolean(offer.title), draw: titleOpt },
-    { group: 'look', shown: () => Boolean(offer.colour), draw: colourOpt },
-    { group: 'look', shown: () => Boolean(offer.page), draw: pageColourOpt },
-    { group: 'look', shown: () => Boolean(offer.cart), draw: cartOpt },
-    { group: 'look', shown: () => offer.label === 'full' || Boolean(offer.sentence), draw: textsOpt },
+    { group: 'look', shown: () => Boolean(offer.title), draw: titleOpt },
+    { group: 'look', shown: () => Boolean(offer.label), draw: labelOpt },
     { group: 'look', shown: () => Boolean(offer.frames), draw: framesOpt },
-    { group: 'page', shown: () => Boolean(offer.cutLines || offer.onePerPage || offer.songChecks || offer.guide || offer.pageNumbers), draw: checksOpt },
-    { group: 'page', shown: () => s.options.provider === 'metacom', draw: copyrightOpt },
+    { group: 'look', shown: () => Boolean(offer.background), draw: backgroundOpt },
+    { group: 'look', shown: () => Boolean(offer.page), draw: pageColourOpt },
+    { group: 'foot', shown: () => Boolean(offer.pageNumbers), toggle: 'showPageNumbers', label: 'ui.page_numbers' },
+    { group: 'foot', shown: () => s.options.provider === 'metacom', draw: copyrightOpt },
+    { group: 'own', shown: () => Boolean(offer.colour), draw: colourOpt },
+    { group: 'own', shown: () => Boolean(offer.sentence), draw: sentenceOpt },
+    { group: 'own', shown: () => Boolean(offer.stripFrame), toggle: 'stripFrame', label: 'ui.frame_strip' },
+    { group: 'own', shown: () => Boolean(offer.onePerPage), toggle: 'onePerPage', label: 'ui.one_per_page' },
+    { group: 'own', shown: () => Boolean(offer.cutLines), toggle: 'showCutLines', label: 'ui.cut_lines' },
+    { group: 'own', shown: () => Boolean(offer.freeFields), toggle: 'markFreeFields', label: 'ui.free_fields_dashed' },
+    { group: 'own', shown: () => Boolean(offer.songChecks), draw: songChecksOpt },
+    { group: 'own', shown: () => Boolean(offer.cart), draw: cartOpt },
+    { group: 'own', shown: () => Boolean(offer.guide), toggle: 'showGuide', label: 'ui.shop_guide_print' },
   ];
   let groups = $derived((Object.keys(GROUPS) as Group[])
-    .map((group) => ({ heading: GROUPS[group], options: OPTIONS.filter((one) => one.group === group && one.shown()) }))
+    .map((group) => ({ heading: GROUPS[group](), options: OPTIONS.filter((one) => one.group === group && one.shown()) }))
     .filter((one) => one.options.length > 0));
 
   const set = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => s.set(key, value);
@@ -138,66 +152,53 @@
   material: a symbol in a strip, a card to be cut and laminated, a card in its
   field. Against a symbol size they are added around the card, against a card
   size they are taken out of it — so the note says which, where the number is.
--->{@render numberOpt('opt-cut', t('ui.margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', offer.margin === 'strip' ? t('ui.margin_strip_note') : offer.margin === 'air' ? t('ui.margin_air_note') : exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/snippet}
-
-{#snippet labelSizeOpt()}<!--
-  A Rezept's words always print, so how big they are is all it is asked, and
-  that is a size. Where they can be left off, how big sits under whether.
--->{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/snippet}
+-->{@render numberOpt('opt-cut', t('ui.margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', offer.margin === 'strip' ? t('ui.margin_strip_note') : offer.margin === 'air' ? t('ui.margin_air_note') : offer.margin === 'symbol' ? t('ui.margin_symbol_note') : exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/snippet}
 
 {#snippet titleOpt()}<!--
-  Whether the title prints and where, and nothing about what it says: that
-  is written in Bearbeiten. Where only makes sense with more than one page to
-  choose from, so a Tafel and an Einkaufsliste are asked whether, not where.
---><div class="opt">{@render segmented(offer.title === 'pages' ? [
-  { label: t('ui.title_off'), active: !s.settings.showCollectionTitle, onPick: () => set('showCollectionTitle', false) },
-  { label: t('ui.title_first'), active: s.settings.showCollectionTitle && !s.settings.titleEvery, onPick: () => { set('showCollectionTitle', true); set('titleEvery', false); } },
-  { label: t('ui.title_every'), active: s.settings.showCollectionTitle && s.settings.titleEvery, onPick: () => { set('showCollectionTitle', true); set('titleEvery', true); } },
-] : [
-  { label: t('ui.title_off'), active: !s.settings.showCollectionTitle, onPick: () => set('showCollectionTitle', false) },
-  { label: t('ui.title_on'), active: s.settings.showCollectionTitle, onPick: () => set('showCollectionTitle', true) },
-], '')}</div><!--
-  Once it prints: how big, which colour, and a line under it — in one line
-  under the choice, as the label's where and how big are.
--->{#if s.settings.showCollectionTitle}<div class="opt__sub">{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}{/snippet}
+  Whether the title prints, as the label is asked; once it does, where — only
+  with more than one page to choose from, so not on a Tafel or an
+  Einkaufsliste — then how big, which colour, and a line under it. Nothing
+  about what it says: that is written in Bearbeiten.
+--><div class="opt">{@render check(t('ui.title_print'), s.settings.showCollectionTitle, (next) => set('showCollectionTitle', next))}{#if s.settings.showCollectionTitle}<div class="opt__sub">{#if offer.title === 'pages'}{@render segmented([
+  { label: t('ui.title_first'), active: !s.settings.titleEvery, onPick: () => set('titleEvery', false) },
+  { label: t('ui.title_every'), active: s.settings.titleEvery, onPick: () => set('titleEvery', true) },
+], '')}{/if}{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}</div>{/snippet}
 
 {#snippet colourOpt()}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/snippet}
 
 {#snippet pageColourOpt()}<!--
-  A Tafel's colour behind its whole page: whether, then which, as a card's
+  A colour behind the whole page: whether, then which, as a card's
   background is asked.
 --><div class="opt">{@render check(t('ui.page_colour'), s.settings.pageColour !== null, (next) => set('pageColour', next ? (s.settings.layout === 'einkaufsliste' ? SHOP_PAGE : DEFAULT_PAGE_COLOUR) : null))}{#if s.settings.pageColour !== null}{@render colorOpt('opt-page', t('ui.colour'), s.settings.pageColour, (next) => set('pageColour', next))}{/if}</div>{/snippet}
 
 {#snippet cartOpt()}{@render colorOpt('opt-cart', t('ui.cart_colour'), s.settings.cartColour ?? CART_GREY, (next) => set('cartColour', next))}{/snippet}
 
-{#snippet textsOpt()}<!--
-  The two texts a material can print, built alike and one under the other: the
-  label on each card and the sentence over its row. Whether, then — once it
-  prints — where and how big, in one line under the check.
---><div class="opt">{#if offer.label === 'full'}{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}<div class="opt__sub">{@render segmented([
+{#snippet labelOpt()}<!--
+  The word on each card, and the sentence over a row (sentenceOpt), are built
+  alike: whether, then — once it prints — where and how big, in one line
+  under the check.
+--><div class="opt">{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}<div class="opt__sub">{@render segmented([
   { label: t('ui.label_above'), active: s.settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
   { label: t('ui.label_below'), active: s.settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
-], '')}{@render numberField('opt-label', t('ui.label_size'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => set('labelSizePt', next))}</div>{/if}{/if}{#if offer.sentence}{@render check(t('ui.print_sentence'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{#if s.settings.showSentenceText}<div class="opt__sub">{@render segmented([
+], '')}{@render numberField('opt-label', t('ui.label_size'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => set('labelSizePt', next))}</div>{/if}</div>{/snippet}
+
+{#snippet sentenceOpt()}<div class="opt">{@render check(t('ui.print_sentence'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{#if s.settings.showSentenceText}<div class="opt__sub">{@render segmented([
   { label: t('ui.label_above'), active: s.settings.sentencePosition === 'above', onPick: () => set('sentencePosition', 'above') },
   { label: t('ui.label_below'), active: s.settings.sentencePosition === 'below', onPick: () => set('sentencePosition', 'below') },
-], '')}{@render numberField('opt-sentence', t('ui.sentence_size'), s.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => set('sentenceSizePt', next))}</div>{/if}{/if}</div>{/snippet}
+], '')}{@render numberField('opt-sentence', t('ui.sentence_size'), s.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => set('sentenceSizePt', next))}</div>{/if}</div>{/snippet}
 
 {#snippet framesOpt()}<div class="opt">{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
-  A frame around the whole sentence is a strip's alone: a card sheet has no
-  sentence to frame and a Tafel is one sheet already.
--->{#if offer.stripFrame}{@render check(t('ui.frame_strip'), s.settings.stripFrame, (next) => set('stripFrame', next))}{/if}<!--
   Corners and colour belong to whichever frame is switched on — both are drawn
   with the same pen. Thickness is the card frame's alone: the strip takes its
   own from that number when there is one, and a line thin enough to cut along
   when there is not.
--->{#if framed}<div class="opt--pair">{#if s.settings.cardBorderMm > 0}{@render numberOpt('opt-border', t('ui.thickness'), s.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null, (next) => set('cardBorderMm', next))}{/if}{@render numberOpt('opt-radius', t('ui.corners'), s.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null, (next) => set('cardRadiusMm', next))}{@render colorOpt('opt-border-color', t('ui.colour'), s.settings.cardBorderColor, (next) => set('cardBorderColor', next))}</div>{/if}<!--
-  A Tafel's free fields, after the card frame and its pen because it is the
-  same question asked of the places without a card: a line, or none.
--->{#if offer.freeFields}{@render check(t('ui.free_fields_dashed'), s.settings.markFreeFields, (next) => set('markFreeFields', next))}{/if}{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}</div>{/snippet}
+-->{#if framed}<div class="opt--pair">{#if s.settings.cardBorderMm > 0}{@render numberOpt('opt-border', t('ui.thickness'), s.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null, (next) => set('cardBorderMm', next))}{/if}{@render numberOpt('opt-radius', t('ui.corners'), s.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null, (next) => set('cardRadiusMm', next))}{@render colorOpt('opt-border-color', t('ui.colour'), s.settings.cardBorderColor, (next) => set('cardBorderColor', next))}</div>{/if}</div>{/snippet}
 
-{#snippet checksOpt()}<div class="opt"><!--
-  The checks, in one place and one order. Cut lines where something is cut.
--->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.guide}{@render check(t('ui.shop_guide_print'), s.settings.showGuide, (next) => set('showGuide', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/snippet}
+{#snippet backgroundOpt()}<div class="opt">{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}</div>{/snippet}
+
+{#snippet toggleOpt(key: Switch, label: string)}<div class="opt">{@render check(t(label), s.settings[key], (next) => set(key, next))}</div>{/snippet}
+
+{#snippet songChecksOpt()}<div class="opt">{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}</div>{/snippet}
 
 {#snippet copyrightOpt()}<!--
   METACOM only. ARASAAC's attribution is a licence condition and prints whether
@@ -205,4 +206,4 @@
   something bildhaft will not do.
 --><div class="opt">{@render check(t('ui.print_copyright'), s.settings.showCopyright, (next) => set('showCopyright', next))}<span class="small faint">{t('ui.copyright_note', { notice: METACOM_COPYRIGHT })}</span></div>{/snippet}
 
-<div class="print-options">{#each groups as { heading, options } (heading)}{@render group(t(heading))}{#each options as option, i (i)}{@render option.draw()}{/each}{/each}</div>
+<div class="print-options">{#each groups as { heading, options } (heading)}{@render group(heading)}{#each options as option, i (i)}{#if 'toggle' in option}{@render toggleOpt(option.toggle, option.label)}{:else}{@render option.draw()}{/if}{/each}{/each}</div>

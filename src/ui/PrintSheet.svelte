@@ -20,7 +20,7 @@
   import PrintCard from './PrintCard.svelte';
   import PrintPicture from './PrintPicture.svelte';
   import {
-    BILDHAFT_URL, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING, SHOPPING_SCALE,
+    BILDHAFT_URL, bleeds, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING, SHOPPING_SCALE,
     TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, titlePictureMm, type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
@@ -33,18 +33,16 @@
   } = $props();
 
   let page = $derived(printableArea(settings.paper, settings.orientation));
-  /* A Tafel's colour behind its page. Only a Tafel's: the setting cannot be
-     reached from any other template, and must not arrive in one either. */
-  let pageColour = $derived(blocks.some((block) => block.kind === 'tafel') ? settings.pageColour : null);
-  /* An Einkaufsliste's, behind its board's page and no other: the cards and
-     their places are cut and stored, not hung up. */
+  /* The colour behind every page — but an Einkaufsliste's, which is behind
+     its board's page and no other: its cards and their places are cut and
+     stored, not hung up. */
+  let pageColour = $derived(settings.layout === 'einkaufsliste' ? null : settings.pageColour);
   const boardColour = (held: Block[]): string | null =>
     held.some((block) => block.kind === 'shopping-board') ? settings.pageColour : null;
-  /* With either, the paper has no margin of its own and every page carries it
-     inside — a white page beside a coloured one too, or it would print to the
-     edge. printDialog asks the same question of @page. */
-  let bleed = $derived(settings.pageColour !== null
-    && blocks.some((block) => block.kind === 'tafel' || block.kind === 'shopping-board'));
+  /* With a colour, the paper has no margin of its own and every page carries
+     it inside — a white page beside a coloured one too, or it would print to
+     the edge. printDialog asks the same question of @page. */
+  let bleed = $derived(bleeds(settings));
 
   /* A sentence's own words, over its row or under it — a strip and a song line alike. */
   const captionAt = (where: 'above' | 'below'): boolean =>

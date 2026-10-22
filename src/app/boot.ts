@@ -5,7 +5,7 @@ import { ablage, adopted, moveWortschatz, restoreFolder, watchFolder } from '../
 import { offerRescue } from '../ui/rescue.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
 import { openNamed, refreshCollections, setActive } from './collections.ts';
-import { movePrintOntoMaterials } from './print.ts';
+import { bringPrintUpToDate } from './print.ts';
 import { notify } from './notify.ts';
 import { standing } from './standing.ts';
 import { s } from './state.svelte.ts';
@@ -43,7 +43,7 @@ export function boot(say: (message: string) => void): void {
     const wanted = all.find((c) => c.id === loaded.lastCollectionId) ?? all[0]!;
 
     s.settings = loaded;
-    all = await movePrintOntoMaterials(all);
+    all = await bringPrintUpToDate(all);
     // Before anything resolves a symbol: the preference orders search results,
     // so a slot filled in ahead of it would be filled from the wrong rendering.
     metacom.preferRendering(loaded.metacomRendering);

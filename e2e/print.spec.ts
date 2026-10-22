@@ -470,7 +470,7 @@ test('the collection name can head the sheet', async ({ page }) => {
   await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
 
   await openLook(page);
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await page.getByLabel('Titel drucken').check();
   await expect(page.locator('.preview-frame .ps-title')).toHaveText('Morgenkreis');
   await backToPrint(page);
   await expect(page.locator('#print-root .ps-title')).toHaveText('Morgenkreis');
@@ -480,6 +480,18 @@ test('the collection name can head the sheet', async ({ page }) => {
   await page.getByLabel('Ein Satz pro Seite').check();
   await expect(page.locator('#print-root .ps-sentence--page')).toHaveCount(1);
   await expect(page.locator('#print-root .ps-title')).toHaveCount(1);
+});
+
+/*
+ * Every template draws one base in one order — Papier, Größe, Gestaltung —
+ * then a group named after it for what only it has, and the Fußzeile last. A colour
+ * behind the page is part of the base, a Satzstreifen's too.
+ */
+test('the print menu is one base in one order, then what only the template has', async ({ page }) => {
+  await expect(page.locator('.print-options .opt-group'))
+    .toHaveText(['Papier', 'Größe', 'Gestaltung', 'Satzstreifen', 'Fußzeile']);
+  await page.getByLabel('Seitenfarbe').check();
+  await expect(page.locator('#print-root .ps-page--coloured').first()).toBeAttached();
 });
 
 /*
@@ -514,14 +526,15 @@ test('the household\'s print settings move onto the Sammlungen that used them, o
       const req = settings.get('app');
       req.onsuccess = () => resolve(req.result);
     });
-    delete app.printOnMaterial;
+    delete app.printVersion;
     settings.put({ ...app, print: { ...(app.print as object), symbolSizeMm: 55 } }, 'app');
     const collections = tx.objectStore('collections');
     const all = await new Promise<Record<string, unknown>[]>((resolve) => {
       const req = collections.getAll();
       req.onsuccess = () => resolve(req.result);
     });
-    for (const one of all) { delete one.print; collections.put(one); }
+    // A colour the household had for a Tafel, sitting unseen in this one's print.
+    for (const one of all) { one.print = { pageColour: '#a9cbec' }; collections.put(one); }
     await new Promise((resolve) => { tx.oncomplete = resolve; });
     db.close();
   });
@@ -529,6 +542,8 @@ test('the household\'s print settings move onto the Sammlungen that used them, o
   await untilKept(page, 'symbolSizeMm', 55);
   await showSheet(page);
   await expect(page.getByLabel('Symbolgröße')).toHaveValue('55');
+  await expect(page.getByLabel('Seitenfarbe')).not.toBeChecked();
+  await expect(page.locator('#print-root .ps-page--coloured')).toHaveCount(0);
 });
 
 /*
@@ -539,7 +554,7 @@ test('the household\'s print settings move onto the Sammlungen that used them, o
 test('the title is written in Bearbeiten and prints over the first or every page', async ({ page }) => {
   await page.getByLabel('Name des Materials', { exact: true }).fill('Morgenkreis – Gruppe Igel');
   await page.getByLabel('Ein Satz pro Seite').check();
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await page.getByLabel('Titel drucken').check();
   const titles = page.locator('#print-root .ps-title');
   await expect(titles).toHaveText(['Morgenkreis – Gruppe Igel']);
 
@@ -557,16 +572,17 @@ test('the title is written in Bearbeiten and prints over the first or every page
   // Over every page: two sentences, a page each, a title on both.
   await page.getByRole('button', { name: 'Jede Seite', exact: true }).click();
   await expect(titles).toHaveText(['Morgenkreis', 'Morgenkreis']);
-  await page.getByRole('button', { name: 'Aus', exact: true }).click();
+  await page.getByLabel('Titel drucken').uncheck();
   await expect(titles).toHaveCount(0);
 
-  // Back to the name, and with it whatever the name becomes.
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  // Switched on again it is where it was — over every page — as a label keeps
+  // above or below. And back to the name, with whatever the name becomes.
+  await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
   await page.getByRole('button', { name: 'wieder wie der Name' }).click();
   await page.getByLabel('Name des Materials', { exact: true }).fill('Abschlusskreis');
   await showSheet(page);
-  await expect(titles).toHaveText(['Abschlusskreis']);
+  await expect(titles).toHaveText(['Abschlusskreis', 'Abschlusskreis']);
 });
 
 /*
@@ -584,7 +600,7 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
   await expect(page.locator('.collection-head')).toContainText('2 Zeilen');
 
   await showSheet(page);
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await page.getByLabel('Titel drucken').check();
   await expect(page.locator('.preview-frame .ps-title .ps-title__pic img')).toBeVisible();
   await expect(page.locator('#print-root .ps-sentence')).toHaveCount(2);
 });
@@ -596,7 +612,7 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
   await cardSheet(page);
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await page.getByLabel('Titel drucken').check();
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the first page is full and reaches the paper's edge.
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
@@ -621,7 +637,7 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
   await cardSheet(page);
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
-  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await page.getByLabel('Titel drucken').check();
   await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
   await page.getByLabel('Linie darunter').check();
   await page.getByRole('button', { name: 'Raster' }).click();

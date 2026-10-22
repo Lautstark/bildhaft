@@ -66,7 +66,13 @@ export function framePadMm(settings: PrintSettings): number {
 const PAGE_STYLE_ID = 'print-page-setup';
 
 /**
- * `bleed`: a Tafel, or an Einkaufsliste's board, on a colour of its own. The paper then has no margin of its
+ * Whether the pages carry a colour to the paper's edge: whenever one is set
+ * behind them. The sheet and the page rule ask this one question.
+ */
+export const bleeds = (settings: Pick<PrintSettings, 'pageColour'>): boolean => settings.pageColour !== null;
+
+/**
+ * `bleed`: pages on a colour of their own (`bleeds`). The paper then has no margin of its
  * own and the page box carries it inside, on the colour, so the colour reaches
  * the paper's edge — as far as the printer can print, which is its business.
  */

@@ -884,10 +884,12 @@ export interface AppSettings {
   /**
    * Of the print settings only `showCopyright` is still the household's;
    * everything else is each Sammlung's own (`Collection.print`). The rest is
-   * read once more, by `movePrintOntoMaterials`, and then no longer.
+   * read once more, by `bringPrintUpToDate`, and then no longer.
    */
   print: PrintSettings;
-  /** Set once the household's print settings were written onto the Sammlungen that used them. */
+  /** How many of the steps in `PRINT_STEPS` (app/print.ts) have run in this browser. */
+  printVersion?: number;
+  /** What `printVersion: 1` was called the day it was written. Read, never written. */
   printOnMaterial?: boolean;
   lastCollectionId: string | null;
   /** Collapsed by default; the choice is remembered. */

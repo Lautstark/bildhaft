@@ -65,31 +65,52 @@ function printBase(): PrintSettings {
 }
 
 /**
- * Once: what Satzstreifen, Wortkarten and Tafeln printed with when their
- * settings were the household's, written onto each of them — exactly what
- * each printed with, a Tafel's own air included — so that nothing changes on
- * paper the day their settings became their own. After this a new Sammlung
- * starts from its template, never from the one printed last.
+ * The steps that brought what a Sammlung keeps of its print to where it is
+ * now, each run once, in order: `printVersion` in the settings says how many
+ * have run in this browser. Each takes what the Sammlung kept and hands back
+ * what it keeps now, so that nothing changes on paper.
  */
-export async function movePrintOntoMaterials(collections: Collection[]): Promise<Collection[]> {
-  if (!s.settings || s.settings.printOnMaterial) return collections;
-  const household = s.settings.print;
-  const moved = await Promise.all(collections.map(async (collection) => {
-    const which = kindOf(collection);
-    if (!SHARED_BEFORE.includes(which)) return collection;
+type PrintStep = (which: CollectionKind, own: Partial<PrintSettings>, collection: Collection, household: PrintSettings)
+  => Partial<PrintSettings>;
+const PRINT_STEPS: PrintStep[] = [
+  /* 2026-10-22: Satzstreifen, Wortkarten and Tafeln printed with the
+     household's settings. Each keeps exactly what it printed with, a Tafel's
+     own air included; after this a new Sammlung starts from its template,
+     never from the one printed last. */
+  (which, own, collection, household) => {
+    if (!['satzstreifen', 'wortkarten', 'tafel'].includes(which)) return own;
     const board = which === 'tafel' ? boardOf(collection) : null;
-    const own = collection.print ?? {};
-    const print = ownPrint(which, printFor({ ...household, ...own }, which, board, own), board);
-    if (JSON.stringify(print) === JSON.stringify(own)) return collection;
+    return ownPrint(which, printFor({ ...household, ...own }, which, board, own), board);
+  },
+  /* 2026-10-22: a colour behind the page drew on a Tafel and an
+     Einkaufsliste only, and the household's could sit unseen in any other
+     Sammlung's print. Every template draws it now, so where it never showed
+     it goes. */
+  (which, own) => {
+    if (which === 'tafel' || which === 'einkaufsliste' || !('pageColour' in own)) return own;
+    const { pageColour: _unseen, ...rest } = own;
+    return rest;
+  },
+];
+
+/** The steps not yet run in this browser, over every Sammlung. */
+export async function bringPrintUpToDate(collections: Collection[]): Promise<Collection[]> {
+  if (!s.settings) return collections;
+  const done = s.settings.printVersion ?? (s.settings.printOnMaterial ? 1 : 0);
+  if (done >= PRINT_STEPS.length) return collections;
+  const household = s.settings.print;
+  const brought = await Promise.all(collections.map(async (collection) => {
+    const which = kindOf(collection);
+    const before = collection.print ?? {};
+    const print = PRINT_STEPS.slice(done).reduce((own, step) => step(which, own, collection, household), before);
+    if (JSON.stringify(print) === JSON.stringify(before)) return collection;
     await patchCollection(collection.id, { print });
     return { ...collection, print };
   }));
-  persistSettings({ ...s.settings, printOnMaterial: true });
-  return moved;
+  const { printOnMaterial: _old, ...settings } = s.settings;
+  persistSettings({ ...settings, printVersion: PRINT_STEPS.length });
+  return brought;
 }
-
-/* The templates whose print settings were the household's until 2026-10-22. */
-const SHARED_BEFORE: CollectionKind[] = ['satzstreifen', 'wortkarten', 'tafel'];
 
 /** „2026-10-19 A5 hoch": what a saved PDF is called — its day, its paper. */
 export function pdfStem(at: Date, print: Pick<PrintSettings, 'paper' | 'orientation'>): string {

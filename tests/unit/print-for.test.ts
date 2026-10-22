@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ownPrint, printFor } from '../../src/app/print.ts';
+import { TEMPLATES } from '../../src/app/templates.ts';
 import { DEFAULT_PRINT_SETTINGS } from '../../src/core/types.ts';
 import { boardOf, defaultAirMm } from '../../src/core/board.ts';
 import { printableArea } from '../../src/ui/printSheet.ts';
@@ -132,5 +133,22 @@ describe('what a Sammlung keeps of its print', () => {
     expect(printFor(DEFAULT_PRINT_SETTINGS, 'rezept', null, own)).toMatchObject({
       layout: 'rezept', showCollectionTitle: true, paper: 'a4', orientation: 'portrait',
     });
+  });
+});
+
+/**
+ * One base for every template, left out only where the paper decides: an
+ * Einkaufsliste lies on its side with its millimetres from its paper, a
+ * Plauderbuch is a book of fields.
+ */
+describe('what the print view offers', () => {
+  it('offers every template but those two the same base', () => {
+    for (const which of ['satzstreifen', 'wortkarten', 'tafel', 'rezept', 'lied'] as const) {
+      expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS), which).toMatchObject({
+        paper: true, label: true, frames: true, background: true, page: true, pageNumbers: true,
+      });
+      expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS).margin, which).toBeTruthy();
+      expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS).title, which).toBeTruthy();
+    }
   });
 });

@@ -5,17 +5,20 @@ import { printableArea, SHOPPING_SCALE } from '../ui/printSheet.ts';
 /**
  * What the print dialog offers a material — which controls, never where.
  *
- * The dialog draws them in one order for every template: colour, paper, size,
- * margin, label, frames, then the checks. A template says which of them it
- * has and nothing about how they look, so the same control is in the same
- * place under the same name wherever it appears, and a new template is a new
- * entry here rather than a new set of conditions threaded through the dialog.
+ * Every template has the same base (`BASE`) — the paper, the margin, the
+ * title, the label, frames, a background on the cards and a colour behind the
+ * page, page numbers — and the print view draws it in one order for all of
+ * them: Papier, Größe, Gestaltung, then a group named after the template for
+ * what only it has, and the Fußzeile last. A template says what it has and nothing
+ * about how it looks, so the same control is in the same place under the same
+ * name wherever it appears.
  *
- * Absent means not offered — not greyed out, not there: a control that cannot
- * mean anything for this material is not shown.
+ * Absent means not offered — not greyed out, not there. Left out only where
+ * the paper decides: an Einkaufsliste lies on its side and takes its
+ * millimetres from its paper, a Plauderbuch is a book of fields.
  */
 export interface PrintOffer {
-  /** The material's own colour: a Rezept's headings, a Lied's refrain ground. */
+  /** The material's own colour: a Rezept's headings, a Lied's refrain ground. Its own group. */
   colour?: boolean;
   /** `true`: size and which way up; `size`: the size only, for a material that lies one way. */
   paper?: boolean | 'size';
@@ -30,12 +33,15 @@ export interface PrintOffer {
   /**
    * The margin round each symbol, always called „Rand", and the note under it
    * saying what it is for here: round a symbol in a strip, round a card to be
-   * cut and laminated, round a card in its field on a Tafel.
+   * cut and laminated, round a card in its field on a Tafel, round a symbol
+   * on a sheet that is not cut apart.
    */
-  margin?: 'strip' | 'cut' | 'air';
-  /** `full`: whether, where and how big; `size`: how big only, the words always printing. */
-  label?: 'full' | 'size';
+  margin?: 'strip' | 'cut' | 'air' | 'symbol';
+  /** The word on each card: whether, where and how big. */
+  label?: boolean;
   frames?: boolean;
+  /** A colour behind each card. */
+  background?: boolean;
   /** A frame around a whole strip, as well as around each card. */
   stripFrame?: boolean;
   cutLines?: boolean;
@@ -51,7 +57,7 @@ export interface PrintOffer {
    * its own places. What it says is written in Bearbeiten, never here.
    */
   title?: 'pages' | 'once';
-  /** The colour of the whole page, behind everything on it: a Tafel's. */
+  /** A colour behind the whole page. An Einkaufsliste's is behind its board's page only. */
   page?: boolean;
   /** „Seite 1 von 3" at the foot of each page. */
   pageNumbers?: boolean;
@@ -110,9 +116,9 @@ export function settle(which: CollectionKind, settings: PrintSettings, board: Gr
   return fixed ? { ...settings, ...fixed } : settings;
 }
 
-const CARD_SHEET: PrintOffer = {
-  paper: true, size: { kind: 'cards' }, margin: 'cut', label: 'full', frames: true, cutLines: true, title: 'pages',
-  pageNumbers: true,
+/* What every template offers, unless the paper decides otherwise. */
+const BASE: PrintOffer = {
+  paper: true, title: 'pages', label: true, frames: true, background: true, page: true, pageNumbers: true,
 };
 
 /* An Einkaufsliste's own colours until it is given others: a light green page,
@@ -134,8 +140,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     cards: false,
     fixed: () => ({ layout: 'strip' }),
     offers: () => ({
-      paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
-      margin: 'strip', label: 'full', frames: true, stripFrame: true, sentence: true, onePerPage: true, title: 'pages', pageNumbers: true,
+      ...BASE, size: { kind: 'symbol', max: 120, fallback: 40, note: null }, margin: 'strip',
+      sentence: true, stripFrame: true, onePerPage: true,
     }),
   },
 
@@ -145,7 +151,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   wortkarten: {
     cards: true,
     fixed: () => ({ layout: 'sheet' }),
-    offers: () => CARD_SHEET,
+    offers: () => ({ ...BASE, size: { kind: 'cards' }, margin: 'cut', cutLines: true }),
   },
 
   /* Prints as the grid it is. Its columns and rows are the Sammlung's, not
@@ -170,10 +176,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       const grid = board ?? boardOf({});
       return { layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows, titleEvery: false };
     },
-    offers: () => ({
-      paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, freeFields: true,
-      title: 'once', pageNumbers: true, page: true,
-    }),
+    offers: () => ({ ...BASE, size: { kind: 'board' }, margin: 'air', title: 'once', freeFields: true }),
   },
 
   /* Brings its own millimetres. Fifteen zones beside fifteen more on one
@@ -202,7 +205,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         cardBorderMm: 0, cardBackground: null, showCutLines: true, titleEvery: false,
       };
     },
-    offers: () => ({ paper: 'size', page: true, cart: true, title: 'once', guide: true }),
+    offers: () => ({ paper: 'size', title: 'once', page: true, pageNumbers: true, cart: true, guide: true }),
   },
 
   /* Opens on one A4 page standing up, its name at the top, cards small
@@ -213,14 +216,13 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   rezept: {
     cards: false,
     defaults: () => ({
-      paper: 'a4', orientation: 'portrait', symbolSizeMm: 20, labelSizePt: 9, ...HEADED, showPageNumbers: false,
+      paper: 'a4', orientation: 'portrait', symbolSizeMm: 20, cutMarginMm: 1.5,
+      showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
+      ...HEADED, showPageNumbers: false,
     }),
-    fixed: () => ({
-      layout: 'rezept', cutMarginMm: 1.5, showLabel: true, labelPosition: 'below', cardBorderMm: 0, cardBackground: null,
-    }),
+    fixed: () => ({ layout: 'rezept' }),
     offers: () => ({
-      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null, cut: false }, label: 'size',
-      title: 'pages', pageNumbers: true,
+      ...BASE, size: { kind: 'symbol', max: 60, fallback: 20, note: null, cut: false }, margin: 'symbol', colour: true,
     }),
   },
 
@@ -235,15 +237,15 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   lied: {
     cards: false,
     defaults: () => ({
-      paper: 'a4', orientation: 'portrait', symbolSizeMm: 16,
+      paper: 'a4', orientation: 'portrait', symbolSizeMm: 16, cutMarginMm: 1,
       showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
       ...HEADED, showSentenceText: false, sentencePosition: 'above', sentenceSizePt: 10,
       showPageNumbers: false, songRefrainOnce: false, accentColour: '#2c66c8',
     }),
-    fixed: () => ({ layout: 'lied', cutMarginMm: 1 }),
+    fixed: () => ({ layout: 'lied' }),
     offers: () => ({
-      colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false },
-      label: 'full', frames: true, sentence: true, songChecks: true, title: 'pages', pageNumbers: true,
+      ...BASE, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false }, margin: 'symbol',
+      colour: true, sentence: true, songChecks: true,
     }),
   },
 
