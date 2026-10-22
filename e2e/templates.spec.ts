@@ -1175,3 +1175,30 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await expect(page.locator('.talk__page')).toHaveCount(1);
   await expect.poll(async () => (await readSentences(page)).map((row) => row.rawInput)).not.toContain('fertig');
 });
+
+/*
+ * Wortkarten are typed as a list: a comma, a semicolon or a new line makes
+ * the next card, a space does not. The box says what Enter will make before
+ * it is pressed, stands under the head in „Bearbeiten" and nowhere in
+ * „Drucken", and the title is the heading under it.
+ */
+test('Wortkarten take a list, and say which cards it makes before Enter', async ({ page }) => {
+  await pickTemplate(page, /^Wortkarten/);
+  const box = page.getByLabel('Wörter hinzufügen');
+  await box.fill('Apfel, Guten Morgen; 1,5 l Milch');
+  await expect(page.locator('.composer__chip')).toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch']);
+  await expect(page.locator('.composer__count')).toHaveText('3 Karten');
+  await box.press('Enter');
+  await expect(page.locator('.words .word:not(.word--add) .word__name'))
+    .toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch'], { useInnerText: true });
+
+  // Head, box, title, cards — in that order on the page.
+  const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
+  expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
+  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  expect(await top('.title-line')).toBeLessThan(await top('.words'));
+
+  await showSheet(page);
+  await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.title-line')).toHaveCount(0);
+});

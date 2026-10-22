@@ -123,13 +123,22 @@ export async function handleSubmit(): Promise<void> {
  * `made` hears of every row as it is written, with the line it came from: a
  * Lied has to know which row each line became, to put it where it is sung.
  */
+/**
+ * The cards a typed text makes: one a line, and a line cut again at each
+ * comma or semicolon — „Apfel, Banane, Kiwi" is three cards. Not at a space,
+ * because a card is often more than one word („Guten Morgen", „rote
+ * Paprika"), and not at a comma between digits, which is „1,5 l Milch".
+ */
+export const splitWords = (raw: string): string[] =>
+  splitLines(raw.trim()).flatMap((line) => line.split(/;|,(?!\d)/)).map((word) => word.trim()).filter(Boolean);
+
 export async function addLines(
   raw: string, part?: LinePart, made?: (line: string, sentence: Sentence) => void,
 ): Promise<string> {
   const collectionId = s.activeId;
   if (!raw.trim() || !s.settings || !collectionId || s.busy) return raw;
 
-  const lines = splitLines(raw.trim());
+  const lines = !part && holdsWords() ? splitWords(raw) : splitLines(raw.trim());
   if (lines.length === 0) return '';
 
   s.busy = true;

@@ -255,6 +255,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
  * it: the caption says whose answer it is naming, which is what makes one
  * „Ändern" leading to two different places honest.
  */
+.composer__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 0 6px; }
+.composer__chip { padding: 2px 10px; border-radius: var(--radius-pill); background: var(--surface-2); font-size: 13px; color: var(--text); }
 .composer__count { padding: 1px 8px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
 .composer__provider { display: inline-flex; align-items: center; gap: 6px; }
 .composer__provider b { font-weight: 600; color: var(--text-dim); }

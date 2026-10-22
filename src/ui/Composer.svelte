@@ -14,7 +14,7 @@
    */
   import TypingBox from './TypingBox.svelte';
   import { activeCollection, followsDefault, holdsWords, provider, providerReady, s } from '../app/state.svelte.ts';
-  import { handleReuse, handleSubmit, scheduleReuseLookup } from '../app/composing.ts';
+  import { handleReuse, handleSubmit, scheduleReuseLookup, splitWords } from '../app/composing.ts';
   import { splitLines } from '@lautstark/bildquelle/german';
   import { t } from '../i18n/index.ts';
 
@@ -39,12 +39,13 @@
    */
   let own = $derived(Boolean(activeCollection()) && !followsDefault());
 
-  /* How many strips Enter will make, said once there is more than one: a
-     pasted text is where the count is not obvious from looking at the box. */
-  let strips = $derived(words ? 0 : splitLines(s.draft.trim()).length);
+  /* What Enter will make, said once it is more than one: a pasted text is
+     where that is not obvious from looking at the box. Cards are shown one by
+     one as well, because where a comma cuts is the thing to check. */
+  let coming = $derived(words ? splitWords(s.draft) : splitLines(s.draft.trim()));
 </script>
 
-{#snippet meta()}<span>{#if strips > 1}<span class="composer__count">{t('ui.strips_count', { n: strips })}</span> {/if}{@html t(words ? 'ui.add_words_hint' : 'ui.composer_hint')}</span><!--
+{#snippet meta()}<span>{#if coming.length > 1}<span class="composer__count">{t(words ? 'ui.cards_count' : 'ui.strips_count', { n: coming.length })}</span> {/if}{@html t(words ? 'ui.add_cards_hint' : 'ui.composer_hint')}</span><!--
   A statement, not a control. It carried an „Ändern" button until 2026-08-29
   that led to this Sammlung's sheet or to the settings card depending on where
   the next sentence would land, and the caption beside it was what made that
@@ -52,12 +53,12 @@
   the settings card.
 --><span class="composer__provider"><span>{own ? t('ui.symbols_of_collection') : t('ui.symbols_default')}</span><b style="font-weight:600">{provider().name}{ready ? '' : ` (${t('ui.not_ready')})`}</b></span>{/snippet}
 
-{#snippet after()}{#if s.reuse}<div class="composer__reuse"><span style="flex:1">{t('ui.already_translated')}</span><button class="btn sm" type="button" onclick={() => void handleReuse()}>{t('ui.reuse')}</button></div>{/if}{/snippet}
+{#snippet after()}{#if words && coming.length > 1}<div class="composer__chips">{#each coming as word, i (i)}<span class="composer__chip">{word}</span>{/each}</div>{/if}{#if s.reuse}<div class="composer__reuse"><span style="flex:1">{t('ui.already_translated')}</span><button class="btn sm" type="button" onclick={() => void handleReuse()}>{t('ui.reuse')}</button></div>{/if}{/snippet}
 
 <TypingBox
   value={s.draft}
   busy={s.busy}
-  placeholder={t(words ? 'ui.add_words_placeholder' : 'ui.composer_placeholder')}
+  placeholder={t(words ? 'ui.add_cards_placeholder' : 'ui.composer_placeholder')}
   label={t(words ? 'ui.add_words_label' : 'ui.composer_label')}
   action={t('ui.translate')}
   {meta}
