@@ -15,6 +15,7 @@
   import TypingBox from './TypingBox.svelte';
   import { activeCollection, followsDefault, holdsWords, provider, providerReady, s } from '../app/state.svelte.ts';
   import { handleReuse, handleSubmit, scheduleReuseLookup } from '../app/composing.ts';
+  import { splitLines } from '@lautstark/bildquelle/german';
   import { t } from '../i18n/index.ts';
 
   /* The same box says two things, because it does two things: a sentence is
@@ -37,9 +38,13 @@
    * "which source is this" without anybody pressing anything.
    */
   let own = $derived(Boolean(activeCollection()) && !followsDefault());
+
+  /* How many strips Enter will make, said once there is more than one: a
+     pasted text is where the count is not obvious from looking at the box. */
+  let strips = $derived(words ? 0 : splitLines(s.draft.trim()).length);
 </script>
 
-{#snippet meta()}<span>{@html t(words ? 'ui.add_words_hint' : 'ui.composer_hint')}</span><!--
+{#snippet meta()}<span>{#if strips > 1}<span class="composer__count">{t('ui.strips_count', { n: strips })}</span> {/if}{@html t(words ? 'ui.add_words_hint' : 'ui.composer_hint')}</span><!--
   A statement, not a control. It carried an „Ändern" button until 2026-08-29
   that led to this Sammlung's sheet or to the settings card depending on where
   the next sentence would land, and the caption beside it was what made that

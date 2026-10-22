@@ -69,7 +69,7 @@
   });
 
   /* The whole view as high as the window leaves room for under the head —
-     the box to type into stands above it in this view too. The middle then
+     and, in the templates that still have it there, the box above it. The middle then
      holds the sheet whole, its frame's own observer scaling the page into
      it, and the two sides scroll on their own. */
   let view: HTMLElement | undefined = $state();

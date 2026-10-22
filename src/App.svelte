@@ -63,6 +63,9 @@
     ? s.wortschatz.tag ?? t('ui.all_words')
     : activeCollection()?.name ?? 'bildhaft');
 
+  /** „Drucken" is shown only once there is something to print. */
+  let printing = $derived(s.view === 'print' && s.sentences.length > 0);
+
   $effect(() => useToast(toast));
 
   /* Read here rather than where the store is made, and read before the first
@@ -125,7 +128,13 @@
   While a new Material still waits for its template there is neither: the
   choice is the whole page, and a name with „0 Zeilen" above it would only be
   something to read before it.
--->{#if s.choosing === s.activeId}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.view === 'print' && s.sentences.length > 0}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+
+  A Satzstreifen has its head first and the box under it, in „Bearbeiten"
+  only: the box is part of what the switch swaps, so „Drucken" has none and
+  the head still stands where it stood. Under the head because that is where
+  the next strip appears — the rows are newest first. The other templates
+  follow one by one (2026-10-22).
+-->{#if s.choosing === s.activeId}{:else if kind() === 'satzstreifen'}<CollectionHead />{#if !printing}<Composer />{/if}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

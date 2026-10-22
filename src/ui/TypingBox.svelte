@@ -88,9 +88,12 @@
   });
 
   /* Focused on load: typing is the entire interaction. Skipped on touch devices,
-     where it would immediately open the on-screen keyboard and shrink the viewport. */
+     where it would immediately open the on-screen keyboard and shrink the viewport.
+     Nor taken from a field that already has it: a Satzstreifen's box comes after
+     its head, whose name field a new Material focuses first. */
   $effect(() => {
-    if (focusOnMount && !window.matchMedia('(hover: none)').matches) input.focus();
+    const busy = document.activeElement?.matches('input, textarea, [contenteditable="true"]');
+    if (focusOnMount && !busy && !window.matchMedia('(hover: none)').matches) input.focus();
   });
 
   const keydown = (event: KeyboardEvent) => {
