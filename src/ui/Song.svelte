@@ -12,8 +12,9 @@
    * page stays the length of the song rather than five times the refrain.
    * Opened, it is the same rows again, not a copy.
    *
-   * The song is typed and changed here, part by part: a line at the foot of
-   * each part, always there, „+ Strophe" and „+ Refrain" between any two
+   * The song is typed and changed here, part by part: „+ Zeile" at the foot
+   * of each part, the same line a Rezept's „+ Schritt" opens (LineAdd),
+   * „+ Strophe" and „+ Refrain" between any two
    * parts and at the end, the bin to take a part out where it stands — asked
    * first, as every bin is — and „✎ Text" to write one part again as text.
    * An empty Lied is one large field for the whole song, pasted or typed,
@@ -23,6 +24,7 @@
   import { sungParts, timesSung, type SungPart } from '../core/song.ts';
   import Row from './Row.svelte';
   import TypingBox from './TypingBox.svelte';
+  import LineAdd from './LineAdd.svelte';
   import Icon from '../pieces/Icon.svelte';
   import { confirmDialog } from './dialog.ts';
   import { addLinesToPart, addRefrain, addStrophe, addToSong, partText, removePlace, rewritePart } from '../app/song.ts';
@@ -53,37 +55,28 @@
      another Sammlung closes it. */
   type Typing = { into: 'new'; kind: SongPartKind; at: number };
   let typing = $state<Typing | null>(null);
-  /* What is typed at each part's foot, by part, and into an empty Lied. */
-  let lines = $state<Record<string, string>>({});
+  /* The part whose „+ Zeile" is open, and what is typed into an empty Lied. */
+  let adding = $state<string | null>(null);
   let whole = $state('');
   /* The part being written again as text, and that text. */
   let editing = $state<string | null>(null);
   let text = $state('');
   let before = $state('');
 
-  $effect(() => { void s.activeId; typing = null; editing = null; unfolded = []; lines = {}; whole = ''; });
+  $effect(() => { void s.activeId; typing = null; editing = null; unfolded = []; adding = null; whole = ''; });
 
   const label = (at: { kind: SongPartKind; n: number }): string =>
     (at.kind === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: at.n }));
 
   function startTyping(into: Typing): void {
     editing = null;
+    adding = null;
     typing = into;
     text = '';
     before = '';
   }
 
   const send = inTurn();
-  function sendLine(id: string): void {
-    const raw = lines[id] ?? '';
-    if (!raw.trim()) return;
-    lines[id] = '';
-    send(async () => {
-      const left = await addLinesToPart(id, raw);
-      if (left) lines[id] = lines[id] ? `${left}\n${lines[id]}` : left;
-    });
-  }
-
   /* The whole song into an empty Lied: its parts read, its Refrain found. */
   function sendWhole(): void {
     const raw = whole;
@@ -112,6 +105,7 @@
 
   function startEditing(id: string): void {
     typing = null;
+    adding = null;
     editing = id;
     before = partText(id);
     text = before;
@@ -177,13 +171,11 @@
   function focused(node: HTMLElement): void { node.focus(); }
 </script>
 
-{#snippet adding(id: string, name: string)}<div class="part-type"><TypingBox value={lines[id] ?? ''} busy={false} placeholder={t('ui.song_line_in', { part: name })} label={t('ui.song_line_in', { part: name })} action={t('ui.song_add')} meta={keysHint} onChange={(value) => { lines[id] = value; }} onSubmit={() => sendLine(id)} /></div>{/snippet}
-
-{#snippet keysHint()}<span>{@html t('ui.composer_hint')}</span>{/snippet}
+{#snippet lineAdd(id: string, name: string)}<LineAdd open={adding === id} plus={t('ui.song_add_line')} label={t('ui.song_line_in', { part: name })} placeholder={t('ui.song_line_in', { part: name })} onOpen={() => { typing = null; editing = null; adding = id; }} onClose={() => { adding = null; }} onSend={(raw) => addLinesToPart(id, raw)} />{/snippet}
 
 {#snippet pasteHint()}<span>{@html t('ui.composer_hint')} · {t('ui.song_paste_hint')}</span>{/snippet}
 
-{#snippet part(at: SungPart, place: number)}{@const name = label(at)}<section class="song__part{at.kind === 'refrain' ? ' song__part--refrain' : ''}" aria-label={name}><div class="song__head"><h3>{name}</h3>{#if at.first && editing !== at.part.id}<button class="song__tool" type="button" aria-label={t('ui.song_edit_part', { part: name })} onclick={() => startEditing(at.part.id)}>{t('ui.song_edit')}</button>{/if}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.song_delete_part', { part: name })} aria-label={t('ui.song_delete_part', { part: name })} onclick={() => void take(at, place)}><Icon name="trash" /></button></span></div>{#if editing === at.part.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.song_edit_part', { part: name })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span class="small faint">{change || (at.kind === 'refrain' && times.size > 0 ? t('ui.song_refrain_everywhere') : '')}</span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}<div class="song__lines">{#if at.kind === 'refrain' && !at.first && !unfolded.includes(place)}<button class="song__folded" type="button" onclick={() => { unfolded = [...unfolded, place]; }}>{t('ui.song_folded', { n: at.part.lines.length })}</button>{:else}{#each at.part.lines as id, k (k)}{@const sentence = byId.get(id)}{#if sentence}<Row {sentence} {provider} sung={times.get(id) ?? 1} />{/if}{/each}{#if at.first}{@render adding(at.part.id, name)}{/if}{/if}</div>{/if}</section>{/snippet}
+{#snippet part(at: SungPart, place: number)}{@const name = label(at)}<section class="song__part{at.kind === 'refrain' ? ' song__part--refrain' : ''}" aria-label={name}><div class="song__head"><h3>{name}</h3>{#if at.first && editing !== at.part.id}<button class="song__tool" type="button" aria-label={t('ui.song_edit_part', { part: name })} onclick={() => startEditing(at.part.id)}>{t('ui.song_edit')}</button>{/if}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.song_delete_part', { part: name })} aria-label={t('ui.song_delete_part', { part: name })} onclick={() => void take(at, place)}><Icon name="trash" /></button></span></div>{#if editing === at.part.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.song_edit_part', { part: name })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span class="small faint">{change || (at.kind === 'refrain' && times.size > 0 ? t('ui.song_refrain_everywhere') : '')}</span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}<div class="song__lines">{#if at.kind === 'refrain' && !at.first && !unfolded.includes(place)}<button class="song__folded" type="button" onclick={() => { unfolded = [...unfolded, place]; }}>{t('ui.song_folded', { n: at.part.lines.length })}</button>{:else}{#each at.part.lines as id, k (k)}{@const sentence = byId.get(id)}{#if sentence}<Row {sentence} {provider} sung={times.get(id) ?? 1} />{/if}{/each}{#if at.first}{@render lineAdd(at.part.id, name)}{/if}{/if}</div>{/if}</section>{/snippet}
 
 {#snippet waiting(kind: SongPartKind, at: number)}{@const name = kind === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: stropheAt(at) })}<section class="song__part{kind === 'refrain' ? ' song__part--refrain' : ''}" aria-label={name}><div class="song__head"><h3>{name}</h3></div><div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.song_edit_part', { part: name })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={newKeys}></textarea><div class="song__edit-acts"><span></span><button class="btn sm" type="button" onclick={() => { typing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy || !text.trim()} onclick={() => void finishNew()}>{t('ui.done')}</button></div></div></section>{/snippet}
 

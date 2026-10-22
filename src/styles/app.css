@@ -1450,9 +1450,9 @@ footer.footer {
 .recipe__none { margin: 0; }
 /* The composer's box, smaller: it is one of three on the page, and the big
    type is for the one box a Satzstreifen has. */
-.recipe__type .composer, .part-type .composer { margin: 0; }
-.recipe__type .composer__box, .part-type .composer__box { padding: 8px 8px 8px 14px; box-shadow: none; }
-.recipe__type .composer__input, .part-type .composer__input { min-height: 26px; font-size: 16px; }
+.recipe__type .composer { margin: 0; }
+.recipe__type .composer__box { padding: 8px 8px 8px 14px; box-shadow: none; }
+.recipe__type .composer__input { min-height: 26px; font-size: 16px; }
 .recipe__type .composer__meta { display: none; }
 .row__step {
   flex: none;
@@ -1495,8 +1495,9 @@ footer.footer {
 .song__plus:hover { color: var(--text); border-color: var(--text-dim); }
 .song__plus--part { padding: 6px 16px; font-size: 14px; }
 .song__more { display: flex; gap: 8px; flex-wrap: wrap; }
-.song__add { display: flex; gap: 8px; align-items: center; }
-.song__line-input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 7px 11px; border: 1.5px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); outline: none; }
+/* LineAdd: a line typed in where it will stand — the same everywhere. */
+.line-add { display: flex; gap: 8px; align-items: center; }
+.line-add__input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 7px 11px; border: 1.5px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); outline: none; }
 .song__edit { display: grid; gap: 8px; padding: 8px; border-radius: var(--radius); outline: 2px solid var(--accent); background: var(--surface-2); }
 .song__text { width: 100%; font: inherit; font-size: 15px; line-height: 1.6; padding: 8px 11px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); resize: vertical; }
 .song__edit-acts { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }

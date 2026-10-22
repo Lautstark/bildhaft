@@ -996,8 +996,9 @@ test('a Lied grows and shrinks part by part', async ({ page }) => {
   await expect.poll(async () => (await readSentences(page)).length).toBe(5);
   const rabId = (await readSentences(page)).find((row) => row.rawInput === rab)!.id;
 
-  // A part's own line adds at its end, and is empty again.
+  // A part's own line, opened by „+ Zeile", adds at its end and is empty again.
   const strophe2 = page.getByRole('region', { name: 'Strophe 2' });
+  await strophe2.getByRole('button', { name: '+ Zeile' }).click();
   const line = page.getByLabel('Neue Zeile in Strophe 2');
   await line.fill('Mein Licht ist hell');
   await line.press('Enter');
