@@ -304,7 +304,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feld: 63 × 136 mm.')).toBeVisible();
+  await expect(page.getByText('Feldgröße: 63 × 136 mm.')).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every

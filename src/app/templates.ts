@@ -27,7 +27,7 @@ export interface PrintOffer {
    * the card readout when there is none); `cards` is the card sheet's choice
    * of symbol, card or grid; `board` is a Tafel's readout, its grid being the
    * Sammlung's own. `cut: false` drops the card readout: a Rezept and a Lied
-   * are not cut apart, so „Karte zum Ausschneiden" named nothing on them.
+   * are not cut apart, so „Kartengröße" named nothing on them.
    */
   size?: { kind: 'symbol'; max: number; fallback: number; note: string | null; cut?: false } | { kind: 'cards' } | { kind: 'board' };
   /**

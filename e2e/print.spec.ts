@@ -53,12 +53,12 @@ test('names the field a ruler will find, not just the symbol', async ({ page }) 
   const card = page.locator('.preview-frame .ps-card').first();
   const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
 
-  await expect(hint).toHaveText('Feld im Streifen: 46 × 52 mm.');
+  await expect(hint).toHaveText('Feldgröße: 46 × 52 mm.');
   expect(mm((await box()).w)).toBeCloseTo(46, 0);
   expect(mm((await box()).h)).toBeCloseTo(52, 0);
 
   await page.getByLabel('Symbolgröße').fill('50');
-  await expect(hint).toHaveText('Feld im Streifen: 56 × 62 mm.');
+  await expect(hint).toHaveText('Feldgröße: 56 × 62 mm.');
 
   // A frame grows the card, so both figures have to grow with it. Checked to
   // the millimetre and no finer, as the readout is: offsetWidth is whole
@@ -67,7 +67,7 @@ test('names the field a ruler will find, not just the symbol', async ({ page }) 
   await openLook(page);
   await page.getByLabel('Rahmen um jede Karte').check();
   await backToPrint(page);
-  await expect(hint).toHaveText('Feld im Streifen: 60 × 65 mm.');
+  await expect(hint).toHaveText('Feldgröße: 60 × 65 mm.');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
   expect(mm((await box()).h)).toBeCloseTo(65.4, 0);
 });
@@ -82,8 +82,8 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
 
-  const hint = page.getByText('Karte zum Ausschneiden:');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 63 × 136 mm.');
+  const hint = page.getByText('Kartengröße:');
+  await expect(hint).toHaveText('Kartengröße: 63 × 136 mm.');
 });
 
 /*
@@ -147,7 +147,7 @@ test('says so when the card does not fit the paper', async ({ page }) => {
   await cardSheet(page);
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
-  await expect(page.getByText(/^Symbol \d/)).toBeVisible();
+  await expect(page.getByText(/^Symbolgröße: \d/)).toBeVisible();
 
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('200');
   await expect(page.getByText('Diese Karte passt nicht auf das Papier.')).toBeVisible();

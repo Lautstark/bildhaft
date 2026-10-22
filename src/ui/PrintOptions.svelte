@@ -137,7 +137,7 @@
   having no size of its own to say it under.
 -->{#if !size}{@render cardSize()}{/if}</div>{/snippet}
 
-{#snippet cardsOpt()}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.size')}</label>{@render segmented([
+{#snippet cardsOpt()}<div class="opt">{@render segmented([
   { label: t('ui.fit_symbol'), active: !gridded && !exact, onPick: () => set('sheetFit', 'size') },
   { label: t('ui.fit_card'), active: exact, onPick: () => set('sheetFit', 'card') },
   { label: t('ui.grid'), active: gridded, onPick: () => set('sheetFit', 'grid') },
