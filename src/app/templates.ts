@@ -70,6 +70,13 @@ export interface PrintOffer {
  * so that the answer for a new template is written once, in one place, and a
  * question nobody remembered to answer for it is a type error rather than a
  * Lied that cannot be printed on A5.
+ *
+ * How it prints is two lists and no code path of its own: what it starts on
+ * (`defaults`, under whatever this Sammlung set for itself) and what it always
+ * is (`fixed`, over everything). `openPrint` puts them together, the same way
+ * for every template, and the print view puts them together again on every
+ * change — so a value that follows from another (an Einkaufsliste's
+ * millimetres from its paper) follows it without a hook of its own.
  */
 export interface Template {
   /** Holds one-word cards: the wall of cards, the tray, the counter that says „Karten". */
@@ -81,19 +88,33 @@ export interface Template {
    * Satzstreifen's symbol size.
    */
   ownPrint: boolean;
-  /**
-   * The settings the print dialog opens on: the household's, under what this
-   * Sammlung set for itself (`print` holds both, merged), under what the
-   * template insists on. `own` is this Sammlung's alone, for a template that
-   * must not take the household's.
-   */
-  opens(print: PrintSettings, own: Partial<PrintSettings>, board: Board | null): PrintSettings;
+  /** What a Sammlung of this template prints with until it sets something else. */
+  defaults?(print: PrintSettings, board: Grid | null): Partial<PrintSettings>;
+  /** What it always prints with, whatever was set: worked out from the rest, so it follows it. */
+  fixed?(settings: PrintSettings, board: Grid | null): Partial<PrintSettings>;
   offers(settings: PrintSettings): PrintOffer;
-  /**
-   * What one setting changed in the dialog does to the others, for a template
-   * where one decides the rest. Absent, a change is only itself.
-   */
-  settles?(settings: PrintSettings): PrintSettings;
+}
+
+/** The columns and rows of a Tafel, which its print is measured from. */
+type Grid = Pick<Board, 'cols' | 'rows'> & { airMm?: number | null };
+
+/**
+ * The settings a Sammlung prints with: `print` (the household's, under this
+ * Sammlung's own), its template's defaults under what the Sammlung set for
+ * itself (`own`), and what the template always is over all of it.
+ */
+export function openPrint(
+  which: CollectionKind, print: PrintSettings, own: Partial<PrintSettings>, board: Grid | null,
+): PrintSettings {
+  const template = TEMPLATES[which];
+  const set = { ...print, ...template.defaults?.(print, board), ...own };
+  return settle(which, set, board);
+}
+
+/** What a template always is, over settings that just changed. */
+export function settle(which: CollectionKind, settings: PrintSettings, board: Grid | null): PrintSettings {
+  const fixed = TEMPLATES[which].fixed?.(settings, board);
+  return fixed ? { ...settings, ...fixed } : settings;
 }
 
 const CARD_SHEET: PrintOffer = {
@@ -106,13 +127,19 @@ const CARD_SHEET: PrintOffer = {
 const SHOP_PAGE = '#d9ebd3';
 const SHOP_GREEN = '#3d7d3a';
 
+/* The title as a Rezept, a Lied and an Einkaufsliste start: printed, 15 pt,
+   with a line under it, over the first page. */
+const HEADED: Partial<PrintSettings> = {
+  showCollectionTitle: true, titleSizePt: 15, titleColour: null, titleLine: true, titleEvery: false,
+};
+
 export const TEMPLATES: Record<CollectionKind, Template> = {
   /* Prints as strips, and only as strips: the template is the choice. Cards
      to cut out are the Wortkarten's, so a remembered card sheet here — from
      when a Satzstreifen could be printed as one — opens as strips again. */
   satzstreifen: {
     cards: false, ownPrint: false,
-    opens: (print) => (print.layout === 'strip' ? print : { ...print, layout: 'strip' }),
+    fixed: () => ({ layout: 'strip' }),
     offers: () => ({
       paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
       margin: 'strip', label: 'full', frames: true, stripFrame: true, sentence: true, onePerPage: true, title: 'pages', pageNumbers: true,
@@ -124,7 +151,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      template's setting arriving in this one. */
   wortkarten: {
     cards: true, ownPrint: false,
-    opens: (print) => (print.layout === 'sheet' ? print : { ...print, layout: 'sheet' }),
+    fixed: () => ({ layout: 'sheet' }),
     offers: () => CARD_SHEET,
   },
 
@@ -136,20 +163,19 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      a crowded A5 gets less than a roomy A4. Its free fields dashed only
      when this Tafel asked: a middle left free for Klett is a fact about one
      board, and the next one's free fields may be air. And a colour behind
-     the whole page, so a household's three boards are told apart by it. */
+     the whole page, so a household's three boards are told apart by it. One
+     sheet, so its title is over that sheet and nowhere else. */
   tafel: {
     cards: true, ownPrint: false,
-    opens: (print, own, board) => {
+    defaults: (print, board) => {
       const grid = board ?? boardOf({});
       const page = printableArea(print.paper, print.orientation);
       const field = Math.min(page.width / grid.cols, page.height / grid.rows);
-      const air = own.cutMarginMm ?? grid.airMm;
-      return {
-        ...print, layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows,
-        cutMarginMm: air ?? defaultAirMm(field),
-        markFreeFields: own.markFreeFields ?? false,
-        titleEvery: false,
-      };
+      return { cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false };
+    },
+    fixed: (_settings, board) => {
+      const grid = board ?? boardOf({});
+      return { layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows, titleEvery: false };
     },
     offers: () => ({
       paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, freeFields: true,
@@ -170,28 +196,20 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
     cards: true, ownPrint: true,
-    opens: (print, own) => {
-      const paper = own.paper ?? 'a4';
-      const k = SHOPPING_SCALE[paper];
+    defaults: () => ({
+      paper: 'a4', ...HEADED, titleColour: SHOP_GREEN,
+      showGuide: true, pageColour: SHOP_PAGE, cartColour: SHOP_GREEN,
+    }),
+    fixed: (settings) => {
+      const k = SHOPPING_SCALE[settings.paper];
       return {
-        ...print, layout: 'einkaufsliste', paper, orientation: 'landscape',
+        layout: 'einkaufsliste', orientation: 'landscape',
         symbolSizeMm: Math.round(20 * k), cutMarginMm: Math.round(3 * k * 2) / 2,
         showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2,
-        cardBorderMm: 0, cardBackground: null, showCutLines: true,
-        showCollectionTitle: own.showCollectionTitle ?? true,
-        titleSizePt: own.titleSizePt ?? 15,
-        titleColour: own.titleColour !== undefined ? own.titleColour : SHOP_GREEN,
-        titleLine: own.titleLine ?? true,
-        titleEvery: false,
-        showGuide: own.showGuide ?? true,
-        pageColour: own.pageColour !== undefined ? own.pageColour : SHOP_PAGE,
-        cartColour: own.cartColour !== undefined ? own.cartColour : SHOP_GREEN,
+        cardBorderMm: 0, cardBackground: null, showCutLines: true, titleEvery: false,
       };
     },
     offers: () => ({ paper: 'size', page: true, cart: true, title: 'once', guide: true }),
-    /* The paper decides the millimetres again; the name over the board is
-       what was just set, and stays. */
-    settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, settings, null),
   },
 
   /* Opens on one A4 page standing up, its name at the top, cards small
@@ -201,17 +219,11 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      needs bigger pictures gets a second page rather than smaller ones. */
   rezept: {
     cards: false, ownPrint: true,
-    opens: (print, own) => ({
-      ...print, layout: 'rezept', paper: own.paper ?? 'a4', orientation: own.orientation ?? 'portrait',
-      symbolSizeMm: own.symbolSizeMm ?? 20, cutMarginMm: 1.5,
-      showLabel: true, labelPosition: 'below', labelSizePt: own.labelSizePt ?? 9,
-      cardBorderMm: 0, cardBackground: null,
-      showCollectionTitle: own.showCollectionTitle ?? true,
-      titleSizePt: own.titleSizePt ?? 15,
-      titleColour: own.titleColour !== undefined ? own.titleColour : null,
-      titleLine: own.titleLine ?? true,
-      titleEvery: own.titleEvery ?? false,
-      showPageNumbers: own.showPageNumbers ?? false,
+    defaults: () => ({
+      paper: 'a4', orientation: 'portrait', symbolSizeMm: 20, labelSizePt: 9, ...HEADED, showPageNumbers: false,
+    }),
+    fixed: () => ({
+      layout: 'rezept', cutMarginMm: 1.5, showLabel: true, labelPosition: 'below', cardBorderMm: 0, cardBackground: null,
     }),
     offers: () => ({
       colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null, cut: false }, label: 'size',
@@ -229,31 +241,13 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      it, or a 40 mm strip's frame would be the next song's. */
   lied: {
     cards: false, ownPrint: true,
-    opens: (print, own) => ({
-      ...print, layout: 'lied',
-      paper: own.paper ?? 'a4',
-      orientation: own.orientation ?? 'portrait',
-      symbolSizeMm: own.symbolSizeMm ?? 16,
-      cutMarginMm: 1,
-      showLabel: own.showLabel ?? true,
-      labelPosition: own.labelPosition ?? 'below',
-      labelSizePt: own.labelSizePt ?? 9,
-      cardBorderMm: own.cardBorderMm ?? 0,
-      cardRadiusMm: own.cardRadiusMm ?? print.cardRadiusMm,
-      cardBorderColor: own.cardBorderColor ?? print.cardBorderColor,
-      cardBackground: own.cardBackground !== undefined ? own.cardBackground : null,
-      showCollectionTitle: own.showCollectionTitle ?? true,
-      titleSizePt: own.titleSizePt ?? 15,
-      titleColour: own.titleColour !== undefined ? own.titleColour : null,
-      titleLine: own.titleLine ?? true,
-      titleEvery: own.titleEvery ?? false,
-      showSentenceText: own.showSentenceText ?? false,
-      sentencePosition: own.sentencePosition ?? 'above',
-      sentenceSizePt: own.sentenceSizePt ?? 10,
-      showPageNumbers: own.showPageNumbers ?? false,
-      songRefrainOnce: own.songRefrainOnce ?? false,
-      accentColour: own.accentColour ?? '#2c66c8',
+    defaults: () => ({
+      paper: 'a4', orientation: 'portrait', symbolSizeMm: 16,
+      showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
+      ...HEADED, showSentenceText: false, sentencePosition: 'above', sentenceSizePt: 10,
+      showPageNumbers: false, songRefrainOnce: false, accentColour: '#2c66c8',
     }),
+    fixed: () => ({ layout: 'lied', cutMarginMm: 1 }),
     offers: () => ({
       colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false },
       label: 'full', frames: true, sentence: true, songChecks: true, title: 'pages', pageNumbers: true,
@@ -269,13 +263,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      numbers as everywhere, off until asked for. */
   plauderbuch: {
     cards: false, ownPrint: true,
-    opens: (print, own) => ({
-      ...print, layout: 'plauderbuch',
-      paper: own.paper ?? 'a5',
-      orientation: own.orientation ?? 'landscape',
-      showCollectionTitle: false,
-      showPageNumbers: own.showPageNumbers ?? false,
-    }),
+    defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false }),
+    fixed: () => ({ layout: 'plauderbuch', showCollectionTitle: false }),
     offers: () => ({ paper: true, pageNumbers: true }),
   },
 };

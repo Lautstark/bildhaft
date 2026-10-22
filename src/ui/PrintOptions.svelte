@@ -39,10 +39,34 @@
   /* The card named in millimetres, which only a card sheet can be asked. */
   let exact = $derived(cards && s.settings.sheetFit === 'card');
   let framed = $derived(s.settings.cardBorderMm > 0 || (Boolean(offer.stripFrame) && s.settings.stripFrame));
-  /* What the page holds besides its material, and how it is split up. The
-     title is a group of its own, first after the size. */
-  let checks = $derived(Boolean(offer.cutLines || offer.onePerPage || offer.songChecks
-    || offer.pageNumbers || offer.guide));
+  /*
+   * The options, in the one order every template draws them in, each with the
+   * group it stands under and when it is there at all. A group's heading is
+   * drawn when something under it is — worked out from this list rather than
+   * asked a second time, so a heading can never stand over nothing, nor an
+   * option without its heading.
+   */
+  type Group = 'paper' | 'size' | 'title' | 'look' | 'page';
+  const GROUPS: Group[] = ['paper', 'size', 'title', 'look', 'page'];
+  interface Option { group: Group; shown: () => boolean; draw: Snippet }
+  const OPTIONS: Option[] = [
+    { group: 'paper', shown: () => Boolean(offer.paper), draw: paperOpt },
+    { group: 'size', shown: () => cards, draw: cardsOpt },
+    { group: 'size', shown: () => size?.kind === 'symbol', draw: symbolOpt },
+    { group: 'size', shown: () => size?.kind === 'board', draw: boardOpt },
+    { group: 'size', shown: () => Boolean(offer.margin), draw: marginOpt },
+    { group: 'size', shown: () => offer.label === 'size', draw: labelSizeOpt },
+    { group: 'title', shown: () => Boolean(offer.title), draw: titleOpt },
+    { group: 'look', shown: () => Boolean(offer.colour), draw: colourOpt },
+    { group: 'look', shown: () => Boolean(offer.page), draw: pageColourOpt },
+    { group: 'look', shown: () => Boolean(offer.cart), draw: cartOpt },
+    { group: 'look', shown: () => offer.label === 'full' || Boolean(offer.sentence), draw: textsOpt },
+    { group: 'look', shown: () => Boolean(offer.frames), draw: framesOpt },
+    { group: 'page', shown: () => Boolean(offer.cutLines || offer.onePerPage || offer.songChecks || offer.guide || offer.pageNumbers), draw: checksOpt },
+    { group: 'page', shown: () => s.options.provider === 'metacom', draw: copyrightOpt },
+  ];
+  let groups = $derived(GROUPS.map((group) => ({ group, options: OPTIONS.filter((one) => one.group === group && one.shown()) }))
+    .filter((one) => one.options.length > 0));
 
   const set = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => s.set(key, value);
 
@@ -83,7 +107,7 @@
 
 {#snippet group(name: string)}<h3 class="opt-group">{name}</h3>{/snippet}
 
-<div class="print-options">{#if offer.paper}{@render group(t('ui.group_paper'))}<div class="opt">{@render segmented([
+{#snippet paperOpt()}<div class="opt">{@render segmented([
   { label: 'A5', active: s.settings.paper === 'a5', onPick: () => set('paper', 'a5') },
   { label: 'A4', active: s.settings.paper === 'a4', onPick: () => set('paper', 'a4') },
   { label: 'A3', active: s.settings.paper === 'a3', onPick: () => set('paper', 'a3') },
@@ -93,24 +117,31 @@
 ], 'margin-top:6px')}{/if}<!--
   A material whose paper decides its size says what that size comes to here,
   having no size of its own to say it under.
--->{#if !size}{@render cardSize()}{/if}</div>{/if}{#if size || offer.margin || offer.label === 'size'}{@render group(t('ui.group_size'))}{/if}<!--
-  How big. Cards: the symbol, the card itself, or a grid. Strips and the
-  materials: the symbol. A Tafel: its grid is its own, so only the readout. The
-  three are one question — which number do you have? — so they sit under one
-  heading that names none of them.
--->{#if cards}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.size')}</label>{@render segmented([
+-->{#if !size}{@render cardSize()}{/if}</div>{/snippet}
+
+{#snippet cardsOpt()}<div class="opt"><!-- svelte-ignore a11y_label_has_associated_control --><label>{t('ui.size')}</label>{@render segmented([
   { label: t('ui.fit_symbol'), active: !gridded && !exact, onPick: () => set('sheetFit', 'size') },
   { label: t('ui.fit_card'), active: exact, onPick: () => set('sheetFit', 'card') },
   { label: t('ui.grid'), active: gridded, onPick: () => set('sheetFit', 'grid') },
-], '')}<span class="small faint">{gridded ? t('ui.grid_note') : exact ? t('ui.card_note') : t('ui.fixed_note')}</span></div>{/if}{#if exact}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-card-w', t('ui.card_width'), s.settings.cardWidthMm, 15, 300, 1, 60, 'mm', null, (next) => set('cardWidthMm', next))}{@render cardHeightOpt()}</div>{@render cardSize()}</div>{/if}{#if gridded}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-cols', t('ui.columns'), s.settings.gridCols, 1, 12, 1, 4, '', null, (next) => set('gridCols', Math.round(next)))}{@render numberOpt('opt-rows', t('ui.rows'), s.settings.gridRows, 1, 12, 1, 3, '', null, (next) => set('gridRows', Math.round(next)))}</div>{@render cardSize()}</div>{/if}{#if cards && !gridded && !exact}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null, (next) => set('symbolSizeMm', next), cardSize)}{/if}{#if size?.kind === 'symbol'}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, size.max, 1, size.fallback, 'mm', size.note ? t(size.note) : null, (next) => set('symbolSizeMm', next), size.cut === false ? undefined : cardSize)}{/if}{#if size?.kind === 'board'}<div class="opt">{@render cardSize()}</div>{/if}<!--
+], '')}<span class="small faint">{gridded ? t('ui.grid_note') : exact ? t('ui.card_note') : t('ui.fixed_note')}</span></div>{#if exact}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-card-w', t('ui.card_width'), s.settings.cardWidthMm, 15, 300, 1, 60, 'mm', null, (next) => set('cardWidthMm', next))}{@render cardHeightOpt()}</div>{@render cardSize()}</div>{/if}{#if gridded}<div class="opt"><div class="opt--pair">{@render numberOpt('opt-cols', t('ui.columns'), s.settings.gridCols, 1, 12, 1, 4, '', null, (next) => set('gridCols', Math.round(next)))}{@render numberOpt('opt-rows', t('ui.rows'), s.settings.gridRows, 1, 12, 1, 3, '', null, (next) => set('gridRows', Math.round(next)))}</div>{@render cardSize()}</div>{/if}{#if !gridded && !exact}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, 120, 1, 40, 'mm', null, (next) => set('symbolSizeMm', next), cardSize)}{/if}{/snippet}
+
+{#snippet symbolOpt()}{#if size?.kind === 'symbol'}{@render numberOpt('opt-size', t('ui.symbol_size'), s.settings.symbolSizeMm, 10, size.max, 1, size.fallback, 'mm', size.note ? t(size.note) : null, (next) => set('symbolSizeMm', next), size.cut === false ? undefined : cardSize)}{/if}{/snippet}
+
+{#snippet boardOpt()}<div class="opt">{@render cardSize()}</div>{/snippet}
+
+{#snippet marginOpt()}<!--
   The same millimetres, always „Rand", and under it what it is round on this
   material: a symbol in a strip, a card to be cut and laminated, a card in its
   field. Against a symbol size they are added around the card, against a card
   size they are taken out of it — so the note says which, where the number is.
--->{#if offer.margin}{@render numberOpt('opt-cut', t('ui.margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', offer.margin === 'strip' ? t('ui.margin_strip_note') : offer.margin === 'air' ? t('ui.margin_air_note') : exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/if}<!--
+-->{@render numberOpt('opt-cut', t('ui.margin'), s.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', offer.margin === 'strip' ? t('ui.margin_strip_note') : offer.margin === 'air' ? t('ui.margin_air_note') : exact ? t('ui.cut_margin_card_note') : t('ui.cut_margin_note'), (next) => set('cutMarginMm', next))}{/snippet}
+
+{#snippet labelSizeOpt()}<!--
   A Rezept's words always print, so how big they are is all it is asked, and
   that is a size. Where they can be left off, how big sits under whether.
--->{#if offer.label === 'size'}{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/if}{#if offer.title}{@render group(t('ui.group_title'))}<!--
+-->{@render numberOpt('opt-label', t('ui.font_size'), s.settings.labelSizePt, 5, 24, 0.5, 9, 'pt', null, (next) => set('labelSizePt', next))}{/snippet}
+
+{#snippet titleOpt()}<!--
   Whether the title prints and where, and nothing about what it says: that
   is written in Bearbeiten. Where only makes sense with more than one page to
   choose from, so a Tafel and an Einkaufsliste are asked whether, not where.
@@ -124,20 +155,30 @@
 ], '')}</div><!--
   Once it prints: how big, which colour, and a line under it — in one line
   under the choice, as the label's where and how big are.
--->{#if s.settings.showCollectionTitle}<div class="opt__sub">{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}{/if}{#if offer.colour || offer.page || offer.cart || offer.label === 'full' || offer.sentence || offer.frames}{@render group(t('ui.group_look'))}{/if}{#if offer.colour}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/if}<!--
+-->{#if s.settings.showCollectionTitle}<div class="opt__sub">{@render numberField('opt-title-size', t('ui.title_size'), s.settings.titleSizePt, 8, 40, 1, 12, 'pt', (next) => set('titleSizePt', next))}<input class="swatch" id="opt-title-colour" type="color" value={titleColour(s.settings)} aria-label={t('ui.title_colour')} oninput={(event) => set('titleColour', event.currentTarget.value)} />{@render check(t('ui.title_line'), s.settings.titleLine, (next) => set('titleLine', next))}</div>{/if}{/snippet}
+
+{#snippet colourOpt()}{@render colorOpt('opt-colour', t('ui.colour'), s.settings.accentColour, (next) => set('accentColour', next))}{/snippet}
+
+{#snippet pageColourOpt()}<!--
   A Tafel's colour behind its whole page: whether, then which, as a card's
   background is asked.
--->{#if offer.page}<div class="opt">{@render check(t('ui.page_colour'), s.settings.pageColour !== null, (next) => set('pageColour', next ? (s.settings.layout === 'einkaufsliste' ? SHOP_PAGE : DEFAULT_PAGE_COLOUR) : null))}{#if s.settings.pageColour !== null}{@render colorOpt('opt-page', t('ui.colour'), s.settings.pageColour, (next) => set('pageColour', next))}{/if}</div>{/if}{#if offer.cart}{@render colorOpt('opt-cart', t('ui.cart_colour'), s.settings.cartColour ?? CART_GREY, (next) => set('cartColour', next))}{/if}<!--
+--><div class="opt">{@render check(t('ui.page_colour'), s.settings.pageColour !== null, (next) => set('pageColour', next ? (s.settings.layout === 'einkaufsliste' ? SHOP_PAGE : DEFAULT_PAGE_COLOUR) : null))}{#if s.settings.pageColour !== null}{@render colorOpt('opt-page', t('ui.colour'), s.settings.pageColour, (next) => set('pageColour', next))}{/if}</div>{/snippet}
+
+{#snippet cartOpt()}{@render colorOpt('opt-cart', t('ui.cart_colour'), s.settings.cartColour ?? CART_GREY, (next) => set('cartColour', next))}{/snippet}
+
+{#snippet textsOpt()}<!--
   The two texts a material can print, built alike and one under the other: the
   label on each card and the sentence over its row. Whether, then — once it
   prints — where and how big, in one line under the check.
--->{#if offer.label === 'full' || offer.sentence}<div class="opt">{#if offer.label === 'full'}{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}<div class="opt__sub">{@render segmented([
+--><div class="opt">{#if offer.label === 'full'}{@render check(t('ui.print_label'), s.settings.showLabel, (next) => set('showLabel', next))}{#if s.settings.showLabel}<div class="opt__sub">{@render segmented([
   { label: t('ui.label_above'), active: s.settings.labelPosition === 'above', onPick: () => set('labelPosition', 'above') },
   { label: t('ui.label_below'), active: s.settings.labelPosition === 'below', onPick: () => set('labelPosition', 'below') },
 ], '')}{@render numberField('opt-label', t('ui.label_size'), s.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => set('labelSizePt', next))}</div>{/if}{/if}{#if offer.sentence}{@render check(t('ui.print_sentence'), s.settings.showSentenceText, (next) => set('showSentenceText', next))}{#if s.settings.showSentenceText}<div class="opt__sub">{@render segmented([
   { label: t('ui.label_above'), active: s.settings.sentencePosition === 'above', onPick: () => set('sentencePosition', 'above') },
   { label: t('ui.label_below'), active: s.settings.sentencePosition === 'below', onPick: () => set('sentencePosition', 'below') },
-], '')}{@render numberField('opt-sentence', t('ui.sentence_size'), s.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => set('sentenceSizePt', next))}</div>{/if}{/if}</div>{/if}{#if offer.frames}<div class="opt">{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
+], '')}{@render numberField('opt-sentence', t('ui.sentence_size'), s.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => set('sentenceSizePt', next))}</div>{/if}{/if}</div>{/snippet}
+
+{#snippet framesOpt()}<div class="opt">{@render check(t('ui.frame_each'), s.settings.cardBorderMm > 0, (next) => set('cardBorderMm', next ? 0.5 : 0))}<!--
   A frame around the whole sentence is a strip's alone: a card sheet has no
   sentence to frame and a Tafel is one sheet already.
 -->{#if offer.stripFrame}{@render check(t('ui.frame_strip'), s.settings.stripFrame, (next) => set('stripFrame', next))}{/if}<!--
@@ -148,10 +189,16 @@
 -->{#if framed}<div class="opt--pair">{#if s.settings.cardBorderMm > 0}{@render numberOpt('opt-border', t('ui.thickness'), s.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', null, (next) => set('cardBorderMm', next))}{/if}{@render numberOpt('opt-radius', t('ui.corners'), s.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', null, (next) => set('cardRadiusMm', next))}{@render colorOpt('opt-border-color', t('ui.colour'), s.settings.cardBorderColor, (next) => set('cardBorderColor', next))}</div>{/if}<!--
   A Tafel's free fields, after the card frame and its pen because it is the
   same question asked of the places without a card: a line, or none.
--->{#if offer.freeFields}{@render check(t('ui.free_fields_dashed'), s.settings.markFreeFields, (next) => set('markFreeFields', next))}{/if}{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}</div>{/if}{#if checks || s.options.provider === 'metacom'}{@render group(t('ui.group_page'))}{/if}{#if checks}<div class="opt"><!--
+-->{#if offer.freeFields}{@render check(t('ui.free_fields_dashed'), s.settings.markFreeFields, (next) => set('markFreeFields', next))}{/if}{@render check(t('ui.background_colour'), s.settings.cardBackground !== null, (next) => set('cardBackground', next ? DEFAULT_CARD_BACKGROUND : null))}{#if s.settings.cardBackground !== null}{@render colorOpt('opt-bg', t('ui.colour'), s.settings.cardBackground, (next) => set('cardBackground', next))}{/if}</div>{/snippet}
+
+{#snippet checksOpt()}<div class="opt"><!--
   The checks, in one place and one order. Cut lines where something is cut.
--->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.guide}{@render check(t('ui.shop_guide_print'), s.settings.showGuide, (next) => set('showGuide', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/if}<!--
+-->{#if offer.cutLines}{@render check(t('ui.cut_lines'), s.settings.showCutLines, (next) => set('showCutLines', next))}{/if}{#if offer.onePerPage}{@render check(t('ui.one_per_page'), s.settings.onePerPage, (next) => set('onePerPage', next))}{/if}{#if offer.songChecks}{@render check(t('ui.song_headings'), s.settings.songHeadings, (next) => set('songHeadings', next))}{@render check(t('ui.song_repeats'), s.settings.songRepeats, (next) => set('songRepeats', next))}{@render check(t('ui.song_refrain_once'), s.settings.songRefrainOnce, (next) => set('songRefrainOnce', next))}{/if}{#if offer.guide}{@render check(t('ui.shop_guide_print'), s.settings.showGuide, (next) => set('showGuide', next))}{/if}{#if offer.pageNumbers}{@render check(t('ui.page_numbers'), s.settings.showPageNumbers, (next) => set('showPageNumbers', next))}{/if}</div>{/snippet}
+
+{#snippet copyrightOpt()}<!--
   METACOM only. ARASAAC's attribution is a licence condition and prints whether
   anyone asks for it or not, so offering to switch it off would be offering
   something bildhaft will not do.
--->{#if s.options.provider === 'metacom'}<div class="opt">{@render check(t('ui.print_copyright'), s.settings.showCopyright, (next) => set('showCopyright', next))}<span class="small faint">{t('ui.copyright_note', { notice: METACOM_COPYRIGHT })}</span></div>{/if}</div>
+--><div class="opt">{@render check(t('ui.print_copyright'), s.settings.showCopyright, (next) => set('showCopyright', next))}<span class="small faint">{t('ui.copyright_note', { notice: METACOM_COPYRIGHT })}</span></div>{/snippet}
+
+<div class="print-options">{#each groups as { group: name, options } (name)}{@render group(t(`ui.group_${name}`))}{#each options as option, i (i)}{@render option.draw()}{/each}{/each}</div>

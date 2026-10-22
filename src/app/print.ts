@@ -11,7 +11,7 @@ import { notify } from './notify.ts';
 import type { PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
-import { TEMPLATES } from './templates.ts';
+import { openPrint, TEMPLATES } from './templates.ts';
 
 /**
  * The print settings a template opens on — its entry in `TEMPLATES` says
@@ -25,7 +25,7 @@ export function printFor(
   print: PrintSettings, which: CollectionKind, board: Board | null,
   own: Partial<PrintSettings> = {},
 ): PrintSettings {
-  return TEMPLATES[which].opens(print, own, board);
+  return openPrint(which, print, own, board);
 }
 
 /** What this Sammlung has set for its printing, written to it — everything but the household's copyright choice. */

@@ -10,7 +10,7 @@ import {
 import { warmSymbols } from './symbols.ts';
 import { previewToPdf } from './pdf.ts';
 import { LOCALE, t } from '../i18n/index.ts';
-import { TEMPLATES } from '../app/templates.ts';
+import { settle } from '../app/templates.ts';
 
 export interface PrintOptions {
   sentences: Sentence[];
@@ -186,7 +186,8 @@ export class Printing {
 
   set<K extends keyof PrintSettings>(key: K, value: PrintSettings[K]): void {
     const next = { ...this.settings, [key]: value };
-    this.settings = TEMPLATES[this.options.kind].settles?.(next) ?? next;
+    /* What the template always is, worked out again from what just changed. */
+    this.settings = settle(this.options.kind, next, this.options.board ?? null);
     this.options.onChange(this.settings);
     this.replan();
   }

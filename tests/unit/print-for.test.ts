@@ -15,13 +15,13 @@ describe('what a template opens the print dialog on', () => {
   const remembered = { ...DEFAULT_PRINT_SETTINGS, layout: 'strip' as const, cutMarginMm: 2 };
 
   it('leaves a Satzstreifen-Sammlung on whatever was chosen', () => {
-    expect(printFor(remembered, 'satzstreifen', null)).toBe(remembered);
+    expect(printFor(remembered, 'satzstreifen', null)).toEqual(remembered);
   });
 
   it('opens Wortkarten on the card sheet, and only moves that', () => {
     expect(printFor(remembered, 'wortkarten', null)).toEqual({ ...remembered, layout: 'sheet' });
     const sheet = { ...remembered, layout: 'sheet' as const };
-    expect(printFor(sheet, 'wortkarten', null)).toBe(sheet);
+    expect(printFor(sheet, 'wortkarten', null)).toEqual(sheet);
   });
 
   describe('a Tafel', () => {
