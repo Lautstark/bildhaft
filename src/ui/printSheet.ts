@@ -329,6 +329,81 @@ export function stripLines(sheet: HTMLElement, settings: PrintSettings): (number
   });
 }
 
+/**
+ * How many of its groups each piece of a Lied's part takes — for the parts too
+ * tall for a page, and null for every other.
+ *
+ * A part is one block, which a page never breaks inside, so a Strophe taller
+ * than a page had nowhere to go: its ground ran past the page's foot and the
+ * lines after it were cut off. Such a part is drawn again in pieces of whole
+ * groups, each with the part's name over it: the first takes what is left of
+ * the page it starts on, the next ones a page each. A part that fits a page
+ * stays whole and moves to the next page, as before.
+ *
+ * What is left of a page is found by packing the blocks before it the way
+ * planPages() will, so the first piece is cut to the room it will be given.
+ * A group is the unit, never a line: a line sung „2×" goes with its bar.
+ */
+export function songPieces(sheet: HTMLElement, settings: PrintSettings): (number[] | null)[] | null {
+  const blocks = [...sheet.children] as HTMLElement[];
+  const credit = blocks.at(-1)?.classList.contains('ps-attribution') ? blocks.pop()! : null;
+  const limit = pageRoom(credit, settings);
+  const heading = blocks.find((block) => block.classList.contains('ps-title'));
+  const headingBox = heading ? outer(heading) : null;
+  const headingH = settings.titleEvery && headingBox ? headingBox.top + headingBox.height + headingBox.bottom : 0;
+  const full = limit - headingH;
+
+  const pieces: (number[] | null)[] = [];
+  let pages = 0;
+  let used = 0;
+  const open = () => { pages += 1; used = pages > 1 ? headingH : 0; };
+  open();
+  for (const block of blocks) {
+    const box = outer(block);
+    const whole = box.top + box.height + box.bottom;
+    const part = block.classList.contains('ps-song-part');
+    if (!part || whole <= full + FIT_TOLERANCE) {
+      if (part) pieces.push(null);
+      if (used > (pages > 1 ? headingH : 0) && used + whole > limit + FIT_TOLERANCE) open();
+      used += whole;
+      continue;
+    }
+    /* The part's name and its ground's padding over every piece, its padding
+       and margin under it: everything in the box that is not a group. */
+    const groups = [...block.querySelectorAll<HTMLElement>(':scope > .ps-song-group')];
+    const first = groups[0]!;
+    const lastOne = groups.at(-1)!;
+    const head = first.offsetTop - block.offsetTop;
+    const tail = block.offsetTop + block.offsetHeight - (lastOne.offsetTop + lastOne.offsetHeight);
+    const frame = box.top + head + tail + box.bottom;
+    const counts: number[] = [];
+    let from = 0;
+    while (from < groups.length) {
+      const top = groups[from]!.offsetTop;
+      let to = from + 1;
+      while (to < groups.length) {
+        const next = groups[to]!;
+        if (used + frame + next.offsetTop + next.offsetHeight - top > limit + FIT_TOLERANCE) break;
+        to += 1;
+      }
+      /* Not even one group in what is left: the piece starts the next page. */
+      const one = groups[from]!;
+      if (to === from + 1 && used > (pages > 1 ? headingH : 0)
+        && used + frame + one.offsetHeight > limit + FIT_TOLERANCE) {
+        open();
+        continue;
+      }
+      counts.push(to - from);
+      const bottom = groups[to - 1]!;
+      used += frame + bottom.offsetTop + bottom.offsetHeight - top;
+      from = to;
+      if (from < groups.length) open();
+    }
+    pieces.push(counts.length > 1 ? counts : null);
+  }
+  return pieces.some(Boolean) ? pieces : null;
+}
+
 /** Sub-pixel slack, so a block that fits exactly is not pushed off the page. */
 const FIT_TOLERANCE = 0.5;
 
@@ -510,7 +585,9 @@ export type Block =
   | { kind: 'store'; slots: Slot[]; last: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
-  | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[] }
+  /* `more`: a piece of a part too tall for a page after its first, named as
+     going on. */
+  | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[]; more: boolean }
   | { kind: 'song-again' }
   | { kind: 'talk-page'; question: Slot | null; text: string; count: number; free: boolean; again: boolean; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
@@ -622,6 +699,7 @@ const chunks = <T,>(all: T[], per: number): T[][] => {
  */
 export function sheetBlocks(
   options: SheetOptions, rows: number[] | null, strips: (number[] | null)[] | null = null,
+  songs: (number[] | null)[] | null = null,
 ): Block[] {
   const { sentences, board, song, talk, settings, provider, attribution, copyright, collectionName } = options;
   const credits = creditLines(attribution, copyright);
@@ -702,21 +780,31 @@ export function sheetBlocks(
     /*
      * A part is one block, so a page breaks between two parts and never
      * inside one: a Strophe split over two sheets is a child turning the page
-     * in the middle of a line of song. With „2×" asked for, lines sung again
-     * straight after themselves are printed once; otherwise every line is its
-     * own group of one, which is the song written out.
+     * in the middle of a line of song. Only a part too tall for any page goes
+     * in pieces, whole groups each — see songPieces(). With „2×" asked for,
+     * lines sung again straight after themselves are printed once; otherwise
+     * every line is its own group of one, which is the song written out.
      */
+    let drawn = 0;
     for (const part of song?.parts ?? []) {
       /* Asked for, a Refrain sung again is a reference to the one above. */
       if (settings.songRefrainOnce && part.kind === 'refrain' && !part.first) {
         blocks.push({ kind: 'song-again' });
         continue;
       }
-      blocks.push({
-        kind: 'song-part', part: part.kind, n: part.n,
-        groups: settings.songRepeats
-          ? foldRepeats(part.lines)
-          : part.lines.map((line) => ({ lines: [line], times: 1 })),
+      const groups = settings.songRepeats
+        ? foldRepeats(part.lines)
+        : part.lines.map((line) => ({ lines: [line], times: 1 }));
+      const counts = songs?.[drawn] ?? [groups.length];
+      drawn += 1;
+      let taken = 0;
+      counts.forEach((count, k) => {
+        const last = k === counts.length - 1;
+        blocks.push({
+          kind: 'song-part', part: part.kind, n: part.n, more: k > 0,
+          groups: last ? groups.slice(taken) : groups.slice(taken, taken + count),
+        });
+        taken += count;
       });
     }
   } else if (settings.layout === 'plauderbuch') {

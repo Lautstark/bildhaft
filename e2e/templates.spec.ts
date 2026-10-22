@@ -1096,6 +1096,41 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await expect(page.getByLabel('Copyright-Hinweis drucken')).toBeChecked();
 });
 
+/*
+ * A part was one block, which a page never breaks inside — so a Strophe taller
+ * than a page had nowhere to go: its ground ran past the page's foot and the
+ * lines after it were cut off. It goes on over the next page in whole lines,
+ * its name over every piece; a part that fits still moves whole.
+ */
+test('a Strophe too tall for one page goes on over the next, in whole lines', async ({ page }) => {
+  await pickTemplate(page, /^Lied/);
+  const lines = Array.from({ length: 16 }, (_, at) => `Zeile ${at + 1} vom Garten`);
+  await page.getByLabel('Liedzeile eingeben').fill(lines.join('\n'));
+  await page.getByRole('button', { name: 'Übersetzen' }).click();
+  await expect(page.locator('.song__head h3')).toHaveText(['Strophe 1']);
+  await showSheet(page);
+  await page.getByLabel('Symbolgröße').fill('30');
+
+  const sheet = page.locator('.preview-frame');
+  await expect.poll(() => sheet.locator('.ps-page').count()).toBeGreaterThan(1);
+  const seen = await sheet.locator('.ps-sheet').evaluate((one: HTMLElement) =>
+    [...one.querySelectorAll<HTMLElement>('.ps-page')].map((pageBox) => {
+      const box = pageBox.getBoundingClientRect();
+      const pad = parseFloat(getComputedStyle(pageBox).paddingBottom) * (box.height / pageBox.offsetHeight);
+      const bottom = Math.max(...[...pageBox.querySelectorAll('.ps-song-part')].map((part) => part.getBoundingClientRect().bottom));
+      return Math.round(bottom - (box.bottom - pad));
+    }));
+  for (const over of seen) expect(over).toBeLessThanOrEqual(1);
+  // Every line on paper once, the Strophe named over each of its pieces.
+  await expect(sheet.locator('.ps-song-line')).toHaveCount(16);
+  const heads = await sheet.locator('.ps-song-head').allTextContents();
+  expect(heads.length).toBeGreaterThan(1);
+  expect(heads[0]).toBe('Strophe 1');
+  for (const head of heads.slice(1)) expect(head).toMatch(/^Strophe 1/);
+  // The first piece takes what is left under the title, not a page of its own.
+  await expect(sheet.locator('.ps-page').first().locator('.ps-song-part')).toHaveCount(1);
+});
+
 /**
  * A Plauderbuch is written page by page, as the Plauderplan-Drehbuch is laid
  * out: a question on each page, the Aussagen to choose from under it.
