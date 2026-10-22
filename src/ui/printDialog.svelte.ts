@@ -4,7 +4,7 @@ import { symbolIdsIn } from '../core/types.ts';
 import Printable from './Printable.svelte';
 import {
   applyPageSetup, cardRows, copyrightFor, paperSize, planPages,
-  printableArea, PX_PER_MM, sheetBlocks,
+  printableArea, PX_PER_MM, sheetBlocks, stripLines,
   type Block, type PrintBoard, type PrintSong, type PrintTalk, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
@@ -106,6 +106,8 @@ export class Printing {
   settings = $state.raw<PrintSettings>({} as PrintSettings);
   /** How many cards each row of a flowing card sheet came out with. */
   rows = $state.raw<number[] | null>(null);
+  /** How many cards each line of a strip too tall for a page came out with. */
+  strips = $state.raw<(number[] | null)[] | null>(null);
   /** How many blocks each page holds. Null while the sheet stands unpaged. */
   pages = $state.raw<number[] | null>(null);
   /** How many sheets of paper this comes to. Measured, never guessed. */
@@ -155,7 +157,7 @@ export class Printing {
     copyright: copyrightFor(this.options.provider, this.settings.showCopyright),
     collectionName: this.options.collectionName,
     picture: this.options.picture,
-  }, this.rows));
+  }, this.rows, this.strips));
 
   plan: SheetPlan = $derived.by(() => ({ rows: this.rows, pages: this.pages }));
 
@@ -212,11 +214,13 @@ export class Printing {
     applyPageSetup(this.settings.paper, this.settings.orientation,
       (Boolean(this.options.board) || this.settings.layout === 'einkaufsliste') && this.settings.pageColour !== null);
     this.rows = null;
+    this.strips = null;
     this.pages = null;
     flushSync();
     if (!this.sheet) return;
     this.rows = this.settings.layout === 'sheet' && this.settings.sheetFit !== 'grid'
       ? cardRows(this.sheet) : null;
+    this.strips = this.settings.layout === 'strip' ? stripLines(this.sheet, this.settings) : null;
     flushSync();
     this.pages = planPages(this.sheet!, this.settings);
     flushSync();

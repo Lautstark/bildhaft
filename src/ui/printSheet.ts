@@ -286,6 +286,43 @@ export function cardRows(sheet: HTMLElement): number[] | null {
   return rows;
 }
 
+/** What a page holds above its foot, in pixels: the notice and the number take the rest. */
+function pageRoom(credit: HTMLElement | null, settings: PrintSettings): number {
+  const foot = Math.max(
+    credit ? outer(credit).top + outer(credit).height : 0,
+    settings.showPageNumbers ? PAGE_NUMBER_MM * PX_PER_MM : 0,
+  );
+  return printableArea(settings.paper, settings.orientation).height * PX_PER_MM - foot;
+}
+
+/**
+ * How many cards each line of a strip took — for the strips too tall for any
+ * page, and null for every other.
+ *
+ * A strip is kept whole, so a sentence of twenty symbols at 50mm on A5 was one
+ * block taller than its page: it ran out of its page box, over the next page
+ * and under that page's cards, its foot with it. Such a strip is drawn again
+ * in pieces of whole lines, which pages fill like any other blocks. One that
+ * fits a page stays whole and moves to the next page instead, as before.
+ *
+ * Read the same way as `cardRows()`: cards on one line share an offsetTop.
+ */
+export function stripLines(sheet: HTMLElement, settings: PrintSettings): (number[] | null)[] {
+  const credit = sheet.querySelector<HTMLElement>(':scope > .ps-attribution');
+  const limit = pageRoom(credit, settings);
+  return [...sheet.querySelectorAll<HTMLElement>(':scope > .ps-sentence')].map((strip) => {
+    const box = outer(strip);
+    if (box.top + box.height + box.bottom <= limit + FIT_TOLERANCE) return null;
+    const lines: number[] = [];
+    let top: number | null = null;
+    for (const card of strip.querySelectorAll<HTMLElement>(':scope > .ps-row > .ps-card')) {
+      if (card.offsetTop !== top) { lines.push(0); top = card.offsetTop; }
+      lines[lines.length - 1]! += 1;
+    }
+    return lines.length > 1 ? lines : null;
+  });
+}
+
 /** Sub-pixel slack, so a block that fits exactly is not pushed off the page. */
 const FIT_TOLERANCE = 0.5;
 
@@ -318,11 +355,7 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
    * taken off every page, and it is drawn there, not here.
    */
   const credit = blocks.at(-1)?.classList.contains('ps-attribution') ? blocks.pop()! : null;
-  const foot = Math.max(
-    credit ? outer(credit).top + outer(credit).height : 0,
-    settings.showPageNumbers ? PAGE_NUMBER_MM * PX_PER_MM : 0,
-  );
-  const limit = printableArea(settings.paper, settings.orientation).height * PX_PER_MM - foot;
+  const limit = pageRoom(credit, settings);
 
   const pages: number[] = [];
   const filled: number[] = [];
@@ -451,7 +484,9 @@ export function tafelFieldMm(
 export type Block =
   /* `picture`: a Rezept's or a Tafel's title picture, printed before the name. */
   | { kind: 'title'; text: string; picture?: Slot | null }
-  | { kind: 'strip'; sentence: Sentence; page: boolean; framed: boolean }
+  /* `slots`: the strip's cards, or one page's lines of a strip too tall for a
+     page. Its sentence goes over the first piece and under the last. */
+  | { kind: 'strip'; sentence: Sentence; slots: Slot[]; first: boolean; last: boolean; page: boolean; framed: boolean }
   | { kind: 'row'; slots: Slot[] }
   | { kind: 'grid'; slots: Slot[]; cols: number; cellH: string; page: boolean }
   | { kind: 'tafel'; board: PrintBoard; cellH: string }
@@ -576,7 +611,9 @@ const chunks = <T,>(all: T[], per: number): T[][] => {
  * page hold whole lines. Without it the sheet's only block is the row itself,
  * and a sheet of forty cards would be one indivisible block eight pages tall.
  */
-export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block[] {
+export function sheetBlocks(
+  options: SheetOptions, rows: number[] | null, strips: (number[] | null)[] | null = null,
+): Block[] {
   const { sentences, board, song, talk, settings, provider, attribution, copyright, collectionName } = options;
   const credits = creditLines(attribution, copyright);
   const page = printableArea(settings.paper, settings.orientation);
@@ -729,12 +766,24 @@ export function sheetBlocks(options: SheetOptions, rows: number[] | null): Block
       }));
     }
   } else {
-    /* Sentence strips: one row per sentence, in reading order. */
-    sentences.forEach((sentence, at) => blocks.push({
-      kind: 'strip', sentence,
-      page: settings.onePerPage && at < sentences.length - 1,
-      framed: settings.stripFrame,
-    }));
+    /* Sentence strips: one row per sentence, in reading order. A strip the
+       last paint found too tall for a page goes in pieces of whole lines —
+       see stripLines(). */
+    sentences.forEach((sentence, at) => {
+      const lines = strips?.[at] ?? [sentence.slots.length];
+      let taken = 0;
+      lines.forEach((count, k) => {
+        const last = k === lines.length - 1;
+        blocks.push({
+          kind: 'strip', sentence,
+          slots: last ? sentence.slots.slice(taken) : sentence.slots.slice(taken, taken + count),
+          first: k === 0, last,
+          page: last && settings.onePerPage && at < sentences.length - 1,
+          framed: settings.stripFrame,
+        });
+        taken += count;
+      });
+    });
   }
 
   if (credits.length > 0) blocks.push({ kind: 'credit', lines: credits });

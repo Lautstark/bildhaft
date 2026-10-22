@@ -649,6 +649,38 @@ test('the foot does not move on a full page', async ({ page }) => {
 });
 
 /*
+ * A strip taller than its page was one block all the same: it ran out of its
+ * page box, over the next page and under that page's cards, its foot with it.
+ * It goes on over as many pages as it needs, in whole lines, its sentence over
+ * the first of them and every symbol on paper once.
+ */
+test('a strip too tall for one page goes on over the next, in whole lines', async ({ page }) => {
+  await showMaterial(page);
+  await translateAll(page, ['Morgen fahren wir mit dem Zug zu Oma und Opa in den Garten am See']);
+  await showSheet(page);
+  const cards = page.locator('.preview-frame .ps-card');
+  // Counted on A4 at 40mm, where every strip still fits its page whole.
+  const symbols = await cards.count();
+  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await page.getByRole('button', { name: 'Quer', exact: true }).click();
+  await page.getByLabel('Symbolgröße').fill('50');
+
+  const pages = page.locator('.preview-frame .ps-page');
+  await expect.poll(() => pages.count()).toBeGreaterThan(2);
+  const seen = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) =>
+    [...sheet.querySelectorAll<HTMLElement>('.ps-page')].map((one) => {
+      const box = one.getBoundingClientRect();
+      const pad = parseFloat(getComputedStyle(one).paddingBottom) * (box.height / one.offsetHeight);
+      const bottom = Math.max(...[...one.children].map((child) => child.getBoundingClientRect().bottom));
+      return { over: Math.round(bottom - (box.bottom - pad)), captions: one.querySelectorAll('.ps-caption').length };
+    }));
+  for (const one of seen) expect(one.over).toBeLessThanOrEqual(1);
+  expect(seen.map((one) => one.captions).reduce((a, b) => a + b)).toBe(3);
+  // The two sentences of the beforeEach and this one, every symbol once.
+  await expect(cards).toHaveCount(symbols);
+});
+
+/*
  * The page boxes are exactly the printable area, which is the one size at which
  * being a hair too tall is fatal: a box a pixel over its page prints as two,
  * and every sheet after it is a blank with a sliver at the top.
