@@ -1690,11 +1690,16 @@ footer.footer {
    box at the top writes onto is outlined, as a Rezept's part is. */
 .talk { display: flex; flex-direction: column; gap: 12px; }
 .talk__page { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); cursor: pointer; transition: outline-color .13s, background .13s; }
-.talk__page--target { outline: 2px solid var(--accent); background: var(--accent-soft); }
+.talk__label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); }
+.talk__intro { margin: 0 4px 12px; }
+.talk__question-edit { border: 0; background: transparent; color: inherit; font: inherit; padding: 0; text-align: left; cursor: text; }
+.talk__question-edit:hover { text-decoration: underline dotted; text-underline-offset: 4px; }
 .talk__head { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 .talk__pic { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; cursor: pointer; }
 .talk__pic img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .talk__pic--asking { border-style: dashed; color: var(--text-faint); font-weight: 700; }
+.talk__pic--add { border: 1.5px dashed var(--line); background: transparent; color: var(--text-faint); font: inherit; font-size: 20px; }
+.talk__pic--add:hover { color: var(--text); border-color: var(--text-faint); }
 .talk__question { margin: 0; font-size: 16px; font-weight: 650; min-width: 0; }
 .talk__question--none { font-size: 14px; font-weight: 400; color: var(--text-faint); }
 .talk__tools { margin-left: auto; display: flex; align-items: center; gap: 4px; }

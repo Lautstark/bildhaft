@@ -1,14 +1,15 @@
-import type { Collection, Sentence, TalkBook, TalkPage } from '../core/types.ts';
+import type { Collection, Sentence, Slot, TalkBook, TalkPage } from '../core/types.ts';
 import { slotCaption } from '../core/types.ts';
 import { pagesOf, withoutRow, withPage } from '../core/talk.ts';
-import { deleteSentence, newId, patchCollection } from '../db/repo.ts';
+import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
 import { addLines } from './composing.ts';
+import { openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
 
 /**
  * A Plauderbuch changed page by page, where the page stands — the way a
- * Lied's parts are. The box at the top adds Aussagen to the outlined page;
- * each page has its own „+ Aussage", „✎ Frage" and „✎ Text".
+ * Lied's parts are: each page has its Frage, the „+" at the end of its
+ * Antworten, and „✎ Text".
  *
  * Every write goes through the book on the Sammlung: a row is only on a page
  * because the book says so, and a row the book no longer names is deleted
@@ -21,11 +22,6 @@ const linesOf = (text: string): string[] => text.split(/\r?\n/).map((line) => li
 export const shown = (sentence: Sentence): string =>
   (sentence.slots[0] ? slotCaption(sentence.slots[0]) : '') || sentence.rawInput;
 
-/** The page the box writes onto: the one chosen, or the last. */
-export function targetPage(): TalkPage | null {
-  const pages = pagesOf(activeCollection()?.talk);
-  return pages.find((page) => page.id === s.talkPage) ?? pages.at(-1) ?? null;
-}
 
 /** A page's Aussagen as text, one a line, for writing them again. */
 export function sayingsText(page: TalkPage): string {
@@ -81,32 +77,41 @@ async function dropRows(ids: string[]): Promise<void> {
 }
 
 /**
- * Lines added as Aussagen at the end of a page — the box's page when none is
- * named. An empty book gets its first page. Hands back what could not be
- * added, for the field it came from.
+ * A card made by a „+", with the picker open on it — the „+" a Wortkarten-
+ * Sammlung's wall and a Rezept's Zutaten end with: a new Antwort at the end
+ * of its page, or the question of a page that has none, its symbol chosen
+ * first. Closed without a choice, the card goes again (editing.ts). An empty
+ * book gets its first page.
  */
-export async function addSayings(text: string, pageId?: string): Promise<string> {
+export async function addCard(where: 'question' | 'saying', pageId?: string): Promise<void> {
   const open = activeCollection();
-  if (!open || !text.trim() || s.busy) return text;
-  const aimed = pageId ?? targetPage()?.id;
-  const cards = await cardsFor(text);
-  if (!cards) return text;
-  const fresh = activeCollection();
-  if (!fresh || fresh.id !== open.id) return '';
-  const book = bookWithPage(fresh);
-  const page = book.pages.find((one) => one.id === aimed) ?? book.pages.at(-1)!;
-  await keepBook(fresh, withPage(book, page.id, (one) => ({ ...one, sayings: [...one.sayings, ...cards.ids] })));
-  return '';
+  if (!open) return;
+  const slot: Slot = {
+    id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
+  };
+  const now = Date.now();
+  const sentence: Sentence = {
+    id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
+    collectionId: open.id, createdAt: now, updatedAt: now,
+  };
+  await putSentence(sentence);
+  s.sentences = [...s.sentences, sentence];
+  const book = bookWithPage(open);
+  const page = book.pages.find((one) => one.id === pageId) ?? book.pages.at(-1)!;
+  await keepBook(open, withPage(book, page.id, (one) => (where === 'question'
+    ? { ...one, question: sentence.id }
+    : { ...one, sayings: [...one.sayings, sentence.id] })));
+  openPicker(sentence.id, slot.id);
 }
 
-/** A new empty page after the last, and the box's page from now on. */
+
+/** A new empty page after the last. */
 export async function addPage(): Promise<void> {
   const open = activeCollection();
   if (!open) return;
   const book = pagesOf(open.talk).length > 0 ? open.talk! : { pages: [] };
   const id = newId();
   await keepBook(open, { pages: [...book.pages, { id, question: null, sayings: [] }] });
-  s.talkPage = id;
 }
 
 /**
@@ -171,7 +176,6 @@ export async function removePage(pageId: string): Promise<void> {
   if (!open?.talk || !page) return;
   await keepBook(open, { pages: open.talk.pages.filter((one) => one.id !== pageId) });
   await dropRows([...(page.question ? [page.question] : []), ...page.sayings]);
-  if (s.talkPage === pageId) s.talkPage = null;
 }
 
 /** A card deleted where it stands: out of the book too. */

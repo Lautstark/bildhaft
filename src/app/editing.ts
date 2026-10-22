@@ -235,7 +235,8 @@ async function handleRemoveSlot(): Promise<void> {
     await deleteSentence(sentence.id);
     s.sentences = s.sentences.filter((x) => x.id !== sentence.id);
     if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
-      return;
+    if (kind() === 'plauderbuch') await takeOutOfTalk(sentence);
+    return;
   }
   await mutateSlots(sentenceId, (slots) => slots.filter((sl) => sl.id !== slotId));
 }

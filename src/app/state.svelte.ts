@@ -45,9 +45,6 @@ export class AppState {
      template. This session only: one left empty and opened again later shows
      its template and the way back to the choice instead. */
   choosing = $state<string | null>(null);
-  /* Which page of a Plauderbuch the box at the top writes onto, by id —
-     the last page when it is none or no longer there. */
-  talkPage = $state<string | null>(null);
 
   draft = $state('');
   reuse = $state.raw<Sentence | null>(null);
