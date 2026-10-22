@@ -146,31 +146,68 @@ export function resetSymbolResolution(provider?: ProviderId): void {
 /** Subscribes to "a source became usable again"; returns an unsubscribe. */
 export const onSymbolReset = reset.onChanged;
 
+/** What `followSymbolUrl` hands back: the unsubscribe, and the way to say the
+ *  URL it showed would not load. */
+export interface FollowedSymbol {
+  stop: () => void;
+  broke: (url: string) => void;
+}
+
 /**
  * One picture's URL, for something that draws it without being a `Symbol`: a
  * card on the sheet, a Rezept's title picture. Shown at once when the cache
  * knows it, when it resolves if not, and again whenever a source becomes
  * usable — the sheet used to skip that last part, so a sheet drawn while the
  * folder could not be read stayed blank until „Bearbeiten“ drew it afresh.
- * Returns the unsubscribe, for an `$effect` to give back.
+ *
+ * A URL that would not load is looked up once more, fresh: see
+ * `dropSymbolUrl`. Once, so a picture that is broken in itself ends blank
+ * instead of asking for ever.
  */
 export function followSymbolUrl(
   provider: ProviderId, id: string, show: (url: string | null) => void,
-): () => void {
+): FollowedSymbol {
   let attempt = 0;
   let stopped = false;
+  /* The one that would not load. Asked again, a source that still holds it
+     live answers with the same one, which would only break again. */
+  let broken: string | null = null;
+  const offer = (url: string | null): void => show(url === broken ? null : url);
   const load = (): void => {
     const known = peekSymbolUrl(provider, id);
-    if (known) { show(known); return; }
+    if (known) { offer(known); return; }
     const mine = ++attempt;
     show(null);
     void resolveSymbolUrl(provider, id).then((found) => {
-      if (!stopped && mine === attempt && found) show(found);
+      if (!stopped && mine === attempt && found) offer(found);
     });
   };
-  const stop = onSymbolReset(load);
+  const stopReset = onSymbolReset(() => { broken = null; load(); });
   load();
-  return () => { stopped = true; stop(); };
+  return {
+    stop: () => { stopped = true; stopReset(); },
+    broke: (url) => {
+      if (stopped) return;
+      if (broken !== null) { show(null); return; }
+      broken = url;
+      dropSymbolUrl(provider, id, url);
+      load();
+    },
+  };
+}
+
+/**
+ * Forgets a URL that would not load, so the next lookup asks the source again.
+ *
+ * bildquelle keeps 400 object URLs alive and revokes the oldest when it makes
+ * the next one, without telling anybody. The cache here went on handing out
+ * the revoked one, and every picture drawn from it after that was broken —
+ * the sheet after a long session, a row whose lazy picture loaded late. Only
+ * this URL: one a newer lookup has already replaced is left alone.
+ */
+export function dropSymbolUrl(provider: ProviderId, id: string, url: string): void {
+  const key = cacheKey(provider, id);
+  if (cache.get(key) === url) forget(key);
 }
 
 /** Dropped when a provider is reconfigured and its object URLs are revoked. */

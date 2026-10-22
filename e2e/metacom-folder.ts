@@ -43,7 +43,9 @@ export async function withoutDirectoryPicker(page: Page): Promise<void> {
   });
 }
 
-export async function chooseFakeFolder(page: Page, folder: string = FOLDER): Promise<void> {
+export async function chooseFakeFolder(
+  page: Page, folder: string = FOLDER, files: string[] = FILES,
+): Promise<void> {
   await page.evaluate(
     ({ folder, files, b64 }) => {
       const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
@@ -60,7 +62,7 @@ export async function chooseFakeFolder(page: Page, folder: string = FOLDER): Pro
       input.files = transfer.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
     },
-    { folder, files: FILES, b64: PNG_BASE64 },
+    { folder, files, b64: PNG_BASE64 },
   );
 }
 

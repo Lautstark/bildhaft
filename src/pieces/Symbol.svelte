@@ -15,7 +15,7 @@
    */
   import type { ProviderId } from '../core/types.ts';
   import { OWN_PREFIX } from '../core/types.ts';
-  import { onSymbolReset, peekSymbolUrl, resolveSymbolUrl } from '../ui/symbols.ts';
+  import { dropSymbolUrl, onSymbolReset, peekSymbolUrl, resolveSymbolUrl } from '../ui/symbols.ts';
   import { t } from '../i18n/index.ts';
 
   let { provider, id, alt, placeholder = '+', mirrored = false, onUnreadable }: {
@@ -36,6 +36,8 @@
   let url = $state<string | null>(null);
   /** Which attempt is the current one, so a late answer cannot overwrite a newer. */
   let attempt = 0;
+  /** The URL that would not load, once it has been asked for afresh. */
+  let broken: string | null = null;
 
   function failed(): void {
     showing = 'error';
@@ -47,32 +49,48 @@
     if (id && !id.startsWith(OWN_PREFIX)) onUnreadable?.(id);
   }
 
+  function show(found: string | null): void {
+    if (found && found !== broken) { url = found; showing = 'ready'; } else failed();
+  }
+
   function resolve(): void {
     if (!id) { showing = 'blank'; url = null; return; }
     const known = peekSymbolUrl(provider, id);
-    if (known) { url = known; showing = 'ready'; return; }
+    if (known) { show(known); return; }
     const mine = ++attempt;
     showing = 'loading';
     void resolveSymbolUrl(provider, id).then((found) => {
-      if (mine !== attempt) return;
-      if (found) { url = found; showing = 'ready'; } else failed();
+      if (mine === attempt) show(found);
     });
+  }
+
+  /*
+   * A picture that would not load is asked for once more, fresh: the cached URL
+   * may be one bildquelle has since revoked to stay under its 400 (see
+   * `dropSymbolUrl`). A second failure is the picture's own, and stands.
+   */
+  function broke(): void {
+    if (broken !== null || !id || !url) { failed(); return; }
+    broken = url;
+    dropSymbolUrl(provider, id, url);
+    resolve();
   }
 
   /* Re-resolved when the field changes what it points at, and again whenever a
      source becomes usable: `onSymbolReset` is what "confirm access" reaches. */
   $effect(() => {
     void provider; void id;
-    const stop = onSymbolReset(resolve);
+    broken = null;
+    const stop = onSymbolReset(() => { broken = null; resolve(); });
     resolve();
     return stop;
   });
 
-  const again = (event: Event) => { event.stopPropagation(); resolve(); };
+  const again = (event: Event) => { event.stopPropagation(); broken = null; resolve(); };
   const retryKeys = (event: KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); again(event); }
   };
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<span class="slot__img-inner">{#if showing === 'ready' && url}<img src={url} alt="" title={alt} class:mirrored loading="lazy" draggable="false" onerror={failed} />{:else if showing === 'loading'}<span class="slot__blank" aria-hidden="true"><span class="spinner"></span></span>{:else if showing === 'error'}<span class="slot__blank slot__blank--error" role="button" tabindex="0" title={t('ui.symbol_failed')} onclick={again} onkeydown={retryKeys}>↻</span>{:else}<span class="slot__blank" aria-hidden="true">{placeholder}</span>{/if}</span>
+<span class="slot__img-inner">{#if showing === 'ready' && url}<img src={url} alt="" title={alt} class:mirrored loading="lazy" draggable="false" onerror={broke} />{:else if showing === 'loading'}<span class="slot__blank" aria-hidden="true"><span class="spinner"></span></span>{:else if showing === 'error'}<span class="slot__blank slot__blank--error" role="button" tabindex="0" title={t('ui.symbol_failed')} onclick={again} onkeydown={retryKeys}>↻</span>{:else}<span class="slot__blank" aria-hidden="true">{placeholder}</span>{/if}</span>

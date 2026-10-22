@@ -297,6 +297,32 @@ test('the sheet gets its symbols back too, without going through Bearbeiten', as
   await expect(page.locator('#print-root .ps-card img')).toHaveCount(3);
 });
 
+test('a picture whose link was given back is fetched again', async ({ page }) => {
+  /*
+   * bildquelle keeps 400 links to pictures alive and gives back the oldest
+   * when it makes the 401st. This app's own cache went on handing out the
+   * given-back link, so any picture that loaded after that came out broken:
+   * the sheet, opened after a long session, and already a row's first field,
+   * whose picture loads lazily, after the 401st link was made. One word more
+   * than the limit is enough to give back the first one.
+   */
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const words = Array.from({ length: 401 }, (_, n) =>
+    `Ding${letters[Math.floor(n / 26)]}${letters[n % 26]}`);
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page, FOLDER, words.map((word) => `Dinge/${word}.png`));
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, words.join(' '));
+  await expect(page.locator('.row .slot img')).toHaveCount(401, { timeout: 20_000 });
+
+  await showSheet(page);
+  const printed = page.locator('#print-root .ps-card img');
+  await expect(printed).toHaveCount(401);
+  await expect.poll(() => printed.evaluateAll((imgs) => imgs
+    .filter((img) => !(img as HTMLImageElement).complete || (img as HTMLImageElement).naturalWidth === 0)
+    .length), { timeout: 20_000 }).toBe(0);
+});
+
 test('a folder that survives a reload just works', async ({ page }) => {
   /*
    * The case the other tests do not cover: a real FileSystemDirectoryHandle,
