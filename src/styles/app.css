@@ -1742,10 +1742,16 @@ footer.footer {
 /* Die Einkaufsliste in Bearbeiten: das Brett, nicht eine Wand. */
 .shop-edit { border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; outline: 1px solid var(--line); }
 .shop-edit__top { display: flex; align-items: flex-start; gap: 12px; }
-.shop-edit__title { display: inline-flex; align-items: center; gap: 4px; }
-.shop-edit__title .title-line { margin: 0; }
-.shop-edit__title .title-line__text { color: var(--board-ink); font-weight: 700; }
-.shop-edit__title--lined .title-line { border-bottom: 1.5px solid var(--board-ink); }
+.shop-edit__title { display: inline-flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.shop-edit__title .title-line { margin: 0; flex: 1; min-width: 0; }
+.shop-edit__title .title-line__text { color: var(--board-ink); font-weight: 700; font-size: 17px; }
+.shop-edit__title .title-line__text::placeholder { color: var(--board-ink); opacity: 1; }
+.shop-edit__title--lined .title-line { border-bottom: 2px solid var(--board-ink); }
+/* Die Karten wie gedruckt, nicht wie die dunkle Wand — die Tafel macht es
+   mit `.cell .word` genauso vor. */
+.shop-edit .word { background: #fff; color: #222; border: 1px solid #dcdcdc; border-radius: 6px; }
+.shop-edit .word__name { color: #222; }
+.shop-edit .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
 .shop-edit__off { border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 15px; padding: 2px 6px; }
 .shop-edit__off:hover { color: var(--text); }
 .shop-edit__get { align-self: flex-start; }
