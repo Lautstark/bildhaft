@@ -146,6 +146,33 @@ export function resetSymbolResolution(provider?: ProviderId): void {
 /** Subscribes to "a source became usable again"; returns an unsubscribe. */
 export const onSymbolReset = reset.onChanged;
 
+/**
+ * One picture's URL, for something that draws it without being a `Symbol`: a
+ * card on the sheet, a Rezept's title picture. Shown at once when the cache
+ * knows it, when it resolves if not, and again whenever a source becomes
+ * usable — the sheet used to skip that last part, so a sheet drawn while the
+ * folder could not be read stayed blank until „Bearbeiten“ drew it afresh.
+ * Returns the unsubscribe, for an `$effect` to give back.
+ */
+export function followSymbolUrl(
+  provider: ProviderId, id: string, show: (url: string | null) => void,
+): () => void {
+  let attempt = 0;
+  let stopped = false;
+  const load = (): void => {
+    const known = peekSymbolUrl(provider, id);
+    if (known) { show(known); return; }
+    const mine = ++attempt;
+    show(null);
+    void resolveSymbolUrl(provider, id).then((found) => {
+      if (!stopped && mine === attempt && found) show(found);
+    });
+  };
+  const stop = onSymbolReset(load);
+  load();
+  return () => { stopped = true; stop(); };
+}
+
 /** Dropped when a provider is reconfigured and its object URLs are revoked. */
 export function clearSymbolCache(provider: ProviderId): void {
   const prefix = `${provider}:`;

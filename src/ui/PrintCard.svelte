@@ -10,7 +10,7 @@
   import type { PrintSettings, ProviderId, Slot } from '../core/types.ts';
   import { slotCaption, symbolIdFor } from '../core/types.ts';
   import NegationCross from '../pieces/NegationCross.svelte';
-  import { peekSymbolUrl, resolveSymbolUrl } from './symbols.ts';
+  import { followSymbolUrl } from './symbols.ts';
 
   let { slot, settings, provider, fill = false, exact = false, background, block }: {
     slot: Slot;
@@ -45,12 +45,7 @@
   $effect(() => {
     const wanted = id;
     if (!wanted) { url = null; return; }
-    const known = peekSymbolUrl(provider, wanted);
-    if (known) { url = known; return; }
-    url = null;
-    void resolveSymbolUrl(provider, wanted).then((found) => {
-      if (found && wanted === id) url = found;
-    });
+    return followSymbolUrl(provider, wanted, (found) => { url = found; });
   });
 
   let framed = $derived(settings.cardBorderMm > 0 || settings.cardBackground !== null);

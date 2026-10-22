@@ -214,14 +214,12 @@ test('says so when the folder is indexed but unreadable', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Zugriff bestätigen' })).toBeVisible();
 });
 
-test('symbols come back once the folder can be read again', async ({ page }) => {
-  await openSymbolSettings(page);
-  await chooseFakeFolder(page);
-  await page.getByRole('button', { name: 'Dialog schließen' }).click();
-  await translate(page, 'Ich möchte schlafen');
-  await expect(page.locator('.row .slot img')).toHaveCount(3);
-
-  // Take the folder away, exactly as a reload does, and let the symbols give up.
+/**
+ * Takes the folder away, exactly as a reload does: the index and the stored
+ * handle come back, and every read through the handle is refused. The symbols
+ * give up after the reload that follows.
+ */
+async function loseFolderOnReload(page: Page): Promise<void> {
   await page.evaluate(async ({ folder, files }) => {
     const db: IDBDatabase = await new Promise((resolve) => {
       const request = indexedDB.open('bildquelle');
@@ -242,6 +240,17 @@ test('symbols come back once the folder can be read again', async ({ page }) => 
     await new Promise((resolve) => { tx.oncomplete = resolve; });
   }, { folder: FOLDER, files: FILES });
 
+}
+
+test('symbols come back once the folder can be read again', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+  await expect(page.locator('.row .slot img')).toHaveCount(3);
+
+  // Take the folder away, exactly as a reload does, and let the symbols give up.
+  await loseFolderOnReload(page);
   await page.reload();
   await expect(page.locator('.banner')).toBeVisible({ timeout: 25_000 });
   await expect(page.locator('.row .slot img')).toHaveCount(0);
@@ -258,6 +267,34 @@ test('symbols come back once the folder can be read again', async ({ page }) => 
 
   await expect(page.locator('.row .slot img')).toHaveCount(3, { timeout: 20_000 });
   await expect(page.locator('.banner')).toBeHidden();
+});
+
+test('the sheet gets its symbols back too, without going through Bearbeiten', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+  await expect(page.locator('.row .slot img')).toHaveCount(3);
+
+  await loseFolderOnReload(page);
+  await page.reload();
+  await expect(page.locator('.banner')).toBeVisible({ timeout: 25_000 });
+
+  /*
+   * The regression: the rows listen for a source coming back and the sheet's
+   * cards did not, so a sheet drawn while the folder could not be read stayed
+   * blank until a trip to „Bearbeiten“ drew it afresh.
+   */
+  await showSheet(page);
+  const drawn = page.locator('.preview-frame .ps-card img');
+  await expect(drawn).toHaveCount(0);
+
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+
+  await expect(drawn).toHaveCount(3, { timeout: 20_000 });
+  await expect(page.locator('#print-root .ps-card img')).toHaveCount(3);
 });
 
 test('a folder that survives a reload just works', async ({ page }) => {

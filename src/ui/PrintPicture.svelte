@@ -6,7 +6,7 @@
    */
   import type { ProviderId, Slot } from '../core/types.ts';
   import { symbolIdFor } from '../core/types.ts';
-  import { peekSymbolUrl, resolveSymbolUrl } from './symbols.ts';
+  import { followSymbolUrl } from './symbols.ts';
 
   let { slot, provider }: { slot: Slot; provider: ProviderId } = $props();
 
@@ -15,12 +15,7 @@
   $effect(() => {
     const wanted = id;
     if (!wanted) { url = null; return; }
-    const known = peekSymbolUrl(provider, wanted);
-    if (known) { url = known; return; }
-    url = null;
-    void resolveSymbolUrl(provider, wanted).then((found) => {
-      if (found && wanted === id) url = found;
-    });
+    return followSymbolUrl(provider, wanted, (found) => { url = found; });
   });
 </script>
 
