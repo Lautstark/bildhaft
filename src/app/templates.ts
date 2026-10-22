@@ -81,13 +81,6 @@ export interface PrintOffer {
 export interface Template {
   /** Holds one-word cards: the wall of cards, the tray, the counter that says „Karten". */
   cards: boolean;
-  /**
-   * Print settings changed here stay with this Sammlung and do not become the
-   * household's. True for a material whose numbers are about itself — a
-   * Rezept's 20 mm cards handed to the household would be the next
-   * Satzstreifen's symbol size.
-   */
-  ownPrint: boolean;
   /** What a Sammlung of this template prints with until it sets something else. */
   defaults?(print: PrintSettings, board: Grid | null): Partial<PrintSettings>;
   /** What it always prints with, whatever was set: worked out from the rest, so it follows it. */
@@ -99,9 +92,9 @@ export interface Template {
 type Grid = Pick<Board, 'cols' | 'rows'> & { airMm?: number | null };
 
 /**
- * The settings a Sammlung prints with: `print` (the household's, under this
- * Sammlung's own), its template's defaults under what the Sammlung set for
- * itself (`own`), and what the template always is over all of it.
+ * The settings a Sammlung prints with: `print`, what every Sammlung starts
+ * from; its template's defaults over that, under what the Sammlung set for
+ * itself (`own`); and what the template always is over all of it.
  */
 export function openPrint(
   which: CollectionKind, print: PrintSettings, own: Partial<PrintSettings>, board: Grid | null,
@@ -138,7 +131,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      to cut out are the Wortkarten's, so a remembered card sheet here — from
      when a Satzstreifen could be printed as one — opens as strips again. */
   satzstreifen: {
-    cards: false, ownPrint: false,
+    cards: false,
     fixed: () => ({ layout: 'strip' }),
     offers: () => ({
       paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
@@ -150,7 +143,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      with the wrong margins, so a remembered strip here is the other
      template's setting arriving in this one. */
   wortkarten: {
-    cards: true, ownPrint: false,
+    cards: true,
     fixed: () => ({ layout: 'sheet' }),
     offers: () => CARD_SHEET,
   },
@@ -166,7 +159,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      the whole page, so a household's three boards are told apart by it. One
      sheet, so its title is over that sheet and nowhere else. */
   tafel: {
-    cards: true, ownPrint: false,
+    cards: true,
     defaults: (print, board) => {
       const grid = board ?? boardOf({});
       const page = printableArea(print.paper, print.orientation);
@@ -195,7 +188,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      frame and no background on a card, and the cut lines
      always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
-    cards: true, ownPrint: true,
+    cards: true,
     defaults: () => ({
       paper: 'a4', ...HEADED, titleColour: SHOP_GREEN,
       showGuide: true, pageColour: SHOP_PAGE, cartColour: SHOP_GREEN,
@@ -218,7 +211,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      A4 and into a folder in A5 — and so is the size, because a child who
      needs bigger pictures gets a second page rather than smaller ones. */
   rezept: {
-    cards: false, ownPrint: true,
+    cards: false,
     defaults: () => ({
       paper: 'a4', orientation: 'portrait', symbolSizeMm: 20, labelSizePt: 9, ...HEADED, showPageNumbers: false,
     }),
@@ -240,7 +233,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      wall. What it set for itself wins, and the household's does not reach
      it, or a 40 mm strip's frame would be the next song's. */
   lied: {
-    cards: false, ownPrint: true,
+    cards: false,
     defaults: () => ({
       paper: 'a4', orientation: 'portrait', symbolSizeMm: 16,
       showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
@@ -262,7 +255,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      No name over the first page: every sheet is a page of the book. Page
      numbers as everywhere, off until asked for. */
   plauderbuch: {
-    cards: false, ownPrint: true,
+    cards: false,
     defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false }),
     fixed: () => ({ layout: 'plauderbuch', showCollectionTitle: false }),
     offers: () => ({ paper: true, pageNumbers: true }),

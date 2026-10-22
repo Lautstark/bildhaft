@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import { mockArasaac } from './arasaac-mock.ts';
-import { backToPrint, cardSheet, openLook, showMaterial, showSheet, translateAll } from './helpers.ts';
+import { backToPrint, cardSheet, openLook, pickTemplate, showMaterial, showSheet, translateAll, untilKept } from './helpers.ts';
 
 /** CSS reference resolution: 96px per inch. */
 const mm = (px: number) => +(px / (96 / 25.4)).toFixed(2);
@@ -480,6 +480,55 @@ test('the collection name can head the sheet', async ({ page }) => {
   await page.getByLabel('Ein Satz pro Seite').check();
   await expect(page.locator('#print-root .ps-sentence--page')).toHaveCount(1);
   await expect(page.locator('#print-root .ps-title')).toHaveCount(1);
+});
+
+/*
+ * A Sammlung's print is its own: a new one starts from its template, not from
+ * the size the last one was printed at.
+ */
+test('a new Satzstreifen starts from its template, not from the last one printed', async ({ page }) => {
+  await page.getByLabel('Symbolgröße').fill('55');
+  await untilKept(page, 'symbolSizeMm', 55);
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await pickTemplate(page, /^Satzstreifen/);
+  await translateAll(page, ['Wir gehen raus']);
+  await showSheet(page);
+  await expect(page.getByLabel('Symbolgröße')).toHaveValue('40');
+});
+
+/*
+ * Until 2026-10-22 a Satzstreifen printed with the household's settings. The
+ * first start after that writes them onto each such Sammlung once, so nothing
+ * changes on paper.
+ */
+test('the household\'s print settings move onto the Sammlungen that used them, once', async ({ page }) => {
+  await page.evaluate(async () => {
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('bildhaft');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const tx = db.transaction(['settings', 'collections'], 'readwrite');
+    const settings = tx.objectStore('settings');
+    const app = await new Promise<Record<string, unknown>>((resolve) => {
+      const req = settings.get('app');
+      req.onsuccess = () => resolve(req.result);
+    });
+    delete app.printOnMaterial;
+    settings.put({ ...app, print: { ...(app.print as object), symbolSizeMm: 55 } }, 'app');
+    const collections = tx.objectStore('collections');
+    const all = await new Promise<Record<string, unknown>[]>((resolve) => {
+      const req = collections.getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+    for (const one of all) { delete one.print; collections.put(one); }
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+    db.close();
+  });
+  await page.reload();
+  await untilKept(page, 'symbolSizeMm', 55);
+  await showSheet(page);
+  await expect(page.getByLabel('Symbolgröße')).toHaveValue('55');
 });
 
 /*

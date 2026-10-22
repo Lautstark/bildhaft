@@ -881,7 +881,14 @@ export interface AppSettings {
    * who has pruned one list still has it after looking at the other.
    */
   stopwords: Record<LanguageCode, string[]>;
+  /**
+   * Of the print settings only `showCopyright` is still the household's;
+   * everything else is each Sammlung's own (`Collection.print`). The rest is
+   * read once more, by `movePrintOntoMaterials`, and then no longer.
+   */
   print: PrintSettings;
+  /** Set once the household's print settings were written onto the Sammlungen that used them. */
+  printOnMaterial?: boolean;
   lastCollectionId: string | null;
   /** Collapsed by default; the choice is remembered. */
   sidebarOpen: boolean;

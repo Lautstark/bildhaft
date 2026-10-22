@@ -1,5 +1,5 @@
 import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
-import { contentOf, titleOf, titlePictures } from '../core/types.ts';
+import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { copyrightFor, creditLines, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
@@ -11,7 +11,7 @@ import { notify } from './notify.ts';
 import type { PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
-import { openPrint, TEMPLATES } from './templates.ts';
+import { openPrint } from './templates.ts';
 
 /**
  * The print settings a template opens on — its entry in `TEMPLATES` says
@@ -28,27 +28,68 @@ export function printFor(
   return openPrint(which, print, own, board);
 }
 
-/** What this Sammlung has set for its printing, written to it — everything but the household's copyright choice. */
+/**
+ * What a Sammlung set for itself: where `print` differs from what its
+ * template gives by itself, and nothing else. Only the difference, so that a
+ * Sammlung given another template takes that template's defaults rather than
+ * carrying the last one's, and the household's copyright choice not at all.
+ */
+export function ownPrint(which: CollectionKind, print: PrintSettings, board: Board | null): Partial<PrintSettings> {
+  const plain = printFor(DEFAULT_PRINT_SETTINGS, which, board);
+  const own: Partial<Record<keyof PrintSettings, unknown>> = {};
+  for (const key of Object.keys(print) as (keyof PrintSettings)[]) {
+    if (key !== 'showCopyright' && print[key] !== plain[key]) own[key] = print[key];
+  }
+  return own as Partial<PrintSettings>;
+}
+
+/** What this Sammlung has set for its printing, written to it. */
 async function keepPrint(print: PrintSettings): Promise<void> {
   const open = activeCollection();
   if (!open) return;
-  const { showCopyright: _copyright, ...own } = print;
-  if (JSON.stringify(open.print) === JSON.stringify(own)) return;
+  const own = ownPrint(kind(), print, kind() === 'tafel' ? boardOf(open) : null);
+  if (JSON.stringify(open.print ?? {}) === JSON.stringify(own)) return;
   const next: Collection = { ...open, print: own, updatedAt: Date.now() };
   s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
   await patchCollection(next.id, { print: own });
 }
 
 /**
- * The settings a print of the open Sammlung starts from: the household's
- * defaults, under what this Sammlung has set for itself, under what its
- * template insists on. Whether the METACOM notice prints stays the
- * household's whatever the Sammlung says.
+ * What every Sammlung's print starts from, under its template's defaults and
+ * what it set for itself: the same for all of them. Only whether the METACOM
+ * notice prints is the household's, because it is about passing paper on,
+ * not about any one material.
  */
 function printBase(): PrintSettings {
-  const own = activeCollection()?.print ?? {};
-  return { ...s.settings!.print, ...own, showCopyright: s.settings!.print.showCopyright };
+  return { ...DEFAULT_PRINT_SETTINGS, showCopyright: s.settings!.print.showCopyright };
 }
+
+/**
+ * Once: what Satzstreifen, Wortkarten and Tafeln printed with when their
+ * settings were the household's, written onto each of them — exactly what
+ * each printed with, a Tafel's own air included — so that nothing changes on
+ * paper the day their settings became their own. After this a new Sammlung
+ * starts from its template, never from the one printed last.
+ */
+export async function movePrintOntoMaterials(collections: Collection[]): Promise<Collection[]> {
+  if (!s.settings || s.settings.printOnMaterial) return collections;
+  const household = s.settings.print;
+  const moved = await Promise.all(collections.map(async (collection) => {
+    const which = kindOf(collection);
+    if (!SHARED_BEFORE.includes(which)) return collection;
+    const board = which === 'tafel' ? boardOf(collection) : null;
+    const own = collection.print ?? {};
+    const print = ownPrint(which, printFor({ ...household, ...own }, which, board, own), board);
+    if (JSON.stringify(print) === JSON.stringify(own)) return collection;
+    await patchCollection(collection.id, { print });
+    return { ...collection, print };
+  }));
+  persistSettings({ ...s.settings, printOnMaterial: true });
+  return moved;
+}
+
+/* The templates whose print settings were the household's until 2026-10-22. */
+const SHARED_BEFORE: CollectionKind[] = ['satzstreifen', 'wortkarten', 'tafel'];
 
 /** „2026-10-19 A5 hoch": what a saved PDF is called — its day, its paper. */
 export function pdfStem(at: Date, print: Pick<PrintSettings, 'paper' | 'orientation'>): string {
@@ -150,31 +191,15 @@ export function printOptions(): PrintOptions | null {
     talk,
     collectionName: open ? titleOf(open) : 'bildhaft',
     pictures: titlePictures(s.sentences),
-    /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
-       layout says. Strips are a shape for a sentence: a strip of one symbol
-       is a card with the wrong margins, so the stored preference here is not
-       a preference, it is the other template's setting arriving in this one.
-       The control is still there and still changes it for this print.
-
-       Not symmetrical. A Satzstreifen-Sammlung keeps whatever was chosen,
-       because cutting sentences into cards is a thing people actually do. */
+    /* What this Sammlung set, over its template's defaults, under what the
+       template always is (templates.ts). */
     settings: printFor(printBase(), kind(), board, open?.print ?? {}),
     onChange: (print: PrintSettings) => {
       if (!s.settings) return;
-      /* Twice, on purpose. The household's defaults follow along, so the
-         next Sammlung starts from what was last wanted; and the Sammlung
-         keeps its own, so this one prints tomorrow as it printed today,
-         whatever was set elsewhere in between.
-
-         Not for a template that keeps its print to itself (`ownPrint`): its
-         colour and its small cards handed to the household would be the next
-         Satzstreifen's symbol size. */
-      if (!TEMPLATES[kind()].ownPrint) persistSettings({ ...s.settings, print });
-      /* Whether the METACOM notice prints is the household's in every
-         template, a Rezept's and a Lied's too: the Sammlung does not keep it
-         (keepPrint leaves it out), so a template that keeps its print to
-         itself lost the tick on the next preview. */
-      else if (print.showCopyright !== s.settings.print.showCopyright) {
+      /* The Sammlung keeps what was set, so it prints tomorrow as it printed
+         today; nothing of it reaches another one. Whether the METACOM notice
+         prints is the household's, and keepPrint leaves it out. */
+      if (print.showCopyright !== s.settings.print.showCopyright) {
         persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: print.showCopyright } });
       }
       void keepPrint(print);

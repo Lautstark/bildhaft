@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { printFor } from '../../src/app/print.ts';
+import { ownPrint, printFor } from '../../src/app/print.ts';
 import { DEFAULT_PRINT_SETTINGS } from '../../src/core/types.ts';
 import { boardOf, defaultAirMm } from '../../src/core/board.ts';
 import { printableArea } from '../../src/ui/printSheet.ts';
@@ -110,5 +110,27 @@ describe('what a template opens the print dialog on', () => {
       expect(printFor({ ...remembered, layout }, 'satzstreifen', null).layout).toBe('strip');
       expect(printFor({ ...remembered, layout }, 'wortkarten', null).layout).toBe('sheet');
     }
+  });
+});
+
+/**
+ * What a Sammlung keeps of its print: only where it differs from its
+ * template, so another template given to it starts on its own defaults.
+ */
+describe('what a Sammlung keeps of its print', () => {
+  it('keeps what differs from its template, and nothing else', () => {
+    const print = { ...printFor(DEFAULT_PRINT_SETTINGS, 'satzstreifen', null), symbolSizeMm: 55, showCopyright: true };
+    expect(ownPrint('satzstreifen', print, null)).toEqual({ symbolSizeMm: 55 });
+  });
+
+  it('keeps nothing of a print that is its template\'s own', () => {
+    expect(ownPrint('rezept', printFor(DEFAULT_PRINT_SETTINGS, 'rezept', null), null)).toEqual({});
+  });
+
+  it('lets a Sammlung given another template open on that one\'s defaults', () => {
+    const own = ownPrint('satzstreifen', { ...printFor(DEFAULT_PRINT_SETTINGS, 'satzstreifen', null), cutMarginMm: 5 }, null);
+    expect(printFor(DEFAULT_PRINT_SETTINGS, 'rezept', null, own)).toMatchObject({
+      layout: 'rezept', showCollectionTitle: true, paper: 'a4', orientation: 'portrait',
+    });
   });
 });
