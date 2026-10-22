@@ -47,7 +47,10 @@
    * option without its heading.
    */
   type Group = 'paper' | 'size' | 'title' | 'look' | 'page';
-  const GROUPS: Group[] = ['paper', 'size', 'title', 'look', 'page'];
+  /* The groups in their order, each with its heading. */
+  const GROUPS: Record<Group, string> = {
+    paper: 'ui.group_paper', size: 'ui.group_size', title: 'ui.group_title', look: 'ui.group_look', page: 'ui.group_page',
+  };
   interface Option { group: Group; shown: () => boolean; draw: Snippet }
   const OPTIONS: Option[] = [
     { group: 'paper', shown: () => Boolean(offer.paper), draw: paperOpt },
@@ -65,7 +68,8 @@
     { group: 'page', shown: () => Boolean(offer.cutLines || offer.onePerPage || offer.songChecks || offer.guide || offer.pageNumbers), draw: checksOpt },
     { group: 'page', shown: () => s.options.provider === 'metacom', draw: copyrightOpt },
   ];
-  let groups = $derived(GROUPS.map((group) => ({ group, options: OPTIONS.filter((one) => one.group === group && one.shown()) }))
+  let groups = $derived((Object.keys(GROUPS) as Group[])
+    .map((group) => ({ heading: GROUPS[group], options: OPTIONS.filter((one) => one.group === group && one.shown()) }))
     .filter((one) => one.options.length > 0));
 
   const set = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => s.set(key, value);
@@ -201,4 +205,4 @@
   something bildhaft will not do.
 --><div class="opt">{@render check(t('ui.print_copyright'), s.settings.showCopyright, (next) => set('showCopyright', next))}<span class="small faint">{t('ui.copyright_note', { notice: METACOM_COPYRIGHT })}</span></div>{/snippet}
 
-<div class="print-options">{#each groups as { group: name, options } (name)}{@render group(t(`ui.group_${name}`))}{#each options as option, i (i)}{@render option.draw()}{/each}{/each}</div>
+<div class="print-options">{#each groups as { heading, options } (heading)}{@render group(t(heading))}{#each options as option, i (i)}{@render option.draw()}{/each}{/each}</div>
