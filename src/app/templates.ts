@@ -156,6 +156,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      template's setting arriving in this one. */
   wortkarten: {
     cards: true,
+    zeileInEdit: true,
     fixed: () => ({ layout: 'sheet' }),
     offers: () => ({ ...BASE, size: { kind: 'cards' }, margin: 'cut', cutLines: true }),
   },

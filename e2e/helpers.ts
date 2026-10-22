@@ -55,6 +55,27 @@ export const openLook = showSheet;
 export const backToPrint = showSheet;
 
 /**
+ * Opens one thing-menu of the Zeile over the material — Seite, Titel or
+ * Symbol — closing the print overlay first when it is up. The Zeile is where
+ * a moved template's settings live; the sheet only shows them.
+ */
+export async function openDing(page: Page, name: 'Seite' | 'Titel' | 'Symbol'): Promise<void> {
+  if (await page.locator('.print-overlay').isVisible().catch(() => false)) await showMaterial(page);
+  const chip = page.getByRole('button', { name, exact: true });
+  if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click();
+}
+
+/** Picks the paper in the overlay's head — the pill that names it. */
+export async function pickPaper(page: Page, name: string): Promise<void> {
+  await showSheet(page);
+  const pop = page.locator('.print-overlay .paper-pick__pop');
+  if (!(await pop.isVisible().catch(() => false))) {
+    await page.locator('.print-overlay').getByRole('button', { name: 'Papier wählen' }).click();
+  }
+  await pop.getByRole('button', { name, exact: true }).click();
+}
+
+/**
  * Gives the open, empty Material its template.
  *
  * A Material made by „+ Neues Material" asks first; the one the page makes on

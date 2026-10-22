@@ -189,9 +189,12 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   await paper('A3');
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
   await paper('A4');
+  /* NaN until the replanned sheet is back, so a poll simply asks again. */
   const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
-    .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
-      * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);
+    .evaluate((img) => {
+      const whole = img.closest<HTMLElement>('.ps-sheet');
+      return whole ? img.getBoundingClientRect().width / whole.getBoundingClientRect().width * whole.offsetWidth * 25.4 / 96 : Number.NaN;
+    });
   await expect.poll(symbolMm).toBeCloseTo(20, 0);
   // A card to cut is square, its cut line included: the dashed border used to sit outside the padding top and bottom only.
   const card = await sheet.locator('.ps-cut .ps-card').first().evaluate((node) => ({ w: node.getBoundingClientRect().width, h: node.getBoundingClientRect().height }));
@@ -1274,10 +1277,11 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.locator('.words .word:not(.word--add) .word__name'))
     .toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch'], { useInnerText: true });
 
-  // Head, box, title, cards — in that order on the page.
+  // Head, box, board — in that order; the title is fetched on the sheet.
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
   expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
-  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  expect(await top('.composer')).toBeLessThan(await top('.card-board'));
+  await page.getByRole('button', { name: '+ Titel' }).click();
   expect(await top('.title-line')).toBeLessThan(await top('.words'));
 
   await showSheet(page);

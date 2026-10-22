@@ -150,7 +150,7 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel' && kind() !== 'einkaufsliste'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}<Material />{#if printing}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel' && kind() !== 'einkaufsliste' && kind() !== 'wortkarten'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}<Material />{#if printing}<!--
   „Drucken" is no view of its own any more: the sheet opens over the
   material, to be looked at and printed, and × puts the material back. What
   can still be set in it is only what has not moved into the Zeile yet.

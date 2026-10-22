@@ -15,14 +15,13 @@
   import { boardOf } from '../core/board.ts';
   import { patchCollection } from '../db/repo.ts';
   import Row from '../ui/Row.svelte';
-  import WordCard from '../ui/WordCard.svelte';
   import TemplateArt from '../ui/TemplateArt.svelte';
   import Tafel from '../ui/Tafel.svelte';
+  import CardBoard from '../ui/CardBoard.svelte';
   import ShoppingBoard from '../ui/ShoppingBoard.svelte';
   import Recipe from '../ui/Recipe.svelte';
   import Song from '../ui/Song.svelte';
   import Talk from '../ui/Talk.svelte';
-  import { handleNewCard } from './board.ts';
   import { openWortschatzSheet } from './words.ts';
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
   import { t } from '../i18n/index.ts';
@@ -81,9 +80,8 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if choosing}{:else if kind() === 'einkaufsliste'}<ShoppingBoard {provider} />{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
-  The empty card at the end. Typing is the fast way for ten words at once;
-  this is the way for the one that is missing, and for somebody who has no word
-  in mind and is looking for a picture. It opens the same picker every other
-  card does.
---><button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div>{:else}<div class="rows">{#each content as sentence (sentence.id)}<Row {sentence} {provider} />{/each}</div>{/if}
+-->{#if choosing}{:else if kind() === 'einkaufsliste'}<ShoppingBoard {provider} />{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}<!--
+  The wall, on its page: each card as the sheet will print it, the „+" card
+  at the end — typing is the fast way for ten words at once; the „+" is for
+  the one that is missing, and for somebody looking for a picture first.
+--><CardBoard {content} {provider} />{:else}<div class="rows">{#each content as sentence (sentence.id)}<Row {sentence} {provider} />{/each}</div>{/if}

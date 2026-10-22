@@ -1742,6 +1742,7 @@ footer.footer {
 /* Die Einkaufsliste in Bearbeiten: das Brett, nicht eine Wand. */
 .shop-edit { border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; outline: 1px solid var(--line); }
 .shop-edit__top { display: flex; align-items: flex-start; gap: 12px; }
+.card-board .shop-edit__title,
 .shop-edit__title { display: inline-flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
 .shop-edit__title .title-line { margin: 0; flex: 1; min-width: 0; }
 .shop-edit__title .title-line__text { color: var(--board-ink); font-weight: 700; font-size: 17px; }
@@ -1762,6 +1763,18 @@ footer.footer {
 .shop-edit__field--add { background: transparent; cursor: pointer; color: var(--muted); font-size: 24px; min-height: 120px; align-items: center; }
 .shop-edit__field--add:hover { color: var(--text); border-color: var(--accent); }
 
+/* Wortkarten in Bearbeiten: die Wand auf ihrer Seite, jede Karte wie
+   gedruckt — Grund, Rahmen, Ecken und die Lage des Worts aus den
+   Einstellungen, als CSS-Variablen von CardBoard gesetzt. */
+.card-board { border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; outline: 1px solid var(--line); }
+.card-board__top { display: flex; align-items: flex-start; }
+.card-board .word { background: var(--cb-bg); color: #222; border: var(--cb-stroke) solid var(--cb-border); border-radius: var(--cb-radius); }
+.card-board .word__name { color: #222; }
+.card-board .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
+.card-board .word--add { background: rgba(255, 255, 255, .4); color: #555; border: 1.5px dashed rgba(0, 0, 0, .35); }
+.card-board--label-above .word { flex-direction: column-reverse; }
+.card-board--unlabelled .word .word__name { display: none; }
+
 /* Drucken als Vorschau über dem Material: ansehen, PDF, drucken, schließen. */
 /* Über dem Arbeitsbereich, nicht über der Sidebar: wer links wechselt,
    schließt die Vorschau damit — wie früher der Ansichtswechsel. */
@@ -1776,3 +1789,4 @@ footer.footer {
 .print-overlay__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .print-overlay__close { font-size: 18px; }
 .print-view__panel--bare { align-self: flex-start; }
+.ding__meta { color: var(--muted); font-size: 12.5px; }

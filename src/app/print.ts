@@ -249,10 +249,20 @@ export function materialPrint(): {
   const which = kind();
   const board = which === 'tafel' ? boardOf(open) : null;
   const settings = printFor(printBase(), which, board, open.print ?? {});
+  /* The one setting that is the household's, not the material's: whether the
+     METACOM notice prints is about passing paper on, so it goes to the
+     settings — the same split printOptions().onChange makes, and keepPrint
+     leaves it out of what the Sammlung keeps. */
+  const write = (next: PrintSettings) => {
+    if (s.settings && next.showCopyright !== s.settings.print.showCopyright) {
+      persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: next.showCopyright } });
+    }
+    void keepPrint(next);
+  };
   return {
     settings,
-    set: (key, value) => void keepPrint(settle(which, { ...settings, [key]: value }, board)),
-    patch: (next) => void keepPrint(settle(which, { ...settings, ...next }, board)),
+    set: (key, value) => write(settle(which, { ...settings, [key]: value }, board)),
+    patch: (next) => write(settle(which, { ...settings, ...next }, board)),
   };
 }
 
