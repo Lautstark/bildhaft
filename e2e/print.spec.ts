@@ -29,7 +29,7 @@ test('renders the sheet at real millimetre sizes', async ({ page }) => {
 
 test('millimetre controls change the printed geometry', async ({ page }) => {
   await page.getByLabel('Symbolgröße').fill('25');
-  await page.getByLabel('Schneiderand').fill('5');
+  await page.getByLabel('Rand', { exact: true }).fill('5');
 
   const card = page.locator('.preview-frame .ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
@@ -48,26 +48,26 @@ test('millimetre controls change the printed geometry', async ({ page }) => {
  * will find — and why this checks the readout against the card that is actually
  * drawn rather than against a second copy of the same arithmetic.
  */
-test('names the card a ruler will find, not just the symbol', async ({ page }) => {
+test('names the field a ruler will find, not just the symbol', async ({ page }) => {
   const hint = page.locator('.opt', { has: page.getByLabel('Symbolgröße') }).locator('.small.faint');
   const card = page.locator('.preview-frame .ps-card').first();
   const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
 
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 46 × 52 mm.');
+  await expect(hint).toHaveText('Feld im Streifen: 46 × 52 mm.');
   expect(mm((await box()).w)).toBeCloseTo(46, 0);
   expect(mm((await box()).h)).toBeCloseTo(52, 0);
 
   await page.getByLabel('Symbolgröße').fill('50');
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 56 × 62 mm.');
+  await expect(hint).toHaveText('Feld im Streifen: 56 × 62 mm.');
 
   // A frame grows the card, so both figures have to grow with it. Checked to
   // the millimetre and no finer, as the readout is: offsetWidth is whole
   // pixels, and the readout rounds to whole millimetres. The frame
-  // is the Sammlung's „Aussehen", the readout the print dialog's.
+  // is the Sammlung's „Gestaltung", the readout the print dialog's.
   await openLook(page);
   await page.getByLabel('Rahmen um jede Karte').check();
   await backToPrint(page);
-  await expect(hint).toHaveText('Karte zum Ausschneiden: 60 × 65 mm.');
+  await expect(hint).toHaveText('Feld im Streifen: 60 × 65 mm.');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
   expect(mm((await box()).h)).toBeCloseTo(65.4, 0);
 });
@@ -117,7 +117,7 @@ test('a card size is the card, cut line to cut line', async ({ page }) => {
   const symbol = () => page.locator('.preview-frame .ps-card__img').first()
     .evaluate((el: HTMLElement) => el.offsetHeight);
   const roomy = await symbol();
-  await page.getByLabel('Schneiderand').fill('12');
+  await page.getByLabel('Rand', { exact: true }).fill('12');
   await expect.poll(symbol).toBeLessThan(roomy);
   expect(mm((await box()).w)).toBeCloseTo(60, 0);
   expect(mm((await box()).h)).toBeCloseTo(90, 0);
@@ -470,7 +470,7 @@ test('the collection name can head the sheet', async ({ page }) => {
   await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
 
   await openLook(page);
-  await page.getByLabel('Titel auf der ersten Seite').check();
+  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
   await expect(page.locator('.preview-frame .ps-title')).toHaveText('Morgenkreis');
   await backToPrint(page);
   await expect(page.locator('#print-root .ps-title')).toHaveText('Morgenkreis');
@@ -483,13 +483,71 @@ test('the collection name can head the sheet', async ({ page }) => {
 });
 
 /*
+ * The title is written in Bearbeiten, under the head: it follows the name
+ * until other words are typed, and the print view only says whether and
+ * where. „Jede Seite" puts it over every page; „Erste Seite" over the first.
+ */
+test('the title is written in Bearbeiten and prints over the first or every page', async ({ page }) => {
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Morgenkreis – Gruppe Igel');
+  await page.getByLabel('Ein Satz pro Seite').check();
+  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  const titles = page.locator('#print-root .ps-title');
+  await expect(titles).toHaveText(['Morgenkreis – Gruppe Igel']);
+
+  // Its own words, typed in Bearbeiten; the print view has no field for them.
+  await showMaterial(page);
+  await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toHaveCount(0);
+  const words = page.getByLabel('Titel auf dem Papier');
+  await words.fill('Morgenkreis');
+  await words.press('Enter');
+  await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toBeVisible();
+  await showSheet(page);
+  await expect(page.getByLabel('Titel auf dem Papier')).toHaveCount(0);
+  await expect(titles).toHaveText(['Morgenkreis']);
+
+  // Over every page: two sentences, a page each, a title on both.
+  await page.getByRole('button', { name: 'Jede Seite', exact: true }).click();
+  await expect(titles).toHaveText(['Morgenkreis', 'Morgenkreis']);
+  await page.getByRole('button', { name: 'Aus', exact: true }).click();
+  await expect(titles).toHaveCount(0);
+
+  // Back to the name, and with it whatever the name becomes.
+  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'wieder wie der Name' }).click();
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Abschlusskreis');
+  await showSheet(page);
+  await expect(titles).toHaveText(['Abschlusskreis']);
+});
+
+/*
+ * A symbol for the title, chosen in the picker every field has: it prints
+ * before the words, and it is no row of the material.
+ */
+test('a title symbol prints before the title and is no row', async ({ page }) => {
+  await showMaterial(page);
+  await expect(page.locator('.rows .row')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
+  await page.getByLabel('Symbol suchen').fill('Apfel');
+  await page.locator('.picker__item').first().click();
+  await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
+  await expect(page.locator('.rows .row')).toHaveCount(2);
+  await expect(page.locator('.collection-head')).toContainText('2 Zeilen');
+
+  await showSheet(page);
+  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
+  await expect(page.locator('.preview-frame .ps-title .ps-title__pic img')).toBeVisible();
+  await expect(page.locator('#print-root .ps-sentence')).toHaveCount(2);
+});
+
+/*
  * The heading has to be paid for out of the cards, the way the credit block is.
  * A grid page is exactly as tall as the paper, so a heading the grid did not
  * know about pushes its bottom row onto a sheet of its own.
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
   await cardSheet(page);
-  await page.getByLabel('Titel auf der ersten Seite').check();
+  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the first page is full and reaches the paper's edge.
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
@@ -514,7 +572,7 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
   await cardSheet(page);
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
-  await page.getByLabel('Titel auf der ersten Seite').check();
+  await page.getByRole('button', { name: 'Erste Seite', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
   await page.getByLabel('Linie darunter').check();
   await page.getByRole('button', { name: 'Raster' }).click();

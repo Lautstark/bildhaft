@@ -11,7 +11,7 @@
    * element the block owns.
    */
   import type { Collection, CollectionKind } from '../core/types.ts';
-  import { COLLECTION_KINDS, kindOf } from '../core/types.ts';
+  import { COLLECTION_KINDS, contentOf, kindOf } from '../core/types.ts';
   import { boardOf } from '../core/board.ts';
   import { patchCollection } from '../db/repo.ts';
   import Row from '../ui/Row.svelte';
@@ -26,7 +26,9 @@
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
-  let empty = $derived(s.sentences.length === 0);
+  /* The title is not content: a material with only a title is still empty. */
+  let content = $derived(contentOf(s.sentences));
+  let empty = $derived(content.length === 0);
   let provider = $derived(providerId());
   /** A Material made by „+ Neues Material" that has not been told what it is yet. */
   let choosing = $derived(s.choosing !== null && s.choosing === s.activeId);
@@ -78,9 +80,9 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if empty}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if holdsWords()}<div class="rows words">{#each s.sentences as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if empty}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other
   card does.
---><button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div>{:else}<div class="rows">{#each s.sentences as sentence (sentence.id)}<Row {sentence} {provider} />{/each}</div>{/if}
+--><button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div>{:else}<div class="rows">{#each content as sentence (sentence.id)}<Row {sentence} {provider} />{/each}</div>{/if}

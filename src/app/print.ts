@@ -1,5 +1,5 @@
 import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
-import { titlePicture } from '../core/types.ts';
+import { contentOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { copyrightFor, creditLines, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
@@ -136,7 +136,7 @@ export function printOptions(): PrintOptions | null {
       ? talk.pages.flatMap((page) => [...(page.question ? [page.question] : []), ...page.sayings])
     : kind() === 'rezept'
       ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
-      : s.sentences;
+      : contentOf(s.sentences);
   if ((chosen.length === 0 && !board) || !s.settings) return null;
 
   return {
@@ -148,8 +148,8 @@ export function printOptions(): PrintOptions | null {
     } : null,
     song,
     talk,
-    collectionName: open?.name ?? 'bildhaft',
-    picture: board ? titlePicture(s.sentences) : null,
+    collectionName: open ? titleOf(open) : 'bildhaft',
+    pictures: titlePictures(s.sentences),
     /* A Wortkarten-Sammlung opens on the card sheet, whatever the remembered
        layout says. Strips are a shape for a sentence: a strip of one symbol
        is a card with the wrong margins, so the stored preference here is not
@@ -208,7 +208,7 @@ export function tafelField(): { width: number; height: number } | null {
   const board = boardOf(open);
   const print = printFor(printBase(), kind(), board, open.print ?? {});
   const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
-  const titled = !print.showCollectionTitle || !open.name.trim() ? false
-    : titlePicture(s.sentences) ? 'pictured' : 'text';
+  const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
+    : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
   return tafelFieldMm(print, board, credits, titled);
 }

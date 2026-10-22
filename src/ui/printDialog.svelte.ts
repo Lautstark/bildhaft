@@ -38,8 +38,8 @@ export interface PrintOptions {
   /** A Plauderbuch, when this is one: its pages in order. */
   talk?: PrintTalk | null;
   collectionName: string;
-  /** A Tafel's title picture: not among `sentences`, which are its placed cards. */
-  picture?: Slot | null;
+  /** The title's symbols: not among `sentences`, which are what the sheet is of. */
+  pictures?: Slot[];
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
   provider: ProviderId;
@@ -156,7 +156,7 @@ export class Printing {
     attribution: this.options.attribution,
     copyright: copyrightFor(this.options.provider, this.settings.showCopyright),
     collectionName: this.options.collectionName,
-    picture: this.options.picture,
+    pictures: this.options.pictures,
   }, this.rows, this.strips));
 
   plan: SheetPlan = $derived.by(() => ({ rows: this.rows, pages: this.pages }));
@@ -254,8 +254,10 @@ export class Printing {
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
     }
-    /* On a Tafel nothing is cut: what is measured is a field. */
-    this.cardSize = t(this.options.board ? 'ui.field_size' : 'ui.card_to_cut')
+    /* On a Tafel nothing is cut: what is measured is a field. In a strip it
+       is a symbol's field in the strip, not a card. */
+    this.cardSize = t(this.options.board ? 'ui.field_size'
+      : this.options.kind === 'satzstreifen' ? 'ui.strip_field_size' : 'ui.card_to_cut')
       + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
   }
 
@@ -368,9 +370,9 @@ function mountPrintable(entry: { state: Printing; printable: ReturnType<typeof m
    measured, and a label set in a fallback face is not the same height as the
    same label in the real one. */
 async function ready(state: Printing): Promise<void> {
-  const { provider, sentences, picture } = state.options;
-  /* A Tafel's title picture is not among its cards, and is drawn all the same. */
-  await warmSymbols(provider, symbolIdsIn(picture ? [...sentences, { slots: [picture] }] : sentences, provider));
+  const { provider, sentences, pictures } = state.options;
+  /* The title's symbols are not among the sheet's rows or cards, and are drawn all the same. */
+  await warmSymbols(provider, symbolIdsIn(pictures?.length ? [...sentences, { slots: pictures }] : sentences, provider));
   await document.fonts?.ready;
   state.replan();
   // Two frames so the printable copy is laid out before anything reads it.

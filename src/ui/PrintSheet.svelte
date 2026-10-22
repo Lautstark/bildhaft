@@ -101,7 +101,8 @@
   /* The licence notice, drawn at the foot of every page rather than packed
      with the content: a sheet handed on alone carries it too. */
   let credit = $derived(blocks.find((block) => block.kind === 'credit') ?? null);
-  /* The name, drawn again over a sheet of places that starts without it. */
+  /* The title, drawn again over a sheet of places that starts without it, and
+     over every page after the first when it is asked for there. */
   let heading = $derived(blocks.find((block) => block.kind === 'title') ?? null);
 
   /* A sheet of Plauderbuch cards to cut out has no foot: it is cut up, and
@@ -122,7 +123,7 @@
 
 {#snippet shoppingZones(cols: number, rows: number, extra: string)}<div class="ps-zones{extra}" style:--cols={String(cols)}>{#each Array.from({ length: cols * rows }) as _, i (i)}<span class="ps-zone"><span class="ps-dot"></span></span>{/each}</div>{/snippet}
 
-{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title{settings.titleLine ? ' ps-title--lined' : ''}{block.picture ? ' ps-title--pictured' : ''}">{#if block.picture}<PrintPicture slot={block.picture} {provider} />{/if}<span>{block.text}</span></h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if block.first && captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if block.last && captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
+{#snippet one(block: Block)}{#if block.kind === 'title'}<h1 class="ps-title{settings.titleLine ? ' ps-title--lined' : ''}{block.pictures.length > 0 ? ' ps-title--pictured' : ''}">{#each block.pictures as picture (picture.id)}<PrintPicture slot={picture} {provider} />{/each}<span>{block.text}</span></h1>{:else if block.kind === 'strip'}<div class="ps-sentence{block.page ? ' ps-sentence--page' : ''}{block.framed ? ' ps-sentence--framed' : ''}">{#if block.first && captionAt('above')}<p class="ps-caption">{sentenceCaption(block.sentence)}</p>{/if}<div class="ps-row">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{#if block.last && captionAt('below')}<p class="ps-caption ps-caption--below">{sentenceCaption(block.sentence)}</p>{/if}</div>{:else if block.kind === 'row'}<!--
   A flowing row, and the cards on it are sized either by the symbol inside them
   or by the millimetres somebody typed. Both flow and wrap the same way; only
   where the box's size comes from differs.
@@ -242,4 +243,4 @@
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.
---><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if heading && held[0]?.kind === 'store'}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+--><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

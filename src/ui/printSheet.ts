@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, SongPartKind, ZoneStyle,
 } from '../core/types.ts';
-import { partOf, slotCaption, symbolIdFor, titlePicture } from '../core/types.ts';
+import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
@@ -364,8 +364,9 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
 
   const close = () => { pages.push(count); filled.push(used); count = 0; used = 0; };
 
-  /* A block that wants the name over its page — an Einkaufsliste's places —
-     and starts a page without it gets it drawn there, so its room is kept. */
+  /* A block that wants the name over its page — an Einkaufsliste's places,
+     or any block when the title is asked for on every page — and starts a
+     page without it gets it drawn there, so its room is kept. */
   const heading = blocks.find((block) => block.classList.contains('ps-title'));
   const headingBox = heading ? outer(heading) : null;
   const headingH = headingBox ? headingBox.top + headingBox.height + headingBox.bottom : 0;
@@ -377,7 +378,9 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
     // margin below counts: a page is a flex column, so the last block's margin
     // stays on the page rather than collapsing into the foot, and leaving it
     // out let a full page push its foot that much further down than the rest.
-    const headed = block.classList.contains('ps-titled') && previous !== heading;
+    const headed = block !== heading && (settings.titleEvery
+      ? pages.length > 0
+      : block.classList.contains('ps-titled') && previous !== heading);
     if (count > 0 && used + box.top + box.height + box.bottom > limit + FIT_TOLERANCE) close();
     if (count === 0 && headed) used += headingH;
     previous = block;
@@ -442,8 +445,8 @@ export interface SheetOptions {
   /** The METACOM notice, when the user has asked for it. */
   copyright: string | null;
   collectionName: string;
-  /** A Tafel's title picture, printed before its name. A Rezept's is found among its rows. */
-  picture?: Slot | null;
+  /** The title's symbols, printed before it, in their order. */
+  pictures?: Slot[];
 }
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
@@ -482,8 +485,8 @@ export function tafelFieldMm(
  * shows cannot differ, because neither worked anything out on its own.
  */
 export type Block =
-  /* `picture`: a Rezept's or a Tafel's title picture, printed before the name. */
-  | { kind: 'title'; text: string; picture?: Slot | null }
+  /* `pictures`: the title's symbols, printed before its words. */
+  | { kind: 'title'; text: string; pictures: Slot[] }
   /* `slots`: the strip's cards, or one page's lines of a strip too tall for a
      page. Its sentence goes over the first piece and under the last. */
   | { kind: 'strip'; sentence: Sentence; slots: Slot[]; first: boolean; last: boolean; page: boolean; framed: boolean }
@@ -620,18 +623,19 @@ export function sheetBlocks(
   const blocks: Block[] = [];
 
   /*
-   * Once, above everything, rather than per page: a header repeated on every
-   * sheet would cost the grid its room on all of them, and what this answers is
-   * "which collection is this printout" — a question a stack of paper asks once.
-   * An Einkaufsliste asks it twice: its board and its places hang apart.
+   * Once, above everything: what this answers is "which material is this
+   * printout", a question a stack of paper usually asks once. Where the
+   * template offers it, `titleEvery` asks it on every page, and the sheet
+   * draws it again over each page after the first. An Einkaufsliste asks it
+   * twice: its board and its places hang apart.
    */
   const title = settings.showCollectionTitle ? collectionName.trim() : '';
   /* The name as it stands in Bearbeiten: a Rezept's or a Tafel's with its
      picture, when it was given one. The picture goes and comes with the name.
      A Tafel's comes from outside, because its cards are only the placed ones. */
-  const picture = settings.layout === 'rezept' ? titlePicture(sentences) : options.picture ?? null;
-  if (title) blocks.push({ kind: 'title', text: title, picture });
-  const titled: Titled = !title ? false : picture ? 'pictured' : 'text';
+  const pictures = options.pictures ?? [];
+  if (title) blocks.push({ kind: 'title', text: title, pictures });
+  const titled: Titled = !title ? false : pictures.length > 0 ? 'pictured' : 'text';
 
   const reserve = reserveMm(settings, credits, titled);
 
@@ -659,7 +663,7 @@ export function sheetBlocks(
        sheet draws; the cards to cut last. */
     if (settings.showGuide) blocks.unshift({ kind: 'shop-guide' });
     const cards = deck(sentences, provider);
-    if (title) blocks.push({ kind: 'title', text: title, picture });
+    if (title) blocks.push({ kind: 'title', text: title, pictures });
     /* As many places across as the page is wide; the place is its zone, and
        the air between two is the zones' own. */
     const zoneGap = ZONE_GAP_MM * k;

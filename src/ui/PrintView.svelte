@@ -6,7 +6,7 @@
    * („Bearbeiten") and this. The sheet stands large in the middle, a page at a
    * time; on the left every page small, to see how many there are and where
    * they break, and to jump; on the right the two buttons the view is for,
-   * the PDFs kept, and the settings — Papier, Größe, Aussehen, in one order
+   * the PDFs kept, and the settings — Papier, Größe, Titel, Gestaltung, Seite, in one order
    * for every template.
    *
    * The preview is the engine the old column used (`attachPrinting`): built

@@ -27,8 +27,12 @@ export interface PrintOffer {
    * are not cut apart, so „Karte zum Ausschneiden" named nothing on them.
    */
   size?: { kind: 'symbol'; max: number; fallback: number; note: string | null; cut?: false } | { kind: 'cards' } | { kind: 'board' };
-  /** The same millimetres: a cutting margin where scissors go, air where none do. */
-  margin?: 'cut' | 'air';
+  /**
+   * The margin round each symbol, always called „Rand", and the note under it
+   * saying what it is for here: round a symbol in a strip, round a card to be
+   * cut and laminated, round a card in its field on a Tafel.
+   */
+  margin?: 'strip' | 'cut' | 'air';
   /** `full`: whether, where and how big; `size`: how big only, the words always printing. */
   label?: 'full' | 'size';
   frames?: boolean;
@@ -41,7 +45,12 @@ export interface PrintOffer {
   onePerPage?: boolean;
   /** Lied: the headings over the parts, and „2×". */
   songChecks?: boolean;
-  title?: boolean;
+  /**
+   * The title: `pages` asks „Aus · Erste Seite · Jede Seite", `once` only
+   * „Aus · Drucken" — a Tafel is one sheet, and an Einkaufsliste's title has
+   * its own places. What it says is written in Bearbeiten, never here.
+   */
+  title?: 'pages' | 'once';
   /** The colour of the whole page, behind everything on it: a Tafel's. */
   page?: boolean;
   /** „Seite 1 von 3" at the foot of each page. */
@@ -88,7 +97,7 @@ export interface Template {
 }
 
 const CARD_SHEET: PrintOffer = {
-  paper: true, size: { kind: 'cards' }, margin: 'cut', label: 'full', frames: true, cutLines: true, title: true,
+  paper: true, size: { kind: 'cards' }, margin: 'cut', label: 'full', frames: true, cutLines: true, title: 'pages',
   pageNumbers: true,
 };
 
@@ -106,7 +115,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     opens: (print) => (print.layout === 'strip' ? print : { ...print, layout: 'strip' }),
     offers: () => ({
       paper: true, size: { kind: 'symbol', max: 120, fallback: 40, note: null },
-      margin: 'cut', label: 'full', frames: true, stripFrame: true, sentence: true, onePerPage: true, title: true, pageNumbers: true,
+      margin: 'strip', label: 'full', frames: true, stripFrame: true, sentence: true, onePerPage: true, title: 'pages', pageNumbers: true,
     }),
   },
 
@@ -139,11 +148,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         ...print, layout: 'sheet', sheetFit: 'grid', gridCols: grid.cols, gridRows: grid.rows,
         cutMarginMm: air ?? defaultAirMm(field),
         markFreeFields: own.markFreeFields ?? false,
+        titleEvery: false,
       };
     },
     offers: () => ({
       paper: true, size: { kind: 'board' }, margin: 'air', label: 'full', frames: true, freeFields: true,
-      title: true, pageNumbers: true, page: true,
+      title: 'once', pageNumbers: true, page: true,
     }),
   },
 
@@ -172,12 +182,13 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
         titleSizePt: own.titleSizePt ?? 15,
         titleColour: own.titleColour !== undefined ? own.titleColour : SHOP_GREEN,
         titleLine: own.titleLine ?? true,
+        titleEvery: false,
         showGuide: own.showGuide ?? true,
         pageColour: own.pageColour !== undefined ? own.pageColour : SHOP_PAGE,
         cartColour: own.cartColour !== undefined ? own.cartColour : SHOP_GREEN,
       };
     },
-    offers: () => ({ paper: 'size', page: true, cart: true, title: true, guide: true }),
+    offers: () => ({ paper: 'size', page: true, cart: true, title: 'once', guide: true }),
     /* The paper decides the millimetres again; the name over the board is
        what was just set, and stays. */
     settles: (settings) => TEMPLATES.einkaufsliste.opens(settings, settings, null),
@@ -199,11 +210,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       titleSizePt: own.titleSizePt ?? 15,
       titleColour: own.titleColour !== undefined ? own.titleColour : null,
       titleLine: own.titleLine ?? true,
+      titleEvery: own.titleEvery ?? false,
       showPageNumbers: own.showPageNumbers ?? false,
     }),
     offers: () => ({
       colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 20, note: null, cut: false }, label: 'size',
-      title: true, pageNumbers: true,
+      title: 'pages', pageNumbers: true,
     }),
   },
 
@@ -234,6 +246,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       titleSizePt: own.titleSizePt ?? 15,
       titleColour: own.titleColour !== undefined ? own.titleColour : null,
       titleLine: own.titleLine ?? true,
+      titleEvery: own.titleEvery ?? false,
       showSentenceText: own.showSentenceText ?? false,
       sentencePosition: own.sentencePosition ?? 'above',
       sentenceSizePt: own.sentenceSizePt ?? 10,
@@ -243,7 +256,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
     offers: () => ({
       colour: true, paper: true, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false },
-      label: 'full', frames: true, sentence: true, songChecks: true, title: true, pageNumbers: true,
+      label: 'full', frames: true, sentence: true, songChecks: true, title: 'pages', pageNumbers: true,
     }),
   },
 

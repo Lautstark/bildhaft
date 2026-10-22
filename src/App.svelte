@@ -19,6 +19,7 @@
   import Composer from './ui/Composer.svelte';
   import SongComposer from './ui/SongComposer.svelte';
   import PrintView from './ui/PrintView.svelte';
+  import TitleLine from './ui/TitleLine.svelte';
   import RecipeComposer from './ui/RecipeComposer.svelte';
   import TalkComposer from './ui/TalkComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
@@ -29,6 +30,7 @@
   import { notify, useToast } from './app/notify.ts';
   import { persistSettings } from './app/settings.ts';
   import { activeCollection, kind, MOBILE_QUERY, s } from './app/state.svelte.ts';
+  import { contentOf } from './core/types.ts';
   import { t } from './i18n/index.ts';
 
   let toast: HTMLElement;
@@ -64,7 +66,7 @@
     : activeCollection()?.name ?? 'bildhaft');
 
   /** „Drucken" is shown only once there is something to print. */
-  let printing = $derived(s.view === 'print' && s.sentences.length > 0);
+  let printing = $derived(s.view === 'print' && contentOf(s.sentences).length > 0);
 
   $effect(() => useToast(toast));
 
@@ -130,11 +132,11 @@
   something to read before it.
 
   A Satzstreifen has its head first and the box under it, in „Bearbeiten"
-  only: the box is part of what the switch swaps, so „Drucken" has none and
+  only, then its title as the heading of what follows, as on the paper: the box is part of what the switch swaps, so „Drucken" has none and
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if kind() === 'satzstreifen'}<CollectionHead />{#if !printing}<Composer />{/if}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if kind() === 'satzstreifen'}<CollectionHead />{#if !printing}<Composer /><TitleLine />{/if}{:else if kind() === 'lied'}<SongComposer /><CollectionHead />{:else if kind() === 'rezept'}<RecipeComposer /><CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

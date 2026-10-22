@@ -97,12 +97,14 @@
   padding-bottom: var(--title-rule-gap);
   border-bottom: var(--title-rule) solid currentColor;
 }
-/* A Rezept's name with its picture before it, as it stands in Bearbeiten. */
+/* A title with its symbols before it, as it stands in Bearbeiten: the
+   symbols close together, the words a little apart from them. */
 .ps-title--pictured {
   display: flex;
   align-items: center;
-  gap: 5mm;
+  gap: 2mm;
 }
+.ps-title--pictured > span { margin-left: 3mm; }
 .ps-title__pic {
   flex: none;
   display: grid;

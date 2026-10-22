@@ -238,10 +238,11 @@ export interface Sentence {
    * poured in from the Wortschatz, or made in another template — is a card,
    * and the Zutaten are where a card of a recipe is first looked for.
    *
-   * `titel` is the picture beside a Rezept's or a Tafel's name: one sentence
-   * holding one field, so the picker, an own picture, the folder and the
-   * export treat it as they treat every other field. It is in none of a
-   * Rezept's three parts, and on no field of a Tafel.
+   * `titel` holds the symbols of a material's title: one sentence whose
+   * fields are those symbols, so the picker, an own picture, the folder and
+   * the export treat them as they treat every other field. It is in none of a
+   * Rezept's three parts, on no field of a Tafel, and no row or card of
+   * anything — `contentOf` leaves it out.
    */
   part?: RecipePart | 'titel';
 }
@@ -253,10 +254,22 @@ export type RecipePart = (typeof RECIPE_PARTS)[number];
 /** Which part of a Rezept a sentence is in. */
 export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | 'titel' => sentence.part ?? 'zutat';
 
-/** The field of a Rezept's or a Tafel's title picture, when one is chosen. */
-export const titlePicture = (sentences: readonly Sentence[]): Slot | null =>
-  sentences.find((sentence) => sentence.part === 'titel')?.slots
-    .find((slot) => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean))) ?? null;
+const chosen = (slot: Slot): boolean => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean));
+
+/** The symbols of a material's title, in their order: those with a picture chosen. */
+export const titlePictures = (sentences: readonly Sentence[]): Slot[] =>
+  sentences.find((sentence) => sentence.part === 'titel')?.slots.filter(chosen) ?? [];
+
+/** The first of them: a Rezept's or a Tafel's title picture, as the head shows it. */
+export const titlePicture = (sentences: readonly Sentence[]): Slot | null => titlePictures(sentences)[0] ?? null;
+
+/** What a material holds, without its title: its rows, cards or entries. */
+export const contentOf = (sentences: readonly Sentence[]): Sentence[] =>
+  sentences.filter((sentence) => sentence.part !== 'titel');
+
+/** The title a material prints: its own when it was given one, else its name. */
+export const titleOf = (collection: Pick<Collection, 'name' | 'title'>): string =>
+  collection.title?.trim() || collection.name;
 
 /**
  * What a row is called, on screen, on paper and in the sidebar. One expression,
@@ -373,6 +386,15 @@ export interface Collection {
    * sheet's.
    */
   print?: Partial<PrintSettings>;
+
+  /**
+   * The title on the paper, when it is not the name. Absent, it follows the
+   * name, and goes on following it when the name changes: the name is for
+   * finding the material („Fische angeln – Meine ersten Spiele"), the title
+   * for whoever reads the sheet („Fische angeln"). Its symbols are the
+   * `titel` sentence's.
+   */
+  title?: string;
 
   /**
    * A Lied: which lines make up each of its parts, and the order the parts
@@ -693,7 +715,8 @@ export interface PrintSettings {
   /** It was 10 pt for every sheet until it was asked; 10 pt is where it starts. */
   sentenceSizePt: number;
   /**
-   * Print the collection's name once, at the top of the first page.
+   * Print the material's title (`titleOf`) at the top of the first page, or
+   * of every page with `titleEvery`.
    *
    * Off by default: most printouts are cut up the moment they leave the
    * printer, and a heading on a sheet that becomes a pile of cards is a heading
@@ -711,6 +734,8 @@ export interface PrintSettings {
   titleColour: string | null;
   /** A line under the name, in its colour, as thick as a Rezept's always was. */
   titleLine: boolean;
+  /** The title over every page rather than only the first, where a template offers it. */
+  titleEvery: boolean;
   /**
    * Strips only. A printed border around a whole sentence — the symbols and the
    * sentence text inside one line — so a strip reads as one thing and can be
@@ -816,6 +841,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   titleSizePt: 12,
   titleColour: null,
   titleLine: false,
+  titleEvery: false,
   stripFrame: false,
   cardBorderMm: 0,
   cardBorderColor: '#333333',
