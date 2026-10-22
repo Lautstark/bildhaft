@@ -1,7 +1,7 @@
-import type { RecipePart, Sentence, Slot } from '../core/types.ts';
+import type { RecipePart, Sentence } from '../core/types.ts';
 import { partOf, sentenceCaption, slotCaption } from '../core/types.ts';
 import { deleteSentence, newId, putSentence } from '../db/repo.ts';
-import { handleAddSlot, openPicker } from './editing.ts';
+import { emptySlot, handleAddSlot, openPicker } from './editing.ts';
 import { addLines } from './composing.ts';
 import { s } from './state.svelte.ts';
 
@@ -40,9 +40,7 @@ export function addToPart(part: RecipePart, text: string): Promise<string> {
 export async function addCard(part: RecipePart): Promise<void> {
   const collectionId = s.activeId;
   if (!collectionId) return;
-  const slot: Slot = {
-    id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
-  };
+  const slot = emptySlot();
   const now = Date.now();
   const sentence: Sentence = {
     id: newId(), normalizedInput: '', rawInput: '', slots: [slot],

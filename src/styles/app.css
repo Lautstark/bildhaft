@@ -534,6 +534,12 @@ img.mirrored { transform: scaleX(-1); }
   height: 46px;
   flex: none;
 }
+/* A field with nothing in it yet: the square it will fill, drawn as a gap. */
+.picker__own-shown--empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
 
 /* The search and the pictures it answers with are
    @lautstark/bildquelle/svelte/SymbolSearch now, and components.css draws

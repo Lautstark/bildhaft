@@ -798,7 +798,7 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
   await page.getByRole('button', { name: 'Bild zum Titel ändern' }).click();
-  await page.getByRole('button', { name: 'Feld entfernen' }).click();
+  await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Bild zum Titel wählen' })).toBeVisible();
   await showSheet(page);
   await expect(sheet.locator('.ps-title')).toBeVisible();
