@@ -126,7 +126,8 @@
   };
 
   /* „+ Neuer Tag" makes the tag and puts the caret in its name, selected;
-     conventions.md §1.5, the same bargain a new Sammlung is made under. */
+     conventions.md §1.5. A new Sammlung no longer is: its caret goes into its
+     box (collections.ts). */
   const caret = { asked: () => asking() === 'tag-name', answered };
 
   let count = $derived(shown.length === 1 ? t('ui.n_words_one') : t('ui.n_words', { n: shown.length }));

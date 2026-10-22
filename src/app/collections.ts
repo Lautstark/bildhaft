@@ -16,7 +16,6 @@ import { openSheet } from '@lautstark/design/svelte/sheet';
 import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
 import { activeCollection, providerId, s } from './state.svelte.ts';
-import { askFor } from './asking.svelte.ts';
 import { notify } from './notify.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
 import SayFoot from '../ui/SayFoot.svelte';
@@ -219,13 +218,11 @@ export async function handleNewCollection(): Promise<void> {
   s.sentences = [];
   setActive(created.id);
   s.choosing = created.id;
-  /* Straight into the name, selected: the first keystroke replaces the date
-     it was given. conventions.md §1.5, and the selecting is the half of it
-     that was missing here — the name was invented and then left as a chore to
-     delete, which is the difference between a suggestion and a default. The
-     field takes the caret from its own effect, which runs after the paint that
-     puts the new name in it. */
-  askFor('collection-name');
+  /* Not into the name. conventions.md §1.5 asks for the caret there, and in
+     bildhaft it goes into the box instead (her ask, 2026-10-22): what is made
+     is the material, the name for the day is fine to begin with, and a new
+     material that opened in its name put three fields over one another in
+     front of the first sentence. The box takes the caret as it mounts. */
 }
 
 export async function handleExport(): Promise<void> {

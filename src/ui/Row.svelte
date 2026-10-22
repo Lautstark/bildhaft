@@ -12,11 +12,8 @@
   /* `step` is set when the row is one of a Rezept's Schritte: it is numbered.
      No row has a printer of its own any more: everything prints from the
      sheet column beside the Sammlung. */
-  let { sentence, provider, step, sung, bare = false }: {
+  let { sentence, provider, step, sung }: {
     sentence: Sentence; provider: ProviderId; step?: number;
-    /* A Lied's line: its symbols and nothing to name it by. The words are
-       under the symbols, and the line's text is its part's „✎ Text". */
-    bare?: boolean;
     /* Set when the row is a line of a Lied: how often it is sung there. A
        line sung more than once says so, because changing it here changes it
        everywhere it is sung — which is the point, and a surprise if unsaid. */
@@ -143,7 +140,7 @@
   let typedLine = $derived(sentence.title?.trim() ? t('ui.typed_line', { text: sentence.rawInput }) : null);
 </script>
 
-<article class="row{bare ? ' row--bare' : ''}" aria-label={bare ? sentence.rawInput : undefined}><header class="row__head">{#if step !== undefined}<span class="row__step" aria-hidden="true">{step}</span>{/if}{#if bare}<span class="row__spacer"></span>{:else}<TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{/if}{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions"><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
+<article class="row" aria-label={sentence.rawInput}><header class="row__head">{#if step !== undefined}<span class="row__step" aria-hidden="true">{step}</span>{/if}<TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions"><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
   class="slot"
   class:slot--empty={!symbolIdFor(slot, provider)}
   class:slot--dragging={dragFrom === index}

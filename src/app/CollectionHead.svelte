@@ -31,7 +31,6 @@
   import { pagesOf } from '../core/talk.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import { chooseTitlePicture } from './recipe.ts';
-  import { answered, asking } from './asking.svelte.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet, setView } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
   import { paperOf } from './print.ts';
@@ -51,11 +50,6 @@
   const write = (typed: string): Promise<void> | undefined =>
     renaming ? renameCollection(renaming, typed) : undefined;
 
-  /* Where the caret is owed, as the `caret` prop's two questions.
-     conventions.md §6.5 took this shape from here — an asker that names what
-     it wants rather than the field it wants it in — so `asking.svelte.ts` is
-     unchanged and only the reading of it moves. */
-  const caret = { asked: () => asking() === 'collection-name', answered };
 
   /* The live echo, and only that: the name in the sidebar row and the top bar
      follow each keystroke. Writing it is design/rename's, on its own listener —
@@ -106,7 +100,7 @@
 <div class="collection-head">{#if pictured}<!--
   The picture beside a Rezept's name: chosen here, in the picker
   every field has, and printed with the name when the name is printed.
---><button class="collection-head__pic{pictureId ? '' : ' collection-head__pic--empty'}" type="button" aria-label={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} title={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} onclick={() => void chooseTitlePicture()}>{#if pictureId}<SymbolPicture provider={providerId()} id={pictureId} alt={t('ui.title_picture')} mirrored={picture?.mirrored} />{:else}{t('ui.title_picture_empty')}{/if}</button>{/if}<TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} {caret} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
+--><button class="collection-head__pic{pictureId ? '' : ' collection-head__pic--empty'}" type="button" aria-label={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} title={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} onclick={() => void chooseTitlePicture()}>{#if pictureId}<SymbolPicture provider={providerId()} id={pictureId} alt={t('ui.title_picture')} mirrored={picture?.mirrored} />{:else}{t('ui.title_picture_empty')}{/if}</button>{/if}<TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.

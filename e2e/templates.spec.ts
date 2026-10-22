@@ -38,8 +38,7 @@ test('a Sammlung of rows still draws rows after a Sammlung of cards was open', a
   await expect(page.locator('.templates')).toBeVisible();
   await expect(page.locator('.collection-head')).toHaveCount(0);
   await pickTemplate(page, /^Wortkarten/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-  await page.keyboard.type('Karten');
+  await page.getByLabel('Name des Materials').fill('Karten');
   /* Nothing is asserted here on purpose: an empty Sammlung shows its empty
      state, so the host the card wall wrote its layout onto is not even in the
      page yet. Which is the shape of the defect — it is written on a node
@@ -71,7 +70,6 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Einkaufsliste/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
   await page.getByLabel('Wörter hinzufügen').fill('Apfel');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
@@ -229,7 +227,6 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   // And the sidebar says so under the name, where eleven look-alike rows are told apart.
   await expect(page.locator('.sidebar .collections [aria-current]')).toContainText('Tafel');
 
@@ -351,7 +348,6 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
 
   const names = Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`);
   const bar = page.getByLabel('Wörter hinzufügen');
@@ -403,7 +399,6 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -457,7 +452,6 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Rot');
   await bar.press('Enter');
@@ -626,8 +620,7 @@ test('a Rezept takes each part in its own box, and prints them in order', async 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Rezept/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-  await page.keyboard.type('Waffeln (5–6 Stück)');
+  await page.getByLabel('Name des Materials').fill('Waffeln (5–6 Stück)');
   // Its parts have their own boxes, so the composer above would be a fourth.
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
 
@@ -804,7 +797,6 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
@@ -909,17 +901,14 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Lied/);
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-  await page.keyboard.type('Laternenlied');
+  await expect(page.getByLabel('Liedtext einfügen')).toBeFocused();
+  await page.getByLabel('Name des Materials').fill('Laternenlied');
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
-  // Its box stands where every other template's does: above the Sammlung's name.
-  const songBox = page.getByLabel('Liedzeile eingeben');
-  const box = await songBox.boundingBox();
-  const head = await page.locator('.collection-head').boundingBox();
-  expect(box!.y).toBeLessThan(head!.y);
-  // Empty, it shows the parts to begin in, the way an empty Tafel shows its grid.
-  await expect(page.locator('.song__head h3')).toHaveText(['Strophe 1', 'Refrain']);
-  await expect(page.getByText('Noch keine Zeile.')).toHaveCount(2);
+  // Empty, it is one field for the whole song, under the head, and it has
+  // the caret; the title line waits until there is a song to head.
+  const songBox = page.getByLabel('Liedtext einfügen');
+  await expect(page.locator('.title-line')).toHaveCount(0);
+  await expect(page.locator('.song__head')).toHaveCount(0);
 
   const refrain = ['Ich geh mit meiner Laterne', 'Dort oben leuchten die Sterne', 'Hier unten leuchten wir'];
   const rab = 'Rabimmel, rabammel, rabum';
@@ -932,16 +921,17 @@ test('a Lied holds a repeated line once, and prints the song written out', async
 
   await expect(page.locator('.song__head h3'))
     .toHaveText(['Refrain', 'Strophe 1', 'Refrain', 'Strophe 2', 'Refrain']);
-  await expect(songBox).toHaveValue('');
+  await expect(songBox).toHaveCount(0);
   // The first Refrain open, the two after it folded: the same rows, not drawn again.
   await expect(page.locator('.song__folded')).toHaveText(Array(2).fill('Refrain · 3 Zeilen · aufklappen'));
   await expect.poll(async () => (await readSentences(page)).length).toBe(6);
 
-  // A line is its symbols: nothing to name it by, the words are under them.
+  // A line is drawn as a strip is: the line it was typed from over it, to
+  // be renamed there, and its symbols under it.
   const rabRows = page.locator(`.row[aria-label="${rab}"]`);
   await expect(rabRows).toHaveCount(4);
   await expect(rabRows.locator('.row__sung')).toHaveText(Array(4).fill('4×'));
-  await expect(page.locator('.song .row__title')).toHaveCount(0);
+  await expect(rabRows.first().locator('.row__title')).toHaveAttribute('placeholder', rab);
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
@@ -989,7 +979,7 @@ test('a Lied holds a repeated line once, and prints the song written out', async
 /**
  * A Lied is changed where it stands, the way the box only ever adds.
  *
- * The box puts a line at the end of the last Strophe; „✎ Text" writes one
+ * A part's own line puts a line at its end; „✎ Text" writes one
  * part again, keeping the rows of the lines it keeps; „+ Strophe" is followed
  * by the Refrain as the Strophen before it are; × takes a Refrain out where it
  * is sung there, and „+ Refrain" sings it once more.
@@ -998,7 +988,7 @@ test('a Lied grows and shrinks part by part', async ({ page }) => {
   await pickTemplate(page, /^Lied/);
   const refrain = ['Ich geh mit meiner Laterne', 'Hier unten leuchten wir'];
   const rab = 'Rabimmel, rabammel, rabum';
-  const songBox = page.getByLabel('Liedzeile eingeben');
+  const songBox = page.getByLabel('Liedtext einfügen');
   await songBox.fill([...refrain, 'Mein Licht geht aus', rab, ...refrain, 'Mein Licht ist klein', rab, ...refrain].join('\n'));
   await page.getByRole('button', { name: 'Übersetzen' }).click();
   const heads = page.locator('.song__head h3');
@@ -1006,11 +996,12 @@ test('a Lied grows and shrinks part by part', async ({ page }) => {
   await expect.poll(async () => (await readSentences(page)).length).toBe(5);
   const rabId = (await readSentences(page)).find((row) => row.rawInput === rab)!.id;
 
-  // The box adds, at the end of the last Strophe, and is empty again.
-  await songBox.fill('Mein Licht ist hell');
-  await songBox.press('Enter');
-  await expect(songBox).toHaveValue('');
+  // A part's own line adds at its end, and is empty again.
   const strophe2 = page.getByRole('region', { name: 'Strophe 2' });
+  const line = page.getByLabel('Neue Zeile in Strophe 2');
+  await line.fill('Mein Licht ist hell');
+  await line.press('Enter');
+  await expect(line).toHaveValue('');
   await expect(strophe2.locator('.row')).toHaveCount(3);
   await expect(strophe2.locator('.row').last()).toHaveAttribute('aria-label', 'Mein Licht ist hell');
 
@@ -1080,7 +1071,7 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await chooseFakeFolder(page);
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await pickTemplate(page, /^Lied/);
-  await page.getByLabel('Liedzeile eingeben').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
+  await page.getByLabel('Liedtext einfügen').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
   await page.getByRole('button', { name: 'Übersetzen' }).click();
   await showSheet(page);
 
@@ -1265,11 +1256,10 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
  */
 test('a word typed into a free field lies there, a list in the next free fields', async ({ page }) => {
   await pickTemplate(page, /^Tafel/);
-  await expect(page.locator('.title-line')).toBeVisible();
+  // Empty, a Tafel is its box and its grid; its title line comes with its first card.
+  await expect(page.locator('.title-line')).toHaveCount(0);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
   expect(await top('.composer')).toBeLessThan(await top('.board-head'));
-  expect(await top('.board-head')).toBeLessThan(await top('.title-line'));
-  expect(await top('.title-line')).toBeLessThan(await top('.board'));
 
   await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
   const line = page.getByLabel('Wort für Feld 2');
@@ -1279,6 +1269,8 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
   await expect(cells.nth(2).locator('.word__name')).toHaveText('Banane');
   await expect(cells.nth(0)).toHaveClass(/cell--free/);
+  expect(await top('.board-head')).toBeLessThan(await top('.title-line'));
+  expect(await top('.title-line')).toBeLessThan(await top('.board'));
 
   const box = page.getByLabel('Wörter hinzufügen');
   await box.fill('Kiwi');

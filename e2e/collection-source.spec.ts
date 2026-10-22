@@ -63,11 +63,7 @@ async function newCollection(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Satzstreifen/);
-  // Creating is asynchronous and the focus lands at the end of it, so typing
-  // before the field has it goes nowhere at all.
-  await expect(page.getByLabel('Name des Materials')).toBeFocused();
-  // The invented name is selected, so typing replaces it (§1.5).
-  await page.keyboard.type(name);
+  await page.getByLabel('Name des Materials').fill(name);
   await expect(page.locator('.collections__name', { hasText: name })).toBeVisible();
 }
 

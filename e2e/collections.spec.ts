@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.sidebar')).toBeVisible();
 });
 
-test('a new Sammlung is named for the day, and the name is selected', async ({ page }) => {
+test('a new Sammlung is named for the day, and the caret is in its box', async ({ page }) => {
   const rows = page.locator('.sidebar__section--collections .collections__item');
   const before = await rows.count();
 
@@ -38,38 +38,18 @@ test('a new Sammlung is named for the day, and the name is selected', async ({ p
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Satzstreifen/);
 
-  const title = page.getByLabel('Name des Materials');
-  await expect(title).toBeFocused();
-
   // Named for the day: the date is in it, whatever the separator.
+  const title = page.getByLabel('Name des Materials');
   const today = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   await expect(title).toHaveValue(
     new RegExp(`${pad(today.getDate())}\\.${pad(today.getMonth() + 1)}\\.${today.getFullYear()}`),
   );
 
-  // And the whole of it is selected — the half that is easy to leave out.
-  const selection = await title.evaluate((node: HTMLInputElement) => ({
-    start: node.selectionStart, end: node.selectionEnd, length: node.value.length,
-  }));
-  expect(selection.length).toBeGreaterThan(0);
-  expect(selection.start).toBe(0);
-  expect(selection.end).toBe(selection.length);
-});
-
-test('so the first keystroke replaces the date rather than joining it', async ({ page }) => {
-  /* The property the one above is really about, asserted as behaviour. An
-     unselected default name is a small chore charged on every creation, and
-     what it looks like from the outside is this: you type, and what you get is
-     your words stuck onto a date. */
-  await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.locator('.templates')).toBeVisible();
-  await pickTemplate(page, /^Satzstreifen/);
-
-  const title = page.getByLabel('Name des Materials');
-  await expect(title).toBeFocused();
-  await page.keyboard.type('Beim Essen');
-
-  await expect(title).toHaveValue('Beim Essen');
-  await expect(page.locator('.collections__name', { hasText: 'Beim Essen' })).toBeVisible();
+  // What is made is the material, so typing starts there and not in its name
+  // (her ask, 2026-10-22): the first keystroke is the first sentence.
+  await expect(page.getByLabel('Satz eingeben')).toBeFocused();
+  await page.keyboard.type('Wir gehen raus');
+  await expect(page.getByLabel('Satz eingeben')).toHaveValue('Wir gehen raus');
+  await expect(title).not.toHaveValue('Wir gehen raus');
 });

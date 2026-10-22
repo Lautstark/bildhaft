@@ -1,10 +1,11 @@
 /**
- * Where the caret is owed, for the two names that are made before they are
- * chosen.
+ * Where the caret is owed, for a name that is made before it is chosen: a
+ * tag's.
  *
- * conventions.md §1.5: „+ Neue Sammlung" and „+ Neuer Tag" make the thing at
- * once and put the caret in its name, selected, so the first keystroke replaces
- * the date or the placeholder it was given. The act happens in a controller
+ * conventions.md §1.5: „+ Neuer Tag" makes the tag at once and puts the caret
+ * in its name, selected, so the first keystroke replaces the placeholder it
+ * was given. („+ Neue Sammlung" did too until 2026-10-22; its caret goes into
+ * its box now.) The act happens in a controller
  * module and the field belongs to a component, and this rune is the whole of
  * what passes between them.
  *
@@ -14,11 +15,11 @@
  * is a thing runes give for nothing: an effect runs after the DOM is updated,
  * so the component reads this once its own field already says the new name.
  */
-let asked = $state<'collection-name' | 'tag-name' | null>(null);
+let asked = $state<'tag-name' | null>(null);
 
-export const asking = (): 'collection-name' | 'tag-name' | null => asked;
+export const asking = (): 'tag-name' | null => asked;
 
-export function askFor(what: 'collection-name' | 'tag-name'): void { asked = what; }
+export function askFor(what: 'tag-name'): void { asked = what; }
 
 /** Said by whichever field took the caret, so the next ask is a new one. */
 export function answered(): void { asked = null; }
