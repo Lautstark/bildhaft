@@ -1,9 +1,9 @@
-import type { Collection, Sentence, Slot, TalkBook, TalkPage } from '../core/types.ts';
+import type { Collection, Sentence, TalkBook, TalkPage } from '../core/types.ts';
 import { slotCaption } from '../core/types.ts';
 import { pagesOf, withoutRow, withPage } from '../core/talk.ts';
 import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
 import { addLines } from './composing.ts';
-import { openPicker } from './editing.ts';
+import { emptySlot, openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
 
 /**
@@ -86,9 +86,7 @@ async function dropRows(ids: string[]): Promise<void> {
 export async function addCard(where: 'question' | 'saying', pageId?: string): Promise<void> {
   const open = activeCollection();
   if (!open) return;
-  const slot: Slot = {
-    id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
-  };
+  const slot = emptySlot();
   const now = Date.now();
   const sentence: Sentence = {
     id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
