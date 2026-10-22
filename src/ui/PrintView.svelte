@@ -22,6 +22,7 @@
   import { paperSize, PX_PER_MM } from './printSheet.ts';
   import { openSavedPdf, printOptions } from '../app/print.ts';
   import { activeCollection, kind, providerId, s } from '../app/state.svelte.ts';
+  import { TEMPLATES } from '../app/templates.ts';
   import { LOCALE, t } from '../i18n/index.ts';
 
   let song = $derived(activeCollection()?.song);
@@ -32,6 +33,9 @@
   let settled = $derived(s.settings !== null);
   let template = $derived(kind());
   let source = $derived(providerId());
+  /* A template whose look is set in the Zeile over its material brings no
+     settings column here: the sheet is only looked at and printed. */
+  let zeileInEdit = $derived(Boolean(TEMPLATES[template].zeileInEdit));
   let allPdfs = $state(false);
   let preview = $state.raw<Printing | null>(null);
   function made(options: NonNullable<ReturnType<typeof printOptions>>): Printing {
@@ -51,6 +55,21 @@
       if (!preview) { if (options) preview = made(options); return; }
       if (!options) { preview = null; return; }
       preview.update(options);
+    });
+  });
+  /* What the open material keeps for its print, followed while the preview
+     is up: the paper pill in the overlay's head and the Zeile over the
+     material write there, and the sheet has to show it. Edits made in the
+     options column come back identical and are skipped. */
+  let ownPrint = $derived(activeCollection()?.print);
+  $effect(() => {
+    void ownPrint;
+    untrack(() => {
+      if (!preview) return;
+      const options = printOptions();
+      if (!options) return;
+      if (JSON.stringify(options.settings) === JSON.stringify(preview.settings)) return;
+      preview.adopt(options.settings);
     });
   });
   $effect(() => {
@@ -77,7 +96,9 @@
   const BOTTOM_GAP = 16;
   function fitHeight(): void {
     if (!view) return;
-    const top = view.getBoundingClientRect().top + window.scrollY;
+    /* Viewport-relative on purpose: the view lives in a fixed overlay now,
+       where the document's scroll has nothing to say about its room. */
+    const top = view.getBoundingClientRect().top;
     viewH = Math.round(window.innerHeight - top - BOTTOM_GAP);
   }
   $effect(() => {
@@ -142,6 +163,6 @@
 --><div class="preview-frame print-view__frame" role="region" aria-label={t('ui.sheet_preview')} bind:this={preview.frame}><div bind:this={preview.sizer}><div class="preview-scaler" bind:this={preview.scaler}><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={preview.options.provider} /></div></div></div></div>{/key}<!--
   Under the sheet: which page is showing, and beside it the two things this
   view is for, right below what they print.
---><div class="print-view__bar"><Pager s={preview} /><span class="print-view__go">{#if preview.options.onPdf}<button class="btn primary" type="button" disabled={preview.saving || preview.preparing} onclick={() => preview?.savePdf()}>{#if preview.saving}<span class="spinner"></span> {t('ui.pdf_saving')}{:else}{t('ui.pdf_save')}{/if}</button>{/if}<button class="btn" type="button" disabled={preview.preparing} onclick={() => preview?.print()}>{#if preview.preparing}<span class="spinner"></span> {t('ui.preparing')}{:else}{t('ui.print')}{/if}</button></span></div></div><aside class="print-view__panel" aria-label={t('ui.sheet_column')}>{#if pdfs.length > 0}<div class="print-view__acts"><!--
+--><div class="print-view__bar"><Pager s={preview} /><span class="print-view__go">{#if preview.options.onPdf}<button class="btn primary" type="button" disabled={preview.saving || preview.preparing} onclick={() => preview?.savePdf()}>{#if preview.saving}<span class="spinner"></span> {t('ui.pdf_saving')}{:else}{t('ui.pdf_save')}{/if}</button>{/if}<button class="btn" type="button" disabled={preview.preparing} onclick={() => preview?.print()}>{#if preview.preparing}<span class="spinner"></span> {t('ui.preparing')}{:else}{t('ui.print')}{/if}</button></span></div></div>{#if !zeileInEdit || pdfs.length > 0}<aside class="print-view__panel{zeileInEdit ? ' print-view__panel--bare' : ''}" aria-label={t('ui.sheet_column')}>{#if pdfs.length > 0}<div class="print-view__acts"><!--
   The latest PDF kept of this Sammlung, and the others folded under it.
---><p class="small print-view__last"><span class="faint">{t('ui.pdf_last')}</span> {pdfLabel(pdfs[0]!)} · <button class="linklike" type="button" onclick={() => void openSavedPdf(pdfs[0]!)}>{t('ui.pdf_open')}</button>{#if pdfs.length > 1} · <button class="linklike" type="button" aria-expanded={allPdfs} onclick={() => { allPdfs = !allPdfs; }}>{t('ui.pdf_all', { n: pdfs.length })}</button>{/if}</p>{#if allPdfs}<ul class="pdf-list" aria-label={t('ui.pdf_list_title')}>{#each pdfs as saved (saved.path)}<li><span class="small">{pdfLabel(saved)}</span><button class="btn quiet sm" type="button" onclick={() => void openSavedPdf(saved)}>{t('ui.pdf_open')}</button></li>{/each}</ul>{/if}</div>{/if}<PrintOptions s={preview} /></aside></div>{:else}<p class="small faint">{t('ui.nothing_to_print')}</p>{/if}
+--><p class="small print-view__last"><span class="faint">{t('ui.pdf_last')}</span> {pdfLabel(pdfs[0]!)} · <button class="linklike" type="button" onclick={() => void openSavedPdf(pdfs[0]!)}>{t('ui.pdf_open')}</button>{#if pdfs.length > 1} · <button class="linklike" type="button" aria-expanded={allPdfs} onclick={() => { allPdfs = !allPdfs; }}>{t('ui.pdf_all', { n: pdfs.length })}</button>{/if}</p>{#if allPdfs}<ul class="pdf-list" aria-label={t('ui.pdf_list_title')}>{#each pdfs as saved (saved.path)}<li><span class="small">{pdfLabel(saved)}</span><button class="btn quiet sm" type="button" onclick={() => void openSavedPdf(saved)}>{t('ui.pdf_open')}</button></li>{/each}</ul>{/if}</div>{/if}{#if !zeileInEdit}<PrintOptions s={preview} />{/if}</aside>{/if}</div>{:else}<p class="small faint">{t('ui.nothing_to_print')}</p>{/if}

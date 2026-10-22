@@ -108,10 +108,18 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCount(1);
   await expect(sheets.nth(2).locator('.ps-title')).toHaveCount(1);
   await expect(sheets.nth(3).locator('.ps-title')).toHaveCount(0);
+  /* The guide is the board's own setting now, made in the Zeile over the
+     material — under „Seite", where the sheet's things live. */
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
   await page.getByLabel('Anleitung drucken').uncheck();
+  await showSheet(page);
   await expect(sheet.locator('.ps-guide')).toHaveCount(0);
   await expect(sheets).toHaveCount(3);
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
   await page.getByLabel('Anleitung drucken').check();
+  await showSheet(page);
   await expect(sheets).toHaveCount(4);
   /* A sheet's own break stays out of its page box: on paper it sent the
      page's foot, and the copyright line with it, onto the next sheet. */
@@ -126,49 +134,70 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   expect(last!.x + last!.width).toBeLessThan(basket!.x + basket!.width);
   expect(last!.y + last!.height).toBeLessThan(basket!.y + basket!.height);
 
-  /* The paper is all it is asked, and the paper decides every millimetre:
-     always landscape, and no frame, background or cut-line switch — the cut
-     lines are always on the cards to cut. */
-  const panel = page.locator('.print-view__panel');
-  await expect(panel.getByRole('button', { name: 'Quer', exact: true })).toHaveCount(0);
-  await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
-  await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
-  await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
+  /* The paper is all it is asked, and the paper decides every millimetre —
+     and the board brings no settings column at all any more: its look is set
+     in the Zeile over the material, the sheet is only looked at. */
+  await expect(page.locator('.print-view__panel')).toHaveCount(0);
   /* Green until it is told otherwise: a light page behind the board, as a
      Tafel's colour, the cart and the name in a darker green. The board's
      page only: the places and the cards stay white. */
   const bg = (at: number) => sheets.nth(at).evaluate((one) => getComputedStyle(one).backgroundColor);
   const stroke = () => sheet.locator('.ps-cart__art').evaluate((art) => getComputedStyle(art).stroke);
-  await expect(page.getByLabel('Seitenfarbe')).toBeChecked();
   expect(await bg(1)).toBe('rgb(217, 235, 211)');
   expect(await bg(2)).toBe('rgb(255, 255, 255)');
   expect(await stroke()).toBe('rgb(61, 125, 58)');
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(61, 125, 58)');
   expect(await sheets.nth(1).locator('.ps-zone').first()
     .evaluate((zone) => getComputedStyle(zone).backgroundColor)).toBe('rgb(255, 255, 255)');
-  await page.getByLabel('Farbe des Wagens').fill('#2c66c8');
-  await expect.poll(stroke).toBe('rgb(44, 102, 200)');
-  await page.getByLabel('Seitenfarbe').uncheck();
+
+  /* The Materialfarbe is set at the title and reaches the cart with it; the
+     page's ground is its own row under „Seite", „keine" first. All of it in
+     the Zeile over the material, and the open preview follows. */
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Titel', exact: true }).click();
+  await page.getByRole('button', { name: 'Farbe Blau' }).click();
+  await showSheet(page);
+  await expect.poll(stroke).toBe('rgb(63, 136, 224)');
+  await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(63, 136, 224)');
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await page.getByRole('button', { name: 'Seitenfarbe: Kein' }).click();
+  await showSheet(page);
   await expect.poll(() => bg(1)).toBe('rgb(255, 255, 255)');
-  await page.getByLabel('Seitenfarbe').check();
-  await expect.poll(() => bg(1)).toBe('rgb(217, 235, 211)');
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await page.getByRole('button', { name: 'Seitenfarbe Grün' }).click();
+  await showSheet(page);
+  await expect.poll(() => bg(1)).toBe('rgb(216, 242, 210)');
 
   // Its name over the board is set as everywhere: size, colour, a line.
+  await showMaterial(page);
+  await page.getByRole('button', { name: 'Titel', exact: true }).click();
   await page.getByLabel('Linie darunter').check();
   await page.getByLabel('Schriftgröße des Titels').fill('20');
+  await page.getByLabel('Schriftgröße des Titels').press('Tab');
+  await showSheet(page);
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
-  await panel.getByRole('button', { name: 'A3', exact: true }).click();
+  /* The paper is picked in the overlay's head — the pill that names it. */
+  const paper = async (name: string) => {
+    const pop = page.locator('.print-overlay .paper-pick__pop');
+    if (!(await pop.isVisible().catch(() => false))) {
+      await page.locator('.print-overlay').getByRole('button', { name: 'Papier wählen' }).click();
+    }
+    await pop.getByRole('button', { name, exact: true }).click();
+  };
+  await paper('A3');
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
-  await panel.getByRole('button', { name: 'A4', exact: true }).click();
+  await paper('A4');
   const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
     .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
       * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);
-  expect(await symbolMm()).toBeCloseTo(20, 0);
+  await expect.poll(symbolMm).toBeCloseTo(20, 0);
   // A card to cut is square, its cut line included: the dashed border used to sit outside the padding top and bottom only.
   const card = await sheet.locator('.ps-cut .ps-card').first().evaluate((node) => ({ w: node.getBoundingClientRect().width, h: node.getBoundingClientRect().height }));
   expect(card.h).toBeCloseTo(card.w, 0);
-  for (const [paper, mm] of [['A3', 28], ['A5', 14]] as const) {
-    await panel.getByRole('button', { name: paper, exact: true }).click();
+  for (const [paperName, mm] of [['A3', 28], ['A5', 14]] as const) {
+    await paper(paperName);
     await expect.poll(symbolMm).toBeCloseTo(mm, 0);
     // Still the guide and three sheets: nothing outgrows its page on any paper.
     await expect(sheets).toHaveCount(4);
@@ -198,7 +227,9 @@ test('a long Einkaufsliste names every sheet of places, and packs its cards', as
   }
   await showSheet(page);
   const sheets = page.locator('.preview-frame .ps-page');
-  await page.locator('.print-view__panel').getByRole('button', { name: 'A5', exact: true }).click();
+  /* The paper is picked in the overlay's head now: the pill that names it. */
+  await page.locator('.print-overlay').getByRole('button', { name: 'Papier wählen' }).click();
+  await page.locator('.print-overlay').getByRole('button', { name: 'A5', exact: true }).click();
   // On A5 the places take two sheets, and both carry the name.
   const placed = sheets.filter({ has: page.locator('.ps-place') });
   await expect(placed).toHaveCount(2);
@@ -300,7 +331,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.width).toBe(full!.width);
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
-  await expect(page.getByLabel('Spalten')).toHaveCount(0);
+  await expect(page.locator('.print-overlay').getByLabel('Spalten')).toHaveCount(0);
   await expect(page.getByText('Feldgröße: 63 × 136 mm.')).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
@@ -1250,8 +1281,8 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   expect(await top('.title-line')).toBeLessThan(await top('.words'));
 
   await showSheet(page);
-  await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
-  await expect(page.locator('.title-line')).toHaveCount(0);
+  await expect(page.locator('.print-overlay').getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.print-overlay .title-line')).toHaveCount(0);
 });
 
 /* An Einkaufsliste is typed as Wortkarten are: under its head, a list. */
@@ -1261,12 +1292,13 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
   await box.fill('Milch, Brot, Äpfel');
   await expect(page.locator('.composer__count')).toHaveText('3 Karten');
   await box.press('Enter');
-  await expect(page.locator('.words .word:not(.word--add)')).toHaveCount(3);
+  /* The board, not a wall: each card stands in its dashed field. */
+  await expect(page.locator('.shop-edit .word')).toHaveCount(3);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
   expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
   expect(await top('.composer')).toBeLessThan(await top('.title-line'));
   await showSheet(page);
-  await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.print-overlay').getByLabel('Wörter hinzufügen')).toHaveCount(0);
 });
 
 /*

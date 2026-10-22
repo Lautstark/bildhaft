@@ -18,6 +18,7 @@
   import WordCard from '../ui/WordCard.svelte';
   import TemplateArt from '../ui/TemplateArt.svelte';
   import Tafel from '../ui/Tafel.svelte';
+  import ShoppingBoard from '../ui/ShoppingBoard.svelte';
   import Recipe from '../ui/Recipe.svelte';
   import Song from '../ui/Song.svelte';
   import Talk from '../ui/Talk.svelte';
@@ -67,7 +68,7 @@
   — the Lied a paste box, the Rezept three fields, the Tafel a grid first — so
   a shared one in front of them would be a second box that has to guess which
   of those it is.
---><div class="pick"><p class="pick__ask">{t('ui.empty_collection')}</p><p class="small muted pick__hint">{t('ui.empty_collection_hint')}</p><div class="templates templates--wide">{#each COLLECTION_KINDS as which (which)}<button class="tpl" type="button" onclick={() => void pick(which)}><span class="tpl__art-box"><TemplateArt kind={which} /></span><span><b>{t(`ui.template_${which}`)}</b><small>{t(`ui.template_${which}_note`)}</small></span></button>{/each}</div></div>{:else if empty && kind() !== 'rezept' && kind() !== 'lied' && kind() !== 'plauderbuch' && kind() !== 'tafel'}<!--
+--><div class="pick"><p class="pick__ask">{t('ui.empty_collection')}</p><p class="small muted pick__hint">{t('ui.empty_collection_hint')}</p><div class="templates templates--wide">{#each COLLECTION_KINDS as which (which)}<button class="tpl" type="button" onclick={() => void pick(which)}><span class="tpl__art-box"><TemplateArt kind={which} /></span><span><b>{t(`ui.template_${which}`)}</b><small>{t(`ui.template_${which}_note`)}</small></span></button>{/each}</div></div>{:else if empty && kind() !== 'rezept' && kind() !== 'lied' && kind() !== 'plauderbuch' && kind() !== 'tafel' && kind() !== 'einkaufsliste'}<!--
   What an empty Material says once its template is chosen: which one, and the
   way back to the choice while there is still nothing to convert.
 --><div class="empty"><b>{t('ui.collection_empty')}</b><small>{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></small><!--
@@ -80,7 +81,7 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if choosing}{:else if kind() === 'einkaufsliste'}<ShoppingBoard {provider} />{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other

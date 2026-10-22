@@ -34,18 +34,20 @@ export function rowFor(page: Page, typed: string) {
 }
 
 /**
- * The open Sammlung's sheet: its view „Drucken", switched to in its head, and
- * the wait for the preview to be laid out.
+ * The open Sammlung's sheet: „Drucken" in its head opens it as an overlay
+ * over the material, and the wait is for the preview to be laid out.
  */
 export async function showSheet(page: Page): Promise<void> {
-  const view = page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Drucken' });
-  if (await view.getAttribute('aria-pressed') !== 'true') await view.click();
+  if (!(await page.locator('.print-overlay').isVisible().catch(() => false))) {
+    await page.locator('.collection-head').getByRole('button', { name: 'Drucken', exact: true }).click();
+  }
   await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
 }
 
-/** Back to the Sammlung's material, from its sheet. */
+/** Back to the Sammlung's material: the overlay's ×. */
 export async function showMaterial(page: Page): Promise<void> {
-  await page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Bearbeiten' }).click();
+  await page.getByRole('button', { name: 'Drucken schließen' }).click();
+  await expect(page.locator('.print-overlay')).toHaveCount(0);
 }
 
 /** Older names for the same wait, from when the settings were split over two dialogs. */

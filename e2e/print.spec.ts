@@ -200,6 +200,9 @@ test('print media shows the sheet and nothing of the UI', async ({ page }) => {
 });
 
 test('exports references only, never image data', async ({ page }) => {
+  /* The ⋯ sits in the head, under the print overlay this suite opens — the
+     export is an act on the material, so it is done from the material. */
+  await showMaterial(page);
   await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
 
   const download = page.waitForEvent('download');
@@ -566,7 +569,7 @@ test('the title is written in Bearbeiten and prints over the first or every page
   await words.press('Enter');
   await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toBeVisible();
   await showSheet(page);
-  await expect(page.getByLabel('Titel auf dem Papier')).toHaveCount(0);
+  await expect(page.locator('.print-overlay').getByLabel('Titel auf dem Papier')).toHaveCount(0);
   await expect(titles).toHaveText(['Morgenkreis']);
 
   // Over every page: two sentences, a page each, a title on both.
@@ -902,23 +905,22 @@ test('the pages on the left follow the page being shown', async ({ page }) => {
 });
 
 /*
- * A Sammlung opens in the view it was left in, on this device: its sheet
- * stays its sheet across another Sammlung and a reload. A new one opens on
- * its material.
+ * „Drucken" is a preview over the material, not a view a Sammlung is left
+ * in: switching to another Sammlung closes it, and after a reload every
+ * Sammlung opens on its material.
  */
-test('each Sammlung opens in the view it was left in', async ({ page }) => {
-  const view = (name: string) => page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name });
-  await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
+test('the sheet is an overlay and never survives a switch or a reload', async ({ page }) => {
+  await expect(page.locator('.print-overlay')).toBeVisible();
 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
-  await expect(page.locator('.print-view')).toHaveCount(0);
+  await expect(page.locator('.print-overlay')).toHaveCount(0);
 
   await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
+  await expect(page.locator('.print-overlay')).toHaveCount(0);
 
+  await showSheet(page);
   await page.reload();
   await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
+  await expect(page.locator('.print-overlay')).toHaveCount(0);
 });

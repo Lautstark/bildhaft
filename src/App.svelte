@@ -18,6 +18,7 @@
   import Footer from './ui/Footer.svelte';
   import Composer from './ui/Composer.svelte';
   import PrintView from './ui/PrintView.svelte';
+  import PaperPick from './ui/PaperPick.svelte';
   import TitleLine from './ui/TitleLine.svelte';
   import TalkComposer from './ui/TalkComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
@@ -28,6 +29,7 @@
   import { notify, useToast } from './app/notify.ts';
   import { persistSettings } from './app/settings.ts';
   import { activeCollection, kind, MOBILE_QUERY, s } from './app/state.svelte.ts';
+  import { setView } from './app/collections.ts';
   import { contentOf, type CollectionKind } from './core/types.ts';
   import { t } from './i18n/index.ts';
 
@@ -108,7 +110,14 @@
     if (s.isMobile) s.mobileNavOpen = !s.mobileNavOpen;
     else persistSettings({ ...s.settings, sidebarOpen: !s.settings.sidebarOpen });
   }
+
+  /* Escape closes the print overlay, as it closes every other dialog. */
+  function overlayKeys(event: KeyboardEvent): void {
+    if (printing && event.key === 'Escape') setView('edit');
+  }
 </script>
+
+<svelte:window onkeydown={overlayKeys} />
 
 {#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} drawer={s.mobileNavOpen} {collapsed} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
   The page behind the drawer, and the way out of it. Always in the markup now
@@ -141,7 +150,11 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead />{#if !printing}<Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{/if}{:else if kind() === 'lied'}<CollectionHead />{#if !printing}<TitleLine />{/if}{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel' && kind() !== 'einkaufsliste'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}<Material />{#if printing}<!--
+  „Drucken" is no view of its own any more: the sheet opens over the
+  material, to be looked at and printed, and × puts the material back. What
+  can still be set in it is only what has not moved into the Zeile yet.
+--><div class="print-overlay" role="dialog" aria-label={t('ui.view_print')}><div class="print-overlay__box"><div class="print-overlay__head"><b>{t('ui.view_print')}</b><span class="small faint print-overlay__name">{title}</span><PaperPick /><button class="btn quiet icon print-overlay__close" type="button" aria-label={t('ui.print_close')} title={t('ui.print_close')} onclick={() => setView('edit')}>×</button></div><PrintView /></div></div>{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

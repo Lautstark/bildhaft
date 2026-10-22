@@ -11,7 +11,7 @@ import { notify } from './notify.ts';
 import type { PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
 import { persistSettings } from './settings.ts';
-import { openPrint } from './templates.ts';
+import { openPrint, settle } from './templates.ts';
 
 /**
  * The print settings a template opens on — its entry in `TEMPLATES` says
@@ -229,6 +229,30 @@ export function printOptions(): PrintOptions | null {
     provider: providerId(),
     attribution: provider().attribution,
     onClose: () => undefined,
+  };
+}
+
+/**
+ * The open material's print settings, to be set from Bearbeiten: what the
+ * sheet will print with, and the two ways to change it. The same `keepPrint`
+ * path the print preview writes through, so the Zeile over the material and
+ * the preview can never disagree about what was set.
+ */
+export function materialPrint(): {
+  settings: PrintSettings;
+  set: <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => void;
+  /** Several at once, as one change: the Materialfarbe is the title's, the frame's and the cart's. */
+  patch: (next: Partial<PrintSettings>) => void;
+} | null {
+  const open = activeCollection();
+  if (!open || !s.settings) return null;
+  const which = kind();
+  const board = which === 'tafel' ? boardOf(open) : null;
+  const settings = printFor(printBase(), which, board, open.print ?? {});
+  return {
+    settings,
+    set: (key, value) => void keepPrint(settle(which, { ...settings, [key]: value }, board)),
+    patch: (next) => void keepPrint(settle(which, { ...settings, ...next }, board)),
   };
 }
 

@@ -87,6 +87,12 @@ export interface PrintOffer {
 export interface Template {
   /** Holds one-word cards: the wall of cards, the tray, the counter that says „Karten". */
   cards: boolean;
+  /**
+   * Sets its look in Bearbeiten, in the Zeile over the material (Seite ·
+   * Titel · Symbol), so the print preview shows no settings column for it.
+   * Set template by template as each one moves (2026-10-22).
+   */
+  zeileInEdit?: true;
   /** What a Sammlung of this template prints with until it sets something else. */
   defaults?(print: PrintSettings, board: Grid | null): Partial<PrintSettings>;
   /** What it always prints with, whatever was set: worked out from the rest, so it follows it. */
@@ -192,17 +198,23 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
     cards: true,
+    zeileInEdit: true,
     defaults: () => ({
       paper: 'a4', ...HEADED, titleColour: SHOP_GREEN,
       showGuide: true, pageColour: SHOP_PAGE, cartColour: SHOP_GREEN,
+      /* Starts as it always printed — but these are choices now, made in the
+         Zeile like everywhere else, not facts of the board: a frame, a ground,
+         the cut lines. The word is not among them: the board writes it on the
+         place itself and leaves the cards to cut wordless, so the game of
+         matching card to place works — a fact of the material, not a setting. */
+      cardBorderMm: 0, cardBackground: null, showCutLines: true,
     }),
     fixed: (settings) => {
       const k = SHOPPING_SCALE[settings.paper];
       return {
         layout: 'einkaufsliste', orientation: 'landscape',
         symbolSizeMm: Math.round(20 * k), cutMarginMm: Math.round(3 * k * 2) / 2,
-        showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2,
-        cardBorderMm: 0, cardBackground: null, showCutLines: true, titleEvery: false,
+        showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2, titleEvery: false,
       };
     },
     offers: () => ({ paper: 'size', title: 'once', page: true, pageNumbers: true, cart: true, guide: true }),

@@ -1697,3 +1697,76 @@ footer.footer {
 .talk__sayings { cursor: auto; }
 .talk__page .song__plus { cursor: pointer; }
 .talk__more { display: flex; justify-content: center; }
+
+/* ------------------------------------------------- die Zeile & das Blatt */
+
+/*
+ * Die Zeile über dem Material: ein Knopf je Ding auf dem Blatt (Seite ·
+ * Titel · Symbol), hinter jedem alle seine Einstellungen. Die Menüs hängen
+ * unter ihrem Knopf; die Farbreihen darin sind die des Gruppen-Panels.
+ */
+.ding-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.ding { position: relative; }
+.ding__chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--surface);
+  color: var(--text); font: inherit; font-size: 14px;
+}
+.ding__chip:hover, .ding__chip[aria-expanded="true"] { border-color: var(--accent); }
+.ding__chip--on { border-color: var(--accent); }
+.ding__dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0, 0, 0, .15); }
+.ding__dd { font-size: 10px; color: var(--muted); }
+.ding__pop {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 270px;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .18));
+}
+.ding__row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ding__hint { margin: 0; max-width: 34ch; }
+.ding-check { display: flex; gap: 7px; align-items: center; font-size: 14px; cursor: pointer; }
+.ding-num { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
+.ding-num .field { width: 64px; }
+.palette-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.palette-row__name { min-width: 48px; }
+
+/* Das Papier im Kopf: der Knopf, der „A4 hoch · 2 Seiten" sagt, ist die Wahl. */
+.paper-pick { position: relative; }
+.paper-pick__pop {
+  position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;
+  display: flex; flex-direction: column; gap: 8px; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .18));
+}
+
+/* Die Einkaufsliste in Bearbeiten: das Brett, nicht eine Wand. */
+.shop-edit { border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; outline: 1px solid var(--line); }
+.shop-edit__top { display: flex; align-items: flex-start; gap: 12px; }
+.shop-edit__title { display: inline-flex; align-items: center; gap: 4px; }
+.shop-edit__title .title-line { margin: 0; }
+.shop-edit__title .title-line__text { color: var(--board-ink); font-weight: 700; }
+.shop-edit__title--lined .title-line { border-bottom: 1.5px solid var(--board-ink); }
+.shop-edit__off { border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 15px; padding: 2px 6px; }
+.shop-edit__off:hover { color: var(--text); }
+.shop-edit__get { align-self: flex-start; }
+.shop-edit__cart { margin-left: auto; flex: none; }
+.shop-edit__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 10px; }
+.shop-edit__field { border: 1.5px dashed color-mix(in srgb, var(--board-ink) 35%, transparent); border-radius: var(--radius-sm); padding: 8px; display: flex; align-items: stretch; justify-content: center; }
+.shop-edit__field .word { width: 100%; }
+.shop-edit__field--add { background: transparent; cursor: pointer; color: var(--muted); font-size: 24px; min-height: 120px; align-items: center; }
+.shop-edit__field--add:hover { color: var(--text); border-color: var(--accent); }
+
+/* Drucken als Vorschau über dem Material: ansehen, PDF, drucken, schließen. */
+/* Über dem Arbeitsbereich, nicht über der Sidebar: wer links wechselt,
+   schließt die Vorschau damit — wie früher der Ansichtswechsel. */
+.print-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: var(--sidebar-w); z-index: 60; background: rgba(0, 0, 0, .45); display: flex; padding: 14px; }
+.app--collapsed .print-overlay { left: 0; }
+@media (max-width: 820px) { .print-overlay { left: 0; padding: 8px; } }
+.print-overlay__box {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
+  background: var(--bg, var(--surface)); border-radius: var(--radius); padding: 14px 18px; overflow: auto;
+}
+.print-overlay__head { display: flex; align-items: center; gap: 10px; }
+.print-overlay__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.print-overlay__close { font-size: 18px; }
+.print-view__panel--bare { align-self: flex-start; }

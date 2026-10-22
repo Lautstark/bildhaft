@@ -186,6 +186,17 @@ export class Printing {
     window.setTimeout(() => this.replan());
   }
 
+  /**
+   * Settings written somewhere other than this preview while it is open —
+   * the paper pill in the overlay's head, the Zeile over the material.
+   * Adopted, not echoed back: `onChange` is for edits made here.
+   */
+  adopt(settings: PrintSettings): void {
+    this.settings = settings;
+    this.options = { ...this.options, settings };
+    window.setTimeout(() => this.replan());
+  }
+
   set<K extends keyof PrintSettings>(key: K, value: PrintSettings[K]): void {
     const next = { ...this.settings, [key]: value };
     /* What the template always is, worked out again from what just changed. */

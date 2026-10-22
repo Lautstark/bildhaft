@@ -33,7 +33,7 @@
   import { chooseTitlePicture } from './recipe.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet, setView } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
-  import { paperOf } from './print.ts';
+  import PaperPick from '../ui/PaperPick.svelte';
   import { t } from '../i18n/index.ts';
 
   /* Which Sammlung a pending rename is for, captured on the keystroke rather
@@ -84,17 +84,6 @@
       : t('ui.n_rows', { n }));
 
 
-  /* „A5 hoch · 3 Seiten": the paper this Sammlung prints on, and how many
-     pages it came to the last time its sheet was laid out, when that is
-     known this session. */
-  let paper = $derived.by(() => {
-    const open = activeCollection();
-    const print = open ? paperOf() : null;
-    if (!open || !print) return '';
-    const side = print.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait');
-    const pages = s.pagesSeen[open.id];
-    return `${print.paper.toUpperCase()} ${side.toLowerCase()}${pages ? ` · ${t(pages === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pages })}` : ''}`;
-  });
 </script>
 
 <div class="collection-head">{#if pictured}<!--
@@ -108,7 +97,11 @@
   A Rezept and a Lied draw their own empty parts, so the empty state's box
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.
---><span class="small faint collection-head__other">{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}{#if n > 0}{#if paper}<button class="collection-head__paper small faint" type="button" title={t('ui.view_print')} onclick={() => setView('print')}>{paper}</button>{/if}<span class="segmented collection-head__view" role="group" aria-label={t('ui.view')}><button type="button" aria-pressed={s.view === 'edit'} onclick={() => setView('edit')}>{t('ui.view_edit')}</button><button type="button" aria-pressed={s.view === 'print'} onclick={() => setView('print')}>{t('ui.view_print')}</button></span>{/if}<!--
+--><span class="small faint collection-head__other">{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}<!--
+  The paper is top level: the button that always said „A4 hoch · 2 Seiten"
+  is the choice itself now (PaperPick). Beside it „Drucken" opens the sheet
+  over the material — a preview, no longer a view of its own.
+-->{#if n > 0}<PaperPick /><button class="btn primary sm" type="button" onclick={() => setView('print')}>{t('ui.view_print')}</button>{/if}<!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to
