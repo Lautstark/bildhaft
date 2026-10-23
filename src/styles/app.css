@@ -1314,7 +1314,8 @@ footer.footer {
      on paper has to be pale here, with white cards on it, or what is seen is
      not what is printed. The chrome around it stays the app's. Darker than
      the tiles by a step, which is what makes them tiles. */
-  background: #e4e1d9;
+  /* App-Grund statt Papier-Beige: das Papier liegt rechts in der Vorschau. */
+  background: var(--surface-2);
   color: #222;
   position: relative;
   z-index: 0;
@@ -1330,7 +1331,7 @@ footer.footer {
   aspect-ratio: var(--field, 1);
   display: grid;
   padding: 10px;
-  background: #f6f5f1;
+  background: var(--surface);
   border-radius: 8px;
 }
 /* A coloured field paints nothing of its own: its block lies under it (in the
@@ -1718,14 +1719,17 @@ footer.footer {
 .ding__info { width: 17px; height: 17px; flex: none; margin-left: auto; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 11px; font-weight: 600; font-style: italic; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; padding: 0 2px 1px 0; }
 .ding__info:hover, .ding__info[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
 .ding__row--snug { gap: 6px; flex-wrap: nowrap; }
+/* Ein Segment ist ein Wort, auch ein zweiteiliges. */
+.ding__pop .segmented button { white-space: nowrap; }
 /* Ein Menü, eine Schrift: das Palette-Label steht wie jedes andere Label
    der Zeile, nicht klein und blass daneben. */
 .ding__pop .palette-row__name { font-size: inherit; color: inherit; }
 /* Was von einem Haken abhängt, steht eingerückt darunter — nie daneben,
    wo es die Zeile umbräche. */
-.ding__sub { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-left: 25px; margin-top: -4px; }
-/* Gestreckt, damit ein ⓘ am Zeilenende überall dasselbe Ende meint. */
-.ding__dep { display: flex; flex-direction: column; align-items: stretch; gap: 9px; padding-left: 25px; margin-top: -2px; }
+.ding__sub { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-left: 2px solid var(--line); margin: -4px 0 2px 7px; padding-left: 16px; }
+/* Gestreckt, damit ein ⓘ am Zeilenende überall dasselbe Ende meint — und
+   mit einer Linie am Haken entlang, die sagt, was zu ihm gehört. */
+.ding__dep { display: flex; flex-direction: column; align-items: stretch; gap: 9px; border-left: 2px solid var(--line); margin: -2px 0 2px 7px; padding-left: 16px; }
 .ding__pop {
   position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 360px;
   display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
@@ -1761,6 +1765,17 @@ footer.footer {
    Titelzeile als sein Kopf, die Wand darunter — zwei Geschwister-Panels. */
 .work-main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 18px; }
 .work-main > .title-line { margin: 0 0 12px; padding: 0; }
+/* Im Material-Kasten rahmt der Kasten: die inneren Kisten von Rezept und
+   Lied geben ihre eigene Umrandung ab (der Refrain behält seinen Grund). */
+.work-main .recipe__box { outline: none; padding: 0; }
+.work-main .song__part:not(.song__part--refrain) .song__lines { background: none; padding: 4px 0; }
+.work-main .board { border: none; padding: 0; background: none; }
+/* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
+   quadratisch, die echten Proportionen stehen rechts auf dem Papier. */
+.work-main .cell { aspect-ratio: 1; }
+/* Leer bleibt die Tafel klein genug, dass Spalten und Zeilen darunter im
+   Blick sind. */
+.work-main .board:not(:has(.board-card)) { grid-template-columns: repeat(var(--cols), minmax(0, 104px)); }
 .main__inner--printing { max-width: 1480px; }
 .print-dock {
   position: sticky; top: 10px; flex: none;

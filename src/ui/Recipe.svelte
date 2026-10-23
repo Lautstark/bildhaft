@@ -88,8 +88,10 @@
     editing = null;
   }
 
+  /* As in the box everywhere: Enter finishes, Shift+Enter is the new line. */
   function editKeys(event: KeyboardEvent): void {
     if (event.key === 'Escape') { event.preventDefault(); editing = null; }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!s.busy) void finishEditing(); }
   }
 
   function focused(node: HTMLElement): void { node.focus(); }

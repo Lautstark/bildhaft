@@ -19,7 +19,6 @@
   import Composer from './ui/Composer.svelte';
   import PrintView from './ui/PrintView.svelte';
   import TitleLine from './ui/TitleLine.svelte';
-  import TalkComposer from './ui/TalkComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
   import Banners from './app/Banners.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
@@ -171,7 +170,7 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<Composer /><CollectionHead />{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.choosing === s.activeId}<Material />{:else}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<Composer /><CollectionHead />{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.choosing === s.activeId}<Material />{:else}<!--
   Head and box keep the page's whole width; what is split is the work under
   them. Left the material with its Zeile, right the sheet as it prints —
   there by default, scrolled like a stack of paper, folded to a thumbnail of

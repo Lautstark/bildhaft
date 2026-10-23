@@ -11,13 +11,14 @@
    * (2026-10-22); the others follow one by one, and until they do their
    * settings stay in the print preview's column.
    */
+  import type { CollectionKind } from '../core/types.ts';
   import { materialPrint } from '../app/print.ts';
   import { kind, providerId } from '../app/state.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
   import PaletteRow from './PaletteRow.svelte';
   import { t } from '../i18n/index.ts';
 
-  let open = $state<'page' | 'symbol' | null>(null);
+  let open = $state<'page' | 'symbol' | 'own' | null>(null);
   /* Which ⓘ is unfolded: the menus stay lean, the words wait behind it. */
   let info = $state<string | null>(null);
   let host: HTMLElement | undefined = $state();
@@ -26,18 +27,28 @@
   let offer = $derived(mp ? TEMPLATES[kind()].offers(mp.settings) : null);
   let metacom = $derived(providerId() === 'metacom');
   let gridded = $derived(offer?.size?.kind === 'cards' && mp?.settings.sheetFit === 'grid');
+  /* Ein Plauderbuch stellt am Symbol nichts: dann gibt es den Chip nicht. */
+  let symbolish = $derived(Boolean(offer && (offer.size || offer.label || offer.frames
+    || offer.background || offer.cutLines || kind() === 'einkaufsliste')));
+  /* Was nur diese Vorlage hat, hinter einem Chip mit ihrem Namen — der
+     vierte Knopf des Mocks. Ein Rezept und ein Plauderbuch haben nichts
+     Eigenes und darum keinen. */
+  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel' };
+  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields)));
+  let ownName = $derived(OWN_NAMES[kind()] ? t(OWN_NAMES[kind()]!) : '');
   let exact = $derived(offer?.size?.kind === 'cards' && mp?.settings.sheetFit === 'card');
   /* The one colour of the material, set at the title: title, its line and
      the cart follow it together. The card frames did too, until they had a
      palette of their own (2026-10-23) — a colour somebody can pick must not
      be overwritten from somewhere else. */
   const paintMaterial = (colour: string | null) =>
-    mp?.patch({ titleColour: colour, cartColour: colour });
+    mp?.patch({ titleColour: colour, cartColour: colour,
+      ...(offer?.colour ? { accentColour: colour ?? '#2c66c8' } : {}) });
 
   const away = (event: PointerEvent) => {
     if (open && host && !host.contains(event.target as Node)) open = null;
   };
-  const show = (which: 'page' | 'symbol') => { open = open === which ? null : which; info = null; };
+  const show = (which: 'page' | 'symbol' | 'own') => { open = open === which ? null : which; info = null; };
   const POSITIONS = ['above', 'below'] as const;
 
   function clamp(value: number, min: number, max: number, fallback: number): number {
@@ -54,11 +65,11 @@
 
 {#snippet check(label: string, checked: boolean, onToggle: (next: boolean) => void)}<label class="ding-check"><input type="checkbox" {checked} onchange={(event) => onToggle(event.currentTarget.checked)} />{label}</label>{/snippet}
 
-{#snippet num(label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void)}<!--
+{#snippet num(label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void, aria?: string)}<!--
   Taken while it is typed once it is a number the field can hold — „1" on the
   way to „14" is not yet a size — and put right on the way out, the same two
   handlers the print column always had. Live, because the sheet beside it is.
---><label class="ding-num">{label} <input class="field" type="number" {min} {max} {step} {value} aria-label={label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} /> {unit}</label>{/snippet}
+--><label class="ding-num">{label} <input class="field" type="number" {min} {max} {step} {value} aria-label={aria ?? label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} /> {unit}</label>{/snippet}
 
 {#if mp && offer}<div class="ding-bar" bind:this={host}>
   <span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_page')} aria-expanded={open === 'page'} onclick={() => show('page')}>{t('ui.ding_page')}{#if mp.settings.pageColour}<span class="ding__dot" style:--c={mp.settings.pageColour}></span>{/if}{@render dd()}</button>{#if open === 'page'}<div class="ding__pop" role="group" aria-label={t('ui.ding_page')}>
@@ -71,17 +82,18 @@
     -->
     {@render check(t('ui.title_print'), mp.settings.showCollectionTitle, (next) => mp?.set('showCollectionTitle', next))}
     {#if mp.settings.showCollectionTitle}<div class="ding__dep">
-      {@render num(t('ui.title_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}
+      {@render num(t('ui.font_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}
       <PaletteRow label={t('ui.colour')} value={mp.settings.titleColour} strength="frame" none ownStart="#3d7d3a" onPick={paintMaterial} />
       {@render check(t('ui.title_line'), mp.settings.titleLine, (next) => mp?.set('titleLine', next))}
       {#if offer.title === 'pages'}<div class="ding__row"><span class="segmented">{#each [false, true] as every (every)}<button type="button" aria-pressed={mp.settings.titleEvery === every} onclick={() => mp?.set('titleEvery', every)}>{every ? t('ui.title_every') : t('ui.title_first')}</button>{/each}</span></div>{/if}
     </div>{/if}
     {/if}
+    {#if offer.onePerPage}{@render check(t('ui.one_per_page'), mp.settings.onePerPage, (next) => mp?.set('onePerPage', next))}{/if}
     {#if offer.guide}{@render check(t('ui.shop_guide_print'), mp.settings.showGuide, (next) => mp?.set('showGuide', next))}{/if}
     {#if offer.pageNumbers}{@render check(t('ui.page_numbers'), mp.settings.showPageNumbers, (next) => mp?.set('showPageNumbers', next))}{/if}
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>
-  <span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_symbol')} aria-expanded={open === 'symbol'} onclick={() => show('symbol')}>{t('ui.ding_symbol')}{#if offer.size?.kind !== 'cards' || (!gridded && !exact)}<span class="ding__meta">{mp.settings.symbolSizeMm} mm</span>{/if}{@render dd()}</button>{#if open === 'symbol'}<div class="ding__pop" role="group" aria-label={t('ui.ding_symbol')}>
+  {#if symbolish}<span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_symbol')} aria-expanded={open === 'symbol'} onclick={() => show('symbol')}>{t('ui.ding_symbol')}{@render dd()}</button>{#if open === 'symbol'}<div class="ding__pop" role="group" aria-label={t('ui.ding_symbol')}>
     {#if offer.background || kind() === 'einkaufsliste'}<PaletteRow label={t('ui.cards_fill')} value={mp.settings.cardBackground} strength="fill" none ownStart="#fff1b3" onPick={(next) => mp?.set('cardBackground', next)} />{/if}
     {#if offer.size?.kind === 'cards'}
       <div class="ding__row"><span class="segmented">
@@ -96,19 +108,28 @@
     {:else if offer.size?.kind === 'symbol'}
       {@render num(t('ui.symbol_size'), mp.settings.symbolSizeMm, 10, offer.size.max, 1, offer.size.fallback, 'mm', (next) => mp?.set('symbolSizeMm', next))}
       {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}
+    {:else if offer.size?.kind === 'board'}
+      {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}
     {/if}
-    {#if offer.label}{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<div class="ding__sub"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.label_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next))}</div>{/if}
+    {#if offer.label}{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<div class="ding__sub"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next), t('ui.label_size'))}</div>{/if}
     {/if}
-    {#if offer.frames || kind() === 'einkaufsliste'}{@render check(t('ui.frame_each'), mp.settings.cardBorderMm > 0, (next) => mp?.set('cardBorderMm', next ? 0.5 : 0))}
-      {#if mp.settings.cardBorderMm > 0}<div class="ding__dep">
-        <div class="ding__row">{@render num(t('ui.thickness'), mp.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next))}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next))}</div>
-        <PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} />
-      </div>{/if}
-    {/if}
+    {#if offer.frames || kind() === 'einkaufsliste'}{@render check(t('ui.frame_each'), mp.settings.cardBorderMm > 0, (next) => mp?.set('cardBorderMm', next ? 0.5 : 0))}{/if}
+    {#if mp.settings.cardBorderMm > 0}<div class="ding__dep">
+      <div class="ding__row">{@render num(t('ui.thickness'), mp.settings.cardBorderMm > 0 ? mp.settings.cardBorderMm : 0.5, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next))}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next))}</div>
+      <PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} />
+    </div>{/if}
     {#if offer.cutLines || kind() === 'einkaufsliste'}{@render check(t('ui.cut_lines'), mp.settings.showCutLines, (next) => mp?.set('showCutLines', next))}{/if}
     {#if kind() === 'einkaufsliste'}<!-- Das Maß als Fußnote: ein Fakt, keine Stellschraube. -->
       <div class="ding__row"><span class="small faint">{t('ui.symbol_from_paper', { size: mp.settings.symbolSizeMm, margin: mp.settings.cutMarginMm })}</span>{@render tip('brett')}</div>
       {#if info === 'brett'}<p class="small faint ding__hint">{t('ui.shop_geometry_info')}</p>{/if}
     {/if}
-  </div>{/if}</span>
+  </div>{/if}</span>{/if}
+  {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
+    {#if offer.sentence}{@render check(t('ui.print_sentence'), mp.settings.showSentenceText, (next) => mp?.set('showSentenceText', next))}{#if mp.settings.showSentenceText}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.sentencePosition === where} onclick={() => mp?.set('sentencePosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => mp?.set('sentenceSizePt', next), t('ui.sentence_size'))}</div></div>{/if}{/if}
+    {#if offer.stripFrame}{@render check(t('ui.frame_strip'), mp.settings.stripFrame, (next) => mp?.set('stripFrame', next))}{#if mp.settings.stripFrame}<div class="ding__dep"><div class="ding__row">{@render num(t('ui.thickness'), mp.settings.cardBorderMm > 0 ? mp.settings.cardBorderMm : 0.5, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next))}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next))}</div><PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} /></div>{/if}{/if}
+    {#if offer.songChecks}{@render check(t('ui.song_headings'), mp.settings.songHeadings, (next) => mp?.set('songHeadings', next))}
+    {@render check(t('ui.song_repeats'), mp.settings.songRepeats, (next) => mp?.set('songRepeats', next))}
+    {@render check(t('ui.song_refrain_once'), mp.settings.songRefrainOnce, (next) => mp?.set('songRefrainOnce', next))}{/if}
+    {#if offer.freeFields}{@render check(t('ui.free_fields_dashed'), mp.settings.markFreeFields, (next) => mp?.set('markFreeFields', next))}{/if}
+  </div>{/if}</span>{/if}
 </div>{/if}

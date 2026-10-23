@@ -99,8 +99,10 @@
     typing = null;
   }
 
+  /* As in the box everywhere: Enter finishes, Shift+Enter is the new line. */
   function newKeys(event: KeyboardEvent): void {
     if (event.key === 'Escape') { event.preventDefault(); typing = null; }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!s.busy && text.trim()) void finishNew(); }
   }
 
   function startEditing(id: string): void {
@@ -165,6 +167,7 @@
 
   function editKeys(event: KeyboardEvent): void {
     if (event.key === 'Escape') { event.preventDefault(); editing = null; }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!s.busy) void finishEditing(); }
   }
 
   /* A field that appears is where the caret goes. */

@@ -667,6 +667,7 @@ test('the copyright notice is offered for METACOM, and only on request', async (
   // carries no obligation, so the foot of the sheet stays empty until asked.
   await expect(page.locator('#print-root .ps-attribution')).toHaveCount(0);
 
+  await openDing(page, 'Seite');
   await page.getByLabel('Copyright-Hinweis drucken').check();
   await expect(page.locator('#print-root .ps-attribution'))
     .toContainText('METACOM Symbole © Annette Kitzinger');

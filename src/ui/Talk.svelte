@@ -16,6 +16,7 @@
    * No numbers: the binder keeps the order, and the question says which page
    * it is.
    */
+  import { untrack } from 'svelte';
   import type { ProviderId, Sentence, TalkPage } from '../core/types.ts';
   import { slotCaption, symbolIdFor } from '../core/types.ts';
   import { pagesOf } from '../core/talk.ts';
@@ -49,7 +50,15 @@
   let editing = $state<string | null>(null);
   let text = $state('');
 
-  $effect(() => { void s.activeId; adding = null; asking = null; editing = null; });
+  /* Ein frisches Plauderbuch beginnt bei seiner Frage: das Feld steht offen,
+     der Platzhalter sagt, was hier hingehört. Erst eine Seite mit Frage oder
+     Aussagen schließt es (2026-10-23). */
+  $effect(() => {
+    void s.activeId;
+    adding = null; editing = null; question = '';
+    const first = untrack(() => pages[0]);
+    asking = first && !first.question && first.sayings.length === 0 ? first.id : null;
+  });
 
   const questionOf = (page: TalkPage): Sentence | null => (page.question ? byId.get(page.question) ?? null : null);
   const nameOf = (page: TalkPage, at: number): string =>
@@ -102,13 +111,15 @@
     if (event.key === 'Enter') { event.preventDefault(); void finishAsking(); }
     if (event.key === 'Escape') { event.preventDefault(); asking = null; }
   }
+  /* As in the box everywhere: Enter finishes, Shift+Enter is the new line. */
   function editKeys(event: KeyboardEvent): void {
     if (event.key === 'Escape') { event.preventDefault(); editing = null; }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!s.busy) void finishEditing(); }
   }
 
   function focused(node: HTMLElement): void { node.focus(); }
 </script>
 
-{#snippet head(page: TalkPage, at: number)}{@const held = questionOf(page)}{@const slot = held?.slots[0]}{@const shown = slot ? symbolIdFor(slot, provider) : null}<div class="talk__head">{#if asking === page.id}<div class="line-add talk__ask"><input class="line-add__input" use:focused bind:value={question} disabled={s.busy} aria-label={t('ui.talk_question')} placeholder={t('ui.talk_question_placeholder')} onkeydown={askKeys} /><button class="btn sm" type="button" onclick={() => { asking = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishAsking()}>{t('ui.done')}</button></div>{:else}{#if held && slot}<button class="talk__pic{shown ? '' : ' talk__pic--asking'}" type="button" aria-label={shown ? t('ui.change_picture_for', { word: captionOf(held) }) : t('ui.pick_picture_for', { word: captionOf(held) })} onclick={(event) => { event.stopPropagation(); openPicker(held.id, slot.id); }}>{#if shown}<SymbolPicture {provider} id={shown} alt={captionOf(held)} mirrored={slot.mirrored} />{:else}?{/if}</button><h3 class="talk__question">{captionOf(held)}</h3>{:else}<h3 class="talk__question talk__question--none">{t('ui.talk_no_question')}</h3>{/if}<span class="talk__tools"><button class="song__tool" type="button" onclick={(event) => { event.stopPropagation(); startAsking(page); }}>{t('ui.talk_edit_question')}</button>{#if page.sayings.length > 0 && editing !== page.id}<button class="song__tool" type="button" aria-label={t('ui.talk_edit_sayings', { page: nameOf(page, at) })} onclick={(event) => { event.stopPropagation(); startEditing(page); }}>{t('ui.song_edit')}</button>{/if}{#if page.id}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.talk_delete_page', { page: nameOf(page, at) })} aria-label={t('ui.talk_delete_page', { page: nameOf(page, at) })} onclick={(event) => { event.stopPropagation(); void take(page, at); }}><Icon name="trash" /></button></span>{/if}</span>{/if}</div>{/snippet}
+{#snippet head(page: TalkPage, at: number)}{@const held = questionOf(page)}{@const slot = held?.slots[0]}{@const shown = slot ? symbolIdFor(slot, provider) : null}<div class="talk__head">{#if asking === page.id}<div class="line-add talk__ask"><input class="line-add__input" use:focused bind:value={question} disabled={s.busy} aria-label={t('ui.talk_question')} placeholder={t('ui.talk_question_placeholder')} onkeydown={askKeys} />{#if held}<button class="btn sm" type="button" onclick={() => { asking = null; }}>{t('ui.cancel')}</button>{/if}<button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishAsking()}>{t('ui.done')}</button></div>{:else}{#if held && slot}<button class="talk__pic{shown ? '' : ' talk__pic--asking'}" type="button" aria-label={shown ? t('ui.change_picture_for', { word: captionOf(held) }) : t('ui.pick_picture_for', { word: captionOf(held) })} onclick={(event) => { event.stopPropagation(); openPicker(held.id, slot.id); }}>{#if shown}<SymbolPicture {provider} id={shown} alt={captionOf(held)} mirrored={slot.mirrored} />{:else}?{/if}</button><h3 class="talk__question">{captionOf(held)}</h3>{:else}<h3 class="talk__question talk__question--none">{t('ui.talk_no_question')}</h3>{/if}<span class="talk__tools"><button class="song__tool" type="button" onclick={(event) => { event.stopPropagation(); startAsking(page); }}>{t('ui.talk_edit_question')}</button>{#if page.sayings.length > 0 && editing !== page.id}<button class="song__tool" type="button" aria-label={t('ui.talk_edit_sayings', { page: nameOf(page, at) })} onclick={(event) => { event.stopPropagation(); startEditing(page); }}>{t('ui.song_edit')}</button>{/if}{#if page.id}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.talk_delete_page', { page: nameOf(page, at) })} aria-label={t('ui.talk_delete_page', { page: nameOf(page, at) })} onclick={(event) => { event.stopPropagation(); void take(page, at); }}><Icon name="trash" /></button></span>{/if}</span>{/if}</div>{/snippet}
 
 <div class="talk">{#each pages as page, at (page.id || 'blank')}<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions --><section class="talk__page{page.id === target ? ' talk__page--target' : ''}" aria-label={nameOf(page, at)} onclick={() => aim(page)}>{@render head(page, at)}{#if editing === page.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.talk_edit_sayings', { page: nameOf(page, at) })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span></span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}{#if page.sayings.length === 0}<p class="small faint recipe__none">{t('ui.talk_no_sayings')}</p>{:else}<div class="words talk__sayings">{#each page.sayings as id (id)}{@const sentence = byId.get(id)}{#if sentence}<WordCard {sentence} {provider} />{/if}{/each}</div>{/if}<LineAdd open={adding === page.id} plus={t('ui.talk_add_saying')} label={t('ui.talk_saying_new')} placeholder={t('ui.talk_saying_placeholder')} onOpen={() => startAdding(page)} onClose={() => { adding = null; }} onSend={(raw) => addSayings(raw, page.id || undefined)} />{/if}</section>{/each}<div class="talk__more"><button class="song__plus song__plus--part" type="button" onclick={() => void addPage()}>{t('ui.talk_add_page')}</button></div></div>

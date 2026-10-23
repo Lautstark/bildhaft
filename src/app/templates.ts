@@ -144,6 +144,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      when a Satzstreifen could be printed as one — opens as strips again. */
   satzstreifen: {
     cards: false,
+    zeileInEdit: true,
     fixed: () => ({ layout: 'strip' }),
     offers: () => ({
       ...BASE, size: { kind: 'symbol', max: 120, fallback: 40, note: null }, margin: 'strip',
@@ -173,6 +174,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      sheet, so its title is over that sheet and nowhere else. */
   tafel: {
     cards: true,
+    zeileInEdit: true,
     defaults: (print, board) => {
       const grid = board ?? boardOf({});
       const page = printableArea(print.paper, print.orientation);
@@ -228,6 +230,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      needs bigger pictures gets a second page rather than smaller ones. */
   rezept: {
     cards: false,
+    zeileInEdit: true,
     defaults: () => ({
       paper: 'a4', orientation: 'portrait', symbolSizeMm: 20, cutMarginMm: 1.5,
       showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
@@ -249,6 +252,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      it, or a 40 mm strip's frame would be the next song's. */
   lied: {
     cards: false,
+    zeileInEdit: true,
     defaults: () => ({
       paper: 'a4', orientation: 'portrait', symbolSizeMm: 16, cutMarginMm: 1,
       showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
@@ -271,6 +275,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      numbers as everywhere, off until asked for. */
   plauderbuch: {
     cards: false,
+    zeileInEdit: true,
     defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false }),
     fixed: () => ({ layout: 'plauderbuch', showCollectionTitle: false }),
     offers: () => ({ paper: true, pageNumbers: true }),

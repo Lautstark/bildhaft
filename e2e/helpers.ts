@@ -61,7 +61,7 @@ export const backToPrint = showSheet;
  * Symbol — closing the print overlay first when it is up. The Zeile is where
  * a moved template's settings live; the sheet only shows them.
  */
-export async function openDing(page: Page, name: 'Seite' | 'Symbol'): Promise<void> {
+export async function openDing(page: Page, name: 'Seite' | 'Symbol' | 'Streifen' | 'Lied' | 'Tafel'): Promise<void> {
   const chip = page.locator(`.ding__chip[aria-label="${name}"]`);
   if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click();
 }
