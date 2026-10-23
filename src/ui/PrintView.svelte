@@ -87,6 +87,14 @@
     return () => { window.clearTimeout(later); detach(); };
   });
 
+  /* Folded or laid out big, the column is another width at once — and the
+     frame's ResizeObserver misses a resize that comes with a reparented
+     layout, so the toggle asks for the new scale itself. */
+  $effect(() => {
+    void [mini, big];
+    untrack(() => { preview?.rescale(); requestAnimationFrame(() => preview?.rescale()); });
+  });
+
   /* What the head says beside the paper pill, kept across sessions. */
   $effect(() => {
     const id = s.activeId;
@@ -99,7 +107,7 @@
       saved.paper.toUpperCase()} ${saved.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait')}`;
 </script>
 
-{#if preview}<div class="print-view">{#if !mini}<div class="print-view__quiet"><span class="print-view__cap">{t('ui.preview_cap')}</span><span class="print-view__sp"></span>{#if preview.options.onPdf}<button class="print-view__tool" type="button" aria-label={t('ui.pdf_save')} title={t('ui.pdf_save')} disabled={preview.saving || preview.preparing} onclick={() => preview?.savePdf()}>{#if preview.saving}<span class="spinner"></span>{:else}⤓{/if} PDF</button>{/if}<button class="print-view__tool" type="button" disabled={preview.preparing} onclick={() => preview?.print()}>{#if preview.preparing}<span class="spinner"></span>{/if} {t('ui.print')}</button>{#if big}<button class="print-view__tool" type="button" aria-label={t('ui.preview_close')} title={t('ui.preview_close')} onclick={onClose}>✕</button>{:else if onFold}<button class="print-view__tool" type="button" aria-label={t('ui.preview_fold')} title={t('ui.preview_fold')} onclick={onFold}>»</button>{/if}</div><div class="print-view__meta"><span>{preview.pageCount === 1 ? t('ui.n_page', { n: 1 }) : t('ui.n_pages', { n: preview.pageCount })}</span>{#if preview.cardSize}<span class="small {preview.cardWarn ? 'opt__warn' : 'print-view__meta-sub'}">{preview.cardSize}</span>{/if}</div>{:else}<div class="print-view__quiet print-view__quiet--mini"><span class="print-view__meta-sub">{t('ui.n_pages_short', { n: preview.pageCount })}</span></div>{/if}<div class="print-view__stage">{#if !mini && !big && onZoom}<button class="print-view__zoom" type="button" aria-label={t('ui.preview_zoom')} title={t('ui.preview_zoom')} onclick={onZoom}></button>{/if}{#key preview}<!--
+{#if preview}<div class="print-view">{#if !mini}<span class="print-view__cap">{t('ui.preview_cap')}</span><div class="print-view__quiet"><span class="print-view__meta"><span>{preview.pageCount === 1 ? t('ui.n_page', { n: 1 }) : t('ui.n_pages', { n: preview.pageCount })}</span>{#if preview.cardSize}<span class="small {preview.cardWarn ? 'opt__warn' : 'print-view__meta-sub'}">{preview.cardSize}</span>{/if}</span><span class="print-view__sp"></span><span class="print-view__tools">{#if preview.options.onPdf}<button class="print-view__tool" type="button" aria-label={t('ui.pdf_save')} title={t('ui.pdf_save')} disabled={preview.saving || preview.preparing} onclick={() => preview?.savePdf()}>{#if preview.saving}<span class="spinner"></span>{:else}⤓{/if} PDF</button>{/if}<button class="print-view__tool" type="button" disabled={preview.preparing} onclick={() => preview?.print()}>{#if preview.preparing}<span class="spinner"></span>{/if} {t('ui.print')}</button>{#if big}<button class="print-view__tool" type="button" aria-label={t('ui.preview_close')} title={t('ui.preview_close')} onclick={onClose}>✕</button>{:else if onFold}<button class="print-view__tool" type="button" aria-label={t('ui.preview_fold')} title={t('ui.preview_fold')} onclick={onFold}>»</button>{/if}</span></div>{:else}<div class="print-view__quiet print-view__quiet--mini"><span class="print-view__meta-sub">{t('ui.n_pages_short', { n: preview.pageCount })}</span></div>{/if}<div class="print-view__stage">{#if !mini && !big && onZoom}<button class="print-view__zoom" type="button" aria-label={t('ui.preview_zoom')} title={t('ui.preview_zoom')} onclick={onZoom}></button>{/if}{#key preview}<!--
   Keyed by the preview, so a preview built again gets boxes of its own.
 --><div class="preview-frame print-view__frame" role="region" aria-label={t('ui.sheet_preview')} bind:this={preview.frame}><div bind:this={preview.sizer}><div class="preview-scaler" bind:this={preview.scaler}><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={preview.options.provider} /></div></div></div></div>{/key}</div>{#if !mini && (pdfs.length > 0 || !zeileInEdit)}<aside class="print-view__panel{zeileInEdit ? ' print-view__panel--bare' : ''}" aria-label={t('ui.sheet_column')}>{#if pdfs.length > 0}<div class="print-view__acts"><!--
   The latest PDF kept of this Sammlung, and the others folded under it.
