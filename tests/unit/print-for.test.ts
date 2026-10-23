@@ -29,10 +29,13 @@ describe('what a template opens the print dialog on', () => {
     const board = boardOf({ board: { ...boardOf({}), cols: 5, rows: 3 } });
 
     it('prints as its own grid, with air around each card from the paper', () => {
-      const page = printableArea(remembered.paper, remembered.orientation);
+      /* Eine Tafel hängt quer: ihr Luft-Standard rechnet auf dem A4-Querfeld,
+         was immer gerade gemerkt ist. */
+      const page = printableArea('a4', 'landscape');
       const field = Math.min(page.width / 5, page.height / 3);
       expect(printFor(remembered, 'tafel', board)).toMatchObject({
         layout: 'sheet', sheetFit: 'grid', gridCols: 5, gridRows: 3,
+        orientation: 'landscape',
         cutMarginMm: defaultAirMm(field),
       });
     });

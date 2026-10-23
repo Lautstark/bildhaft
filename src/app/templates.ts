@@ -175,11 +175,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   tafel: {
     cards: true,
     zeileInEdit: true,
-    defaults: (print, board) => {
+    defaults: (_print, board) => {
       const grid = board ?? boardOf({});
-      const page = printableArea(print.paper, print.orientation);
+      const page = printableArea('a4', 'landscape');
       const field = Math.min(page.width / grid.cols, page.height / grid.rows);
-      return { cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false };
+      /* Quer, wie eine Tafel hängt: breiter als hoch (2026-10-23, ihr Standard). */
+      return { paper: 'a4', orientation: 'landscape', cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false };
     },
     fixed: (_settings, board) => {
       const grid = board ?? boardOf({});
@@ -276,8 +277,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   plauderbuch: {
     cards: false,
     zeileInEdit: true,
-    defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false }),
-    fixed: () => ({ layout: 'plauderbuch', showCollectionTitle: false }),
-    offers: () => ({ paper: true, pageNumbers: true }),
+    defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false, ...HEADED }),
+    fixed: () => ({ layout: 'plauderbuch' }),
+    offers: () => ({ paper: true, pageNumbers: true, title: 'once' }),
   },
 };

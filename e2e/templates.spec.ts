@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openDing, openLook, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
+import { backToPrint, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -290,6 +290,8 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // A smaller grid keeps what still has a place. Both cards are in the first
   // row, so 3 × 2 keeps them and the twelve fields become six. The grid is the
   // Tafel's, set over it: typed, or a step at a time.
+  /* Der Standard ist quer; die Rechnung hier ist die des hohen Blatts. */
+  await pickPaper(page, 'Hoch');
   await page.getByLabel('Spalten').fill('3');
   await page.getByRole('button', { name: 'Eine Zeile weniger' }).click();
   await expect(cells).toHaveCount(6);
@@ -1213,7 +1215,7 @@ test('a Strophe too tall for one page goes on over the next, in whole lines', as
 test('a Plauderbuch is written page by page, and prints its pages and the cards to cut', async ({ page }) => {
   await pickTemplate(page, /^Plauderbuch/);
   await expect(page.getByLabel('Satz eingeben')).toHaveCount(0);
-  await expect(page.getByText('Noch keine Aussagen.')).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Aussage' })).toBeVisible();
   await expect(page.locator('.empty')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Andere Vorlage wählen' })).toBeVisible();
 
@@ -1221,41 +1223,45 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await page.getByLabel('Frage', { exact: true }).fill('Was ich erzählen will');
   await page.getByLabel('Frage', { exact: true }).press('Enter');
   const first = page.getByRole('region', { name: 'Was ich erzählen will' });
-  await expect(first.locator('.talk__question')).toHaveText('Was ich erzählen will');
+  await expect(first.locator('.talk__question-input')).toHaveValue('Was ich erzählen will');
   await expect(first).toHaveClass(/talk__page--target/);
 
-  /* The box over the head is gone: Aussagen are typed on their page. */
+  /* The „+" tile is the picker, here as everywhere. */
   await first.getByRole('button', { name: '+ Aussage' }).click();
-  await page.getByLabel('Neue Aussage').fill('vom Morgenkreis');
-  await page.getByLabel('Neue Aussage').press('Enter');
-  await page.getByLabel('Neue Aussage').fill('vom Essen');
-  await page.getByLabel('Neue Aussage').press('Enter');
-  await expect(first.locator('.word__name')).toHaveText(['vom Morgenkreis', 'vom Essen']);
-  const essen = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === 'vom Essen'));
-  expect(essen?.slots).toHaveLength(1);
-  expect(essen?.slots[0]?.sourceToken).toBe('Essen');
+  await page.getByLabel('Symbol suchen').fill('Morgenkreis');
+  await page.locator('.picker__item').first().click();
+  await expect(first.locator('.word__name')).toHaveText([/morgenkreis/i]);
 
   // A new page takes its own Aussagen. Its region is named by its place, having no question.
   await page.getByRole('button', { name: '+ Seite' }).click();
   const second = page.getByRole('region', { name: 'Seite 2' });
   await expect(second).toHaveClass(/talk__page--target/);
   await second.getByRole('button', { name: '+ Aussage' }).click();
-  await page.getByLabel('Neue Aussage').fill('fertig');
-  await page.getByLabel('Neue Aussage').press('Enter');
-  await expect(second.locator('.word__name')).toHaveText(['fertig']);
-  await expect(first.locator('.word__name')).toHaveCount(2);
+  await page.getByLabel('Symbol suchen').fill('fertig');
+  await page.locator('.picker__item').first().click();
+  await expect(second.locator('.word__name')).toHaveText([/fertig/i]);
+  await expect(first.locator('.word__name')).toHaveCount(1);
 
-  // As text: one dropped, the rest reordered and added to — the kept keep their cards.
+  // As text: the picked card gives way to the written list.
   await first.getByRole('button', { name: 'Aussagen von „Was ich erzählen will“ als Text bearbeiten' }).click();
   const text = page.getByRole('textbox', { name: 'Aussagen von „Was ich erzählen will“ als Text bearbeiten' });
-  await expect(text).toHaveValue('vom Morgenkreis\nvom Essen');
+  await expect(text).toHaveValue(/morgenkreis/i);
   const more = ['vom Essen', 'vom Spielen', 'vom Turnen', 'von der Pause', 'vom Malen', 'vom Singen', 'vom Ausflug'];
   await text.fill(more.join('\n'));
   await page.getByRole('button', { name: 'Fertig', exact: true }).click();
   await expect(first.locator('.word__name')).toHaveText(more);
+  const essen = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === 'vom Essen'));
+  expect(essen?.slots).toHaveLength(1);
+  expect(essen?.slots[0]?.sourceToken).toBe('Essen');
+
+  // Written again, reordered: a kept line keeps its card.
+  await first.getByRole('button', { name: 'Aussagen von „Was ich erzählen will“ als Text bearbeiten' }).click();
+  const more2 = ['vom Spielen', 'vom Essen', 'vom Turnen', 'von der Pause', 'vom Malen', 'vom Singen', 'vom Ausflug'];
+  await text.fill(more2.join('\n'));
+  await page.getByRole('button', { name: 'Fertig', exact: true }).click();
+  await expect(first.locator('.word__name')).toHaveText(more2);
   const after = await readSentences(page);
   expect(after.find((row) => row.rawInput === 'vom Essen')!.id).toBe(essen!.id);
-  expect(after.map((row) => row.rawInput)).not.toContain('vom Morgenkreis');
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
@@ -1269,7 +1275,7 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await expect(sheet.locator('.ps-talk__field--free')).toHaveCount(2);
   expect(await pages.evaluateAll((all) => all.map((one) =>
     one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([6, 1, 1]);
-  await expect(sheet.locator('.ps-talk-cut .ps-talk__word')).toHaveText([...more, 'fertig']);
+  await expect(sheet.locator('.ps-talk-cut .ps-talk__word')).toHaveText([...more2, /fertig/i]);
 
   // The footer as everywhere — on the book's pages only.
   await openDing(page, 'Seite');

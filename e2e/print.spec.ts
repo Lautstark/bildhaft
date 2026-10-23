@@ -247,8 +247,8 @@ test('turns the paper sideways', async ({ page }) => {
 
   // @page is the only thing that turns the actual printer, and it cannot be
   // written from a class — so the rule itself is what has to be checked.
-  expect(await page.evaluate(() =>
-    document.getElementById('print-page-setup')?.textContent)).toContain('size: 297mm 210mm');
+  await expect.poll(() => page.evaluate(() =>
+    document.getElementById('print-page-setup')?.textContent ?? '')).toContain('size: 297mm 210mm');
 });
 
 test('paper size drives the sheet, the printer rule and the grid together', async ({ page }) => {

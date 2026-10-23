@@ -27,9 +27,9 @@ describe('a Plauderbuch', () => {
     expect(rowsOf(withoutRow(book, 'z'))).toEqual(['q', 'x', 'y']);
   });
 
-  it('opens on A5 across, without a title, and keeps what it set for itself', () => {
+  it('opens on A5 across, its title printed, and keeps what it set for itself', () => {
     const opened = printFor({ ...DEFAULT_PRINT_SETTINGS, paper: 'a3', orientation: 'portrait', showCollectionTitle: true }, 'plauderbuch', null);
-    expect(opened).toMatchObject({ layout: 'plauderbuch', paper: 'a5', orientation: 'landscape', showCollectionTitle: false });
+    expect(opened).toMatchObject({ layout: 'plauderbuch', paper: 'a5', orientation: 'landscape', showCollectionTitle: true });
     expect(printFor(DEFAULT_PRINT_SETTINGS, 'plauderbuch', null, { paper: 'a4', orientation: 'portrait' }))
       .toMatchObject({ paper: 'a4', orientation: 'portrait' });
   });

@@ -1726,7 +1726,12 @@ footer.footer {
 .ding__pop .palette-row__name { font-size: inherit; color: inherit; }
 /* Was von einem Haken abhängt, steht eingerückt darunter — nie daneben,
    wo es die Zeile umbräche. */
-.ding__sub { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-left: 2px solid var(--line); margin: -4px 0 2px 7px; padding-left: 16px; }
+.ding__sub { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; border-left: 2px solid var(--line); margin: -4px 0 2px 7px; padding-left: 16px; }
+/* Ein Zahlenpaar ist ein Wort: Label, Feld und Einheit dicht beieinander,
+   zum nächsten Paar deutlich mehr Luft. */
+.ding-num { display: inline-flex; align-items: center; gap: 6px; }
+.ding-num .field { width: 68px; text-align: center; }
+.ding-num__unit { color: var(--muted); font-size: 12.5px; }
 /* Gestreckt, damit ein ⓘ am Zeilenende überall dasselbe Ende meint — und
    mit einer Linie am Haken entlang, die sagt, was zu ihm gehört. */
 .ding__dep { display: flex; flex-direction: column; align-items: stretch; gap: 9px; border-left: 2px solid var(--line); margin: -2px 0 2px 7px; padding-left: 16px; }
@@ -1736,12 +1741,10 @@ footer.footer {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .18));
 }
-.ding__row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ding__row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 /* Der aufgeklappte ⓘ-Text: volle Menübreite, dicht an seiner Zeile. */
 .ding__hint { margin: -4px 0 2px; max-width: none; line-height: 1.45; }
 .ding-check { display: flex; gap: 7px; align-items: center; font-size: 14px; cursor: pointer; }
-.ding-num { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
-.ding-num .field { width: 64px; }
 .palette-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .palette-row__name { min-width: 48px; }
 
@@ -1765,11 +1768,14 @@ footer.footer {
    Titelzeile als sein Kopf, die Wand darunter — zwei Geschwister-Panels. */
 .work-main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 18px; }
 .work-main > .title-line { margin: 0 0 12px; padding: 0; }
+/* Der leere Streifen: eine gestrichelte Zeile, die zur Box führt. */
+.row-ghost { min-height: 58px; border: 1px dashed var(--line); border-radius: var(--radius-item, 10px); background: none; color: var(--text-faint); font-size: 20px; cursor: pointer; }
+.row-ghost:hover { color: var(--text); border-color: var(--muted); }
 /* Im Material-Kasten rahmt der Kasten: die inneren Kisten von Rezept und
    Lied geben ihre eigene Umrandung ab (der Refrain behält seinen Grund). */
 .work-main .recipe__box { outline: none; padding: 0; }
 .work-main .song__part:not(.song__part--refrain) .song__lines { background: none; padding: 4px 0; }
-.work-main .board { border: none; padding: 0; background: none; }
+.work-main .board { border: none; padding: 0; background: none; grid-template-columns: repeat(var(--cols), minmax(0, 140px)); }
 /* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
    quadratisch, die echten Proportionen stehen rechts auf dem Papier. */
 .work-main .cell { aspect-ratio: 1; }

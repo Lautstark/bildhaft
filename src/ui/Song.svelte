@@ -23,13 +23,11 @@
   import type { ProviderId, SongPartKind } from '../core/types.ts';
   import { sungParts, timesSung, type SungPart } from '../core/song.ts';
   import Row from './Row.svelte';
-  import TypingBox from './TypingBox.svelte';
   import LineAdd from './LineAdd.svelte';
   import Icon from '../pieces/Icon.svelte';
   import { confirmDialog } from './dialog.ts';
-  import { addLinesToPart, addRefrain, addStrophe, addToSong, partText, removePlace, rewritePart } from '../app/song.ts';
+  import { addLinesToPart, addRefrain, addStrophe, partText, removePlace, rewritePart } from '../app/song.ts';
   import { activeCollection, s } from '../app/state.svelte.ts';
-  import { inTurn } from '../app/inTurn.ts';
   import { t } from '../i18n/index.ts';
 
   let { provider }: { provider: ProviderId } = $props();
@@ -57,13 +55,12 @@
   let typing = $state<Typing | null>(null);
   /* The part whose „+ Zeile" is open, and what is typed into an empty Lied. */
   let adding = $state<string | null>(null);
-  let whole = $state('');
   /* The part being written again as text, and that text. */
   let editing = $state<string | null>(null);
   let text = $state('');
   let before = $state('');
 
-  $effect(() => { void s.activeId; typing = null; editing = null; unfolded = []; adding = null; whole = ''; });
+  $effect(() => { void s.activeId; typing = null; editing = null; unfolded = []; adding = null; });
 
   const label = (at: { kind: SongPartKind; n: number }): string =>
     (at.kind === 'refrain' ? t('ui.song_refrain') : t('ui.song_strophe', { n: at.n }));
@@ -74,18 +71,6 @@
     typing = into;
     text = '';
     before = '';
-  }
-
-  const send = inTurn();
-  /* The whole song into an empty Lied: its parts read, its Refrain found. */
-  function sendWhole(): void {
-    const raw = whole;
-    if (!raw.trim()) return;
-    whole = '';
-    send(async () => {
-      const left = await addToSong(raw);
-      if (left) whole = left;
-    });
   }
 
   /* A part that is not there yet is written whole, in the same field „✎ Text"
@@ -176,7 +161,6 @@
 
 {#snippet lineAdd(id: string, name: string)}<LineAdd open={adding === id} plus={t('ui.song_add_line')} label={t('ui.song_line_in', { part: name })} placeholder={t('ui.song_line_in', { part: name })} onOpen={() => { typing = null; editing = null; adding = id; }} onClose={() => { adding = null; }} onSend={(raw) => addLinesToPart(id, raw)} />{/snippet}
 
-{#snippet pasteHint()}<span>{@html t('ui.composer_hint')} · {t('ui.song_paste_hint')}</span>{/snippet}
 
 {#snippet part(at: SungPart, place: number)}{@const name = label(at)}<section class="song__part{at.kind === 'refrain' ? ' song__part--refrain' : ''}" aria-label={name}><div class="song__head"><h3>{name}</h3>{#if at.first && editing !== at.part.id}<button class="song__tool" type="button" aria-label={t('ui.song_edit_part', { part: name })} onclick={() => startEditing(at.part.id)}>{t('ui.song_edit')}</button>{/if}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.song_delete_part', { part: name })} aria-label={t('ui.song_delete_part', { part: name })} onclick={() => void take(at, place)}><Icon name="trash" /></button></span></div>{#if editing === at.part.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.song_edit_part', { part: name })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span class="small faint">{change || (at.kind === 'refrain' && times.size > 0 ? t('ui.song_refrain_everywhere') : '')}</span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}<div class="song__lines">{#if at.kind === 'refrain' && !at.first && !unfolded.includes(place)}<button class="song__folded" type="button" onclick={() => { unfolded = [...unfolded, place]; }}>{t('ui.song_folded', { n: at.part.lines.length })}</button>{:else}{#each at.part.lines as id, k (k)}{@const sentence = byId.get(id)}{#if sentence}<Row {sentence} {provider} sung={times.get(id) ?? 1} />{/if}{/each}{#if at.first}{@render lineAdd(at.part.id, name)}{/if}{/if}</div>{/if}</section>{/snippet}
 
@@ -185,6 +169,7 @@
 {#snippet gap(at: number, end: boolean)}{#if typing?.into === 'new' && typing.at === at}{@render waiting(typing.kind, at)}{/if}<div class={end ? 'song__more' : 'song__gap'}><button class="song__plus{end ? ' song__plus--part' : ''}" type="button" aria-label={end ? undefined : t('ui.song_insert_strophe', { n: at + 1 })} onclick={() => startTyping({ into: 'new', kind: 'strophe', at })}>{t('ui.song_add_strophe')}</button><button class="song__plus{end ? ' song__plus--part' : ''}" type="button" aria-label={end ? undefined : t('ui.song_insert_refrain', { n: at + 1 })} onclick={() => refrainAt(at)}>{t('ui.song_add_refrain')}</button></div>{/snippet}
 
 <div class="song">{#if empty}<!--
-  An empty Lied: one field for the whole song, pasted or typed — Enter takes
-  it, Shift+Enter makes a line, as in every box.
---><div class="song__paste"><TypingBox value={whole} busy={s.busy} placeholder={t('ui.song_paste_placeholder')} label={t('ui.song_paste_label')} action={t('ui.translate')} meta={pasteHint} maxHeight={480} focusOnMount onChange={(value) => { whole = value; }} onSubmit={sendWhole} /></div>{:else}{#each sung as at, place (place)}{#if place > 0}{@render gap(place, false)}{/if}{@render part(at, place)}{/each}{@render gap(sung.length, true)}{/if}</div>
+  Die Eingabe für den ganzen Text steht oben auf der Seite
+  (SongIntake.svelte); hier stehen die leeren Teile bereit: eine Strophe
+  oder ein Refrain, Kachel für Kachel, wie beim Rezept.
+-->{@render gap(0, true)}{:else}{#each sung as at, place (place)}{#if place > 0}{@render gap(place, false)}{/if}{@render part(at, place)}{/each}{@render gap(sung.length, true)}{/if}</div>

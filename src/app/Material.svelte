@@ -80,7 +80,11 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}<!--
+  Leer ist die leere Version der Vorlage, nicht ein leerer Kasten: die Wand
+  nur mit ihrer „+"-Kachel, der Streifen als gestrichelte Zeile, die zur Box
+  führt (2026-10-23, ihr Grundsatz).
+-->{#if holdsWords()}<div class="rows words"><button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div>{:else}<div class="rows"><button class="row-ghost" type="button" aria-label={t('ui.first_strip')} title={t('ui.first_strip')} onclick={() => document.querySelector<HTMLTextAreaElement>('.composer__input')?.focus()}>+</button></div>{/if}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other

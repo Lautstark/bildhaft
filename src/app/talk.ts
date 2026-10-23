@@ -1,8 +1,9 @@
-import type { Collection, Sentence, TalkBook, TalkPage } from '../core/types.ts';
+import type { Collection, Sentence, Slot, TalkBook, TalkPage } from '../core/types.ts';
 import { slotCaption } from '../core/types.ts';
 import { pagesOf, withoutRow, withPage } from '../core/talk.ts';
-import { deleteSentence, newId, patchCollection } from '../db/repo.ts';
+import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
 import { addLines } from './composing.ts';
+import { openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
 
 /**
@@ -97,6 +98,54 @@ export async function addSayings(text: string, pageId?: string): Promise<string>
   const page = book.pages.find((one) => one.id === aimed) ?? book.pages.at(-1)!;
   await keepBook(fresh, withPage(book, page.id, (one) => ({ ...one, sayings: [...one.sayings, ...cards.ids] })));
   return '';
+}
+
+/**
+ * Eine leere Aussage auf die Seite, und der Picker dazu auf: die „+"-Kachel
+ * des Plauderbuchs ist dieselbe wie die der Wand und des Rezepts.
+ */
+export async function addSayingCard(pageId?: string): Promise<void> {
+  const open = activeCollection();
+  if (!open || s.busy) return;
+  const aimed = pageId ?? targetPage()?.id;
+  const slot: Slot = { id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {} };
+  const now = Date.now();
+  const sentence: Sentence = {
+    id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
+    collectionId: open.id, createdAt: now, updatedAt: now,
+  };
+  await putSentence(sentence);
+  s.sentences = [...s.sentences, sentence];
+  const fresh = activeCollection();
+  if (!fresh || fresh.id !== open.id) return;
+  const book = bookWithPage(fresh);
+  const page = book.pages.find((one) => one.id === aimed) ?? book.pages.at(-1)!;
+  await keepBook(fresh, withPage(book, page.id, (one) => ({ ...one, sayings: [...one.sayings, sentence.id] })));
+  openPicker(sentence.id, slot.id);
+}
+
+/**
+ * Eine leere Frage auf die Seite, und der Picker dazu auf — die „+"-Kachel
+ * der Frage ist die der Titelzeile.
+ */
+export async function addQuestionCard(pageId?: string): Promise<void> {
+  const open = activeCollection();
+  if (!open || s.busy) return;
+  const aimed = pageId ?? targetPage()?.id;
+  const slot: Slot = { id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {} };
+  const now = Date.now();
+  const sentence: Sentence = {
+    id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
+    collectionId: open.id, createdAt: now, updatedAt: now,
+  };
+  await putSentence(sentence);
+  s.sentences = [...s.sentences, sentence];
+  const fresh = activeCollection();
+  if (!fresh || fresh.id !== open.id) return;
+  const book = bookWithPage(fresh);
+  const page = book.pages.find((one) => one.id === aimed) ?? book.pages.at(-1)!;
+  await keepBook(fresh, withPage(book, page.id, (one) => ({ ...one, question: sentence.id })));
+  openPicker(sentence.id, slot.id);
 }
 
 /** A new empty page after the last, and the box's page from now on. */
