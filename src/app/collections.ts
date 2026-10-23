@@ -36,21 +36,6 @@ const keepUnwritten = <T extends { id: string }>(held: T[], since: number) => (f
 
 /** Which Sammlung is open, what the sidebar lists, and what happens to a whole one. */
 
-/*
- * „Drucken" is an overlay over the material now, not a view a Sammlung could
- * be left in: every Sammlung opens on its material, and the overlay is opened
- * fresh each time. `rememberedView` stays as the one answer to "where does a
- * Sammlung open", so the day the question changes it changes here.
- */
-export function rememberedView(_id: string): 'edit' | 'print' {
-  return 'edit';
-}
-
-/** Opens or closes the sheet over the material. */
-export function setView(view: 'edit' | 'print'): void {
-  s.view = view;
-}
-
 export function setActive(id: string): void {
   /* Nothing from the last one stays on screen.
    *
@@ -60,7 +45,7 @@ export function setActive(id: string): void {
    * be resolved. Until then the head carried the new name over the previous
    * Sammlung's rows, which does not read as "loading", it reads as those rows
    * being what this Sammlung contains. */
-  if (s.activeId !== id) { s.sentences = []; s.view = rememberedView(id); }
+  if (s.activeId !== id) s.sentences = [];
   s.activeId = id;
   /* The symbol search follows the Sammlung, not the page.
    *

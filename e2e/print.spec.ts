@@ -645,9 +645,8 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
   await cardSheet(page);
-  /* The title is fetched on the sheet now, like a Schritt or a Strophe. */
-  await showMaterial(page);
-  await page.getByRole('button', { name: '+ Titel' }).click();
+  await openDing(page, 'Titel');
+  await page.getByLabel('Titel drucken').check();
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the first page is full and reaches the paper's edge.
@@ -675,8 +674,8 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
   await showMaterial(page);
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
-  await page.getByRole('button', { name: '+ Titel' }).click();
   await openDing(page, 'Titel');
+  await page.getByLabel('Titel drucken').check();
   await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
   await page.getByLabel('Linie darunter').check();
   await openDing(page, 'Symbol');
@@ -708,7 +707,7 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
  */
 test('the preview is cut into pages, and the column counts them', async ({ page }) => {
   const pages = page.locator('.preview-frame .ps-page');
-  const meta = page.locator('.print-view .pager__at');
+  const meta = page.locator('.print-view__meta');
 
   await expect(pages).toHaveCount(1);
   await expect(meta).toContainText('1 Seite');
@@ -726,7 +725,7 @@ test('the preview is cut into pages, and the column counts them', async ({ page 
   // A forced break.
   await page.getByLabel('Ein Satz pro Seite').check();
   await expect(pages).toHaveCount(2);
-  await expect(meta).toContainText('Seite 1 von 2');
+  await expect(meta).toContainText('2 Seiten');
   // One plan, applied to both copies: the preview and the printer cannot
   // disagree about where a page ends, because neither worked it out alone.
   await expect(page.locator('#print-root .ps-page')).toHaveCount(2);
@@ -737,17 +736,12 @@ test('the preview is cut into pages, and the column counts them', async ({ page 
   await page.getByLabel('Symbolgröße').fill('90');
   await showSheet(page);
   await expect(pages).toHaveCount(3);
-  await expect(meta).toContainText('Seite 1 von 3');
+  await expect(meta).toContainText('3 Seiten');
 
-  // One page at a time, turned with the arrows rather than scrolled.
-  const frame = page.locator('.print-view .preview-frame');
-  await expect(page.getByRole('button', { name: 'Vorige Seite' }).first()).toBeDisabled();
-  await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
-  await expect(meta).toContainText('Seite 2 von 3');
-  await expect.poll(() => frame.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
-  await expect(meta).toContainText('Seite 3 von 3');
-  await expect(page.getByRole('button', { name: 'Nächste Seite' }).first()).toBeDisabled();
+  // Every page under the one before, like a stack of paper: nothing to turn.
+  const tops = await pages.evaluateAll((all: HTMLElement[]) => all.map((el) => el.offsetTop));
+  expect(tops[1]).toBeGreaterThan(tops[0]!);
+  expect(tops[2]).toBeGreaterThan(tops[1]!);
 });
 
 /*
@@ -884,7 +878,7 @@ test('every page of the printable copy holds inside the paper', async ({ page })
  */
 test('saves the preview as a PDF of the same pages', async ({ page }) => {
   await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await expect(page.locator('.print-view .pager__at')).toContainText('Seite');
+  await expect(page.locator('.print-view__meta')).toContainText('Seite');
   await expect(page.locator('.preview-frame .ps-page').first()).toBeVisible();
   const pages = await page.locator('.preview-frame .ps-page').count();
   const [file] = await Promise.all([
@@ -931,22 +925,52 @@ test('a size can be typed, and scrolling does not change it', async ({ page }) =
 });
 
 /*
- * „Drucken" is a preview over the material, not a view a Sammlung is left
- * in: switching to another Sammlung closes it, and after a reload every
- * Sammlung opens on its material.
+ * The sheet stands beside the material by default and stays through a switch
+ * and a reload; folded, it stays folded. Only a material with nothing to
+ * print has none.
  */
-test('the sheet is an overlay and never survives a switch or a reload', async ({ page }) => {
+test('the sheet is there by default and survives a switch and a reload', async ({ page }) => {
   await expect(page.locator('.print-dock')).toBeVisible();
 
+  await page.locator('.sidebar__section--collections .collections__item').nth(0).click();
+  await expect(page.locator('.print-dock .ps-sheet')).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator('.print-dock .ps-sheet')).toBeVisible();
+
+  // Nothing to print, nothing beside it.
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
   await expect(page.locator('.print-dock')).toHaveCount(0);
 
+  // Folded stays folded, across a reload too.
   await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(page.locator('.print-dock')).toHaveCount(0);
-
-  await showSheet(page);
+  await page.locator('.print-view__tool[aria-label="Vorschau einklappen"]').click();
+  await expect(page.locator('.print-dock--mini')).toBeVisible();
   await page.reload();
-  await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(page.locator('.print-dock')).toHaveCount(0);
+  await expect(page.locator('.print-dock--mini')).toBeVisible();
+  await page.locator('.print-dock__peek').click();
+  await expect(page.locator('.print-dock--mini')).toHaveCount(0);
+});
+
+/*
+ * The panel is narrow and fixed; reading happens in the large preview, opened
+ * by pressing anywhere on the stacked pages. A zoom, not a place to be: Esc
+ * puts it away, and it is not kept across a switch of material.
+ */
+test('the pages pressed open the large preview, and Esc puts it away', async ({ page }) => {
+  await page.getByRole('button', { name: 'Große Druckvorschau öffnen' }).click();
+  await expect(page.locator('.print-dock--big')).toBeVisible();
+  await expect(page.locator('.print-dock--big .ps-sheet')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.print-dock--big')).toHaveCount(0);
+  await expect(page.locator('.print-dock .ps-sheet')).toBeVisible();
+
+  // Its ✕ and the dimmed edge are the other ways out.
+  await page.getByRole('button', { name: 'Große Druckvorschau öffnen' }).click();
+  await page.getByRole('button', { name: 'Große Vorschau schließen' }).click();
+  await expect(page.locator('.print-dock--big')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Große Druckvorschau öffnen' }).click();
+  await page.locator('.print-dock--big').click({ position: { x: 8, y: 8 } });
+  await expect(page.locator('.print-dock--big')).toHaveCount(0);
 });

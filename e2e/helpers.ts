@@ -38,17 +38,18 @@ export function rowFor(page: Page, typed: string) {
  * over the material, and the wait is for the preview to be laid out.
  */
 export async function showSheet(page: Page): Promise<void> {
-  if (!(await page.locator('.print-dock').isVisible().catch(() => false))) {
-    await page.locator('.collection-head').getByRole('button', { name: 'Drucken', exact: true }).click();
-  }
+  /* Folded, the whole rail is the way back open (the peek overlay). */
+  const peek = page.locator('.print-dock__peek');
+  if (await peek.isVisible().catch(() => false)) await peek.click();
   await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
 }
 
-/** Puts the docked sheet away: its ×. */
-export async function showMaterial(page: Page): Promise<void> {
-  if (!(await page.locator('.print-dock').isVisible().catch(() => false))) return;
-  await page.getByRole('button', { name: 'Drucken schließen' }).click();
-  await expect(page.locator('.print-dock')).toHaveCount(0);
+/**
+ * The material was a view to go back to once; now it is always on screen
+ * beside the sheet. Kept as a no-op so the specs read as the flow they test.
+ */
+export async function showMaterial(_page: Page): Promise<void> {
+  /* nothing to do: the sheet no longer covers the material */
 }
 
 /** Older names for the same wait, from when the settings were split over two dialogs. */

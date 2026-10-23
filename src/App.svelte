@@ -28,7 +28,8 @@
   import { notify, useToast } from './app/notify.ts';
   import { persistSettings } from './app/settings.ts';
   import { activeCollection, kind, MOBILE_QUERY, s } from './app/state.svelte.ts';
-  import { setView } from './app/collections.ts';
+  import { TEMPLATES } from './app/templates.ts';
+  import DingBar from './ui/DingBar.svelte';
   import { contentOf, type CollectionKind } from './core/types.ts';
   import { t } from './i18n/index.ts';
 
@@ -70,8 +71,9 @@
      typed there waits in its tray. One template at a time (2026-10-22). */
   const BOX_UNDER_HEAD: CollectionKind[] = ['satzstreifen', 'wortkarten', 'einkaufsliste', 'tafel'];
 
-  /** „Drucken" is shown only once there is something to print. */
-  let printing = $derived(s.view === 'print' && contentOf(s.sentences).length > 0);
+  /** The sheet beside the material, once there is something to print. */
+  let hasSheet = $derived(contentOf(s.sentences).length > 0);
+  let zeile = $derived(Boolean(TEMPLATES[kind()].zeileInEdit));
 
   $effect(() => useToast(toast));
 
@@ -110,35 +112,36 @@
     else persistSettings({ ...s.settings, sidebarOpen: !s.settings.sidebarOpen });
   }
 
-  /* Escape closes the print dock, as it closes every other transient thing. */
-  function overlayKeys(event: KeyboardEvent): void {
-    if (printing && event.key === 'Escape') setView('edit');
+  /*
+   * Folded or open, kept in this browser: the sheet beside the material is a
+   * fact about this screen, not about any Sammlung. Folded it stays alive as
+   * a thumbnail of itself — the same preview, just narrow.
+   */
+  const DOCK_MODE = 'bildhaft.preview';
+  let mini = $state(false);
+  try { mini = localStorage.getItem(DOCK_MODE) === 'mini'; } catch { /* a private window keeps nothing */ }
+  function fold(next: boolean): void {
+    mini = next;
+    try { localStorage.setItem(DOCK_MODE, next ? 'mini' : 'open'); } catch { /* a private window keeps nothing */ }
   }
 
   /*
-   * The dock's width, dragged at its left edge and kept in this browser: how
-   * wide somebody wants the sheet beside the material is a fact about their
-   * screen, not about any Sammlung.
+   * The large preview: the narrow panel pressed anywhere on its pages lays
+   * the sheet out big, over everything, until Esc, its × or the dimmed edge.
+   * A zoom, not a place to be — so it is not kept, and a switch of material
+   * closes it.
    */
-  const DOCK_W = 'bildhaft.dockW';
-  let dockW = $state(430);
-  try { const kept = Number(localStorage.getItem(DOCK_W)); if (kept >= 300 && kept <= 900) dockW = kept; } catch { /* a private window keeps nothing */ }
-  function startResize(event: PointerEvent): void {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startW = dockW;
-    const move = (ev: PointerEvent) => { dockW = Math.min(900, Math.max(300, startW + (startX - ev.clientX))); };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      try { localStorage.setItem(DOCK_W, String(dockW)); } catch { /* a private window keeps nothing */ }
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  }
+  let big = $state(false);
+  $effect(() => { void s.activeId; big = false; });
+  $effect(() => {
+    if (!big) return;
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') big = false; };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  });
 </script>
 
-<svelte:window onkeydown={overlayKeys} />
+
 
 {#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} drawer={s.mobileNavOpen} {collapsed} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
   The page behind the drawer, and the way out of it. Always in the markup now
@@ -156,7 +159,7 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}{printing ? ' main__inner--printing' : ''}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
+--><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}{hasSheet ? ' main__inner--printing' : ''}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
   Two views of the open Sammlung, switched in its head. The box to type into
   and the head stay where they are in both; only what is under them changes:
   the material („Bearbeiten"), or the sheet with its pages and its settings
@@ -171,13 +174,15 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
---><div class="work-split"><div class="work-main">{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel' && kind() !== 'einkaufsliste' && kind() !== 'wortkarten'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}<Material /></div>{#if printing}<!--
-  „Drucken" is no view of its own any more: the sheet docks beside the
-  material, to be looked at and printed while the Zeile is worked — its left
-  edge drags it wider, × puts it away, and on a narrow window it lies over
-  the page instead. What can still be set in it is only what has not moved
-  into the Zeile yet.
---><aside class="print-dock" style:width="{dockW}px" aria-label={t('ui.view_print')}><button class="print-dock__grip" type="button" aria-label={t('ui.print_dock_resize')} title={t('ui.print_dock_resize')} onpointerdown={startResize}></button><div class="print-dock__head"><b>{t('ui.view_print')}</b><span class="print-dock__sp"></span><button class="btn quiet icon print-dock__close" type="button" aria-label={t('ui.print_close')} title={t('ui.print_close')} onclick={() => setView('edit')}>×</button></div><PrintView /></aside>{/if}</div>{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.choosing === s.activeId}<Material />{:else}<!--
+  Head and box keep the page's whole width; what is split is the work under
+  them. Left the material with its Zeile, right the sheet as it prints —
+  there by default, scrolled like a stack of paper, folded to a thumbnail of
+  itself when the work needs the room. Its left edge drags it wider.
+--><div class="work-split"><div class="work-main">{#if zeile && hasSheet}<DingBar />{/if}<Material /></div>{#if hasSheet}<!--
+  svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions
+  (der Klick auf den abgedunkelten Rand ist ein zweiter Weg hinaus; Esc und das ✕ sind die ersten)
+--><aside class="print-dock{mini ? ' print-dock--mini' : ''}{big ? ' print-dock--big' : ''}" aria-label={t('ui.view_print')} onclick={(event) => { if (big && event.target === event.currentTarget) big = false; }}>{#if mini}<button class="print-dock__unfold" type="button" aria-label={t('ui.preview_unfold')} title={t('ui.preview_unfold')} onclick={() => fold(false)}>«</button>{/if}<PrintView mini={mini && !big} {big} onFold={() => fold(true)} onZoom={() => { big = true; }} onClose={() => { big = false; }} />{#if mini && !big}<button class="print-dock__peek" type="button" aria-label={t('ui.preview_unfold')} onclick={() => fold(false)}></button>{/if}</aside>{/if}</div>{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

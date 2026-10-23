@@ -60,8 +60,8 @@
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>
   <span class="ding"><button class="ding__chip{mp.settings.titleColour ? ' ding__chip--on' : ''}" type="button" aria-label={t('ui.ding_title')} aria-expanded={open === 'title'} onclick={() => show('title')}>{t('ui.ding_title')}{#if mp.settings.titleColour}<span class="ding__dot" style:--c={mp.settings.titleColour}></span>{/if}<span class="ding__dd">▾</span></button>{#if open === 'title'}<div class="ding__pop" role="group" aria-label={t('ui.ding_title')}>
-    <p class="small faint ding__hint">{t('ui.title_on_sheet_hint')}</p>
-    {@render num(t('ui.title_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}
+    <div class="ding__row">{@render check(t('ui.title_print'), mp.settings.showCollectionTitle, (next) => mp?.set('showCollectionTitle', next))}{@render num(t('ui.title_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}</div>
+    <p class="small faint ding__hint">{t('ui.title_text_hint')}</p>
     <PaletteRow label={t('ui.colour')} value={mp.settings.titleColour} strength="frame" none ownStart="#3d7d3a" onPick={paintMaterial} />
     <p class="small faint ding__hint">{t('ui.material_colour_hint')}</p>
     {@render check(t('ui.title_line'), mp.settings.titleLine, (next) => mp?.set('titleLine', next))}

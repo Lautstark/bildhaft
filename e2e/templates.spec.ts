@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate, untilKept } from './helpers.ts';
+import { backToPrint, openDing, openLook, showMaterial, pickTemplate, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -110,14 +110,12 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   await expect(sheets.nth(3).locator('.ps-title')).toHaveCount(0);
   /* The guide is the board's own setting now, made in the Zeile over the
      material — under „Seite", where the sheet's things live. */
-  await showMaterial(page);
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await openDing(page, 'Seite');
   await page.getByLabel('Anleitung drucken').uncheck();
   await showSheet(page);
   await expect(sheet.locator('.ps-guide')).toHaveCount(0);
   await expect(sheets).toHaveCount(3);
-  await showMaterial(page);
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await openDing(page, 'Seite');
   await page.getByLabel('Anleitung drucken').check();
   await showSheet(page);
   await expect(sheets).toHaveCount(4);
@@ -154,25 +152,25 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
      page's ground is its own row under „Seite", „keine" first. All of it in
      the Zeile over the material, and the open preview follows. */
   await showMaterial(page);
-  await page.getByRole('button', { name: 'Titel', exact: true }).click();
+  await openDing(page, 'Titel');
   await page.getByRole('button', { name: 'Farbe Blau' }).click();
   await showSheet(page);
   await expect.poll(stroke).toBe('rgb(63, 136, 224)');
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(63, 136, 224)');
   await showMaterial(page);
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await openDing(page, 'Seite');
   await page.getByRole('button', { name: 'Seitenfarbe: Kein' }).click();
   await showSheet(page);
   await expect.poll(() => bg(1)).toBe('rgb(255, 255, 255)');
   await showMaterial(page);
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await openDing(page, 'Seite');
   await page.getByRole('button', { name: 'Seitenfarbe Grün' }).click();
   await showSheet(page);
   await expect.poll(() => bg(1)).toBe('rgb(216, 242, 210)');
 
   // Its name over the board is set as everywhere: size, colour, a line.
   await showMaterial(page);
-  await page.getByRole('button', { name: 'Titel', exact: true }).click();
+  await openDing(page, 'Titel');
   await page.getByLabel('Linie darunter').check();
   await page.getByLabel('Schriftgröße des Titels').fill('20');
   await page.getByLabel('Schriftgröße des Titels').press('Tab');
@@ -335,7 +333,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.locator('.print-dock').getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feldgröße: 63 × 136 mm.')).toBeVisible();
+  await expect(page.getByText('Feldgröße: 63 × 136 mm.').first()).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every
@@ -1277,11 +1275,10 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.locator('.words .word:not(.word--add) .word__name'))
     .toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch'], { useInnerText: true });
 
-  // Head, box, board — in that order; the title is fetched on the sheet.
+  // Head, box, title, wall — in that order, once there is something to head.
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
   expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
-  expect(await top('.composer')).toBeLessThan(await top('.card-board'));
-  await page.getByRole('button', { name: '+ Titel' }).click();
+  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
   expect(await top('.title-line')).toBeLessThan(await top('.words'));
 
   await showSheet(page);
@@ -1296,8 +1293,7 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
   await box.fill('Milch, Brot, Äpfel');
   await expect(page.locator('.composer__count')).toHaveText('3 Karten');
   await box.press('Enter');
-  /* The board, not a wall: each card stands in its dashed field. */
-  await expect(page.locator('.shop-edit .word')).toHaveCount(3);
+  await expect(page.locator('.words .word:not(.word--add)')).toHaveCount(3);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
   expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
   expect(await top('.composer')).toBeLessThan(await top('.title-line'));

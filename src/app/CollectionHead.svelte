@@ -31,7 +31,7 @@
   import { pagesOf } from '../core/talk.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import { chooseTitlePicture } from './recipe.ts';
-  import { confirmDeleteCollection, handleExport, openSourceSheet, setView } from './collections.ts';
+  import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
   import PaperPick from '../ui/PaperPick.svelte';
   import { t } from '../i18n/index.ts';
@@ -99,9 +99,9 @@
   is the way back to the choice of template, said here, small.
 --><span class="small faint collection-head__other">{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}<!--
   The paper is top level: the button that always said „A4 hoch · 2 Seiten"
-  is the choice itself now (PaperPick). Beside it „Drucken" opens the sheet
-  over the material — a preview, no longer a view of its own.
--->{#if n > 0}<PaperPick /><button class="btn primary sm" type="button" onclick={() => setView('print')}>{t('ui.view_print')}</button>{/if}<!--
+  is the choice itself (PaperPick). No Drucken button — the sheet stands
+  beside the material by default, with its own quiet tools.
+-->{#if n > 0}<PaperPick />{/if}<!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to
