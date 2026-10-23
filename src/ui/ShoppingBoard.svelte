@@ -31,7 +31,7 @@
   let titled = $derived(mp?.settings.showCollectionTitle ?? false);
 </script>
 
-{#if mp}<DingBar /><div class="shop-edit" style:background={mp.settings.pageColour ?? 'var(--surface)'} style:--board-ink={ink}>
+{#if mp}<DingBar /><div class="shop-edit" style:background={mp.settings.pageColour ?? 'var(--surface)'} style:--board-ink={ink} style:--cb-bg={mp.settings.cardBackground ?? '#ffffff'} style:--cb-border={mp.settings.cardBorderMm > 0 ? mp.settings.cardBorderColor : '#dcdcdc'} style:--cb-stroke={mp.settings.cardBorderMm > 0 ? `${Math.max(1.5, mp.settings.cardBorderMm * 2)}px` : '1px'} style:--cb-radius={`${Math.max(4, mp.settings.cardRadiusMm * 1.6)}px`}>
   <div class="shop-edit__top">{#if titled}<span class="shop-edit__title{mp.settings.titleLine ? ' shop-edit__title--lined' : ''}"><TitleLine /><button class="shop-edit__off" type="button" aria-label={t('ui.title_off')} title={t('ui.title_off')} onclick={() => mp?.set('showCollectionTitle', false)}>×</button></span>{:else}<button class="song__plus shop-edit__get" type="button" onclick={() => mp?.set('showCollectionTitle', true)}>{t('ui.title_get')}</button>{/if}<svg class="shop-edit__cart" style:color={mp.settings.cartColour ?? '#b4b9be'} width="34" height="29" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 2h3l3 12h12l3-9H6" /><circle cx="9" cy="19" r="1.8" /><circle cx="17" cy="19" r="1.8" /></svg></div>
   <div class="shop-edit__grid">{#each content as sentence (sentence.id)}<div class="shop-edit__field"><WordCard {sentence} {provider} /></div>{/each}<button class="shop-edit__field shop-edit__field--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div>
 </div>{/if}

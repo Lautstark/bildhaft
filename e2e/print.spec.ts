@@ -599,7 +599,7 @@ test('the title is written in Bearbeiten and prints over the first or every page
   await words.press('Enter');
   await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toBeVisible();
   await showSheet(page);
-  await expect(page.locator('.print-overlay').getByLabel('Titel auf dem Papier')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Titel auf dem Papier')).toHaveCount(0);
   await expect(titles).toHaveText(['Morgenkreis']);
 
   // Over every page: two sentences, a page each, a title on both.
@@ -931,40 +931,22 @@ test('a size can be typed, and scrolling does not change it', async ({ page }) =
 });
 
 /*
- * The pages small, on the left, say which one is showing: by the arrows and by
- * a press on one of them.
- */
-test('the pages on the left follow the page being shown', async ({ page }) => {
-  await page.getByLabel('Ein Satz pro Seite').check();
-  const thumbs = page.locator('.print-view__thumb');
-  await expect(thumbs).toHaveCount(2);
-  await expect(thumbs.nth(0)).toHaveAttribute('aria-pressed', 'true');
-
-  await thumbs.nth(1).click();
-  await expect(page.locator('.print-view .pager__at')).toHaveText('Seite 2 von 2');
-  await expect(thumbs.nth(1)).toHaveAttribute('aria-pressed', 'true');
-
-  await page.getByRole('button', { name: 'Vorige Seite' }).click();
-  await expect(thumbs.nth(0)).toHaveAttribute('aria-pressed', 'true');
-});
-
-/*
  * „Drucken" is a preview over the material, not a view a Sammlung is left
  * in: switching to another Sammlung closes it, and after a reload every
  * Sammlung opens on its material.
  */
 test('the sheet is an overlay and never survives a switch or a reload', async ({ page }) => {
-  await expect(page.locator('.print-overlay')).toBeVisible();
+  await expect(page.locator('.print-dock')).toBeVisible();
 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
-  await expect(page.locator('.print-overlay')).toHaveCount(0);
+  await expect(page.locator('.print-dock')).toHaveCount(0);
 
   await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(page.locator('.print-overlay')).toHaveCount(0);
+  await expect(page.locator('.print-dock')).toHaveCount(0);
 
   await showSheet(page);
   await page.reload();
   await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(page.locator('.print-overlay')).toHaveCount(0);
+  await expect(page.locator('.print-dock')).toHaveCount(0);
 });

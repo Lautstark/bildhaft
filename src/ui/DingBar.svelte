@@ -46,7 +46,11 @@
 
 {#snippet check(label: string, checked: boolean, onToggle: (next: boolean) => void)}<label class="ding-check"><input type="checkbox" {checked} onchange={(event) => onToggle(event.currentTarget.checked)} />{label}</label>{/snippet}
 
-{#snippet num(label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void)}<label class="ding-num">{label} <input class="field" type="number" {min} {max} {step} {value} aria-label={label} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} /> {unit}</label>{/snippet}
+{#snippet num(label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void)}<!--
+  Taken while it is typed once it is a number the field can hold — „1" on the
+  way to „14" is not yet a size — and put right on the way out, the same two
+  handlers the print column always had. Live, because the sheet beside it is.
+--><label class="ding-num">{label} <input class="field" type="number" {min} {max} {step} {value} aria-label={label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} /> {unit}</label>{/snippet}
 
 {#if mp && offer}<div class="ding-bar" bind:this={host}>
   <span class="ding"><button class="ding__chip{mp.settings.pageColour ? ' ding__chip--on' : ''}" type="button" aria-label={t('ui.ding_page')} aria-expanded={open === 'page'} onclick={() => show('page')}>{t('ui.ding_page')}{#if mp.settings.pageColour}<span class="ding__dot" style:--c={mp.settings.pageColour}></span>{/if}<span class="ding__dd">▾</span></button>{#if open === 'page'}<div class="ding__pop" role="group" aria-label={t('ui.ding_page')}>
@@ -70,7 +74,7 @@
         <button type="button" aria-pressed={exact} onclick={() => mp?.set('sheetFit', 'card')}>{t('ui.fit_card')}</button>
         <button type="button" aria-pressed={gridded} onclick={() => mp?.set('sheetFit', 'grid')}>{t('ui.grid')}</button>
       </span></div>
-      {#if exact}<div class="ding__row">{@render num(t('ui.card_width'), mp.settings.cardWidthMm, 15, 300, 1, 60, 'mm', (next) => mp?.set('cardWidthMm', next))}<label class="ding-num">{t('ui.card_height')} <input class="field" type="number" min="15" max="300" step="1" value={mp.settings.cardHeightMm ?? ''} placeholder={String(mp.settings.cardWidthMm)} aria-label={t('ui.card_height')} onchange={(event) => { if (event.currentTarget.value.trim() === '') { mp?.set('cardHeightMm', null); return; } const n = clamp(event.currentTarget.valueAsNumber, 15, 300, 15); event.currentTarget.value = String(n); mp?.set('cardHeightMm', n); }} /> mm</label></div>
+      {#if exact}<div class="ding__row">{@render num(t('ui.card_width'), mp.settings.cardWidthMm, 15, 300, 1, 60, 'mm', (next) => mp?.set('cardWidthMm', next))}<label class="ding-num">{t('ui.card_height')} <input class="field" type="number" min="15" max="300" step="1" value={mp.settings.cardHeightMm ?? ''} placeholder={String(mp.settings.cardWidthMm)} aria-label={t('ui.card_height')} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= 15 && n <= 300) mp?.set('cardHeightMm', n); }} onchange={(event) => { if (event.currentTarget.value.trim() === '') { mp?.set('cardHeightMm', null); return; } const n = clamp(event.currentTarget.valueAsNumber, 15, 300, 15); event.currentTarget.value = String(n); mp?.set('cardHeightMm', n); }} /> mm</label></div>
       {:else if gridded}<div class="ding__row">{@render num(t('ui.columns'), mp.settings.gridCols, 1, 12, 1, 4, '', (next) => mp?.set('gridCols', Math.round(next)))}{@render num(t('ui.rows'), mp.settings.gridRows, 1, 12, 1, 3, '', (next) => mp?.set('gridRows', Math.round(next)))}</div>
       {:else}{@render num(t('ui.symbol_size'), mp.settings.symbolSizeMm, 10, 120, 1, 40, 'mm', (next) => mp?.set('symbolSizeMm', next))}{/if}
       {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}

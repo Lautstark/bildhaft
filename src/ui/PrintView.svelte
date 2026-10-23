@@ -19,7 +19,6 @@
   import PrintOptions from './PrintOptions.svelte';
   import Pager from './Pager.svelte';
   import { attachPrinting, Printing } from './printDialog.svelte.ts';
-  import { paperSize, PX_PER_MM } from './printSheet.ts';
   import { openSavedPdf, printOptions } from '../app/print.ts';
   import { activeCollection, kind, providerId, s } from '../app/state.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
@@ -120,24 +119,6 @@
     return () => watching.disconnect();
   });
 
-  /* The small page that says which one is showing, kept in sight. */
-  let thumbs: HTMLElement | undefined = $state();
-  $effect(() => {
-    const at = preview?.pageAt ?? 0;
-    thumbs?.querySelectorAll<HTMLElement>('.print-view__thumb')[at]?.scrollIntoView({ block: 'nearest' });
-  });
-
-  /* The pages small, on the left: the same sheet drawn once more at a size a
-     page is 84 px wide, with a button laid over each page to go to it. */
-  const THUMB_W = 84;
-  const PAGE_GAP_MM = 8;
-  let thumbScale = $derived(preview
-    ? THUMB_W / (paperSize(preview.settings.paper, preview.settings.orientation).width * PX_PER_MM) : 0);
-  let thumbStep = $derived(preview
-    ? (paperSize(preview.settings.paper, preview.settings.orientation).height + PAGE_GAP_MM) * PX_PER_MM * thumbScale : 0);
-  let thumbH = $derived(preview
-    ? paperSize(preview.settings.paper, preview.settings.orientation).height * PX_PER_MM * thumbScale : 0);
-
   const pdfLabel = (saved: SavedPdf): string =>
     `${new Date(saved.at).toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' })} · ${
       saved.paper.toUpperCase()} ${saved.orientation === 'landscape' ? t('ui.landscape') : t('ui.portrait')}`;
@@ -155,10 +136,7 @@
 
 <svelte:window onkeydown={keys} onresize={fitHeight} />
 
-{#if preview}<div class="print-view" bind:this={view} style:--print-view-h={viewH === null ? null : `${viewH}px`}><!--
-  The pages small. Drawn from the same plan as the big one, so they can never
-  show a different break.
---><nav class="print-view__thumbs" aria-label={t('ui.pages')} bind:this={thumbs}>{#if preview.plan.pages}<div class="print-view__thumbsheet" style:height="{preview.pageCount * thumbStep}px"><div class="preview-scaler" style:transform="scale({thumbScale})"><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={preview.options.provider} /></div>{#each Array.from({ length: preview.pageCount }) as _, at (at)}<button class="print-view__thumb" type="button" style:top="{at * thumbStep}px" style:height="{thumbH}px" aria-label={t('ui.page_n', { n: at + 1, total: preview.pageCount })} aria-pressed={preview.pageAt === at} onclick={() => preview?.showPage(at)}></button>{/each}</div>{/if}</nav><div class="print-view__stage">{#key preview}<!--
+{#if preview}<div class="print-view" bind:this={view} style:--print-view-h={viewH === null ? null : `${viewH}px`}><div class="print-view__stage">{#key preview}<!--
   Keyed by the preview, so a preview built again gets boxes of its own.
 --><div class="preview-frame print-view__frame" role="region" aria-label={t('ui.sheet_preview')} bind:this={preview.frame}><div bind:this={preview.sizer}><div class="preview-scaler" bind:this={preview.scaler}><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={preview.options.provider} /></div></div></div></div>{/key}<!--
   Under the sheet: which page is showing, and beside it the two things this

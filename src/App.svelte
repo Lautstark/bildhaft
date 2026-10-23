@@ -18,7 +18,6 @@
   import Footer from './ui/Footer.svelte';
   import Composer from './ui/Composer.svelte';
   import PrintView from './ui/PrintView.svelte';
-  import PaperPick from './ui/PaperPick.svelte';
   import TitleLine from './ui/TitleLine.svelte';
   import TalkComposer from './ui/TalkComposer.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
@@ -111,9 +110,31 @@
     else persistSettings({ ...s.settings, sidebarOpen: !s.settings.sidebarOpen });
   }
 
-  /* Escape closes the print overlay, as it closes every other dialog. */
+  /* Escape closes the print dock, as it closes every other transient thing. */
   function overlayKeys(event: KeyboardEvent): void {
     if (printing && event.key === 'Escape') setView('edit');
+  }
+
+  /*
+   * The dock's width, dragged at its left edge and kept in this browser: how
+   * wide somebody wants the sheet beside the material is a fact about their
+   * screen, not about any Sammlung.
+   */
+  const DOCK_W = 'bildhaft.dockW';
+  let dockW = $state(430);
+  try { const kept = Number(localStorage.getItem(DOCK_W)); if (kept >= 300 && kept <= 900) dockW = kept; } catch { /* a private window keeps nothing */ }
+  function startResize(event: PointerEvent): void {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startW = dockW;
+    const move = (ev: PointerEvent) => { dockW = Math.min(900, Math.max(300, startW + (startX - ev.clientX))); };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      try { localStorage.setItem(DOCK_W, String(dockW)); } catch { /* a private window keeps nothing */ }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   }
 </script>
 
@@ -135,7 +156,7 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
+--><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}{printing ? ' main__inner--printing' : ''}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
   Two views of the open Sammlung, switched in its head. The box to type into
   and the head stay where they are in both; only what is under them changes:
   the material („Bearbeiten"), or the sheet with its pages and its settings
@@ -150,11 +171,13 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel' && kind() !== 'einkaufsliste' && kind() !== 'wortkarten'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}<Material />{#if printing}<!--
-  „Drucken" is no view of its own any more: the sheet opens over the
-  material, to be looked at and printed, and × puts the material back. What
-  can still be set in it is only what has not moved into the Zeile yet.
---><div class="print-overlay" role="dialog" aria-label={t('ui.view_print')}><div class="print-overlay__box"><div class="print-overlay__head"><b>{t('ui.view_print')}</b><span class="small faint print-overlay__name">{title}</span><PaperPick /><button class="btn quiet icon print-overlay__close" type="button" aria-label={t('ui.print_close')} title={t('ui.print_close')} onclick={() => setView('edit')}>×</button></div><PrintView /></div></div>{/if}{/if}</div><Footer /></main></div>{/if}<!--
+--><div class="work-split"><div class="work-main">{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel' && kind() !== 'einkaufsliste' && kind() !== 'wortkarten'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}<Material /></div>{#if printing}<!--
+  „Drucken" is no view of its own any more: the sheet docks beside the
+  material, to be looked at and printed while the Zeile is worked — its left
+  edge drags it wider, × puts it away, and on a narrow window it lies over
+  the page instead. What can still be set in it is only what has not moved
+  into the Zeile yet.
+--><aside class="print-dock" style:width="{dockW}px" aria-label={t('ui.view_print')}><button class="print-dock__grip" type="button" aria-label={t('ui.print_dock_resize')} title={t('ui.print_dock_resize')} onpointerdown={startResize}></button><div class="print-dock__head"><b>{t('ui.view_print')}</b><span class="print-dock__sp"></span><button class="btn quiet icon print-dock__close" type="button" aria-label={t('ui.print_close')} title={t('ui.print_close')} onclick={() => setView('edit')}>×</button></div><PrintView /></aside>{/if}</div>{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

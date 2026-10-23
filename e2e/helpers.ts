@@ -38,16 +38,17 @@ export function rowFor(page: Page, typed: string) {
  * over the material, and the wait is for the preview to be laid out.
  */
 export async function showSheet(page: Page): Promise<void> {
-  if (!(await page.locator('.print-overlay').isVisible().catch(() => false))) {
+  if (!(await page.locator('.print-dock').isVisible().catch(() => false))) {
     await page.locator('.collection-head').getByRole('button', { name: 'Drucken', exact: true }).click();
   }
   await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
 }
 
-/** Back to the Sammlung's material: the overlay's ×. */
+/** Puts the docked sheet away: its ×. */
 export async function showMaterial(page: Page): Promise<void> {
+  if (!(await page.locator('.print-dock').isVisible().catch(() => false))) return;
   await page.getByRole('button', { name: 'Drucken schließen' }).click();
-  await expect(page.locator('.print-overlay')).toHaveCount(0);
+  await expect(page.locator('.print-dock')).toHaveCount(0);
 }
 
 /** Older names for the same wait, from when the settings were split over two dialogs. */
@@ -60,17 +61,15 @@ export const backToPrint = showSheet;
  * a moved template's settings live; the sheet only shows them.
  */
 export async function openDing(page: Page, name: 'Seite' | 'Titel' | 'Symbol'): Promise<void> {
-  if (await page.locator('.print-overlay').isVisible().catch(() => false)) await showMaterial(page);
-  const chip = page.getByRole('button', { name, exact: true });
+  const chip = page.locator(`.ding__chip[aria-label="${name}"]`);
   if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click();
 }
 
-/** Picks the paper in the overlay's head — the pill that names it. */
+/** Picks the paper in the head — the pill that names it. */
 export async function pickPaper(page: Page, name: string): Promise<void> {
-  await showSheet(page);
-  const pop = page.locator('.print-overlay .paper-pick__pop');
+  const pop = page.locator('.paper-pick__pop');
   if (!(await pop.isVisible().catch(() => false))) {
-    await page.locator('.print-overlay').getByRole('button', { name: 'Papier wählen' }).click();
+    await page.getByRole('button', { name: 'Papier wählen' }).click();
   }
   await pop.getByRole('button', { name, exact: true }).click();
 }

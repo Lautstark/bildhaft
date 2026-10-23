@@ -180,9 +180,9 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
   /* The paper is picked in the overlay's head — the pill that names it. */
   const paper = async (name: string) => {
-    const pop = page.locator('.print-overlay .paper-pick__pop');
+    const pop = page.locator('.paper-pick__pop');
     if (!(await pop.isVisible().catch(() => false))) {
-      await page.locator('.print-overlay').getByRole('button', { name: 'Papier wählen' }).click();
+      await page.getByRole('button', { name: 'Papier wählen' }).click();
     }
     await pop.getByRole('button', { name, exact: true }).click();
   };
@@ -230,9 +230,9 @@ test('a long Einkaufsliste names every sheet of places, and packs its cards', as
   }
   await showSheet(page);
   const sheets = page.locator('.preview-frame .ps-page');
-  /* The paper is picked in the overlay's head now: the pill that names it. */
-  await page.locator('.print-overlay').getByRole('button', { name: 'Papier wählen' }).click();
-  await page.locator('.print-overlay').getByRole('button', { name: 'A5', exact: true }).click();
+  /* The paper is picked at the head's pill, docked sheet or not. */
+  await page.getByRole('button', { name: 'Papier wählen' }).click();
+  await page.locator('.paper-pick__pop').getByRole('button', { name: 'A5', exact: true }).click();
   // On A5 the places take two sheets, and both carry the name.
   const placed = sheets.filter({ has: page.locator('.ps-place') });
   await expect(placed).toHaveCount(2);
@@ -334,7 +334,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.width).toBe(full!.width);
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
-  await expect(page.locator('.print-overlay').getByLabel('Spalten')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Spalten')).toHaveCount(0);
   await expect(page.getByText('Feldgröße: 63 × 136 mm.')).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
@@ -1285,8 +1285,8 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   expect(await top('.title-line')).toBeLessThan(await top('.words'));
 
   await showSheet(page);
-  await expect(page.locator('.print-overlay').getByLabel('Wörter hinzufügen')).toHaveCount(0);
-  await expect(page.locator('.print-overlay .title-line')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.print-dock .title-line')).toHaveCount(0);
 });
 
 /* An Einkaufsliste is typed as Wortkarten are: under its head, a list. */
@@ -1302,7 +1302,7 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
   expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
   expect(await top('.composer')).toBeLessThan(await top('.title-line'));
   await showSheet(page);
-  await expect(page.locator('.print-overlay').getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Wörter hinzufügen')).toHaveCount(0);
 });
 
 /*

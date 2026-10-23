@@ -1750,7 +1750,7 @@ footer.footer {
 .shop-edit__title--lined .title-line { border-bottom: 2px solid var(--board-ink); }
 /* Die Karten wie gedruckt, nicht wie die dunkle Wand — die Tafel macht es
    mit `.cell .word` genauso vor. */
-.shop-edit .word { background: #fff; color: #222; border: 1px solid #dcdcdc; border-radius: 6px; }
+.shop-edit .word { background: var(--cb-bg, #fff); color: #222; border: var(--cb-stroke, 1px) solid var(--cb-border, #dcdcdc); border-radius: var(--cb-radius, 6px); }
 .shop-edit .word__name { color: #222; }
 .shop-edit .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
 .shop-edit__off { border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 15px; padding: 2px 6px; }
@@ -1775,18 +1775,40 @@ footer.footer {
 .card-board--label-above .word { flex-direction: column-reverse; }
 .card-board--unlabelled .word .word__name { display: none; }
 
-/* Drucken als Vorschau über dem Material: ansehen, PDF, drucken, schließen. */
-/* Über dem Arbeitsbereich, nicht über der Sidebar: wer links wechselt,
-   schließt die Vorschau damit — wie früher der Ansichtswechsel. */
-.print-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: var(--sidebar-w); z-index: 60; background: rgba(0, 0, 0, .45); display: flex; padding: 14px; }
-.app--collapsed .print-overlay { left: 0; }
-@media (max-width: 820px) { .print-overlay { left: 0; padding: 8px; } }
-.print-overlay__box {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
-  background: var(--bg, var(--surface)); border-radius: var(--radius); padding: 14px 18px; overflow: auto;
+/* Drucken als Vorschau neben dem Material: angedockt rechts, am linken Rand
+   breiter zu ziehen, auf schmalen Fenstern über der Seite. Ansehen, PDF,
+   drucken, schließen — eingestellt wird links, in der Zeile. */
+.work-split { display: flex; gap: 16px; align-items: flex-start; }
+.work-main { flex: 1; min-width: 0; }
+.main__inner--printing { max-width: 1480px; }
+.print-dock {
+  position: sticky; top: 10px; flex: none;
+  max-height: calc(100vh - 20px); overflow: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px 14px 20px;
+  background: var(--surface); outline: 1px solid var(--line); border-radius: var(--radius);
 }
-.print-overlay__head { display: flex; align-items: center; gap: 10px; }
-.print-overlay__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.print-overlay__close { font-size: 18px; }
+.print-dock__grip { position: absolute; left: 0; top: 0; bottom: 0; width: 12px; cursor: col-resize; background: transparent; border: 0; padding: 0; }
+.print-dock__grip:hover::after, .print-dock__grip:focus-visible::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--accent); }
+.print-dock__head { display: flex; align-items: center; gap: 8px; }
+.print-dock__sp { flex: 1; }
+.print-dock__close { font-size: 18px; }
+/* Die Vorschau im Dock baut sich selbst: das Blatt in fester Höhe, darunter
+   die Leiste, darunter (bei nicht umgezogenen Vorlagen) die Spalte — die
+   Grid-Maschinerie der großen Ansicht rechnet mit einer gesetzten Höhe und
+   kollabiert ohne sie. */
+/* `flex: none`, damit das Dock scrollt statt die Ansicht zu quetschen: als
+   Flex-Kind schrumpfte sie auf die Dockhöhe, und das Blatt malte über die
+   Spalte darunter. */
+.print-dock .print-view { display: flex; flex: none; flex-direction: column; gap: 12px; height: auto !important; min-height: 0; }
+.print-dock .print-view__thumbs { display: none; }
+.print-dock .print-view__stage { display: flex; flex-direction: column; gap: 10px; height: auto; min-height: 0; overflow: visible; }
+.print-dock .print-view__frame { height: 56vh; flex: none; overflow: hidden; }
+.print-dock .print-view__panel { max-height: none; }
+@media (max-width: 980px) {
+  .work-split { display: block; }
+  .print-dock { position: fixed; top: 0; right: 0; bottom: 0; width: min(92vw, 520px) !important; z-index: 60; max-height: none; border-radius: 0; box-shadow: -12px 0 32px rgba(0, 0, 0, .25); }
+  .print-dock__grip { display: none; }
+}
 .print-view__panel--bare { align-self: flex-start; }
 .ding__meta { color: var(--muted); font-size: 12.5px; }
