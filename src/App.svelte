@@ -28,8 +28,6 @@
   import { notify, useToast } from './app/notify.ts';
   import { persistSettings } from './app/settings.ts';
   import { activeCollection, kind, MOBILE_QUERY, s } from './app/state.svelte.ts';
-  import { TEMPLATES } from './app/templates.ts';
-  import DingBar from './ui/DingBar.svelte';
   import { contentOf, type CollectionKind } from './core/types.ts';
   import { t } from './i18n/index.ts';
 
@@ -73,7 +71,6 @@
 
   /** The sheet beside the material, once there is something to print. */
   let hasSheet = $derived(contentOf(s.sentences).length > 0);
-  let zeile = $derived(Boolean(TEMPLATES[kind()].zeileInEdit));
 
   $effect(() => useToast(toast));
 
@@ -179,7 +176,7 @@
   them. Left the material with its Zeile, right the sheet as it prints —
   there by default, scrolled like a stack of paper, folded to a thumbnail of
   itself when the work needs the room. Its left edge drags it wider.
---><div class="work-split"><div class="work-main">{#if zeile && hasSheet}<DingBar />{/if}<Material /></div>{#if hasSheet}<!--
+--><div class="work-split"><div class="work-main"><Material /></div>{#if hasSheet}<!--
   svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions
   (der Klick auf den abgedunkelten Rand ist ein zweiter Weg hinaus; Esc und das ✕ sind die ersten)
 --><aside class="print-dock{mini ? ' print-dock--mini' : ''}{big ? ' print-dock--big' : ''}" aria-label={t('ui.view_print')} onclick={(event) => { if (big && event.target === event.currentTarget) big = false; }}>{#if mini}<button class="print-dock__unfold" type="button" aria-label={t('ui.preview_unfold')} title={t('ui.preview_unfold')} onclick={() => fold(false)}>«</button>{/if}<PrintView mini={mini && !big} {big} onFold={() => fold(true)} onZoom={() => { big = true; }} onClose={() => { big = false; }} />{#if mini && !big}<button class="print-dock__peek" type="button" aria-label={t('ui.preview_unfold')} onclick={() => fold(false)}></button>{/if}</aside>{/if}</div>{/if}{/if}</div><Footer /></main></div>{/if}<!--

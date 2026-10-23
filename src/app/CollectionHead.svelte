@@ -33,7 +33,6 @@
   import { chooseTitlePicture } from './recipe.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
-  import PaperPick from '../ui/PaperPick.svelte';
   import { t } from '../i18n/index.ts';
 
   /* Which Sammlung a pending rename is for, captured on the keystroke rather
@@ -98,10 +97,6 @@
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.
 --><span class="small faint collection-head__other">{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}<!--
-  The paper is top level: the button that always said „A4 hoch · 2 Seiten"
-  is the choice itself (PaperPick). No Drucken button — the sheet stands
-  beside the material by default, with its own quiet tools.
--->{#if n > 0}<PaperPick />{/if}<!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to

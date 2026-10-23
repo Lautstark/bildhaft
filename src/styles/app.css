@@ -1752,23 +1752,24 @@ footer.footer {
   position: sticky; top: 10px; flex: none;
   /* Schmal und fest: zum Lesen ist die große Vorschau da, ein Druck auf die Seiten. */
   width: 300px;
-  max-height: calc(100vh - 20px); overflow-y: auto; overscroll-behavior: contain;
+  max-height: calc(100vh - 20px);
   display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
-  padding: 4px 14px 18px;
+  padding: 4px 14px 0;
 }
 .print-dock--mini { width: 64px !important; padding: 0 8px 12px; cursor: pointer; }
 .print-dock__unfold { background: none; border: 0; color: var(--muted); font-size: 15px; padding: 8px 0 2px; cursor: pointer; }
 .print-dock__unfold:hover { color: var(--text); }
 .print-dock__peek { position: absolute; inset: 0; background: none; border: 0; cursor: pointer; }
 
-/* Der Kopf des Panels: sein Name allein obenauf, darunter die Fakten links
-   und die stillen Werkzeuge rechts. */
-.print-view__cap { display: block; font-size: 13px; font-weight: 600; color: var(--text); padding: 10px 2px 2px; }
-.print-view__quiet { display: flex; align-items: center; gap: 2px 10px; flex-wrap: wrap; padding: 0 2px 10px; }
-.print-view__tools { display: inline-flex; align-items: center; gap: 2px; margin-left: -9px; }
-.print-view__quiet--mini { justify-content: center; padding: 4px 0 8px; }
-.print-view__meta { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; line-height: 1.3; font-size: 13px; color: var(--muted); min-width: 0; }
+/* Der Kopf des Panels: „Papier" links, die Pille wählt es, » führt hinaus.
+   Darunter die Zeile; dann scrollen nur die Seiten, und der Fuß steht. */
+.print-view__caprow { display: flex; align-items: center; gap: 6px; padding: 8px 2px 6px; flex: none; }
+.print-view__cap { font-size: 13px; font-weight: 600; color: var(--text); }
+.print-view__quiet--mini { display: flex; justify-content: center; padding: 4px 0 8px; }
+.print-view__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px; padding: 4px 6px 18px; }
+.print-view__foot { display: flex; align-items: center; gap: 2px; padding: 7px 2px 9px; border-top: 1px solid var(--line); flex: none; }
+.print-view__meta { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; line-height: 1.3; font-size: 12.5px; color: var(--muted); min-width: 0; }
 .print-view__meta-sub { color: var(--muted); opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .print-view__sp { flex: 1; }
 .print-view__tool { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font: inherit; font-size: 13px; padding: 4px 9px; border-radius: 8px; background: none; border: 0; cursor: pointer; white-space: nowrap; }
@@ -1776,7 +1777,16 @@ footer.footer {
 .print-view__tool:disabled { opacity: .5; cursor: default; }
 
 /* Die Seiten als Stapel: Luft dazwischen, eine kleine Nummer darunter. */
-.print-dock .print-view { display: flex; flex: none; flex-direction: column; min-height: 0; width: 100%; min-width: 0; }
+.print-dock .print-view { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; width: 100%; min-width: 0; }
+/* Die Zeile wohnt im Panel: enger, und ihre Menüs öffnen links daneben,
+   über der Arbeitsfläche — nie über den Seiten, deren Wirkung sie zeigen. */
+.print-dock .ding-bar { margin: 0 0 8px; gap: 6px; flex: none; }
+.print-dock .ding__chip { padding: 3px 11px; font-size: 12.5px; }
+/* Am Panel verankert, nicht am Chip: das Menü steht als Ganzes links neben
+   dem Panel, über der Arbeitsfläche. */
+.print-dock .ding { position: static; }
+.print-dock .ding__pop { left: auto; right: calc(100% + 12px); top: 42px; }
+.print-dock .paper-pick__pop { right: 0; }
 .print-dock .print-view__stage { display: block; width: 100%; min-width: 0; position: relative; }
 /* Die ganze Seitenfläche ist der Weg in die große Vorschau. */
 .print-view__zoom { position: absolute; inset: -4px; z-index: 2; background: transparent; border: 0; border-radius: 8px; cursor: zoom-in; }
@@ -1799,11 +1809,15 @@ footer.footer {
 .print-dock .print-view__panel { max-height: none; margin-top: 6px; }
 
 /* Die große Vorschau: dasselbe Panel, über allem, bis Esc, ✕ oder der Rand. */
-.print-dock--big { position: fixed; inset: 0; z-index: 70; width: auto !important; max-height: none; border: 0; border-radius: 0; background: rgba(0, 0, 0, .6); padding: 28px 28px 44px; align-items: center; cursor: zoom-out; }
-.print-dock--big .print-view { width: min(1000px, 92vw); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 22px 26px; cursor: auto; }
+.print-dock--big { position: fixed; inset: 0; z-index: 70; width: auto !important; max-height: none; border: 0; border-radius: 0; background: rgba(0, 0, 0, .6); padding: 28px; align-items: center; cursor: zoom-out; overflow: hidden; }
+.print-dock--big .print-view { width: min(1000px, 92vw); max-height: calc(100vh - 56px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 22px 0; cursor: auto; }
+.print-dock--big .ding { position: relative; }
+.print-dock--big .ding__pop { left: 0; right: auto; top: calc(100% + 6px); }
 
 @media (max-width: 980px) {
-  .print-dock:not(.print-dock--big) { position: fixed; top: 0; right: 0; bottom: 0; width: min(88vw, 460px) !important; z-index: 60; max-height: none; border-radius: 0; box-shadow: -12px 0 32px rgba(0, 0, 0, .25); padding: 0 12px 12px 16px; }
+  .print-dock:not(.print-dock--big) { position: fixed; top: 0; right: 0; bottom: 0; width: min(88vw, 460px) !important; z-index: 60; max-height: none; border-radius: 0; box-shadow: -12px 0 32px rgba(0, 0, 0, .25); padding: 0 12px 0 16px; }
+  .print-dock:not(.print-dock--big) .ding { position: relative; }
+  .print-dock:not(.print-dock--big) .ding__pop { left: 0; right: auto; top: calc(100% + 6px); }
   .print-dock--mini { position: sticky; width: 56px !important; box-shadow: none; }
   .print-dock--big { padding: 10px; }
   .print-dock--big .print-view { width: 100%; padding: 4px 12px 16px; }

@@ -66,13 +66,17 @@ export async function openDing(page: Page, name: 'Seite' | 'Titel' | 'Symbol'): 
   if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click();
 }
 
-/** Picks the paper in the head — the pill that names it. */
+/** Picks the paper — the pill in the panel's head that names it. */
 export async function pickPaper(page: Page, name: string): Promise<void> {
   const pop = page.locator('.paper-pick__pop');
   if (!(await pop.isVisible().catch(() => false))) {
     await page.getByRole('button', { name: 'Papier wählen' }).click();
   }
   await pop.getByRole('button', { name, exact: true }).click();
+  /* Put the pop away: left open it lies over the Zeile's chips, and the next
+     click would land on it instead. A person sees that; a spec must not. */
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
 }
 
 /**

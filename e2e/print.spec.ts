@@ -707,7 +707,8 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
  */
 test('the preview is cut into pages, and the column counts them', async ({ page }) => {
   const pages = page.locator('.preview-frame .ps-page');
-  const meta = page.locator('.print-view__meta');
+  /* The count lives in the paper pill now: „A4 hoch · 3 Seiten". */
+  const meta = page.getByRole('button', { name: 'Papier wählen' });
 
   await expect(pages).toHaveCount(1);
   await expect(meta).toContainText('1 Seite');
@@ -878,7 +879,7 @@ test('every page of the printable copy holds inside the paper', async ({ page })
  */
 test('saves the preview as a PDF of the same pages', async ({ page }) => {
   await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await expect(page.locator('.print-view__meta')).toContainText('Seite');
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('Seite');
   await expect(page.locator('.preview-frame .ps-page').first()).toBeVisible();
   const pages = await page.locator('.preview-frame .ps-page').count();
   const [file] = await Promise.all([
