@@ -171,12 +171,12 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead /><Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.choosing === s.activeId}<Material />{:else}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<Composer /><CollectionHead />{:else if kind() === 'lied'}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<TalkComposer /><CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.choosing === s.activeId}<Material />{:else}<!--
   Head and box keep the page's whole width; what is split is the work under
   them. Left the material with its Zeile, right the sheet as it prints —
   there by default, scrolled like a stack of paper, folded to a thumbnail of
   itself when the work needs the room. Its left edge drags it wider.
---><div class="work-split"><div class="work-main"><Material /></div>{#if hasSheet}<!--
+--><div class="work-split"><div class="work-main">{#if BOX_UNDER_HEAD.includes(kind()) && kind() !== 'tafel'}<TitleLine />{/if}<Material /></div>{#if hasSheet}<!--
   svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions
   (der Klick auf den abgedunkelten Rand ist ein zweiter Weg hinaus; Esc und das ✕ sind die ersten)
 --><aside class="print-dock{mini ? ' print-dock--mini' : ''}{big ? ' print-dock--big' : ''}" aria-label={t('ui.view_print')} onclick={(event) => { if (big && event.target === event.currentTarget) big = false; }}>{#if mini}<button class="print-dock__unfold" type="button" aria-label={t('ui.preview_unfold')} title={t('ui.preview_unfold')} onclick={() => fold(false)}>«</button>{/if}<PrintView mini={mini && !big} {big} onFold={() => fold(true)} onZoom={() => { big = true; }} onClose={() => { big = false; }} />{#if mini && !big}<button class="print-dock__peek" type="button" aria-label={t('ui.preview_unfold')} onclick={() => fold(false)}></button>{/if}</aside>{/if}</div>{/if}{/if}</div><Footer /></main></div>{/if}<!--

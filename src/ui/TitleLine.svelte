@@ -2,7 +2,8 @@
   /**
    * The title of the open material, as the heading of its rows: its symbols,
    * a „+" for one more, and its words — the first thing on the paper, so the
-   * first thing under the box.
+   * head of the material's panel. Emptied, it follows the name again; there
+   * is no × because deleting the words says the same thing.
    *
    * No label and no explanation. While it follows the name it stands pale,
    * the name as its placeholder; typed words of its own stand in full, with a
@@ -28,4 +29,4 @@
 {#if open && shown}<div class="title-line">{#each symbols as { slot, id } (slot.id)}<button class="title-line__pic" type="button" aria-label={t('ui.title_symbol')} title={t('ui.title_symbol')} onclick={() => sentence && openPicker(sentence.id, slot.id)}><SymbolPicture provider={providerId()} {id} alt="" mirrored={slot.mirrored} /></button>{/each}<button class="title-line__add" type="button" aria-label={t('ui.title_add_symbol')} title={t('ui.title_add_symbol')} onclick={() => void addTitleSymbol()}>+</button><!--
   The words, written where they stand. The name is the placeholder, which is
   what an empty field means here: the title is the name.
---><input class="title-line__text" type="text" value={open.title ?? ''} placeholder={open.name} aria-label={t('ui.title_text')} title={t('ui.title_text')} onchange={(event) => void setTitle(event.currentTarget.value)} onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} />{#if own}<button class="title-line__reset" type="button" aria-label={t('ui.title_back_to_name')} title={t('ui.title_back_to_name')} onclick={() => void setTitle('')}>×</button>{/if}</div>{/if}
+--><input class="title-line__text" type="text" value={open.title ?? ''} placeholder={open.name} aria-label={t('ui.title_text')} title={t('ui.title_text')} onchange={(event) => void setTitle(event.currentTarget.value)} onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /></div>{/if}

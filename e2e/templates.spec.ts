@@ -152,8 +152,8 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
      page's ground is its own row under „Seite", „keine" first. All of it in
      the Zeile over the material, and the open preview follows. */
   await showMaterial(page);
-  await openDing(page, 'Titel');
-  await page.getByRole('button', { name: 'Farbe Blau' }).click();
+  await openDing(page, 'Seite');
+  await page.getByRole('button', { name: 'Farbe Blau', exact: true }).click();
   await showSheet(page);
   await expect.poll(stroke).toBe('rgb(63, 136, 224)');
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(63, 136, 224)');
@@ -170,10 +170,10 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
 
   // Its name over the board is set as everywhere: size, colour, a line.
   await showMaterial(page);
-  await openDing(page, 'Titel');
+  await openDing(page, 'Seite');
   await page.getByLabel('Linie darunter').check();
-  await page.getByLabel('Schriftgröße des Titels').fill('20');
-  await page.getByLabel('Schriftgröße des Titels').press('Tab');
+  await page.getByLabel('Schriftgröße', { exact: true }).fill('20');
+  await page.getByLabel('Schriftgröße', { exact: true }).press('Tab');
   await showSheet(page);
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
   /* The paper is picked in the overlay's head — the pill that names it. */
@@ -333,7 +333,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.locator('.print-dock').getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feldgröße: 63 × 136 mm.').first()).toBeVisible();
+  await expect(page.getByText('Feld 63 × 136 mm').first()).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every
@@ -1262,8 +1262,8 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
 /*
  * Wortkarten are typed as a list: a comma, a semicolon or a new line makes
  * the next card, a space does not. The box says what Enter will make before
- * it is pressed, stands under the head in „Bearbeiten" and nowhere in
- * „Drucken", and the title is the heading under it.
+ * it is pressed, stands on top of the page in „Bearbeiten" and nowhere in
+ * „Drucken"; the head follows it, and the title heads the material's panel.
  */
 test('Wortkarten take a list, and say which cards it makes before Enter', async ({ page }) => {
   await pickTemplate(page, /^Wortkarten/);
@@ -1275,10 +1275,10 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.locator('.words .word:not(.word--add) .word__name'))
     .toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch'], { useInnerText: true });
 
-  // Head, box, title, wall — in that order, once there is something to head.
+  // Box, head, title, wall — in that order, once there is something to head.
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
-  expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
-  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  expect(await top('.composer')).toBeLessThan(await top('.collection-head'));
+  expect(await top('.collection-head')).toBeLessThan(await top('.title-line'));
   expect(await top('.title-line')).toBeLessThan(await top('.words'));
 
   await showSheet(page);
@@ -1286,8 +1286,8 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.locator('.print-dock .title-line')).toHaveCount(0);
 });
 
-/* An Einkaufsliste is typed as Wortkarten are: under its head, a list. */
-test('an Einkaufsliste takes a list under its head, its title under the box', async ({ page }) => {
+/* An Einkaufsliste is typed as Wortkarten are: the box on top, a list. */
+test('an Einkaufsliste takes a list in the box on top, its title over the cards', async ({ page }) => {
   await pickTemplate(page, /^Einkaufsliste/);
   const box = page.getByLabel('Wörter hinzufügen');
   await box.fill('Milch, Brot, Äpfel');
@@ -1295,8 +1295,8 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
   await box.press('Enter');
   await expect(page.locator('.words .word:not(.word--add)')).toHaveCount(3);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
-  expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
-  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  expect(await top('.composer')).toBeLessThan(await top('.collection-head'));
+  expect(await top('.collection-head')).toBeLessThan(await top('.title-line'));
   await showSheet(page);
   await expect(page.locator('.print-dock').getByLabel('Wörter hinzufügen')).toHaveCount(0);
 });

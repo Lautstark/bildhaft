@@ -53,12 +53,12 @@ test('names the field a ruler will find, not just the symbol', async ({ page }) 
   const card = page.locator('.preview-frame .ps-card').first();
   const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
 
-  await expect(hint).toHaveText('Feldgröße: 46 × 52 mm.');
+  await expect(hint).toHaveText('Feld 46 × 52 mm');
   expect(mm((await box()).w)).toBeCloseTo(46, 0);
   expect(mm((await box()).h)).toBeCloseTo(52, 0);
 
   await page.getByLabel('Symbolgröße').fill('50');
-  await expect(hint).toHaveText('Feldgröße: 56 × 62 mm.');
+  await expect(hint).toHaveText('Feld 56 × 62 mm');
 
   // A frame grows the card, so both figures have to grow with it. Checked to
   // the millimetre and no finer, as the readout is: offsetWidth is whole
@@ -67,7 +67,7 @@ test('names the field a ruler will find, not just the symbol', async ({ page }) 
   await openLook(page);
   await page.getByLabel('Rahmen um jede Karte').check();
   await backToPrint(page);
-  await expect(hint).toHaveText('Feldgröße: 60 × 65 mm.');
+  await expect(hint).toHaveText('Feld 60 × 65 mm');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
   expect(mm((await box()).h)).toBeCloseTo(65.4, 0);
 });
@@ -84,8 +84,8 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
   await showSheet(page);
 
-  const hint = page.getByText('Kartengröße:');
-  await expect(hint).toHaveText('Kartengröße: 63 × 136 mm.');
+  const hint = page.getByText('Karte 63');
+  await expect(hint).toHaveText('Karte 63 × 136 mm');
 });
 
 /*
@@ -158,7 +158,7 @@ test('says so when the card does not fit the paper', async ({ page }) => {
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
   await showSheet(page);
-  await expect(page.getByText(/^Symbolgröße: \d/)).toBeVisible();
+  await expect(page.getByText(/^Symbol \d/)).toBeVisible();
 
   await openDing(page, 'Symbol');
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('200');
@@ -593,11 +593,9 @@ test('the title is written in Bearbeiten and prints over the first or every page
 
   // Its own words, typed in Bearbeiten; the print view has no field for them.
   await showMaterial(page);
-  await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toHaveCount(0);
   const words = page.getByLabel('Titel auf dem Papier');
   await words.fill('Morgenkreis');
   await words.press('Enter');
-  await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toBeVisible();
   await showSheet(page);
   await expect(page.locator('.print-dock').getByLabel('Titel auf dem Papier')).toHaveCount(0);
   await expect(titles).toHaveText(['Morgenkreis']);
@@ -612,7 +610,9 @@ test('the title is written in Bearbeiten and prints over the first or every page
   // above or below. And back to the name, with whatever the name becomes.
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
-  await page.getByRole('button', { name: 'wieder wie der Name' }).click();
+  // Emptied, the title follows the name again — there is no × to press.
+  await page.getByLabel('Titel auf dem Papier').fill('');
+  await page.getByLabel('Titel auf dem Papier').press('Enter');
   await page.getByLabel('Name des Materials', { exact: true }).fill('Abschlusskreis');
   await showSheet(page);
   await expect(titles).toHaveText(['Abschlusskreis', 'Abschlusskreis']);
@@ -645,7 +645,7 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
   await cardSheet(page);
-  await openDing(page, 'Titel');
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
@@ -674,9 +674,9 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
   await showMaterial(page);
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
-  await openDing(page, 'Titel');
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
-  await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
+  await page.getByRole('spinbutton', { name: 'Schriftgröße', exact: true }).fill('30');
   await page.getByLabel('Linie darunter').check();
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();

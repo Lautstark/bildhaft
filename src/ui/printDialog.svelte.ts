@@ -272,7 +272,7 @@ export class Printing {
     /* On a Tafel nothing is cut and in a strip the symbols stand side by
        side: what is measured there is a field, not a card. */
     this.cardSize = t(this.options.board || this.options.kind === 'satzstreifen' ? 'ui.field_size' : 'ui.card_to_cut')
-      + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
+      + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm`;
   }
 
   /**
