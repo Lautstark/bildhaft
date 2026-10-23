@@ -1713,11 +1713,15 @@ footer.footer {
   color: var(--text); font: inherit; font-size: 14px;
 }
 .ding__chip:hover, .ding__chip[aria-expanded="true"] { border-color: var(--accent); }
-.ding__chip--on { border-color: var(--accent); }
 .ding__dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0, 0, 0, .15); }
-.ding__dd { font-size: 10px; color: var(--muted); }
+.ding__dd { display: inline-flex; color: var(--muted); margin: 1px -2px 0 0; }
+.ding__chip:hover { border-color: var(--muted); }
+.ding__chip:hover .ding__dd { color: var(--text); }
+.ding__info { width: 17px; height: 17px; flex: none; margin-left: auto; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 11px; font-weight: 600; font-style: italic; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; padding: 0 2px 1px 0; }
+.ding__info:hover, .ding__info[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
+.ding__row--snug { gap: 6px; flex-wrap: nowrap; }
 .ding__pop {
-  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 270px;
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 360px;
   display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .18));
