@@ -22,7 +22,10 @@
     onPick: (next: string | null) => void;
   } = $props();
 
-  let colours = $derived(ZONE_COLOURS.map((hue) => ({ value: hue[strength], name: hue.name })));
+  /* Five of the Tafel's eight (2026-10-23): a row of a menu, not a zone box —
+     eight plus „keine" plus the wheel broke the line. A hue from the other
+     three, set elsewhere, shows on the wheel as one's own. */
+  let colours = $derived(ZONE_COLOURS.slice(0, 5).map((hue) => ({ value: hue[strength], name: hue.name })));
   let own = $derived(value !== null && !colours.some((c) => c.value === value));
 </script>
 

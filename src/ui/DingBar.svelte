@@ -66,8 +66,9 @@
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>
   <span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_title')} aria-expanded={open === 'title'} onclick={() => show('title')}>{t('ui.ding_title')}{#if mp.settings.titleColour}<span class="ding__dot" style:--c={mp.settings.titleColour}></span>{/if}{@render dd()}</button>{#if open === 'title'}<div class="ding__pop" role="group" aria-label={t('ui.ding_title')}>
-    <div class="ding__row">{@render check(t('ui.title_print'), mp.settings.showCollectionTitle, (next) => mp?.set('showCollectionTitle', next))}{@render num(t('ui.title_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}{@render tip('titeltext')}</div>
+    <div class="ding__row">{@render check(t('ui.title_print'), mp.settings.showCollectionTitle, (next) => mp?.set('showCollectionTitle', next))}{@render tip('titeltext')}</div>
     {#if info === 'titeltext'}<p class="small faint ding__hint">{t('ui.title_text_hint')}</p>{/if}
+    {#if mp.settings.showCollectionTitle}<div class="ding__sub">{@render num(t('ui.title_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}</div>{/if}
     <div class="ding__row ding__row--snug"><PaletteRow label={t('ui.colour')} value={mp.settings.titleColour} strength="frame" none ownStart="#3d7d3a" onPick={paintMaterial} />{@render tip('farbe')}</div>
     {#if info === 'farbe'}<p class="small faint ding__hint">{t('ui.material_colour_hint')}</p>{/if}
     {@render check(t('ui.title_line'), mp.settings.titleLine, (next) => mp?.set('titleLine', next))}
@@ -91,9 +92,12 @@
       <div class="ding__row"><span class="small faint">{t('ui.symbol_from_paper', { size: mp.settings.symbolSizeMm, margin: mp.settings.cutMarginMm })}</span>{@render tip('brett')}</div>
       {#if info === 'brett'}<p class="small faint ding__hint">{t('ui.shop_geometry_info')}</p>{/if}
     {/if}
-    {#if offer.label}<div class="ding__row">{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.label_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next))}{/if}</div>
+    {#if offer.label}{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<div class="ding__sub"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.label_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next))}</div>{/if}
     {/if}
-    {#if offer.frames || kind() === 'einkaufsliste'}<div class="ding__row">{@render check(t('ui.frame_each'), mp.settings.cardBorderMm > 0, (next) => mp?.set('cardBorderMm', next ? 0.5 : 0))}{#if mp.settings.cardBorderMm > 0}{@render num(t('ui.thickness'), mp.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next))}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next))}{/if}</div>{/if}
+    {#if offer.frames || kind() === 'einkaufsliste'}<div class="ding__row">{@render check(t('ui.frame_each'), mp.settings.cardBorderMm > 0, (next) => mp?.set('cardBorderMm', next ? 0.5 : 0))}{@render tip('rahmen')}</div>
+      {#if info === 'rahmen'}<p class="small faint ding__hint">{t('ui.frame_colour_info')}</p>{/if}
+      {#if mp.settings.cardBorderMm > 0}<div class="ding__sub">{@render num(t('ui.thickness'), mp.settings.cardBorderMm, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next))}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next))}</div>{/if}
+    {/if}
     {#if offer.background || kind() === 'einkaufsliste'}<PaletteRow label={t('ui.cards_fill')} value={mp.settings.cardBackground} strength="fill" none ownStart="#fff1b3" onPick={(next) => mp?.set('cardBackground', next)} />{/if}
     {#if offer.cutLines || kind() === 'einkaufsliste'}{@render check(t('ui.cut_lines'), mp.settings.showCutLines, (next) => mp?.set('showCutLines', next))}{/if}
   </div>{/if}</span>
