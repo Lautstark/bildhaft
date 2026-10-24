@@ -92,7 +92,7 @@
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.
--->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied' || kind() === 'plauderbuch' || kind() === 'tafel')}<!--
+-->{#if n === 0}<!--
   A Rezept and a Lied draw their own empty parts, so the empty state's box
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.
