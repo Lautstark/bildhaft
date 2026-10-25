@@ -847,7 +847,7 @@
    laminated whole. Every length is A4's times the paper's factor --spiel-k. */
 .ps-spiel {
   display: grid;
-  grid-template-columns: var(--spiel-w) 1fr;
+  grid-template-columns: var(--spiel-shelf) 1fr;
   column-gap: calc(12mm * var(--spiel-k));
   row-gap: var(--spiel-gap);
   align-content: start;
@@ -861,7 +861,7 @@
    No word over it — the dashed fields say what they are. */
 .ps-spiel__shelfcell {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: var(--spiel-gap);
 }
 .ps-spiel__row {

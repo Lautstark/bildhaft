@@ -656,13 +656,15 @@ export interface GameGeometry {
   k: number;
   /** The page's height, the footer's and the title's room taken off. */
   height: number;
+  /** The Ablage column's width: the row with the most cards, side by side. */
+  shelfW: number;
 }
 
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
 export function gameGeometry(
   settings: Pick<PrintSettings, 'paper'>, page: { width: number; height: number },
-  reserve: number, shape: { units: number; cells: number },
+  reserve: number, shape: { units: number; cells: number; shelf: number },
 ): GameGeometry {
   const k = GAME_SCALE[settings.paper];
   const gap = 6 * k;
@@ -670,13 +672,16 @@ export function gameGeometry(
   const height = page.height - reserve;
   const units = Math.max(1, shape.units);
   const cells = Math.max(1, shape.cells);
-  /* The Ablage column and the arrow stand beside the longest row. */
+  /* A row's Ablage fields stand beside each other, so the column is as wide
+     as the row with the most cards asks — and it stands beside the longest
+     row, with the arrow between the pictures and the fields. */
+  const shelf = Math.max(1, shape.shelf);
   const wAvail = page.width - 12 * k - 8 * k;
   const hLimit = (height - (units - 1) * gap) / units;
-  const wLimit = (wAvail - (cells - 1) * gap) / (cells + 1);
+  const wLimit = (wAvail - (cells - 1) * gap - (shelf - 1) * gap) / (cells + shelf);
   const fieldW = Math.min(hLimit * (50 / 42), wLimit, 55 * k);
   const fieldH = fieldW * (42 / 50);
-  return { fieldW, fieldH, gap, air, k, height };
+  return { fieldW, fieldH, gap, air, k, height, shelfW: shelf * fieldW + (shelf - 1) * gap };
 }
 
 export function talkGeometry(
@@ -905,8 +910,9 @@ export function sheetBlocks(
       count: row.karten.length,
     }));
     const geo = gameGeometry(settings, page, reserve, {
-      units: rows.reduce((all, row) => all + Math.max(1, row.count), 0),
+      units: rows.length,
       cells: Math.max(1, ...rows.map((row) => row.fest.length + row.count)),
+      shelf: Math.max(1, ...rows.map((row) => row.count)),
     });
     const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (rows.length > 0) blocks.push({ kind: 'game-board', rows, geo });

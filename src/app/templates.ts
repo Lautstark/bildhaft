@@ -280,6 +280,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       ...HEADED, showPageNumbers: false,
     }),
     fixed: () => ({ layout: 'spiel' }),
+    zeileInEdit: true,
     offers: () => ({ ...BASE }),
   },
 
