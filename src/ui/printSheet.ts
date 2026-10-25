@@ -599,8 +599,9 @@ export type Block =
   | { kind: 'talk-page'; question: Slot | null; text: string; count: number; free: boolean; again: boolean; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
   /* One sheet of a Spiel: the rows, each its fixed pictures and a dashed
-     field per card, and left of them the Ablage — one field per card too. */
-  | { kind: 'game-board'; rows: { fest: Slot[]; count: number }[]; shelf: number; geo: GameGeometry }
+     field per card — and left of each row its Ablage, one field per card,
+     on the row's own height, so a card lives beside its task. */
+  | { kind: 'game-board'; rows: { fest: Slot[]; count: number }[]; geo: GameGeometry }
   | { kind: 'game-cut'; slots: Slot[]; cols: number; geo: GameGeometry }
   | { kind: 'credit'; lines: string[] };
 
@@ -896,13 +897,7 @@ export function sheetBlocks(
       count: row.karten.length,
     }));
     const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
-    let taken = 0;
-    for (const part of chunks(rows, geo.perPage)) {
-      const shelf = (game?.rows ?? []).slice(taken, taken + part.length)
-        .reduce((all, row) => all + row.karten.length, 0);
-      blocks.push({ kind: 'game-board', rows: part, shelf, geo });
-      taken += part.length;
-    }
+    for (const part of chunks(rows, geo.perPage)) blocks.push({ kind: 'game-board', rows: part, geo });
     if (karten.length > 0) {
       const cols = Math.max(1, Math.floor(page.width / (geo.fieldW + 2 * geo.air) + 1e-6));
       const cutRows = Math.max(1, Math.floor(page.height / (geo.fieldH + 2 * geo.air)));

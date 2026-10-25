@@ -279,8 +279,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
       ...HEADED, showPageNumbers: false,
     }),
-    fixed: () => ({ layout: 'spiel', titleEvery: false }),
-    offers: () => ({ paper: true, title: 'once', label: true, pageNumbers: true }),
+    fixed: () => ({ layout: 'spiel' }),
+    offers: () => ({ ...BASE }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes

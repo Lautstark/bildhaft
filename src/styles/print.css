@@ -847,35 +847,22 @@
    laminated whole. Every length is A4's times the paper's factor --spiel-k. */
 .ps-spiel {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: calc(10mm * var(--spiel-k));
+  grid-template-columns: var(--spiel-w) 1fr;
+  column-gap: calc(12mm * var(--spiel-k));
+  row-gap: var(--spiel-gap);
   align-content: start;
+  align-items: start;
   height: var(--spiel-page);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-.ps-spiel__shelf {
-  display: grid;
-  grid-template-columns: var(--spiel-w);
+/* A row's own Ablage, on the row's height: a card lives beside its task.
+   No word over it — the dashed fields say what they are. */
+.ps-spiel__shelfcell {
+  display: flex;
+  flex-direction: column;
   gap: var(--spiel-gap);
-  align-content: start;
-  padding-right: calc(10mm * var(--spiel-k));
-  border-right: 0.25mm solid #e3ddda;
-}
-.ps-spiel__rows {
-  display: grid;
-  gap: var(--spiel-gap);
-  align-content: start;
-}
-/* The shelf says what it is, small and grey: a child finds the fields, an
-   adult reads where the cards live between games. */
-.ps-spiel__ablage {
-  font-size: calc(8pt * var(--spiel-k));
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #9aa0a8;
 }
 .ps-spiel__row {
   display: flex;
@@ -893,11 +880,13 @@
   width: var(--spiel-w);
   height: var(--spiel-h);
   padding: calc(1.5mm * var(--spiel-k)) calc(2mm * var(--spiel-k));
-  border: 0.3mm solid #d9d3d0;
-  border-radius: calc(3.5mm * var(--spiel-k));
-  background: #fff;
+  border: max(var(--frame-w), 0.25mm) solid var(--frame-color);
+  border-radius: var(--card-radius);
+  background: var(--card-bg, transparent);
   text-align: center;
 }
+/* The word over the picture, when it is asked for there. */
+.ps-spiel--above .ps-spiel__wort { order: -1; }
 .ps-spiel__pfeil { font-size: calc(16pt * var(--spiel-k)); color: #9a938f; }
 /* Where a card goes: dashed, with the Klett dot — the Tafel's free-field
    line (.ps-card__place) and the Plauderbuch's dot, on one field. */
@@ -957,7 +946,8 @@
   width: var(--spiel-w);
   height: var(--spiel-h);
   padding: calc(1.5mm * var(--spiel-k)) calc(2mm * var(--spiel-k));
-  border-radius: calc(3.5mm * var(--spiel-k));
-  background: #fff;
+  border: max(var(--frame-w), 0.25mm) solid var(--frame-color);
+  border-radius: var(--card-radius);
+  background: var(--card-bg, transparent);
   text-align: center;
 }
