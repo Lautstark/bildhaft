@@ -85,7 +85,13 @@ export async function addGameLine(text: string): Promise<string> {
   const fresh = activeCollection();
   if (!fresh || fresh.id !== open.id) return '';
   const book = rowsOfGame(fresh.game).length > 0 ? fresh.game! : { rows: [] };
-  await keepGame(fresh, { rows: [...book.rows, { id: newId(), fest: ids.slice(0, -1), karten: ids.slice(-1) }] });
+  /* One word is a picture, not an orphaned Platzhalter: a row needs something
+     fixed before anything can be laid against it. The Platzhalter comes by
+     its button, or by typing the row whole. */
+  const row = ids.length === 1
+    ? { id: newId(), fest: ids, karten: [] }
+    : { id: newId(), fest: ids.slice(0, -1), karten: ids.slice(-1) };
+  await keepGame(fresh, { rows: [...book.rows, row] });
   return '';
 }
 

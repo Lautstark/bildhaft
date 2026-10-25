@@ -893,7 +893,7 @@ export function sheetBlocks(
     const geo = gameGeometry(settings, page, reserve);
     const rows = (game?.rows ?? []).map((row) => ({
       fest: row.fest.flatMap((sentence) => sentence.slots.slice(0, 1)),
-      count: Math.max(row.karten.length, 1),
+      count: row.karten.length,
     }));
     const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
     let taken = 0;

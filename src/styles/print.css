@@ -868,6 +868,15 @@
   gap: var(--spiel-gap);
   align-content: start;
 }
+/* The shelf says what it is, small and grey: a child finds the fields, an
+   adult reads where the cards live between games. */
+.ps-spiel__ablage {
+  font-size: calc(8pt * var(--spiel-k));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa0a8;
+}
 .ps-spiel__row {
   display: flex;
   align-items: center;
