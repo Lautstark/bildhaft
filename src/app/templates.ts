@@ -67,6 +67,8 @@ export interface PrintOffer {
   guide?: boolean;
   /** An Einkaufsliste: the colour of its cart. */
   cart?: boolean;
+  /** A Spiel: the board's ground colour, and the accent that frames its printed cards. */
+  game?: boolean;
 }
 
 /**
@@ -278,11 +280,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       paper: 'a4', orientation: 'landscape', symbolSizeMm: 30, cutMarginMm: 3,
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
       cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56',
+      accentColour: '#e0558c', gameGroundColour: '#fdeef3',
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
     }),
     fixed: () => ({ layout: 'spiel' }),
     zeileInEdit: true,
-    offers: () => ({ ...BASE, size: { kind: 'symbol', max: 60, fallback: 30, note: null, cut: false }, margin: 'cut' }),
+    offers: () => ({ ...BASE, size: { kind: 'symbol', max: 60, fallback: 30, note: null, cut: false }, margin: 'cut', game: true }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes

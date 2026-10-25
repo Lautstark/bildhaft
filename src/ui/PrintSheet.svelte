@@ -251,6 +251,8 @@
   style:--title-rule="{TITLE_RULE_MM}mm"
   style:--recipe={settings.accentColour}
   style:--song={settings.accentColour}
+  style:--spiel-accent={settings.accentColour}
+  style:--spiel-grund={settings.gameGroundColour ?? 'transparent'}
   style:--shop={String(SHOPPING_SCALE[settings.paper])}
   style:--cart={settings.cartColour}
 >{#if pages}{#each pages as held, at (at)}<!--

@@ -33,8 +33,8 @@
   /* Was nur diese Vorlage hat, hinter einem Chip mit ihrem Namen — der
      vierte Knopf des Mocks. Ein Rezept und ein Plauderbuch haben nichts
      Eigenes und darum keinen. */
-  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel' };
-  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields)));
+  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel', spiel: 'ui.ding_spiel' };
+  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields || offer.game)));
   let ownName = $derived(OWN_NAMES[kind()] ? t(OWN_NAMES[kind()]!) : '');
   let exact = $derived(offer?.size?.kind === 'cards' && mp?.settings.sheetFit === 'card');
   /* The one colour of the material, set at the title: title, its line and
@@ -131,5 +131,11 @@
     {@render check(t('ui.song_repeats'), mp.settings.songRepeats, (next) => mp?.set('songRepeats', next))}
     {@render check(t('ui.song_refrain_once'), mp.settings.songRefrainOnce, (next) => mp?.set('songRefrainOnce', next))}{/if}
     {#if offer.freeFields}{@render check(t('ui.free_fields_dashed'), mp.settings.markFreeFields, (next) => mp?.set('markFreeFields', next))}{/if}
+    {#if offer.game}<!--
+      Die zwei Farben des Spiels: der Grund hinter jeder Zeile (Aus druckt sie
+      nackt) und der Akzent, der die gedruckten Karten rahmt und die
+      gestrichelten Felder zeichnet.
+    --><PaletteRow label={t('ui.game_ground')} value={mp.settings.gameGroundColour} strength="fill" none ownStart="#fdeef3" onPick={(next) => mp?.set('gameGroundColour', next)} />
+    <PaletteRow label={t('ui.game_accent')} value={mp.settings.accentColour} strength="frame" ownStart="#e0558c" onPick={(next) => mp?.set('accentColour', next ?? '#e0558c')} />{/if}
   </div>{/if}</span>{/if}
 </div>{/if}

@@ -816,10 +816,14 @@ export interface PrintSettings {
 
   /**
    * A Rezept's colour: its headings, its step numbers and the dotted line
-   * around each card. A Lied's too: the ground behind its refrain. Only those
-   * two print it. A CSS colour.
+   * around each card. A Lied's too: the ground behind its refrain. A Spiel's
+   * as well: the frame of its printed cards and the dashed line of its
+   * fields. A CSS colour.
    */
   accentColour: string;
+
+  /** A Spiel: the ground behind each of its rows — null prints them bare. */
+  gameGroundColour: string | null;
 
   /** A Lied: „Strophe 1", „Refrain" over each part. */
   songHeadings: boolean;
@@ -888,6 +892,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   pageColour: null,
   showCopyright: false,
   accentColour: '#e3262b',
+  gameGroundColour: '#fdeef3',
   songHeadings: true,
   songRepeats: false,
   songRefrainOnce: false,
