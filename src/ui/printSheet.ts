@@ -634,12 +634,17 @@ export interface TalkGeometry {
 export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3: 2 };
 
 /**
- * A Spiel's sheet, measured: the field a card lies on, the air round a card
- * on the cutting sheet, and the paper's factor everything is multiplied by.
+ * A Spiel's sheet, measured: the field a card lies on, and the air round a
+ * card on the cutting sheet.
  *
- * Laid out for A4 lying on its side — a 50 × 42 mm field, the size a hand
- * that is still learning can hit — and grown or shrunk with the paper, so a
- * card printed on A3 goes onto a board printed on A3.
+ * One game is one sheet, always — the Tafel's reasoning: a game that needed
+ * a second page would be two games. So the field is not chosen, it is
+ * worked out, from the rows and the longest of them: as tall as the page
+ * divided by the rows (a row with several cards stacks their Ablage fields
+ * and counts for that many), as wide as the page divided by the longest
+ * row's cells plus the Ablage column — whichever of the two binds, at the
+ * card's own shape of 50 : 42, and never wider than a hand-sized 55 mm.
+ * Only the cutting sheet goes on to more paper; it is cut apart anyway.
  */
 export interface GameGeometry {
   fieldW: number;
@@ -647,27 +652,31 @@ export interface GameGeometry {
   gap: number;
   /** The air round a card on the cutting sheet. */
   air: number;
-  /** The paper's factor against A4. */
+  /** The paper's factor against A4, for the lengths that are not the field. */
   k: number;
   /** The page's height, the footer's and the title's room taken off. */
   height: number;
-  /** How many rows one sheet holds. */
-  perPage: number;
 }
 
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
 export function gameGeometry(
-  settings: Pick<PrintSettings, 'paper'>, page: { width: number; height: number }, reserve: number,
+  settings: Pick<PrintSettings, 'paper'>, page: { width: number; height: number },
+  reserve: number, shape: { units: number; cells: number },
 ): GameGeometry {
   const k = GAME_SCALE[settings.paper];
-  const fieldW = 50 * k;
-  const fieldH = 42 * k;
   const gap = 6 * k;
   const air = 3 * k;
   const height = page.height - reserve;
-  const perPage = Math.max(1, Math.floor((height + gap) / (fieldH + gap)));
-  return { fieldW, fieldH, gap, air, k, height, perPage };
+  const units = Math.max(1, shape.units);
+  const cells = Math.max(1, shape.cells);
+  /* The Ablage column and the arrow stand beside the longest row. */
+  const wAvail = page.width - 12 * k - 8 * k;
+  const hLimit = (height - (units - 1) * gap) / units;
+  const wLimit = (wAvail - (cells - 1) * gap) / (cells + 1);
+  const fieldW = Math.min(hLimit * (50 / 42), wLimit, 55 * k);
+  const fieldH = fieldW * (42 / 50);
+  return { fieldW, fieldH, gap, air, k, height };
 }
 
 export function talkGeometry(
@@ -891,13 +900,16 @@ export function sheetBlocks(
      * on it: the sheet is laminated whole. Then the Kartenbogen, the cards
      * at the fields' size with air round each for the scissors.
      */
-    const geo = gameGeometry(settings, page, reserve);
     const rows = (game?.rows ?? []).map((row) => ({
       fest: row.fest.flatMap((sentence) => sentence.slots.slice(0, 1)),
       count: row.karten.length,
     }));
+    const geo = gameGeometry(settings, page, reserve, {
+      units: rows.reduce((all, row) => all + Math.max(1, row.count), 0),
+      cells: Math.max(1, ...rows.map((row) => row.fest.length + row.count)),
+    });
     const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
-    for (const part of chunks(rows, geo.perPage)) blocks.push({ kind: 'game-board', rows: part, geo });
+    if (rows.length > 0) blocks.push({ kind: 'game-board', rows, geo });
     if (karten.length > 0) {
       const cols = Math.max(1, Math.floor(page.width / (geo.fieldW + 2 * geo.air) + 1e-6));
       const cutRows = Math.max(1, Math.floor(page.height / (geo.fieldH + 2 * geo.air)));
