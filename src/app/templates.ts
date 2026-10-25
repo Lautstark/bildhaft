@@ -277,8 +277,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     defaults: () => ({
       paper: 'a4', orientation: 'landscape', symbolSizeMm: 30, cutMarginMm: 3,
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
-      cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#1d1918',
-      ...HEADED, showPageNumbers: false,
+      cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56',
+      ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
     }),
     fixed: () => ({ layout: 'spiel' }),
     zeileInEdit: true,

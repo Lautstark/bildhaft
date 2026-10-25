@@ -682,20 +682,26 @@ export function gameGeometry(
   /* Every row gets the same share of the page's height, every cell the one
      size — and the picture inside a printed card is capped at that cell,
      whatever the Symbolgröße asks. One game stays one sheet. */
-  const hLimit = (height - (units - 1) * gap) / units;
+  /* A row is a group: a soft ground round its cells, so its padding and the
+     rows' own gap come off the height before the field takes its share. */
+  const pad = 2.5 * k;
+  const rowGap = 3 * k;
+  const hLimit = (height - (units - 1) * rowGap) / units - 2 * pad;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
   /* The Ablage holds every card of the game in one block: as many columns
      as the page's height asks for, no more. Columns widen the sheet and
      the sheet caps the field, so the two feel for each other until they
-     agree — the columns only ever grow, and never past the cards. */
+     agree — the columns only ever grow, and never past the cards. The
+     24 mm of width they share out is the enclosures' padding and the air
+     between the zones. */
   let cols = 1;
   let fieldW = 0;
   let fieldH = 0;
   for (;;) {
-    const wLimit = (page.width - 16 * k - (cols + zellen - 1) * gap) / (cols + zellen);
+    const wLimit = (page.width - 24 * k - (cols + zellen - 1) * gap) / (cols + zellen);
     fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
     fieldH = fieldW * (42 / 50);
-    const lagerRows = Math.max(1, Math.floor((height + gap) / (fieldH + gap)));
+    const lagerRows = Math.max(1, Math.floor((height - 6 * k + gap) / (fieldH + gap)));
     const need = Math.max(1, Math.ceil(platz / lagerRows));
     if (need <= cols) break;
     cols = need;

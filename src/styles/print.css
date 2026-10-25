@@ -841,49 +841,55 @@
 
 /* ----------------------------------------------------------------- spiel */
 
-/* Two zones, started top left: left the Ablage — one quiet block of every
-   card's field, no echo of the rows — then the rows, each its cells in
-   their own order: printed pictures and fields to lay on, mixed as the row
-   says. Fields and cut cards borrow the Plauderbuch's own classes. */
+/* Two zones, started top left, and the weight lies on the game. The Ablage
+   is as quiet as paper allows: one dashed enclosure, inside it nothing but
+   a velcro dot per card, in the cards' raster. A good step of air parts it
+   from the game, where every row is a group — a soft rose ground that stays
+   visible when the cards lie on it, white fields let in, dashed where a
+   card is to be laid. No hard lines anywhere; the ink sits in the cards. */
 .ps-spiel {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  column-gap: calc(8mm * var(--talk-k));
+  /* The zones stand equally tall: the Ablage's enclosure runs as far down
+     as the game does. */
+  align-items: stretch;
+  column-gap: calc(12mm * var(--talk-k));
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
 .ps-spiel__lager {
   flex: none;
-  width: var(--spiel-lager);
   display: grid;
   grid-template-columns: repeat(var(--lager-cols), var(--talk-w));
   gap: var(--talk-gap);
   align-content: start;
+  padding: calc(2.5mm * var(--talk-k));
+  border: 0.25mm dashed #c4bcb6;
+  border-radius: calc(3mm * var(--talk-k));
 }
-.ps-spiel__rows { display: flex; flex-direction: column; gap: var(--talk-gap); }
-.ps-spiel__zelle { display: flex; align-items: center; gap: var(--talk-gap); }
-/* No grey grounds on paper. The lines carry the meaning, as on a Tafel:
-   dashed is the Ablage, solid is the game's field — and one fine rule
-   divides the two zones for the length of the sheet. */
-.ps-spiel::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(var(--spiel-lager) + 4mm * var(--talk-k));
-  width: 0.25mm;
-  background: #ddd6d0;
+.ps-spiel__rows { display: flex; flex-direction: column; gap: calc(3mm * var(--talk-k)); }
+.ps-spiel__zelle {
+  display: flex;
+  align-items: center;
+  gap: var(--talk-gap);
+  padding: calc(2.5mm * var(--talk-k));
+  border-radius: calc(3mm * var(--talk-k));
+  background: #fdeef3;
 }
-.ps-spiel .ps-talk__field { background: #fff; box-shadow: inset 0 0 0 calc(0.4mm * var(--talk-k)) #1d1918; }
-.ps-spiel__lager .ps-talk__field { box-shadow: none; border: 0.3mm dashed #b3aca7; }
+.ps-spiel .ps-talk__field {
+  background: #fff;
+  border: calc(0.3mm * var(--talk-k)) dashed #f08cb1;
+  box-shadow: none;
+}
+.ps-spiel__lager .ps-talk__field { background: transparent; border: 0; }
 /* The velcro dot never crowds a small field: it keeps to the field's middle. */
 .ps-spiel .ps-talk__dot {
   width: min(calc(9mm * var(--talk-k)), calc(var(--talk-h) * 0.45));
   height: min(calc(9mm * var(--talk-k)), calc(var(--talk-h) * 0.45));
-  box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #e4dfdd;
+  box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #f6c3d6;
 }
+.ps-spiel__lager .ps-talk__dot { box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #cfc8c1; }
 /* A printed card: the cell's own size, always carrying at least the game
    field's fine line, so it reads as a laid card beside the empty fields —
    a chosen Rand only makes it heavier. The picture inside keeps to the
