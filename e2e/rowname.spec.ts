@@ -49,7 +49,7 @@ test('names a row, prints the name, and keeps it across a reload', async ({ page
 
 test('leaves the symbols and their words alone', async ({ page }) => {
   await translate(page, 'waschen einseifen abtrocknen');
-  const labels = row(page).locator('.slot__label');
+  const labels = row(page).locator('.word__name');
   const before = await labels.allTextContents();
 
   await name(page).fill('Hände waschen');

@@ -123,7 +123,7 @@ test('renders a sentence from the folder rather than from ARASAAC', async ({ pag
 
   await translate(page, 'Ich möchte schlafen');
 
-  await expect(page.locator('.row').first().locator('.slot__label'))
+  await expect(page.locator('.row').first().locator('.word__name'))
     .toHaveText(['Ich', 'möchte', 'schlafen']);
 
   const images = page.locator('.row .slot img');
