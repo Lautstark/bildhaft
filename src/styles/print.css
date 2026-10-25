@@ -850,7 +850,7 @@
    fields never count out the answer. */
 .ps-spiel {
   display: grid;
-  grid-template-columns: var(--spiel-lager) var(--spiel-fest) auto auto;
+  grid-template-columns: var(--spiel-lager) auto;
   grid-auto-rows: var(--spiel-zeile);
   justify-content: start;
   align-content: start;
@@ -878,24 +878,28 @@
 .ps-spiel .ps-talk__field { background: #fff; box-shadow: inset 0 0 0 calc(0.4mm * var(--talk-k)) #1d1918; }
 .ps-spiel__zelle--lager .ps-talk__field { box-shadow: none; border: 0.3mm dashed #b3aca7; }
 .ps-spiel .ps-talk__dot { box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #e4dfdd; }
-/* A fixed picture: frameless at its Symbolgröße; the frame and the card
-   background come only when they are asked for — --frame-w is 0 otherwise. */
+/* A printed card: the cell's own size, framed as the settings say — the
+   frame is on from the template's defaults and goes with its check. The
+   picture inside keeps to the Symbolgröße, capped at the cell. */
 .ps-spiel__bild {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: calc(1mm * var(--talk-k));
+  width: var(--talk-w);
+  height: var(--talk-h);
   padding: calc(1mm * var(--talk-k));
   border: var(--frame-w) solid var(--frame-color);
   border-radius: var(--card-radius);
-  background: var(--card-bg, transparent);
+  background: var(--card-bg, #fff);
   text-align: center;
+  flex: none;
 }
 .ps-spiel__bild .ps-title__pic { width: var(--sym); height: var(--sym); padding: 0; border: 0; background: transparent; }
 .ps-spiel__bild .ps-title__pic img { width: 100%; height: 100%; object-fit: contain; }
 .ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
-.ps-spiel__pfeil { font-size: calc(12pt * var(--talk-k)); color: #9a938f; }
 /* The cutting sheet's cards: white, wordmarked, the dashed cell is the
    scissors' line — no grey ground, no frame unless one is asked for. */
 .ps-spiel-cut .ps-talk__card { background: var(--card-bg, #fff); border: var(--frame-w) solid var(--frame-color); }

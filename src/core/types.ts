@@ -479,11 +479,11 @@ export interface TalkPage {
 }
 
 /**
- * Ein Spiel, Zeile für Zeile: links was fest aufs Spielblatt gedruckt wird,
- * rechts die Karten, die gelegt werden — beim Zuordnen ein Bild und eine
- * Karte je Zeile. `fest` and `karten` name rows by id, as a Plauderbuch's
- * pages do. The Spielblatt draws a dashed Klett field per card, on the
- * board and in the Ablage; the Kartenbogen holds the cards to cut out.
+ * Ein Spiel, Zeile für Zeile: eine Zeile ist eine Folge von Zellen, jede
+ * eine Karte der Sammlung — gedruckt, oder frei gelassen. A free cell
+ * prints as a Klett field where it stands (a Platzhalter may sit in the
+ * middle of a Muster, not only at its end), its card goes to the
+ * Kartenbogen, and the Ablage gets a field for it beside the row.
  */
 export interface GameBook {
   rows: GameRow[];
@@ -491,10 +491,18 @@ export interface GameBook {
 
 export interface GameRow {
   id: string;
-  /** Printed onto the Spielblatt, in this order. */
-  fest: string[];
-  /** Cut from the Kartenbogen and laid onto the row's free field(s). */
-  karten: string[];
+  /** The row's cells, in the order they print. */
+  zellen: GameZelle[];
+  /** What a row held before cells: fixed cards, then the laid ones.
+   *  Read by rowsOfGame(), never written again. */
+  fest?: string[];
+  karten?: string[];
+}
+
+/** One cell: its card, and whether the place stays free for it. */
+export interface GameZelle {
+  karte: string;
+  platz: boolean;
 }
 
 export interface Song {

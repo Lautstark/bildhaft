@@ -1715,6 +1715,11 @@ footer.footer {
    sichtbar darauf — leicht gedreht und mit Schatten, eine Karte, kein Druck. */
 .luecke { display: flex; padding: 5px; border: 1.5px dashed #8c8c8c; border-radius: calc(var(--radius-md) + 4px); }
 .luecke .word { box-shadow: 0 2px 8px rgba(0, 0, 0, .16); transform: rotate(-1.2deg); }
+.game__cell { display: flex; }
+.game__cell--before { box-shadow: -3px 0 0 var(--accent); }
+.game__cell--after { box-shadow: 3px 0 0 var(--accent); }
+.game__row--before { box-shadow: 0 -3px 0 var(--accent); }
+.game__row--after { box-shadow: 0 3px 0 var(--accent); }
 .game__adds { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 .game__adds .song__plus { cursor: pointer; white-space: nowrap; }
 .game__adds-platz { border-style: dashed; }

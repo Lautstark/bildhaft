@@ -70,7 +70,7 @@
   let sayings = $derived(pagesOf(activeCollection()?.talk).reduce((all, page) => all + page.sayings.length, 0));
   /* A Spiel's cards are the ones that are cut out and laid: its fixed
      pictures stay on the Spielblatt and are not counted. */
-  let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.karten.length, 0));
+  let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.zellen.filter((zelle) => zelle.platz).length, 0));
   /* A Rezept's title picture, beside its name, until a Rezept has the title
      line the others have (TitleLine.svelte), where its symbols are chosen. */
   let pictured = $derived(kind() === 'rezept');

@@ -394,13 +394,18 @@ function remapTalk(talk: TalkBook, ids: Map<string, string>): TalkBook {
   };
 }
 
-/** A Spiel's rows pointing at the fresh ids their cards were given. */
+/** A Spiel's rows pointing at the fresh ids their cards were given. A row
+ *  from before there were cells is read as the cells it meant. */
 function remapGame(game: GameBook, ids: Map<string, string>): GameBook {
   return {
     rows: (game.rows ?? []).map((row) => ({
-      ...row,
-      fest: (row.fest ?? []).map((id) => ids.get(id)).filter((id): id is string => Boolean(id)),
-      karten: (row.karten ?? []).map((id) => ids.get(id)).filter((id): id is string => Boolean(id)),
+      id: row.id,
+      zellen: (row.zellen ?? [
+        ...(row.fest ?? []).map((karte) => ({ karte, platz: false })),
+        ...(row.karten ?? []).map((karte) => ({ karte, platz: true })),
+      ])
+        .map((zelle) => ({ ...zelle, karte: ids.get(zelle.karte) }))
+        .filter((zelle): zelle is { karte: string; platz: boolean } => Boolean(zelle.karte)),
     })),
   };
 }

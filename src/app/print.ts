@@ -1,6 +1,7 @@
 import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
 import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
+import { rowsOfGame } from '../core/game.ts';
 import { copyrightFor, creditLines, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
@@ -190,12 +191,13 @@ export function printOptions(): PrintOptions | null {
       sayings: page.sayings.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
     })),
   } : null;
-  /* A Spiel prints whole and in its order: the Spielblatt's rows, then the
-     cards to cut out for them. */
+  /* A Spiel prints whole and in its order: the Spielblatt's rows, cell by
+     cell, then the cards to cut out for the free ones. */
   const game = kind() === 'spiel' && open?.game ? {
-    rows: open.game.rows.map((row) => ({
-      fest: row.fest.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
-      karten: row.karten.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
+    rows: rowsOfGame(open.game).map((row) => ({
+      zellen: row.zellen
+        .map((zelle) => ({ karte: byId.get(zelle.karte), platz: zelle.platz }))
+        .filter((zelle): zelle is { karte: Sentence; platz: boolean } => Boolean(zelle.karte)),
     })),
   } : null;
   const chosen = board
@@ -205,7 +207,7 @@ export function printOptions(): PrintOptions | null {
     : talk
       ? talk.pages.flatMap((page) => [...(page.question ? [page.question] : []), ...page.sayings])
     : game
-      ? game.rows.flatMap((row) => [...row.fest, ...row.karten])
+      ? game.rows.flatMap((row) => row.zellen.map((zelle) => zelle.karte))
     : kind() === 'rezept'
       ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
       : contentOf(s.sentences);

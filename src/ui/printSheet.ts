@@ -511,9 +511,9 @@ export interface PrintTalk {
   pages: { question: Sentence | null; sayings: Sentence[] }[];
 }
 
-/** A Spiel's rows as they print: the fixed pictures, then the cards to lay. */
+/** A Spiel's rows as they print: cell by cell, printed or left free. */
 export interface PrintGame {
-  rows: { fest: Sentence[]; karten: Sentence[] }[];
+  rows: { zellen: { karte: Sentence; platz: boolean }[] }[];
 }
 
 export interface SheetOptions {
@@ -598,11 +598,10 @@ export type Block =
   | { kind: 'song-again' }
   | { kind: 'talk-page'; question: Slot | null; text: string; count: number; free: boolean; again: boolean; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
-  /* One sheet of a Spiel: each row its cards' Ablage fields, the fixed
-     pictures, and the fields to lay on — all cells one size, one grid.
-     `count` is the same for every row that lays at all: fields that said
-     how many cards belong would answer the task for the child. */
-  | { kind: 'game-board'; rows: { fest: Slot[]; count: number }[]; geo: GameGeometry }
+  /* One sheet of a Spiel: each row its free cells' Ablage fields, then its
+     cells in their own order — a printed card, or the field where one is
+     laid, in the middle of a Muster as well as at its end. */
+  | { kind: 'game-board'; rows: { cells: { slot: Slot; platz: boolean }[]; platz: number }[]; geo: GameGeometry }
   | { kind: 'game-cut'; slots: Slot[]; cols: number; geo: GameGeometry }
   | { kind: 'credit'; lines: string[] };
 
@@ -654,11 +653,9 @@ export interface GameGeometry {
   k: number;
   /** The page's height, the footer's and the title's room taken off. */
   height: number;
-  /** The Ablage column: the row with the most cards, side by side. */
+  /** The Ablage column: the row with the most free cells, side by side. */
   lagerW: number;
-  /** The fixed pictures' column: the row with the most of them. */
-  festW: number;
-  /** The fixed picture, capped so every row fits its share of the page. */
+  /** The picture inside a printed card, capped so the word keeps its line. */
   symW: number;
   /** A row's exact height: the page's share, handed to the grid as is. */
   zeile: number;
@@ -669,7 +666,7 @@ export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 }
 export function gameGeometry(
   settings: Pick<PrintSettings, 'paper' | 'symbolSizeMm' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>,
   page: { width: number; height: number },
-  reserve: number, shape: { units: number; fest: number; karten: number },
+  reserve: number, shape: { units: number; zellen: number; platz: number },
 ): GameGeometry {
   const k = GAME_SCALE[settings.paper];
   const gap = 6 * k;
@@ -677,22 +674,21 @@ export function gameGeometry(
   const air = settings.cutMarginMm * k;
   const height = page.height - reserve;
   const units = Math.max(1, shape.units);
-  const maxF = Math.max(1, shape.fest);
-  const maxK = Math.max(1, shape.karten);
-  /* Every row gets the same share of the page's height, and everything in
-     the row keeps to it — the fixed picture too: its Symbolgröße is capped
-     so the word under it still fits the row. One game stays one sheet. */
+  const zellen = Math.max(1, shape.zellen);
+  const platz = Math.max(1, shape.platz);
+  /* Every row gets the same share of the page's height, every cell the one
+     size — and the picture inside a printed card is capped at that cell,
+     whatever the Symbolgröße asks. One game stays one sheet. */
   const hLimit = (height - (units - 1) * gap) / units;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
-  const symW = Math.max(10, Math.min(settings.symbolSizeMm, hLimit - label - 3 * k));
-  const festW = maxF * symW + (maxF - 1) * gap;
-  const wLimit = (page.width - 16 * k - festW - (2 * maxK - 1) * gap) / (2 * maxK);
+  const wLimit = (page.width - 16 * k - (platz + zellen - 1) * gap) / (platz + zellen);
   const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
   const fieldH = fieldW * (42 / 50);
+  const symW = Math.max(8, Math.min(settings.symbolSizeMm, fieldH - label - 3 * k));
   return {
     fieldW, fieldH, gap, air, k, height,
-    lagerW: maxK * fieldW + (maxK - 1) * gap,
-    festW, symW, zeile: hLimit,
+    lagerW: platz * fieldW + (platz - 1) * gap,
+    symW, zeile: hLimit,
   };
 }
 
@@ -917,18 +913,17 @@ export function sheetBlocks(
      * on it: the sheet is laminated whole. Then the Kartenbogen, the cards
      * at the fields' size with air round each for the scissors.
      */
-    /* Every laying row gets the same number of fields — the game's most:
-       fields that counted out the answer would play the child's part. */
-    const most = Math.max(0, ...(game?.rows ?? []).map((row) => row.karten.length));
-    const rows = (game?.rows ?? []).map((row) => ({
-      fest: row.fest.flatMap((sentence) => sentence.slots.slice(0, 1)),
-      count: row.karten.length > 0 ? most : 0,
-    }));
-    const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
+    const rows = (game?.rows ?? []).map((row) => {
+      const cells = row.zellen
+        .map((zelle) => ({ slot: zelle.karte.slots[0], platz: zelle.platz }))
+        .filter((cell): cell is { slot: Slot; platz: boolean } => Boolean(cell.slot));
+      return { cells, platz: cells.filter((cell) => cell.platz).length };
+    });
+    const karten = rows.flatMap((row) => row.cells.filter((cell) => cell.platz).map((cell) => cell.slot));
     const geo = gameGeometry(settings, page, reserve, {
       units: rows.length,
-      fest: Math.max(1, ...rows.map((row) => row.fest.length)),
-      karten: Math.max(1, ...rows.map((row) => row.count)),
+      zellen: Math.max(1, ...rows.map((row) => row.cells.length)),
+      platz: Math.max(1, ...rows.map((row) => row.platz)),
     });
     if (rows.length > 0) blocks.push({ kind: 'game-board', rows, geo });
     if (karten.length > 0) {
