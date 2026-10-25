@@ -88,8 +88,68 @@ test('supports adding, removing and reordering slots', async ({ page }) => {
 
   // Removing a slot removes the whole field, not just its symbol.
   await row.locator('.slot', { hasText: 'Banane' }).click();
-  await page.getByRole('button', { name: 'Feld entfernen' }).click();
+  await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
   await expect(row.locator('.slot')).toHaveCount(4);
+});
+
+test('the „+" opens the same picker as a filled field, rows and all', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  const row = page.locator('.row').first();
+
+  await row.locator('.slot-add').click();
+  const sheet = page.locator('dialog.sheet');
+  await expect(sheet.getByRole('heading', { name: 'Symbol wählen' })).toBeVisible();
+  // The empty square stands where the field's picture will be.
+  await expect(sheet.locator('.picker__own-shown--empty')).toBeVisible();
+  // Nothing to lose yet, so the way out is not drawn as a destructive one.
+  const cancel = sheet.locator('.foot').getByRole('button', { name: 'Abbrechen' });
+  await expect(cancel).toBeVisible();
+  await expect(cancel).not.toHaveClass(/destructive/);
+
+  // Wording and crossing out are set before the symbol is, and both survive
+  // the pick that closes the dialog.
+  await page.getByLabel('Text zum Symbol').fill('Obst');
+  await page.getByLabel('Symbol durchstreichen').check();
+  await page.getByLabel('Symbol suchen').fill('Banane');
+  await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await expect(sheet).toHaveCount(0);
+  const added = row.locator('.slot').last();
+  await expect(added.locator('.slot__label')).toHaveText('Obst');
+  await expect(added.locator('.negate')).toHaveCount(1);
+
+  // Opened again, it is the filled field's dialog: same rows, red „Entfernen".
+  await added.click();
+  await expect(page.getByLabel('Text zum Symbol')).toHaveValue('Obst');
+  await expect(page.getByLabel('Symbol durchstreichen')).toBeChecked();
+  await expect(sheet.locator('.foot').getByRole('button', { name: 'Entfernen', exact: true }))
+    .toHaveClass(/destructive/);
+  await sheet.locator('.foot').getByRole('button', { name: 'Fertig' }).click();
+
+  // „Abbrechen" on a fresh „+" takes the empty field away again.
+  await row.locator('.slot-add').click();
+  await expect(row.locator('.slot')).toHaveCount(6);
+  await sheet.locator('.foot').getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(row.locator('.slot')).toHaveCount(5);
+});
+
+test('the Wortschatz picker draws only the rows it can act on', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  // A symbol chosen by hand is what puts a word into the Wortschatz.
+  await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await page.locator('.picker__item').nth(1).click();
+  await expect(page.locator('dialog.sheet')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Wortschatz' }).click();
+  await page.locator('button.collections__item').filter({ hasText: 'Alle Wörter' }).first().click();
+  await page.locator('.word__pic').first().click();
+
+  const sheet = page.locator('dialog.sheet');
+  await expect(sheet.getByLabel('Text zum Symbol')).toBeVisible();
+  // Neither has anything to do here, so neither is drawn.
+  await expect(sheet.getByLabel('Symbol durchstreichen')).toHaveCount(0);
+  await expect(sheet.getByLabel('Symbol spiegeln')).toHaveCount(0);
+  await expect(sheet.locator('.foot').getByRole('button', { name: 'Entfernen', exact: true })).toHaveCount(0);
+  await expect(sheet.locator('.foot').getByRole('button', { name: 'Fertig' })).toBeVisible();
 });
 
 test('reorders slots by dragging', async ({ page }) => {

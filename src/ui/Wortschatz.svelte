@@ -226,15 +226,10 @@
         void setOverrideCaption(providerId(), word, caption)
           .then(() => { void refreshCollections(); refresh(); });
       },
-      /* The rest acts on a Slot in a Sammlung. Crossing a symbol out is a thing
-         a sentence does to a word in one place, and removing the slot removes
-         the field rather than the word — the × on the card is what removes
-         this. Nothing to do, and nothing to pretend. */
-      onClearOwnImage: () => undefined,
-      onNegate: () => undefined,
-      onMirror: () => undefined,
-      onRemove: () => undefined,
-      onClose: () => undefined,
+      /* Nothing else. Crossing a symbol out is a thing a sentence does to a
+         word in one place, and removing the slot would remove the field
+         rather than the word — the × on the card is what removes this. Left
+         out, those rows are not drawn, rather than drawn and doing nothing. */
     });
   }
 

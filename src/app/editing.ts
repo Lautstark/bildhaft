@@ -235,20 +235,23 @@ async function handleRemoveSlot(): Promise<void> {
     await deleteSentence(sentence.id);
     s.sentences = s.sentences.filter((x) => x.id !== sentence.id);
     if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
-      return;
+    if (kind() === 'plauderbuch') await takeOutOfTalk(sentence);
+    return;
   }
   await mutateSlots(sentenceId, (slots) => slots.filter((sl) => sl.id !== slotId));
 }
 
+/**
+ * The field every „+" makes: no word, no symbol, and the picker about to open
+ * on it. One shape for all of them, so the picker meets the same empty field
+ * whether it came from a row, a card wall, a Rezept or a Tafel.
+ */
+export function emptySlot(): Slot {
+  return { id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {} };
+}
+
 export async function handleAddSlot(sentenceId: string): Promise<void> {
-  const slot: Slot = {
-    id: newId(),
-    sourceToken: '',
-    concept: '',
-    origin: 'manual',
-    choice: {},
-    candidates: {},
-  };
+  const slot = emptySlot();
   await mutateSlots(sentenceId, (slots) => [...slots, slot]);
   openPicker(sentenceId, slot.id);
 }

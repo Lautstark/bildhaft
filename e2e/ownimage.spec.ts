@@ -75,12 +75,14 @@ test('the picker shows the picture the field is already holding', async ({ page 
   await expect(shown).toHaveCount(1);
   await expect(shown).toHaveJSProperty('naturalWidth', 3);
 
-  // And nowhere when there is nothing to show: the field two along has only a
-  // symbol, and a preview box standing empty would say it had a picture.
+  // A field with only a symbol shows that symbol in the same square — the
+  // dialog looks the same whatever the field holds. 1 is the ARASAAC mock.
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await page.locator('.row').first().locator('.slot').nth(1).click();
   await expect(page.locator('.picker__grid')).toBeVisible();
-  await expect(page.locator('.picker__own img')).toHaveCount(0);
+  await expect(shown).toHaveCount(1);
+  await expect(shown).toHaveJSProperty('naturalWidth', 1);
+  await expect(page.getByRole('button', { name: 'Eigenes Bild entfernen' })).toHaveCount(0);
 });
 
 test('leaves the symbol underneath, and uncovers it again on removal', async ({ page }) => {

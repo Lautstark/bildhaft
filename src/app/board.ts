@@ -1,8 +1,8 @@
-import type { Board, Collection, Sentence, Slot } from '../core/types.ts';
+import type { Board, Collection, Sentence } from '../core/types.ts';
 import { boardOf, placeOn, placedIds, resizeBoard } from '../core/board.ts';
 import { newId, patchCollection, putSentence } from '../db/repo.ts';
 import { activeCollection, s } from './state.svelte.ts';
-import { openPicker } from './editing.ts';
+import { emptySlot, openPicker } from './editing.ts';
 import { addLines, splitWords } from './composing.ts';
 import { notify } from './notify.ts';
 import { t } from '../i18n/index.ts';
@@ -55,9 +55,7 @@ export async function resizeOpenBoard(cols: number, rows: number): Promise<void>
 export async function handleNewCard(at?: number): Promise<void> {
   const collectionId = s.activeId;
   if (!collectionId) return;
-  const slot: Slot = {
-    id: newId(), sourceToken: '', concept: '', origin: 'manual', choice: {}, candidates: {},
-  };
+  const slot = emptySlot();
   const sentence: Sentence = {
     id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
     collectionId, createdAt: Date.now(), updatedAt: Date.now(),

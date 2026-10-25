@@ -24,8 +24,9 @@
   import SymbolSearch, { type SearchAnswer } from '@lautstark/bildquelle/svelte/SymbolSearch';
   import { getProvider, type Candidate } from '@lautstark/bildquelle';
   import Crop from '@lautstark/design/svelte/Crop';
-  import { ownImageId } from '../core/types.ts';
+  import { symbolIdFor } from '../core/types.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
+  import NegationCross from '../pieces/NegationCross.svelte';
   import type { Picking } from './slotPicker.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -38,6 +39,8 @@
   let cropping = $derived(s.loaded !== null);
 
   let source = $derived(getProvider(s.provider));
+  /** What the field shows now, or nothing for a field the „+" just made. */
+  let shown = $derived(symbolIdFor(s.slot, s.provider));
 
   /* Once, as the sheet opens: it is a background read that fills the
      suggestions out. It no longer has to ask what is in the field — the
@@ -112,7 +115,7 @@
       // where somebody is sitting is the crop being thrown away by the key that
       // everywhere else in this dialog means "yes".
       if (s.loaded) { s.keepSquare(); return; }
-      s.finish(() => s.handlers.onClose());
+      s.finish(() => s.handlers.onClose?.());
     };
     dialog.addEventListener('keydown', enter);
     return () => dialog.removeEventListener('keydown', enter);
@@ -166,28 +169,27 @@
   presented a search for a word and no photograph anywhere, and read as having
   lost it. It is shown where the buttons that change it are, because "keep,
   replace, remove" is one decision and needs the picture in front of it.
---><div class="picker__own" hidden={cropping}>{#if s.slot.ownImage}<span class="slot__img picker__own-shown"><SymbolPicture provider={s.provider} id={ownImageId(s.slot.ownImage)} alt={t('ui.own_picture')} /></span>{/if}<label class="btn sm" style="cursor:pointer">{t('ui.own_picture_choose')}<!--
+
+  The same square for a symbol, and an empty one for a field the „+" just
+  made, so the dialog looks the same wherever it opens. It is drawn with the
+  cross and the mirror as they are ticked below, which is how a tick is seen
+  before the dialog closes.
+--><div class="picker__own" hidden={cropping}><span class="slot__img picker__own-shown{shown ? '' : ' picker__own-shown--empty'}">{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{/if}</span><label class="btn sm" style="cursor:pointer">{t('ui.own_picture_choose')}<!--
   A file of the user's own. bildhaft keeps the bytes rather than a path, so
   moving or deleting the original afterwards changes nothing here.
---><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(() => s.handlers.onClearOwnImage())}>{t('ui.own_picture_remove')}</button>{/if}</div><!--
+--><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(clear)}>{t('ui.own_picture_remove')}</button>{/if}</div><!--
   The words that get printed. A field of its own rather than a rewrite of the
   source word, so a correction stays remembered under the word that was typed.
   The placeholder is what would print without it, which is what makes an empty
   field readable as "unchanged" — and clearing it is therefore the reset.
--->{#if !s.isNew}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label><!--
+-->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept || t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}<!--
   Negation is a property of the field, not a different symbol, so it does not
   settle the dialog the way picking one does: cross it out, see it, carry on.
-  Hidden for a field that has nothing in it yet — there is nothing to cross.
-  Mirroring is the same kind of thing and sits on the same line.
---><div class="picker__negate" hidden={cropping}><label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; s.handlers.onNegate(s.negated); }} />{t('ui.cross_out')}</label><label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; s.handlers.onMirror(s.mirrored); }} />{t('ui.mirror')}</label></div>{/if}<!--
-  The square a picture of the user's own is cut to, last in `between` and in the
-  place it has always had: under the three rows, over the pictures.
-
-  It is the one thing here that is drawn while the search is not. `busy` takes
-  the component's field, grid and credit away and the three rows above hide
-  themselves, so what is left standing in the snippet is this — which is the
-  point, because a live grid of symbols under an open crop is a press that
-  throws the crop away without saying so.
+  Shown on an empty field too, where it applies to the symbol about to be
+  picked — the dialog is the same wherever it opens. Mirroring is the same kind
+  of thing and sits on the same line. A place that cannot do either passes
+  neither handler, and the line is not drawn.
+-->{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<div class="picker__negate" hidden={cropping}>{#if negate}<label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; negate(s.negated); }} />{t('ui.cross_out')}</label>{/if}{#if mirror}<label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; mirror(s.mirrored); }} />{t('ui.mirror')}</label>{/if}</div>{/if}<!--
 --><div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own, and it had two. Both went the same way and for the same
   reason: this dialog already has a footer, the footer already says what it

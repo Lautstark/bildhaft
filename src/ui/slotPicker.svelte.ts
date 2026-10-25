@@ -8,6 +8,15 @@ import { cropName, loadSquare, type Loaded } from '@lautstark/design/crop';
 import type Crop from '@lautstark/design/svelte/Crop';
 import { t } from '../i18n/index.ts';
 
+/**
+ * What the place opening the picker can do with a field.
+ *
+ * The rows of the dialog are the same everywhere — an empty field from a „+"
+ * shows the caption, the cross and the mirror just as a filled one does. What
+ * decides whether a row is drawn is only whether the caller can act on it: a
+ * handler left out means the row is not there, rather than there and doing
+ * nothing, which is what the Wortschatz's checkboxes did.
+ */
 export interface PickerHandlers {
   onChoose: (candidate: Candidate) => void;
   /**
@@ -19,20 +28,23 @@ export interface PickerHandlers {
    * library stays readable.
    */
   onOwnImage: (picture: Blob, name: string) => void;
-  onClearOwnImage: () => void;
+  onClearOwnImage?: () => void;
   /** Lays a red cross over the symbol — METACOM's "nicht". Leaves the dialog open. */
-  onNegate: (negated: boolean) => void;
+  onNegate?: (negated: boolean) => void;
   /** Draws the symbol left for right. Leaves the dialog open, like `onNegate`. */
-  onMirror: (mirrored: boolean) => void;
+  onMirror?: (mirrored: boolean) => void;
   /**
    * The words that go with the symbol. Empty means the word the sentence used.
    * Leaves the dialog open: the wording is a property of the field, and a
    * person setting one is usually still looking for the right picture.
    */
-  onLabel: (label: string) => void;
-  /** Removes the whole slot, not just its symbol. */
-  onRemove: () => void;
-  onClose: () => void;
+  onLabel?: (label: string) => void;
+  /**
+   * Removes the whole slot, not just its symbol. On a field still empty it is
+   * the footer's „Abbrechen", which takes the field the „+" made away again.
+   */
+  onRemove?: () => void;
+  onClose?: () => void;
 }
 
 /** What the picker is looking at and what it has been told. */
@@ -161,7 +173,7 @@ export class Picking {
     if (this.pending === null) return;
     const value = this.pending;
     this.pending = null;
-    this.handlers.onLabel(value);
+    this.handlers.onLabel?.(value);
   }
 
   /**
@@ -235,12 +247,12 @@ export function openSlotPicker(slot: Slot, provider: ProviderId, handlers: Picke
   const state = new Picking(slot, provider, handlers);
 
   const handle = openSheet({
-    title: state.isNew ? t('ui.add_slot') : t('ui.symbol_for', { word: slot.sourceToken }),
+    title: state.isNew ? t('ui.pick_symbol') : t('ui.symbol_for', { word: slot.sourceToken }),
     closeLabel: CLOSE,
     state,
     body: SlotPickerBody,
     foot: SlotPickerFoot,
-    onClose: () => { if (state.settled) return; state.teardown(); handlers.onClose(); },
+    onClose: () => { if (state.settled) return; state.teardown(); handlers.onClose?.(); },
   });
   state.handle = handle;
 }
