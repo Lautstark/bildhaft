@@ -12,7 +12,7 @@ test('turns a sentence into symbols and drops function words', async ({ page }) 
   await translate(page, 'Ich möchte einen Apfel essen');
 
   // "einen" is an article and must not get a slot of its own.
-  await expect(page.locator('.row').first().locator('.slot__label'))
+  await expect(page.locator('.row').first().locator('.word__name'))
     .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
 
   const images = page.locator('.row .slot img');
@@ -79,12 +79,12 @@ test('supports adding, removing and reordering slots', async ({ page }) => {
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
   await expect(row.locator('.slot')).toHaveCount(5);
-  await expect(row.locator('.slot__label').last()).toHaveText('Banane');
+  await expect(row.locator('.word__name').last()).toHaveText('Banane');
 
   // Reorder with the keyboard; drag is covered separately by the mouse test.
   await row.locator('.slot').first().focus();
   await page.keyboard.press('Alt+ArrowRight');
-  await expect(row.locator('.slot__label')).toHaveText(['möchte', 'Ich', 'Apfel', 'essen', 'Banane']);
+  await expect(row.locator('.word__name')).toHaveText(['möchte', 'Ich', 'Apfel', 'essen', 'Banane']);
 
   // Removing a slot removes the whole field, not just its symbol.
   await row.locator('.slot', { hasText: 'Banane' }).click();
@@ -114,7 +114,7 @@ test('the „+" opens the same picker as a filled field, rows and all', async ({
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
   await expect(sheet).toHaveCount(0);
   const added = row.locator('.slot').last();
-  await expect(added.locator('.slot__label')).toHaveText('Obst');
+  await expect(added.locator('.word__name')).toHaveText('Obst');
   await expect(added.locator('.negate')).toHaveCount(1);
 
   // Opened again, it is the filled field's dialog: same rows, red „Entfernen".
@@ -157,7 +157,7 @@ test('reorders slots by dragging', async ({ page }) => {
   const row = page.locator('.row').first();
 
   await row.locator('.slot').nth(3).dragTo(row.locator('.slot').nth(0));
-  await expect(row.locator('.slot__label')).toHaveText(['essen', 'Ich', 'möchte', 'Apfel']);
+  await expect(row.locator('.word__name')).toHaveText(['essen', 'Ich', 'möchte', 'Apfel']);
 });
 
 /*
@@ -172,12 +172,12 @@ test('a symbol dropped on another row changes neither', async ({ page }) => {
   page.on('pageerror', (error) => errors.push(error.message));
   await translate(page, 'Ich möchte schlafen');
   await translate(page, 'Ich möchte einen Apfel essen');
-  const long = page.locator('.row').filter({ has: page.locator('.slot__label', { hasText: 'Apfel' }) });
-  const short = page.locator('.row').filter({ has: page.locator('.slot__label', { hasText: 'schlafen' }) });
+  const long = page.locator('.row').filter({ has: page.locator('.word__name', { hasText: 'Apfel' }) });
+  const short = page.locator('.row').filter({ has: page.locator('.word__name', { hasText: 'schlafen' }) });
 
   await long.locator('.slot').nth(3).dragTo(short.locator('.slot').nth(0));
-  await expect(short.locator('.slot__label')).toHaveText(['Ich', 'möchte', 'schlafen']);
-  await expect(long.locator('.slot__label')).toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
+  await expect(short.locator('.word__name')).toHaveText(['Ich', 'möchte', 'schlafen']);
+  await expect(long.locator('.word__name')).toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
   for (const row of await readSentences(page)) expect(row.slots.every(Boolean)).toBe(true);
 
   await page.reload();
@@ -206,7 +206,7 @@ test('a row stored with an empty place still draws after a reload', async ({ pag
     await new Promise((resolve) => { tx.oncomplete = resolve; });
   });
   await page.reload();
-  await expect(page.locator('.row').first().locator('.slot__label')).toHaveText(['Ich', 'möchte', 'schlafen']);
+  await expect(page.locator('.row').first().locator('.word__name')).toHaveText(['Ich', 'möchte', 'schlafen']);
   expect(errors).toEqual([]);
 });
 
@@ -215,7 +215,7 @@ test('keeps the collection after a reload', async ({ page }) => {
   await page.reload();
 
   await expect(page.locator('.row')).toHaveCount(1);
-  await expect(page.locator('.row').first().locator('.slot__label'))
+  await expect(page.locator('.row').first().locator('.word__name'))
     .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
 });
 
@@ -245,14 +245,14 @@ test('makes one row per line of a multi-line entry', async ({ page }) => {
   const rows = page.locator('.row');
   await expect(rows).toHaveCount(2);
   // Reading order, top to bottom — these get printed as strips in this order.
-  await expect(rows.first().locator('.slot__label'))
+  await expect(rows.first().locator('.word__name'))
     .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
-  await expect(rows.last().locator('.slot__label'))
+  await expect(rows.last().locator('.word__name'))
     .toHaveText(['Hund', 'liegt', 'unter', 'Tisch']);
 
   // And it survives a reload, which is where the ordering could silently flip.
   await page.reload();
-  await expect(rows.first().locator('.slot__label'))
+  await expect(rows.first().locator('.word__name'))
     .toHaveText(['Ich', 'möchte', 'Apfel', 'essen']);
 });
 
@@ -298,9 +298,9 @@ test('a long text fills in line by line, and says how far it has got', async ({ 
   /* Reading order, top to bottom. The lines are translated several at a time
      now, so the order rows arrive in is not the order they were typed in — and
      that order is what gets printed. */
-  await expect(rows.first().locator('.slot__label'))
+  await expect(rows.first().locator('.word__name'))
     .toHaveText(['Hund', 'liegt', 'unter', 'Tisch']);
-  await expect(rows.last().locator('.slot__label')).toHaveText(['Schnecke', 'kriecht']);
+  await expect(rows.last().locator('.word__name')).toHaveText(['Schnecke', 'kriecht']);
 });
 
 test('a focused field inside a sheet is not clipped by its scroll region', async ({ page }) => {

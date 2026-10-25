@@ -369,13 +369,20 @@ kbd {
   align-items: stretch;
 }
 
+/* Das Glied ist das kompakte Gesicht: dieselbe Kachel wie die Karte, nur
+   schmaler, weil acht in eine Zeile müssen. */
 .slot {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  width: 90px;
-  padding: 7px 5px 6px;
+  /* So breit wie sein Wort, im Rahmen: ein Satz muss lesbar bleiben, und
+     „Kopfschmerzen“ ist ein Wort, kein „Kopfschme…“. Das Bild bleibt für
+     alle gleich groß. */
+  width: auto;
+  min-width: 90px;
+  max-width: 170px;
+  padding: 6px 8px;
   border: none;
   border-radius: var(--radius-sm);
   background: var(--surface-2);
@@ -389,15 +396,6 @@ kbd {
 .slot--over-before { box-shadow: inset 3px 0 0 var(--accent); }
 .slot--over-after { box-shadow: inset -3px 0 0 var(--accent); }
 
-.slot__img {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 68px;
-  height: 68px;
-  pointer-events: none;
-}
-.slot__img img { max-width: 100%; max-height: 100%; object-fit: contain; }
 /* One rule for every place a symbol is drawn, the row, the card and the paper:
    the picture turned left for right, and nothing laid over it. */
 img.mirrored { transform: scaleX(-1); }
@@ -424,16 +422,6 @@ img.mirrored { transform: scaleX(-1); }
   font-size: 20px;
 }
 
-.slot__label {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--text);
-  pointer-events: none;
-}
 
 /* "Add a slot" affordance, sized to sit level with the symbol chips. */
 .slot-add {
@@ -1037,15 +1025,19 @@ footer.footer {
   gap: 10px;
   align-content: start;
 }
+/* Das eine Karten-Kleid ist das des Satzglieds (2026-10-25, ihr Wunsch):
+   leichte Kachel, Symbol flächig auf seinem eigenen Weiß, Wort darunter —
+   kein Rahmen, kein gepolstertes Bildfeld. */
 .word {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  align-items: center;
+  gap: 4px;
+  padding: 7px 6px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
 }
 /* Its own box rather than `.slot__img` at another size, which is what this was
    for an afternoon. That rule is a fixed 68mm chip and carries
@@ -1057,9 +1049,9 @@ footer.footer {
   place-items: center;
   width: 100%;
   aspect-ratio: 1;
-  padding: 5px;
+  padding: 2px;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius-sm) - 3px);
   background: #fff;
   cursor: pointer;
   overflow: hidden;
@@ -1077,7 +1069,7 @@ footer.footer {
   background: var(--surface-2);
   border: 1px dashed var(--line);
 }
-.word__name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.word__name { max-width: 100%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Kept off the card until it is wanted: a wall of forty crosses reads as a
    wall of forty things to undo. Focus shows it too, or it would be a control
    nobody using a keyboard could find. */
@@ -1167,7 +1159,7 @@ footer.footer {
   cursor: pointer;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
 }
 .tpl:hover { border-color: var(--accent); }
 .tpl--on { border-color: var(--accent); outline: 1.5px solid var(--accent); }
@@ -1199,7 +1191,7 @@ footer.footer {
   cursor: pointer;
   background: none;
   border: 1px dashed var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
 }
 .word--add:hover { border-color: var(--accent); color: var(--accent-strong); }
 
@@ -1314,7 +1306,7 @@ footer.footer {
   gap: 3px;
   padding: 3px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   /* Paper, in both themes, on purpose: the Tafel is the one thing on this
      screen that is a preview of a sheet, and a block of colour that is pale
      on paper has to be pale here, with white cards on it, or what is seen is
@@ -1359,9 +1351,9 @@ footer.footer {
   font-size: 11px; font-weight: 700; line-height: 1.5; letter-spacing: .02em;
   pointer-events: none;
 }
-.cell .word { background: #fff; color: #222; border: 1px solid #dcdcdc; border-radius: 6px; }
-.cell .word__name { color: #222; }
-.cell .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
+/* Eine Karte ist eine Karte, auch im Feld: die WordCard trägt hier ihr
+   eigenes Kleid (2026-10-25, ihr Grundsatz) — nur die Maße unten passen
+   sie ins quadratische Feld ein. Wie sie druckt, zeigt rechts das Papier. */
 /* Free on purpose. Dashed and on the ground, the way every empty place in this
    app is drawn — and no darker than that, or a Tafel with ten free fields
    would read as a Tafel with ten mistakes. */
@@ -1430,7 +1422,7 @@ footer.footer {
 .cell__input:focus { outline: none; }
 .tray__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
 .tray__head b { font-size: 13px; }
-.tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius-md); }
+.tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius); }
 
 /* ---------------------------------------------------------------- rezept */
 
@@ -1454,7 +1446,7 @@ footer.footer {
 .recipe__none { margin: 0; }
 /* Where a dragged card or Schritt will land: a line before or after the one
    it is over, the way a symbol inside a row shows it. */
-.recipe__entry { position: relative; border-radius: var(--radius-md); }
+.recipe__entry { position: relative; border-radius: var(--radius-sm); }
 .recipe__entry > .word { height: 100%; }
 .recipe__cards .recipe__entry { cursor: grab; }
 .recipe__entry--before { box-shadow: -3px 0 0 var(--accent); }
@@ -1751,6 +1743,7 @@ footer.footer {
 .ding__info { width: 17px; height: 17px; flex: none; margin-left: auto; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 11px; font-weight: 600; font-style: italic; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; padding: 0 2px 1px 0; }
 .ding__info:hover, .ding__info[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
 .ding__row--snug { gap: 6px; flex-wrap: nowrap; }
+.slot .word__pic { width: 76px; }
 /* Ein Segment ist ein Wort, auch ein zweiteiliges. */
 .ding__pop .segmented button { white-space: nowrap; }
 /* Ein Menü, eine Schrift: das Palette-Label steht wie jedes andere Label

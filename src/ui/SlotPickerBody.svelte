@@ -174,7 +174,7 @@
   made, so the dialog looks the same wherever it opens. It is drawn with the
   cross and the mirror as they are ticked below, which is how a tick is seen
   before the dialog closes.
---><div class="picker__own" hidden={cropping}><span class="slot__img picker__own-shown{shown ? '' : ' picker__own-shown--empty'}">{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{/if}</span><label class="btn sm" style="cursor:pointer">{t('ui.own_picture_choose')}<!--
+--><div class="picker__own" hidden={cropping}><span class="word__pic picker__own-shown{shown ? '' : ' picker__own-shown--empty'}">{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{/if}</span><label class="btn sm" style="cursor:pointer">{t('ui.own_picture_choose')}<!--
   A file of the user's own. bildhaft keeps the bytes rather than a path, so
   moving or deleting the original afterwards changes nothing here.
 --><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(clear)}>{t('ui.own_picture_remove')}</button>{/if}</div><!--

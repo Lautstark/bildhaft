@@ -80,7 +80,7 @@ test('a Sammlung made in another symbol source still shows symbols', async ({ pa
   // one slot, carrying a picture rather than an empty frame.
   const slot = page.locator('.row').first().locator('.slot', { hasText: 'Apfel' });
   await expect(slot).toBeVisible();
-  await expect(slot.locator('.slot__img img')).toBeVisible();
+  await expect(slot.locator('.word__pic img')).toBeVisible();
 });
 
 test('a link naming a Sammlung that is not there says so, and adds nothing', async ({ page }) => {

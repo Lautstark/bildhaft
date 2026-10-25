@@ -3,10 +3,9 @@
   import { slotCaption } from '../core/types.ts';
   import TitleField from '@lautstark/design/svelte/TitleField';
   import Icon from '../pieces/Icon.svelte';
-  import NegationCross from '../pieces/NegationCross.svelte';
-  import SymbolPicture from '../pieces/Symbol.svelte';
+  import CardFace from './CardFace.svelte';
   import { symbolIdFor } from '../ui/symbols.ts';
-  import { confirmDeleteSentence, handleAddSlot, handleRename, handleReorder, noteUnreadable, openPicker } from '../app/editing.ts';
+  import { confirmDeleteSentence, handleAddSlot, handleRename, handleReorder, openPicker } from '../app/editing.ts';
   import { t } from '../i18n/index.ts';
 
   /* `step` is set when the row is one of a Rezept's Schritte: it is numbered.
@@ -160,4 +159,4 @@
   ondragleave={() => { if (over === index) over = null; }}
   ondrop={(event) => drop(event, index)}
   ondragend={clearDrag}
-><span class="slot__img"><SymbolPicture {provider} id={symbolIdFor(slot, provider)} alt={slot.sourceToken} mirrored={slot.mirrored} onUnreadable={(id) => void noteUnreadable(id)} />{#if slot.negated}<NegationCross />{/if}</span><span class="slot__label">{slotCaption(slot)}</span></div>{/each}<button class="slot-add" type="button" title={t('ui.add_slot')} onclick={() => void handleAddSlot(sentence.id)}>+</button></div></article>
+><CardFace {provider} id={symbolIdFor(slot, provider)} caption={slotCaption(slot)} mirrored={slot.mirrored} negated={slot.negated} /></div>{/each}<button class="slot-add" type="button" title={t('ui.add_slot')} onclick={() => void handleAddSlot(sentence.id)}>+</button></div></article>

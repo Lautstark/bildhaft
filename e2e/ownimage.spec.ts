@@ -96,7 +96,7 @@ test('leaves the symbol underneath, and uncovers it again on removal', async ({ 
   await page.getByRole('button', { name: 'Eigenes Bild entfernen' }).click();
   // The ARASAAC symbol was never discarded, so the slot is not left empty.
   await expect.poll(() => widths(page)).toEqual([1, 1, 1, 1]);
-  await expect(page.locator('.row').first().locator('.slot__label').nth(2)).toHaveText('Apfel');
+  await expect(page.locator('.row').first().locator('.word__name').nth(2)).toHaveText('Apfel');
 });
 
 test('carries own pictures through a backup and back', async ({ page }) => {

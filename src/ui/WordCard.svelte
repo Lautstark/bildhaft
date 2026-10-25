@@ -15,8 +15,8 @@
    */
   import type { ProviderId, Sentence } from '../core/types.ts';
   import { slotCaption, symbolIdFor } from '../core/types.ts';
-  import SymbolPicture from '../pieces/Symbol.svelte';
-  import { confirmDeleteSentence, noteUnreadable, openPicker } from '../app/editing.ts';
+  import CardFace from './CardFace.svelte';
+  import { confirmDeleteSentence, openPicker } from '../app/editing.ts';
   import { t } from '../i18n/index.ts';
 
   let { sentence, provider }: { sentence: Sentence; provider: ProviderId } = $props();
@@ -41,5 +41,4 @@
   };
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<div class="word">{#if shown}<div class="word__pic" role="button" tabindex="0" aria-label={t('ui.change_picture_for', { word: caption })} onclick={open} onkeydown={keys}><SymbolPicture {provider} id={shown} alt={caption} mirrored={slot?.mirrored} onUnreadable={(id) => void noteUnreadable(id)} /></div>{:else}<div class="word__pic word__pic--asking" role="button" tabindex="0" aria-label={t('ui.pick_picture_for', { word: caption || '…' })} onclick={open} onkeydown={keys}>?</div>{/if}<button class="word__drop" type="button" aria-label={t('ui.delete_card', { word: caption || '…' })} onclick={() => void confirmDeleteSentence(sentence)}>×</button><b class="word__name">{caption}</b></div>
+<div class="word" role="button" tabindex="0" aria-label={shown ? t('ui.change_picture_for', { word: caption }) : t('ui.pick_picture_for', { word: caption || '…' })} onclick={open} onkeydown={keys}><CardFace {provider} id={shown} {caption} mirrored={slot?.mirrored} /><button class="word__drop" type="button" aria-label={t('ui.delete_card', { word: caption || '…' })} onclick={(event) => { event.stopPropagation(); void confirmDeleteSentence(sentence); }}>×</button></div>

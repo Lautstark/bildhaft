@@ -14,7 +14,7 @@ const caption = (page: import('@playwright/test').Page) =>
   page.getByLabel('Text zum Symbol');
 
 const rowLabels = (page: import('@playwright/test').Page) =>
-  page.locator('.row').first().locator('.slot__label');
+  page.locator('.row').first().locator('.word__name');
 
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
