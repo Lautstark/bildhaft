@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import { mockArasaac } from './arasaac-mock.ts';
-import { backToPrint, cardSheet, openLook, pickTemplate, showMaterial, showSheet, translateAll, untilKept } from './helpers.ts';
+import { backToPrint, cardSheet, openDing, openLook, pickPaper, pickTemplate, showMaterial, showSheet, translateAll, untilKept } from './helpers.ts';
 
 /** CSS reference resolution: 96px per inch. */
 const mm = (px: number) => +(px / (96 / 25.4)).toFixed(2);
@@ -28,6 +28,7 @@ test('renders the sheet at real millimetre sizes', async ({ page }) => {
 });
 
 test('millimetre controls change the printed geometry', async ({ page }) => {
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('25');
   await page.getByLabel('Rand', { exact: true }).fill('5');
 
@@ -49,25 +50,28 @@ test('millimetre controls change the printed geometry', async ({ page }) => {
  * drawn rather than against a second copy of the same arithmetic.
  */
 test('names the field a ruler will find, not just the symbol', async ({ page }) => {
-  const hint = page.locator('.opt', { has: page.getByLabel('Symbolgröße') }).locator('.small.faint');
+  /* The readout lives in the panel's foot now. */
+  const hint = page.locator('.print-view__meta');
   const card = page.locator('.preview-frame .ps-card').first();
   const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
 
-  await expect(hint).toHaveText('Feldgröße: 46 × 52 mm.');
+  await expect(hint).toHaveText('Feld 46 × 52 mm');
   expect(mm((await box()).w)).toBeCloseTo(46, 0);
   expect(mm((await box()).h)).toBeCloseTo(52, 0);
 
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('50');
-  await expect(hint).toHaveText('Feldgröße: 56 × 62 mm.');
+  await expect(hint).toHaveText('Feld 56 × 62 mm');
 
   // A frame grows the card, so both figures have to grow with it. Checked to
   // the millimetre and no finer, as the readout is: offsetWidth is whole
   // pixels, and the readout rounds to whole millimetres. The frame
   // is the Sammlung's „Gestaltung", the readout the print dialog's.
   await openLook(page);
+  await openDing(page, 'Symbol');
   await page.getByLabel('Rahmen um jede Karte').check();
   await backToPrint(page);
-  await expect(hint).toHaveText('Feldgröße: 60 × 65 mm.');
+  await expect(hint).toHaveText('Feld 60 × 65 mm');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
   expect(mm((await box()).h)).toBeCloseTo(65.4, 0);
 });
@@ -78,12 +82,14 @@ test('names the field a ruler will find, not just the symbol', async ({ page }) 
  */
 test('a grid says what size its cells came out', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+  await showSheet(page);
 
-  const hint = page.getByText('Kartengröße:');
-  await expect(hint).toHaveText('Kartengröße: 63 × 136 mm.');
+  const hint = page.getByText('Karte 63');
+  await expect(hint).toHaveText('Karte 63 × 136 mm');
 });
 
 /*
@@ -95,9 +101,11 @@ test('a grid says what size its cells came out', async ({ page }) => {
  */
 test('a card size is the card, cut line to cut line', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
   await page.getByRole('spinbutton', { name: 'Höhe' }).fill('90');
+  await showSheet(page);
 
   const card = page.locator('.preview-frame .ps-card').first();
   const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
@@ -117,7 +125,9 @@ test('a card size is the card, cut line to cut line', async ({ page }) => {
   const symbol = () => page.locator('.preview-frame .ps-card__img').first()
     .evaluate((el: HTMLElement) => el.offsetHeight);
   const roomy = await symbol();
+  await openDing(page, 'Symbol');
   await page.getByLabel('Rand', { exact: true }).fill('12');
+  await showSheet(page);
   await expect.poll(symbol).toBeLessThan(roomy);
   expect(mm((await box()).w)).toBeCloseTo(60, 0);
   expect(mm((await box()).h)).toBeCloseTo(90, 0);
@@ -127,14 +137,17 @@ test('a card size is the card, cut line to cut line', async ({ page }) => {
    mistype it — so an empty height is an answer rather than a missing one. */
 test('an empty height means as high as it is wide', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('55');
   await page.getByRole('spinbutton', { name: 'Höhe' }).fill('');
   await page.getByRole('spinbutton', { name: 'Höhe' }).blur();
+  await showSheet(page);
 
   const card = page.locator('.preview-frame .ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
     .toBeCloseTo(55, 0);
+  await openDing(page, 'Symbol');
   await expect(page.getByRole('spinbutton', { name: 'Höhe' })).toHaveAttribute('placeholder', '55');
 });
 
@@ -145,11 +158,15 @@ test('an empty height means as high as it is wide', async ({ page }) => {
  */
 test('says so when the card does not fit the paper', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Karte', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('60');
-  await expect(page.getByText(/^Symbolgröße: \d/)).toBeVisible();
+  await showSheet(page);
+  await expect(page.getByText(/^Symbol \d/)).toBeVisible();
 
+  await openDing(page, 'Symbol');
   await page.getByRole('spinbutton', { name: 'Breite' }).fill('200');
+  await showSheet(page);
   await expect(page.getByText('Diese Karte passt nicht auf das Papier.')).toBeVisible();
 });
 
@@ -200,6 +217,9 @@ test('print media shows the sheet and nothing of the UI', async ({ page }) => {
 });
 
 test('exports references only, never image data', async ({ page }) => {
+  /* The ⋯ sits in the head, under the print overlay this suite opens — the
+     export is an act on the material, so it is done from the material. */
+  await showMaterial(page);
   await page.getByRole('button', { name: 'Aktionen für dieses Material' }).click();
 
   const download = page.waitForEvent('download');
@@ -221,14 +241,14 @@ test('turns the paper sideways', async ({ page }) => {
   await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(210, 0);
 
-  await page.getByRole('button', { name: 'Quer' }).click();
+  await pickPaper(page, 'Quer');
   await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(297, 0);
 
   // @page is the only thing that turns the actual printer, and it cannot be
   // written from a class — so the rule itself is what has to be checked.
-  expect(await page.evaluate(() =>
-    document.getElementById('print-page-setup')?.textContent)).toContain('size: 297mm 210mm');
+  await expect.poll(() => page.evaluate(() =>
+    document.getElementById('print-page-setup')?.textContent ?? '')).toContain('size: 297mm 210mm');
 });
 
 test('paper size drives the sheet, the printer rule and the grid together', async ({ page }) => {
@@ -236,15 +256,15 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   const rule = () => page.evaluate(() =>
     document.getElementById('print-page-setup')?.textContent ?? '');
 
-  await page.getByRole('button', { name: 'A3', exact: true }).click();
+  await pickPaper(page, 'A3');
   await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(297, 0);
-  expect(await rule()).toContain('size: 297mm 420mm');
+  await expect.poll(rule).toContain('size: 297mm 420mm');
 
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await pickPaper(page, 'A5');
   await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(148, 0);
-  expect(await rule()).toContain('size: 148mm 210mm');
+  await expect.poll(rule).toContain('size: 148mm 210mm');
 
   /*
    * The cards have to follow the paper, not just the sheet around them. Height,
@@ -254,9 +274,11 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
    * the one that catches a grid still dividing A4 on an A5 page.
    */
   await cardSheet(page);
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await pickPaper(page, 'A5');
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+  await showSheet(page);
   const card = page.locator('.preview-frame .ps-card').first();
   // A5 portrait: 210mm less 10mm at the top and 6mm at the foot, less the room ARASAAC's credit
   // needs, halved.
@@ -266,9 +288,11 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('3');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
+  await showSheet(page);
 
   const grid = page.locator('.preview-frame .ps-grid').first();
   await expect(grid).toBeVisible();
@@ -290,10 +314,17 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   // A page break has to be a real break, not a gap: with more cards than cells
   // the second page starts a new sheet. The page box breaks, not the grid in
   // it — a grid breaking of its own sent the page's foot onto the next sheet.
+  await openDing(page, 'Symbol');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-grid')).toHaveCount(2);
   const grid1 = page.locator('.preview-frame .ps-grid').first();
-  expect(await grid1.evaluate((el: HTMLElement) => getComputedStyle(el.closest('.ps-page')!).breakAfter)).toBe('page');
+  /* Polled: the sheet is planned again a task after the change, and a grid
+     read mid-replan is a node without a page around it yet. */
+  await expect.poll(() => grid1.evaluate((el: HTMLElement) => {
+    const pageBox = el.closest('.ps-page');
+    return pageBox ? getComputedStyle(pageBox).breakAfter : null;
+  })).toBe('page');
   expect(await grid1.evaluate((el: HTMLElement) => getComputedStyle(el).breakAfter)).toBe('auto');
 });
 
@@ -305,6 +336,7 @@ test('a card frame is drawn inside the cut margin, not on it', async ({ page }) 
   expect(mm(await card.evaluate((el: HTMLElement) => el.offsetWidth))).toBeCloseTo(46, 0);
 
   await openLook(page);
+  await openDing(page, 'Symbol');
   await page.getByLabel('Rahmen um jede Karte').check();
   const frame = page.locator('.preview-frame .ps-card__frame').first();
   await expect(frame).toHaveCount(1);
@@ -319,7 +351,8 @@ test('a card frame is drawn inside the cut margin, not on it', async ({ page }) 
   });
   await expect.poll(inside).toBe(true);
 
-  await page.getByLabel('Hintergrundfarbe').check();
+  await openDing(page, 'Symbol');
+  await page.getByRole('button', { name: 'Karten Gelb' }).click();
   await expect.poll(() => frame.evaluate((el: HTMLElement) => getComputedStyle(el).backgroundColor))
     .not.toBe('rgba(0, 0, 0, 0)');
 
@@ -337,6 +370,7 @@ test('a strip frame encloses the sentence text and the symbols', async ({ page }
   expect(await strip.evaluate((el: HTMLElement) => getComputedStyle(el).borderTopStyle)).toBe('none');
 
   await openLook(page);
+  await openDing(page, 'Streifen');
   await page.getByLabel('Rahmen um den ganzen Streifen').check();
   // Polled: the preview lays its pages out again after a change, and a strip
   // read while that happens is one already replaced.
@@ -368,24 +402,28 @@ test('the sentence text prints over or under its row, at its own size', async ({
     const row = el.querySelector('.ps-row')!.getBoundingClientRect();
     return caption.top >= row.bottom;
   });
-  const sentence = page.locator('.opt__sub', { has: page.getByLabel('Schriftgröße des Satztexts') });
+  const sentence = page.locator('.ding__dep', { has: page.getByLabel('Schriftgröße des Satztexts') });
 
   await expect.poll(captionBelowRow).toBe(false);
+  await openDing(page, 'Streifen');
   await sentence.getByRole('button', { name: 'unten' }).click();
   await expect.poll(captionBelowRow).toBe(true);
   await expect(page.locator('#print-root .ps-sentence').first().locator('.ps-caption')).toHaveClass(/ps-caption--below/);
 
   // In points, as typed: 72 to the inch, the browser's 96 pixels to it.
   const pt = (el: HTMLElement) => (parseFloat(getComputedStyle(el).fontSize) * 72) / 96;
+  await openDing(page, 'Streifen');
   await page.getByLabel('Schriftgröße des Satztexts').fill('14');
   await expect.poll(() => strip.locator('.ps-caption').evaluate(pt)).toBeCloseTo(14, 1);
   // Its own size, not the label's.
   expect(await page.locator('.preview-frame .ps-card__label').first().evaluate(pt)).toBeCloseTo(11, 1);
 
+  await openDing(page, 'Streifen');
   await page.getByLabel('Satztext drucken').uncheck();
   await expect(strip.locator('.ps-caption')).toHaveCount(0);
   await expect(page.getByLabel('Schriftgröße des Satztexts')).toHaveCount(0);
 
+  await openDing(page, 'Symbol');
   await expect(page.getByLabel('Schriftgröße der Beschriftung')).toBeVisible();
   await page.getByLabel('Beschriftung drucken').uncheck();
   await expect(page.getByLabel('Schriftgröße der Beschriftung')).toHaveCount(0);
@@ -399,22 +437,27 @@ test('the sentence text prints over or under its row, at its own size', async ({
  * checkbox that quietly does nothing.
  */
 test('the template decides strips or cards, and each offers only its own', async ({ page }) => {
-  const settings = page.locator('.print-view__panel');
-  await expect(settings.getByRole('button', { name: 'Kartenblatt' })).toHaveCount(0);
+  await openDing(page, 'Streifen');
   await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Raster' })).toHaveCount(0);
 
+  /* A card sheet has no strip and no Streifen-Knopf; its frame row is the
+     Symbol-Knopf's. */
   await cardSheet(page);
-  await expect(settings.getByRole('button', { name: 'Satzstreifen' })).toHaveCount(0);
+  await expect(page.locator('.ding__chip[aria-label="Streifen"]')).toHaveCount(0);
+  await openDing(page, 'Symbol');
   await expect(page.getByLabel('Rahmen um jede Karte')).toHaveCount(1);
   await expect(page.getByLabel('Rahmen um den ganzen Streifen')).toHaveCount(0);
 });
 
 test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the last page is full and reaches the paper's edge.
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
 
   /*
    * Asked of the page box rather than of the distance from the grid to the foot
@@ -439,14 +482,15 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
  */
 test('the credit line names no collection', async ({ page }) => {
   await cardSheet(page);
+  await showMaterial(page);
   await page.getByLabel('Name des Materials', { exact: true })
     .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
-  await showSheet(page);
-
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await pickPaper(page, 'A5');
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
 
   await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
   const spill = await page.locator('.preview-frame .ps-page').last()
@@ -470,6 +514,7 @@ test('the collection name can head the sheet', async ({ page }) => {
   await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
 
   await openLook(page);
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await expect(page.locator('.preview-frame .ps-title')).toHaveText('Morgenkreis');
   await backToPrint(page);
@@ -477,20 +522,21 @@ test('the collection name can head the sheet', async ({ page }) => {
 
   // Once, above everything — not a running header. Two sentences broken onto a
   // page each is the case that would show a second copy if it were one.
+  await openDing(page, 'Seite');
   await page.getByLabel('Ein Satz pro Seite').check();
   await expect(page.locator('#print-root .ps-sentence--page')).toHaveCount(1);
   await expect(page.locator('#print-root .ps-title')).toHaveCount(1);
 });
 
 /*
- * Every template draws one base in one order — Papier, Größe, Gestaltung —
- * then a group named after it for what only it has, and the Fußzeile last. A colour
- * behind the page is part of the base, a Satzstreifen's too.
+ * One Zeile, the same everywhere: Seite and Symbol, then — only where a
+ * template has something of its own — a chip that carries its name. The old
+ * settings column is gone.
  */
-test('the print menu is one base in one order, then what only the template has', async ({ page }) => {
-  await expect(page.locator('.print-options .opt-group'))
-    .toHaveText(['Papier', 'Größe', 'Gestaltung', 'Satzstreifen', 'Fußzeile']);
-  await page.getByLabel('Seitenfarbe').check();
+test('the Zeile is one base in one order, then what only the template has', async ({ page }) => {
+  await expect(page.locator('.ding__chip')).toHaveText(['Seite', 'Symbol', 'Streifen']);
+  await openDing(page, 'Seite');
+  await page.getByRole('button', { name: 'Seitenfarbe Grün' }).click();
   await expect(page.locator('#print-root .ps-page--coloured').first()).toBeAttached();
 });
 
@@ -499,12 +545,14 @@ test('the print menu is one base in one order, then what only the template has',
  * the size the last one was printed at.
  */
 test('a new Satzstreifen starts from its template, not from the last one printed', async ({ page }) => {
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('55');
   await untilKept(page, 'symbolSizeMm', 55);
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await pickTemplate(page, /^Satzstreifen/);
   await translateAll(page, ['Wir gehen raus']);
   await showSheet(page);
+  await openDing(page, 'Symbol');
   await expect(page.getByLabel('Symbolgröße')).toHaveValue('40');
 });
 
@@ -541,8 +589,10 @@ test('the household\'s print settings move onto the Sammlungen that used them, o
   await page.reload();
   await untilKept(page, 'symbolSizeMm', 55);
   await showSheet(page);
+  await openDing(page, 'Symbol');
   await expect(page.getByLabel('Symbolgröße')).toHaveValue('55');
-  await expect(page.getByLabel('Seitenfarbe')).not.toBeChecked();
+  await openDing(page, 'Seite');
+  await expect(page.getByRole('button', { name: 'Seitenfarbe: Kein' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#print-root .ps-page--coloured')).toHaveCount(0);
 });
 
@@ -553,33 +603,38 @@ test('the household\'s print settings move onto the Sammlungen that used them, o
  */
 test('the title is written in Bearbeiten and prints over the first or every page', async ({ page }) => {
   await page.getByLabel('Name des Materials', { exact: true }).fill('Morgenkreis – Gruppe Igel');
+  await openDing(page, 'Seite');
   await page.getByLabel('Ein Satz pro Seite').check();
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   const titles = page.locator('#print-root .ps-title');
   await expect(titles).toHaveText(['Morgenkreis – Gruppe Igel']);
 
   // Its own words, typed in Bearbeiten; the print view has no field for them.
   await showMaterial(page);
-  await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toHaveCount(0);
   const words = page.getByLabel('Titel auf dem Papier');
   await words.fill('Morgenkreis');
   await words.press('Enter');
-  await expect(page.getByRole('button', { name: 'wieder wie der Name' })).toBeVisible();
   await showSheet(page);
-  await expect(page.getByLabel('Titel auf dem Papier')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Titel auf dem Papier')).toHaveCount(0);
   await expect(titles).toHaveText(['Morgenkreis']);
 
   // Over every page: two sentences, a page each, a title on both.
+  await openDing(page, 'Seite');
   await page.getByRole('button', { name: 'Jede Seite', exact: true }).click();
   await expect(titles).toHaveText(['Morgenkreis', 'Morgenkreis']);
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').uncheck();
   await expect(titles).toHaveCount(0);
 
   // Switched on again it is where it was — over every page — as a label keeps
   // above or below. And back to the name, with whatever the name becomes.
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
-  await page.getByRole('button', { name: 'wieder wie der Name' }).click();
+  // Emptied, the title follows the name again — there is no × to press.
+  await page.getByLabel('Titel auf dem Papier').fill('');
+  await page.getByLabel('Titel auf dem Papier').press('Enter');
   await page.getByLabel('Name des Materials', { exact: true }).fill('Abschlusskreis');
   await showSheet(page);
   await expect(titles).toHaveText(['Abschlusskreis', 'Abschlusskreis']);
@@ -600,6 +655,7 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
   await expect(page.locator('.collection-head')).toContainText('2 Zeilen');
 
   await showSheet(page);
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await expect(page.locator('.preview-frame .ps-title .ps-title__pic img')).toBeVisible();
   await expect(page.locator('#print-root .ps-sentence')).toHaveCount(2);
@@ -612,11 +668,14 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   // One card per page, so the first page is full and reaches the paper's edge.
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
 
   // offsetTop/offsetHeight rather than getBoundingClientRect: the preview sits
   // inside a transform: scale(), so rects come back in scaled pixels.
@@ -635,14 +694,19 @@ test('a headed grid page takes its room from the cards, not from the paper', asy
  */
 test('a big underlined heading still takes its room from the cards', async ({ page }) => {
   await cardSheet(page);
+  await showMaterial(page);
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
-  await page.getByRole('spinbutton', { name: 'Schriftgröße des Titels' }).fill('30');
+  await page.getByRole('spinbutton', { name: 'Schriftgröße', exact: true }).fill('30');
+  await openDing(page, 'Seite');
   await page.getByLabel('Linie darunter').check();
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
 
   const sheet = page.locator('.preview-frame .ps-sheet');
   await expect(sheet.locator('.ps-title')).toHaveCSS('font-size', '40px');
@@ -667,7 +731,8 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
  */
 test('the preview is cut into pages, and the column counts them', async ({ page }) => {
   const pages = page.locator('.preview-frame .ps-page');
-  const meta = page.locator('.print-view .pager__at');
+  /* The count lives in the paper pill now: „A4 hoch · 3 Seiten". */
+  const meta = page.getByRole('button', { name: 'Papier wählen' });
 
   await expect(pages).toHaveCount(1);
   await expect(meta).toContainText('1 Seite');
@@ -683,28 +748,26 @@ test('the preview is cut into pages, and the column counts them', async ({ page 
     .toBeCloseTo(297, 0);
 
   // A forced break.
+  await openDing(page, 'Seite');
   await page.getByLabel('Ein Satz pro Seite').check();
   await expect(pages).toHaveCount(2);
-  await expect(meta).toContainText('Seite 1 von 2');
+  await expect(meta).toContainText('2 Seiten');
   // One plan, applied to both copies: the preview and the printer cannot
   // disagree about where a page ends, because neither worked it out alone.
   await expect(page.locator('#print-root .ps-page')).toHaveCount(2);
 
   // And one nobody forced: 90mm cards simply stop fitting.
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('90');
+  await showSheet(page);
   await expect(pages).toHaveCount(3);
-  await expect(meta).toContainText('Seite 1 von 3');
+  await expect(meta).toContainText('3 Seiten');
 
-  // One page at a time, turned with the arrows rather than scrolled.
-  const frame = page.locator('.print-view .preview-frame');
-  await expect(page.getByRole('button', { name: 'Vorige Seite' }).first()).toBeDisabled();
-  await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
-  await expect(meta).toContainText('Seite 2 von 3');
-  await expect.poll(() => frame.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Nächste Seite' }).first().click();
-  await expect(meta).toContainText('Seite 3 von 3');
-  await expect(page.getByRole('button', { name: 'Nächste Seite' }).first()).toBeDisabled();
+  // Every page under the one before, like a stack of paper: nothing to turn.
+  const tops = await pages.evaluateAll((all: HTMLElement[]) => all.map((el) => el.offsetTop));
+  expect(tops[1]).toBeGreaterThan(tops[0]!);
+  expect(tops[2]).toBeGreaterThan(tops[1]!);
 });
 
 /*
@@ -735,9 +798,11 @@ test('the credit sits at the foot of every page, whatever the layout', async ({ 
   // And a grid, where the room it drops into is the band every page reserves
   // so that the notice never costs a sheet of its own.
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
   await expect(page.locator('.preview-frame .ps-page')).toHaveCount(5);
 
   const grid = await foot();
@@ -759,7 +824,7 @@ test('the foot does not move on a full page', async ({ page }) => {
     'Der Ball ist rot', 'Ich gehe nach Hause', 'Wir spielen draußen',
   ]);
   await showSheet(page);
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await pickPaper(page, 'A5');
 
   const gaps = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) =>
     [...sheet.querySelectorAll<HTMLElement>('.ps-page')].map((one) => {
@@ -784,8 +849,9 @@ test('a strip too tall for one page goes on over the next, in whole lines', asyn
   const cards = page.locator('.preview-frame .ps-card');
   // Counted on A4 at 40mm, where every strip still fits its page whole.
   const symbols = await cards.count();
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await page.getByRole('button', { name: 'Quer', exact: true }).click();
+  await pickPaper(page, 'A5');
+  await pickPaper(page, 'Quer');
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('50');
 
   const pages = page.locator('.preview-frame .ps-page');
@@ -810,9 +876,11 @@ test('a strip too tall for one page goes on over the next, in whole lines', asyn
  */
 test('every page of the printable copy holds inside the paper', async ({ page }) => {
   await cardSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await showSheet(page);
   await page.emulateMedia({ media: 'print' });
 
   const seen = await page.locator('#print-root .ps-sheet').evaluate((sheet: HTMLElement) => {
@@ -836,8 +904,8 @@ test('every page of the printable copy holds inside the paper', async ({ page })
  * the same paper, named for the day and the paper.
  */
 test('saves the preview as a PDF of the same pages', async ({ page }) => {
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await expect(page.locator('.print-view .pager__at')).toContainText('Seite');
+  await pickPaper(page, 'A5');
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('Seite');
   await expect(page.locator('.preview-frame .ps-page').first()).toBeVisible();
   const pages = await page.locator('.preview-frame .ps-page').count();
   const [file] = await Promise.all([
@@ -861,6 +929,7 @@ test('saves the preview as a PDF of the same pages', async ({ page }) => {
  * the column — over a focused number field it used to turn the number.
  */
 test('a size can be typed, and scrolling does not change it', async ({ page }) => {
+  await openDing(page, 'Symbol');
   const size = page.getByLabel('Symbolgröße');
   await size.click();
   await size.press('ControlOrMeta+a');
@@ -884,41 +953,52 @@ test('a size can be typed, and scrolling does not change it', async ({ page }) =
 });
 
 /*
- * The pages small, on the left, say which one is showing: by the arrows and by
- * a press on one of them.
+ * The sheet stands beside the material by default and stays through a switch
+ * and a reload; folded, it stays folded. Only a material with nothing to
+ * print has none.
  */
-test('the pages on the left follow the page being shown', async ({ page }) => {
-  await page.getByLabel('Ein Satz pro Seite').check();
-  const thumbs = page.locator('.print-view__thumb');
-  await expect(thumbs).toHaveCount(2);
-  await expect(thumbs.nth(0)).toHaveAttribute('aria-pressed', 'true');
+test('the sheet is there by default and survives a switch and a reload', async ({ page }) => {
+  await expect(page.locator('.print-dock')).toBeVisible();
 
-  await thumbs.nth(1).click();
-  await expect(page.locator('.print-view .pager__at')).toHaveText('Seite 2 von 2');
-  await expect(thumbs.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.sidebar__section--collections .collections__item').nth(0).click();
+  await expect(page.locator('.print-dock .ps-sheet')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Vorige Seite' }).click();
-  await expect(thumbs.nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(page.locator('.print-dock .ps-sheet')).toBeVisible();
+
+  // Nothing to print, nothing beside it.
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await expect(page.locator('.print-dock')).toHaveCount(0);
+
+  // Folded stays folded, across a reload too.
+  await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
+  await page.locator('.print-view__tool[aria-label="Vorschau einklappen"]').click();
+  await expect(page.locator('.print-dock--mini')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.print-dock--mini')).toBeVisible();
+  await page.locator('.print-dock__peek').click();
+  await expect(page.locator('.print-dock--mini')).toHaveCount(0);
 });
 
 /*
- * A Sammlung opens in the view it was left in, on this device: its sheet
- * stays its sheet across another Sammlung and a reload. A new one opens on
- * its material.
+ * The panel is narrow and fixed; reading happens in the large preview, opened
+ * by pressing anywhere on the stacked pages. A zoom, not a place to be: Esc
+ * puts it away, and it is not kept across a switch of material.
  */
-test('each Sammlung opens in the view it was left in', async ({ page }) => {
-  const view = (name: string) => page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name });
-  await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
+test('the pages pressed open the large preview, and Esc puts it away', async ({ page }) => {
+  await page.getByRole('button', { name: 'Große Druckvorschau öffnen' }).click();
+  await expect(page.locator('.print-dock--big')).toBeVisible();
+  await expect(page.locator('.print-dock--big .ps-sheet')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.print-dock--big')).toHaveCount(0);
+  await expect(page.locator('.print-dock .ps-sheet')).toBeVisible();
 
-  await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(page.locator('.templates')).toBeVisible();
-  await expect(page.locator('.print-view')).toHaveCount(0);
-
-  await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(view('Drucken')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
-
-  await page.reload();
-  await page.locator('.sidebar__section--collections .collections__item').nth(1).click();
-  await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
+  // Its ✕ and the dimmed edge are the other ways out.
+  await page.getByRole('button', { name: 'Große Druckvorschau öffnen' }).click();
+  await page.getByRole('button', { name: 'Große Vorschau schließen' }).click();
+  await expect(page.locator('.print-dock--big')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Große Druckvorschau öffnen' }).click();
+  await page.locator('.print-dock--big').click({ position: { x: 8, y: 8 } });
+  await expect(page.locator('.print-dock--big')).toHaveCount(0);
 });

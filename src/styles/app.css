@@ -1320,7 +1320,8 @@ footer.footer {
      on paper has to be pale here, with white cards on it, or what is seen is
      not what is printed. The chrome around it stays the app's. Darker than
      the tiles by a step, which is what makes them tiles. */
-  background: #e4e1d9;
+  /* App-Grund statt Papier-Beige: das Papier liegt rechts in der Vorschau. */
+  background: var(--surface-2);
   color: #222;
   position: relative;
   z-index: 0;
@@ -1336,7 +1337,7 @@ footer.footer {
   aspect-ratio: var(--field, 1);
   display: grid;
   padding: 10px;
-  background: #f6f5f1;
+  background: var(--surface);
   border-radius: 8px;
 }
 /* A coloured field paints nothing of its own: its block lies under it (in the
@@ -1571,12 +1572,10 @@ footer.footer {
 .title-line__pic img { max-width: 100%; max-height: 100%; }
 .title-line__add { flex: none; width: 34px; height: 34px; border: 1.5px dashed var(--line); border-radius: 7px; background: transparent; color: var(--text-faint); font: inherit; font-size: 18px; cursor: pointer; }
 .title-line__add:hover { color: var(--text); border-color: var(--text-faint); }
-.title-line__text { flex: 0 1 460px; min-width: 0; padding: 4px 8px; margin-left: 2px; border: 0; border-radius: var(--radius-item); background: transparent; color: var(--text); font: inherit; font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
+.title-line__text { flex: 1 1 auto; min-width: 0; padding: 4px 8px; margin-left: 2px; border: 0; border-radius: var(--radius-item); background: transparent; color: var(--text); font: inherit; font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
 .title-line__text::placeholder { color: var(--text-faint); font-weight: 650; }
 .title-line__text:hover { background: var(--surface-2); }
 .title-line__text:focus { outline: 2px solid var(--accent); background: var(--surface); }
-.title-line__reset { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: var(--text-faint); font: inherit; font-size: 17px; cursor: pointer; }
-.title-line__reset:hover { background: var(--surface-2); color: var(--text); }
 .collection-head__pic { flex: none; width: 44px; height: 44px; padding: 3px; border: 0; border-radius: var(--radius-sm); background: #fff; outline: 1px solid var(--line); cursor: pointer; display: grid; place-items: center; overflow: hidden; }
 .collection-head__pic img { max-width: 100%; max-height: 100%; }
 .collection-head__pic--empty { background: transparent; outline: 1.5px dashed var(--line); color: var(--text-faint); font: inherit; font-size: 11.5px; line-height: 1.1; }
@@ -1726,3 +1725,174 @@ footer.footer {
 .game__acts { display: flex; justify-content: flex-end; opacity: 0; transition: opacity .13s; }
 .game__row:hover .game__acts, .game__acts:focus-within { opacity: 1; }
 .game__more { display: flex; justify-content: center; }
+/* ------------------------------------------------- die Zeile & das Blatt */
+
+/*
+ * Die Zeile über dem Material: ein Knopf je Ding auf dem Blatt (Seite ·
+ * Titel · Symbol), hinter jedem alle seine Einstellungen. Die Menüs hängen
+ * unter ihrem Knopf; die Farbreihen darin sind die des Gruppen-Panels.
+ */
+.ding-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.ding { position: relative; }
+.ding__chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--surface);
+  color: var(--text); font: inherit; font-size: 14px;
+}
+.ding__chip:hover, .ding__chip[aria-expanded="true"] { border-color: var(--accent); }
+.ding__dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0, 0, 0, .15); }
+.ding__dd { display: inline-flex; color: var(--muted); margin: 1px -2px 0 0; }
+.ding__chip:hover { border-color: var(--muted); }
+.ding__chip:hover .ding__dd { color: var(--text); }
+.ding__info { width: 17px; height: 17px; flex: none; margin-left: auto; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 11px; font-weight: 600; font-style: italic; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; padding: 0 2px 1px 0; }
+.ding__info:hover, .ding__info[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
+.ding__row--snug { gap: 6px; flex-wrap: nowrap; }
+/* Ein Segment ist ein Wort, auch ein zweiteiliges. */
+.ding__pop .segmented button { white-space: nowrap; }
+/* Ein Menü, eine Schrift: das Palette-Label steht wie jedes andere Label
+   der Zeile, nicht klein und blass daneben. */
+.ding__pop .palette-row__name { font-size: inherit; color: inherit; }
+/* Was von einem Haken abhängt, steht eingerückt darunter — nie daneben,
+   wo es die Zeile umbräche. */
+.ding__sub { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; border-left: 2px solid var(--line); margin: -4px 0 2px 7px; padding-left: 16px; }
+/* Ein Zahlenpaar ist ein Wort: Label, Feld und Einheit dicht beieinander,
+   zum nächsten Paar deutlich mehr Luft. */
+.ding-num { display: inline-flex; align-items: center; gap: 6px; }
+.ding-num .field { width: 68px; text-align: center; }
+.ding-num__unit { color: var(--muted); font-size: 12.5px; }
+/* Gestreckt, damit ein ⓘ am Zeilenende überall dasselbe Ende meint — und
+   mit einer Linie am Haken entlang, die sagt, was zu ihm gehört. */
+.ding__dep { display: flex; flex-direction: column; align-items: stretch; gap: 9px; border-left: 2px solid var(--line); margin: -2px 0 2px 7px; padding-left: 16px; }
+.ding__pop {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 360px;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .18));
+}
+.ding__row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+/* Der aufgeklappte ⓘ-Text: volle Menübreite, dicht an seiner Zeile. */
+.ding__hint { margin: -4px 0 2px; max-width: none; line-height: 1.45; }
+.ding-check { display: flex; gap: 7px; align-items: center; font-size: 14px; cursor: pointer; }
+.palette-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.palette-row__name { min-width: 48px; }
+
+/* Das Papier im Kopf: der Knopf, der „A4 hoch · 2 Seiten" sagt, ist die Wahl. */
+.paper-pick { position: relative; }
+.paper-pick__pop {
+  position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;
+  display: flex; flex-direction: column; gap: 8px; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .18));
+}
+
+/*
+ * Das Blatt neben dem Material: standardmäßig da, nahtlos — kein eigener
+ * Kasten, nur eine auslaufende Haarlinie trennt es ab. Die Seiten stehen
+ * untereinander und werden gescrollt; eingeklappt lebt dieselbe Vorschau als
+ * Daumennagel weiter. Der linke Rand zieht die Breite.
+ */
+.work-split { display: flex; gap: 18px; align-items: flex-start; }
+/* Das Material wohnt im gleichen Kasten wie das Papier daneben: die
+   Titelzeile als sein Kopf, die Wand darunter — zwei Geschwister-Panels. */
+.work-main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 18px; }
+.work-main > .title-line { margin: 0 0 12px; padding: 0; }
+/* Der leise Satz des Leerzustands: dort, wo das Erste erscheinen wird,
+   und fort mit dem ersten Inhalt (Variante A, 2026-10-25). */
+.empty-whisper { color: var(--text-faint); font-size: 13px; text-align: left; }
+.empty-whisper--wall { grid-column: 2 / -1; align-self: center; max-width: 44ch; }
+
+/* Der leere Streifen sieht aus wie eine Zeile: ihr Grund, leere
+   Symbolfelder darin — und führt beim Druck in die Box. */
+.row-ghost { display: flex; gap: 10px; align-items: center; padding: 12px 14px 14px; border: 0; border-radius: var(--radius); background: var(--surface-2, var(--surface)); cursor: text; width: 100%; }
+.row-ghost__pic { width: 64px; aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: 8px; display: grid; place-items: center; color: var(--text-faint); font-size: 20px; }
+.row-ghost:hover .row-ghost__pic { border-color: var(--muted); color: var(--text); }
+/* Im Material-Kasten rahmt der Kasten: die inneren Kisten von Rezept und
+   Lied geben ihre eigene Umrandung ab (der Refrain behält seinen Grund). */
+.work-main .recipe__box { outline: none; padding: 0; }
+.work-main .song__part:not(.song__part--refrain) .song__lines { background: none; padding: 4px 0; }
+.work-main .board { border: none; padding: 0; background: none; grid-template-columns: repeat(var(--cols), minmax(0, 140px)); }
+/* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
+   quadratisch, die echten Proportionen stehen rechts auf dem Papier. */
+.work-main .cell { aspect-ratio: 1; }
+/* Leer bleibt die Tafel klein genug, dass Spalten und Zeilen darunter im
+   Blick sind. */
+.work-main .board:not(:has(.board-card)) { grid-template-columns: repeat(var(--cols), minmax(0, 104px)); }
+.main__inner--printing { max-width: 1480px; }
+.print-dock {
+  position: sticky; top: 10px; flex: none;
+  /* Schmal und fest: zum Lesen ist die große Vorschau da, ein Druck auf die Seiten. */
+  width: 300px;
+  max-height: calc(100vh - 20px);
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 4px 14px 0;
+}
+.print-dock--mini { width: 64px !important; padding: 0 8px 12px; cursor: pointer; }
+.print-dock__unfold { background: none; border: 0; color: var(--muted); font-size: 15px; padding: 8px 0 2px; cursor: pointer; }
+.print-dock__unfold:hover { color: var(--text); }
+.print-dock__peek { position: absolute; inset: 0; background: none; border: 0; cursor: pointer; }
+
+/* Der Kopf des Panels: „Papier" links, die Pille wählt es, » führt hinaus.
+   Darunter die Zeile; dann scrollen nur die Seiten, und der Fuß steht. */
+.print-view__caprow { display: flex; align-items: center; gap: 6px; padding: 8px 2px 0; flex: none; }
+.print-view__cap { font-size: 13px; font-weight: 600; color: var(--text); }
+.print-view__quiet--mini { display: flex; justify-content: center; padding: 4px 0 8px; }
+/* Kein overscroll-contain: am Ende des Stapels reicht das Rad an die Seite
+   weiter, sonst bleibt ein halb sichtbares Panel für immer halb sichtbar. */
+.print-view__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -6px; padding: 15px 6px 18px; }
+.print-view__foot { display: flex; align-items: center; gap: 2px; padding: 7px 2px 9px; border-top: 1px solid var(--line); flex: none; }
+.print-view__meta { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; line-height: 1.3; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.print-view__meta-sub { color: var(--muted); opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.print-view__sp { flex: 1; }
+.print-view__tool { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font: inherit; font-size: 13px; padding: 4px 9px; border-radius: 8px; background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.print-view__tool:hover:not(:disabled) { background: var(--surface-2, var(--surface)); color: var(--text); }
+.print-view__tool:disabled { opacity: .5; cursor: default; }
+
+/* Die Seiten als Stapel: Luft dazwischen, eine kleine Nummer darunter. */
+.print-dock .print-view { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; width: 100%; min-width: 0; gap: 0; }
+/* Die Zeile wohnt im Panel: enger, und ihre Menüs öffnen links daneben,
+   über der Arbeitsfläche — nie über den Seiten, deren Wirkung sie zeigen. */
+.print-dock .ding-bar { margin: 10px 0 2px; gap: 6px; flex: none; }
+.print-dock .ding__chip { padding: 3px 11px; font-size: 12.5px; }
+/* Am Panel verankert, nicht am Chip: das Menü steht als Ganzes links neben
+   dem Panel, über der Arbeitsfläche. */
+.print-dock .ding { position: static; }
+.print-dock .ding__pop { left: auto; right: calc(100% + 12px); top: 42px; }
+.print-dock .paper-pick__pop { right: 0; }
+.print-dock .print-view__stage { display: block; width: 100%; min-width: 0; position: relative; }
+/* Die ganze Seitenfläche ist der Weg in die große Vorschau. */
+.print-view__zoom { position: absolute; inset: -4px; z-index: 2; background: transparent; border: 0; border-radius: 8px; cursor: zoom-in; }
+.print-view__zoom:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+/* Der Rahmen ist hier keiner: kein Polster (es ginge in die Breitenrechnung
+   des Flow-Maßstabs ein und die Seiten liefen rechts hinaus), keine Fläche,
+   keine Mindesthöhe — das Panel selbst ist die Fassung. */
+.print-dock .print-view__frame { overflow: visible; width: 100%; height: auto; min-height: 0; padding: 0; border-radius: 0; background: none; }
+.print-dock .ps-sheet { counter-reset: dockpage; }
+.print-dock .ps-page { counter-increment: dockpage; position: relative; margin-bottom: 34px !important; box-shadow: 0 14px 30px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .4); }
+/* Hung over the page, not under it: overflow below counts into the page's
+   scrollHeight (transforms too, in Chrome), which the plan holds at zero —
+   overflow above counts into nothing. */
+.print-dock .ps-page::after { content: counter(dockpage); position: absolute; right: 0; top: -24px; font-size: 15px; line-height: 1; color: var(--muted); }
+.print-dock--mini .ps-page { margin-bottom: 10px !important; box-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
+.print-dock--mini .ps-page::after { content: none; }
+.print-dock--mini .print-view__panel, .print-dock--mini .print-view__acts { display: none; }
+
+/* Die Spalte der noch nicht umgezogenen Vorlagen, unter den Seiten. */
+.print-dock .print-view__panel { max-height: none; margin-top: 6px; }
+
+/* Die große Vorschau: dasselbe Panel, über allem, bis Esc, ✕ oder der Rand. */
+.print-dock--big { position: fixed; inset: 0; z-index: 70; width: auto !important; max-height: none; border: 0; border-radius: 0; background: rgba(0, 0, 0, .6); padding: 28px; align-items: center; cursor: zoom-out; overflow: hidden; }
+.print-dock--big .print-view { width: min(1000px, 92vw); max-height: calc(100vh - 56px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 22px 0; cursor: auto; }
+.print-dock--big .ding { position: relative; }
+.print-dock--big .ding__pop { left: 0; right: auto; top: calc(100% + 6px); }
+
+@media (max-width: 980px) {
+  .print-dock:not(.print-dock--big) { position: fixed; top: 0; right: 0; bottom: 0; width: min(88vw, 460px) !important; z-index: 60; max-height: none; border-radius: 0; box-shadow: -12px 0 32px rgba(0, 0, 0, .25); padding: 0 12px 0 16px; }
+  .print-dock:not(.print-dock--big) .ding { position: relative; }
+  .print-dock:not(.print-dock--big) .ding__pop { left: 0; right: auto; top: calc(100% + 6px); }
+  .print-dock--mini { position: sticky; width: 56px !important; box-shadow: none; }
+  .print-dock--big { padding: 10px; }
+  .print-dock--big .print-view { width: 100%; padding: 4px 12px 16px; }
+}
+.print-view__panel--bare { align-self: flex-start; }
+.ding__meta { color: var(--muted); font-size: 12.5px; }

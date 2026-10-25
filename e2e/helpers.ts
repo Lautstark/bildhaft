@@ -34,23 +34,50 @@ export function rowFor(page: Page, typed: string) {
 }
 
 /**
- * The open Sammlung's sheet: its view „Drucken", switched to in its head, and
- * the wait for the preview to be laid out.
+ * The open Sammlung's sheet: „Drucken" in its head opens it as an overlay
+ * over the material, and the wait is for the preview to be laid out.
  */
 export async function showSheet(page: Page): Promise<void> {
-  const view = page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Drucken' });
-  if (await view.getAttribute('aria-pressed') !== 'true') await view.click();
+  /* Folded, the whole rail is the way back open (the peek overlay). */
+  const peek = page.locator('.print-dock__peek');
+  if (await peek.isVisible().catch(() => false)) await peek.click();
   await expect(page.locator('.print-view .preview-frame .ps-sheet')).toBeVisible();
 }
 
-/** Back to the Sammlung's material, from its sheet. */
-export async function showMaterial(page: Page): Promise<void> {
-  await page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Bearbeiten' }).click();
+/**
+ * The material was a view to go back to once; now it is always on screen
+ * beside the sheet. Kept as a no-op so the specs read as the flow they test.
+ */
+export async function showMaterial(_page: Page): Promise<void> {
+  /* nothing to do: the sheet no longer covers the material */
 }
 
 /** Older names for the same wait, from when the settings were split over two dialogs. */
 export const openLook = showSheet;
 export const backToPrint = showSheet;
+
+/**
+ * Opens one thing-menu of the Zeile over the material — Seite, Titel or
+ * Symbol — closing the print overlay first when it is up. The Zeile is where
+ * a moved template's settings live; the sheet only shows them.
+ */
+export async function openDing(page: Page, name: 'Seite' | 'Symbol' | 'Streifen' | 'Lied' | 'Tafel'): Promise<void> {
+  const chip = page.locator(`.ding__chip[aria-label="${name}"]`);
+  if (await chip.getAttribute('aria-expanded') !== 'true') await chip.click();
+}
+
+/** Picks the paper — the pill in the panel's head that names it. */
+export async function pickPaper(page: Page, name: string): Promise<void> {
+  const pop = page.locator('.paper-pick__pop');
+  if (!(await pop.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: 'Papier wählen' }).click();
+  }
+  await pop.getByRole('button', { name, exact: true }).click();
+  /* Put the pop away: left open it lies over the Zeile's chips, and the next
+     click would land on it instead. A person sees that; a spec must not. */
+  await page.keyboard.press('Escape');
+  await expect(pop).toHaveCount(0);
+}
 
 /**
  * Gives the open, empty Material its template.

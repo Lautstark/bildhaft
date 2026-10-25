@@ -20,6 +20,15 @@ export default defineConfig({
       },
     },
   ],
+  optimizeDeps: {
+    /* Svelte libraries, shipped as source (.svelte, .svelte.ts): the
+       optimizer's svelte pass parses their TypeScript as JS and dies on the
+       first type annotation (seen on every fresh install; a warm
+       node_modules/.vite hides it). vite-plugin-svelte would exclude them
+       itself if they declared a "svelte" field; until they do, they are
+       named here and the dev server transforms them like the app's own. */
+    exclude: ['@lautstark/bildquelle', '@lautstark/design', '@lautstark/sicherung', '@lautstark/werkzeuge'],
+  },
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,

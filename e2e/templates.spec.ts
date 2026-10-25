@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openLook, showMaterial, pickTemplate, showSheet, translate, untilKept } from './helpers.ts';
+import { backToPrint, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -108,10 +108,16 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCount(1);
   await expect(sheets.nth(2).locator('.ps-title')).toHaveCount(1);
   await expect(sheets.nth(3).locator('.ps-title')).toHaveCount(0);
+  /* The guide is the board's own setting now, made in the Zeile over the
+     material — under „Seite", where the sheet's things live. */
+  await openDing(page, 'Seite');
   await page.getByLabel('Anleitung drucken').uncheck();
+  await showSheet(page);
   await expect(sheet.locator('.ps-guide')).toHaveCount(0);
   await expect(sheets).toHaveCount(3);
+  await openDing(page, 'Seite');
   await page.getByLabel('Anleitung drucken').check();
+  await showSheet(page);
   await expect(sheets).toHaveCount(4);
   /* A sheet's own break stays out of its page box: on paper it sent the
      page's foot, and the copyright line with it, onto the next sheet. */
@@ -126,49 +132,73 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   expect(last!.x + last!.width).toBeLessThan(basket!.x + basket!.width);
   expect(last!.y + last!.height).toBeLessThan(basket!.y + basket!.height);
 
-  /* The paper is all it is asked, and the paper decides every millimetre:
-     always landscape, and no frame, background or cut-line switch — the cut
-     lines are always on the cards to cut. */
-  const panel = page.locator('.print-view__panel');
-  await expect(panel.getByRole('button', { name: 'Quer', exact: true })).toHaveCount(0);
-  await expect(panel.getByText('Rahmen um jede Karte')).toHaveCount(0);
-  await expect(panel.getByText('Hintergrundfarbe')).toHaveCount(0);
-  await expect(panel.getByText('Schnittlinien anzeigen')).toHaveCount(0);
+  /* The paper is all it is asked, and the paper decides every millimetre —
+     and the board brings no settings column at all any more: its look is set
+     in the Zeile over the material, the sheet is only looked at. */
+  await expect(page.locator('.print-view__panel')).toHaveCount(0);
   /* Green until it is told otherwise: a light page behind the board, as a
      Tafel's colour, the cart and the name in a darker green. The board's
      page only: the places and the cards stay white. */
   const bg = (at: number) => sheets.nth(at).evaluate((one) => getComputedStyle(one).backgroundColor);
   const stroke = () => sheet.locator('.ps-cart__art').evaluate((art) => getComputedStyle(art).stroke);
-  await expect(page.getByLabel('Seitenfarbe')).toBeChecked();
   expect(await bg(1)).toBe('rgb(217, 235, 211)');
   expect(await bg(2)).toBe('rgb(255, 255, 255)');
   expect(await stroke()).toBe('rgb(61, 125, 58)');
   await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(61, 125, 58)');
   expect(await sheets.nth(1).locator('.ps-zone').first()
     .evaluate((zone) => getComputedStyle(zone).backgroundColor)).toBe('rgb(255, 255, 255)');
-  await page.getByLabel('Farbe des Wagens').fill('#2c66c8');
-  await expect.poll(stroke).toBe('rgb(44, 102, 200)');
-  await page.getByLabel('Seitenfarbe').uncheck();
+
+  /* The Materialfarbe is set at the title and reaches the cart with it; the
+     page's ground is its own row under „Seite", „keine" first. All of it in
+     the Zeile over the material, and the open preview follows. */
+  await showMaterial(page);
+  await openDing(page, 'Seite');
+  await page.getByRole('button', { name: 'Farbe Blau', exact: true }).click();
+  await showSheet(page);
+  await expect.poll(stroke).toBe('rgb(63, 136, 224)');
+  await expect(sheets.nth(1).locator('.ps-title')).toHaveCSS('color', 'rgb(63, 136, 224)');
+  await showMaterial(page);
+  await openDing(page, 'Seite');
+  await page.getByRole('button', { name: 'Seitenfarbe: Kein' }).click();
+  await showSheet(page);
   await expect.poll(() => bg(1)).toBe('rgb(255, 255, 255)');
-  await page.getByLabel('Seitenfarbe').check();
-  await expect.poll(() => bg(1)).toBe('rgb(217, 235, 211)');
+  await showMaterial(page);
+  await openDing(page, 'Seite');
+  await page.getByRole('button', { name: 'Seitenfarbe Grün' }).click();
+  await showSheet(page);
+  await expect.poll(() => bg(1)).toBe('rgb(216, 242, 210)');
 
   // Its name over the board is set as everywhere: size, colour, a line.
+  await showMaterial(page);
+  await openDing(page, 'Seite');
   await page.getByLabel('Linie darunter').check();
-  await page.getByLabel('Schriftgröße des Titels').fill('20');
+  await page.getByLabel('Schriftgröße', { exact: true }).fill('20');
+  await page.getByLabel('Schriftgröße', { exact: true }).press('Tab');
+  await showSheet(page);
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
-  await panel.getByRole('button', { name: 'A3', exact: true }).click();
+  /* The paper is picked in the overlay's head — the pill that names it. */
+  const paper = async (name: string) => {
+    const pop = page.locator('.paper-pick__pop');
+    if (!(await pop.isVisible().catch(() => false))) {
+      await page.getByRole('button', { name: 'Papier wählen' }).click();
+    }
+    await pop.getByRole('button', { name, exact: true }).click();
+  };
+  await paper('A3');
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
-  await panel.getByRole('button', { name: 'A4', exact: true }).click();
+  await paper('A4');
+  /* NaN until the replanned sheet is back, so a poll simply asks again. */
   const symbolMm = () => sheet.locator('.ps-cut .ps-card__img').first()
-    .evaluate((img) => img.getBoundingClientRect().width / img.closest<HTMLElement>('.ps-sheet')!.getBoundingClientRect().width
-      * img.closest<HTMLElement>('.ps-sheet')!.offsetWidth * 25.4 / 96);
-  expect(await symbolMm()).toBeCloseTo(20, 0);
+    .evaluate((img) => {
+      const whole = img.closest<HTMLElement>('.ps-sheet');
+      return whole ? img.getBoundingClientRect().width / whole.getBoundingClientRect().width * whole.offsetWidth * 25.4 / 96 : Number.NaN;
+    });
+  await expect.poll(symbolMm).toBeCloseTo(20, 0);
   // A card to cut is square, its cut line included: the dashed border used to sit outside the padding top and bottom only.
   const card = await sheet.locator('.ps-cut .ps-card').first().evaluate((node) => ({ w: node.getBoundingClientRect().width, h: node.getBoundingClientRect().height }));
   expect(card.h).toBeCloseTo(card.w, 0);
-  for (const [paper, mm] of [['A3', 28], ['A5', 14]] as const) {
-    await panel.getByRole('button', { name: paper, exact: true }).click();
+  for (const [paperName, mm] of [['A3', 28], ['A5', 14]] as const) {
+    await paper(paperName);
     await expect.poll(symbolMm).toBeCloseTo(mm, 0);
     // Still the guide and three sheets: nothing outgrows its page on any paper.
     await expect(sheets).toHaveCount(4);
@@ -198,7 +228,9 @@ test('a long Einkaufsliste names every sheet of places, and packs its cards', as
   }
   await showSheet(page);
   const sheets = page.locator('.preview-frame .ps-page');
-  await page.locator('.print-view__panel').getByRole('button', { name: 'A5', exact: true }).click();
+  /* The paper is picked at the head's pill, docked sheet or not. */
+  await page.getByRole('button', { name: 'Papier wählen' }).click();
+  await page.locator('.paper-pick__pop').getByRole('button', { name: 'A5', exact: true }).click();
   // On A5 the places take two sheets, and both carry the name.
   const placed = sheets.filter({ has: page.locator('.ps-place') });
   await expect(placed).toHaveCount(2);
@@ -258,6 +290,8 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // A smaller grid keeps what still has a place. Both cards are in the first
   // row, so 3 × 2 keeps them and the twelve fields become six. The grid is the
   // Tafel's, set over it: typed, or a step at a time.
+  /* Der Standard ist quer; die Rechnung hier ist die des hohen Blatts. */
+  await pickPaper(page, 'Hoch');
   await page.getByLabel('Spalten').fill('3');
   await page.getByRole('button', { name: 'Eine Zeile weniger' }).click();
   await expect(cells).toHaveCount(6);
@@ -265,8 +299,8 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // A field has its paper's shape: three across and two down on A4 upright
   // is a field taller than wide, here as on the sheet.
   await expect(page.locator('.board-head')).toContainText('Feld 63,3 × 135,8 mm');
-  const shape = (await cells.first().boundingBox())!;
-  expect(shape.height / shape.width).toBeCloseTo(135.8 / 63.3, 1);
+  /* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
+     quadratisch, die Proportionen stehen im Readout und auf dem Papier. */
   // Marking a field does not move the Tafel: the panel is held at the foot of the window.
   const before = (await page.locator('.board').boundingBox())!.y;
   await cells.nth(4).click({ position: { x: 4, y: 4 } });
@@ -300,8 +334,8 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.width).toBe(full!.width);
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
-  await expect(page.getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feldgröße: 63 × 136 mm.')).toBeVisible();
+  await expect(page.locator('.print-dock').getByLabel('Spalten')).toHaveCount(0);
+  await expect(page.getByText('Feld 63 × 136 mm').first()).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every
@@ -312,20 +346,24 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   /* A free field prints as nothing until asked; asked, each free field —
      and only those — gets its dashed place, inside the air as a frame is. */
   await expect(sheet.locator('.ps-card__place')).toHaveCount(0);
+  await openDing(page, 'Tafel');
   await page.getByLabel('Leere Felder gestrichelt drucken').check();
   await expect(sheet.locator('.ps-tafel .ps-card--empty .ps-card__place')).toHaveCount(4);
   await expect(sheet.locator('.ps-card__place')).toHaveCount(4);
   // And it is this Tafel's: it is still there when the Tafel is opened again.
   await untilKept(page, 'markFreeFields', true);
+  await untilKept(page, 'markFreeFields', true);
   await page.reload();
   await showSheet(page);
+  await openDing(page, 'Tafel');
   await expect(page.getByLabel('Leere Felder gestrichelt drucken')).toBeChecked();
   await expect(page.locator('.preview-frame .ps-card__place')).toHaveCount(4);
   // The frame's thickness, corners and colour stand right under its check, not under this one.
+  await openDing(page, 'Symbol');
   await page.getByLabel('Rahmen um jede Karte').check();
-  const colour = await page.locator('#opt-border-color').boundingBox();
-  const dashed = await page.getByLabel('Leere Felder gestrichelt drucken').boundingBox();
-  expect(colour!.y).toBeLessThan(dashed!.y);
+  await expect(page.locator('.ding__dep').getByRole('group', { name: 'Farbe' })).toBeVisible();
+  await openDing(page, 'Tafel');
+  await expect(page.getByRole('group', { name: 'Farbe' })).toHaveCount(0);
 });
 
 /**
@@ -376,8 +414,9 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   }
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
 
-  // Back out by dragging onto the tray, and a swap between two full fields.
-  await cells.nth(0).locator('.board-card').dragTo(page.locator('.tray'));
+  // Back out with the card's ↓ — an empty tray is not on screen to drop on —
+  // and a swap between two full fields. The tray returns with its first word.
+  await cells.nth(0).locator('.board-card__move').click();
   await expect(page.locator('.tray .word__name')).toHaveText(['Wort1']);
   await cells.nth(2).locator('.board-card').dragTo(cells.nth(4));
   await expect(cells.nth(2).locator('.word__name')).toHaveText('Wort5');
@@ -594,13 +633,16 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   // The card stays white on its colour.
   await expect(printed.nth(0).locator('.ps-card__frame')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   // The air around a card is named as air, comes from the field, and is the Tafel's own once set.
+  await openDing(page, 'Symbol');
   const airInput = page.getByLabel('Rand', { exact: true });
   await expect(airInput).toHaveValue('5');
   await airInput.fill('3');
   await expect(printed.nth(0).locator('.ps-block')).toHaveCount(1);
   // Kept by the Tafel: there after the page is loaded again.
+  await untilKept(page, 'cutMarginMm', 3);
   await page.reload();
   await showSheet(page);
+  await openDing(page, 'Symbol');
   await expect(page.getByLabel('Rand', { exact: true })).toHaveValue('3');
 });
 });
@@ -690,6 +732,7 @@ test('a Rezept takes each part where it stands, and prints them in order', async
   await expect(sheet.locator('.ps-page')).toHaveCount(1);
 
   // Bigger pictures: the Schritte go on over the page at the size asked for.
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('60');
   await expect(sheet.locator('.ps-page')).toHaveCount(2);
   await expect(sheet.locator('.ps-page').nth(1).locator('.ps-recipe-step')).not.toHaveCount(0);
@@ -697,15 +740,13 @@ test('a Rezept takes each part where it stands, and prints them in order', async
     parseFloat(getComputedStyle(node).width));
   expect(img).toBeCloseTo(60 * 96 / 25.4, 0);
 
-  // The name goes along with the Rezept's colour until it is given its own,
-  // and it can be left off, as on every other template.
+  // One colour for the strong things: picked at the title, it reaches the
+  // Rezept's headings with it. And the title can be left off, as everywhere.
   const title = sheet.locator('.ps-title');
   await expect(title).toHaveCSS('border-bottom-style', 'solid');
-  await page.getByLabel('Farbe', { exact: true }).fill('#118833');
+  await openDing(page, 'Seite');
+  await page.getByLabel('Eigene Farbe: Farbe').fill('#118833');
   await expect(title).toHaveCSS('color', 'rgb(17, 136, 51)');
-  await page.getByLabel('Farbe des Titels').fill('#aa0000');
-  await page.getByLabel('Farbe', { exact: true }).fill('#118834');
-  await expect(title).toHaveCSS('color', 'rgb(170, 0, 0)');
   await page.getByLabel('Titel drucken').uncheck();
   await expect(title).toHaveCount(0);
 });
@@ -753,17 +794,17 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
   // The paper: A5 across, kept by the Rezept. Nothing on it is cut apart, so
   // the size names no card to cut out.
   await showSheet(page);
+  await openDing(page, 'Symbol');
   await expect(page.getByLabel('Symbolgröße')).toBeVisible();
   await expect(page.getByText('Karte zum Ausschneiden')).toHaveCount(0);
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
-  await page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }).click();
+  await pickPaper(page, 'A5');
+  await pickPaper(page, 'Quer');
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
     .toContain('size: 210mm 148mm');
   await untilKept(page, 'orientation', 'landscape');
   await page.reload();
   await showSheet(page);
-  await expect(page.locator('.print-view__panel').getByRole('button', { name: 'Quer', exact: true }))
-    .toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('A5 quer');
 });
 
 /**
@@ -790,11 +831,13 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
   expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
     .toBe('rgb(255, 255, 255)');
 
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').uncheck();
   await expect(sheet.locator('.ps-title')).toHaveCount(0);
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
 
   // Taken out again in the picker, the name prints alone.
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
   await page.getByRole('button', { name: 'Bild zum Titel ändern' }).click();
@@ -825,6 +868,7 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   // A Tafel prints no name until asked; the picture comes and goes with it.
   // One sheet, so it is asked whether, not where.
   await showSheet(page);
+  await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await expect(page.getByRole('button', { name: 'Jede Seite', exact: true })).toHaveCount(0);
   await showMaterial(page);
@@ -853,7 +897,8 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   const background = () => sheet.locator('.ps-page').first().evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(await background()).toBe('rgb(255, 255, 255)');
 
-  await page.getByLabel('Seitenfarbe').check();
+  await openDing(page, 'Seite');
+  await page.getByLabel('Eigene Farbe: Seitenfarbe').fill('#a9cbec');
   await expect.poll(background).toBe('rgb(169, 203, 236)');
   // The printer's copy too, not only the preview.
   expect(await page.locator('#print-root .ps-sheet').evaluate((el) => el.style.getPropertyValue('--page-bg')))
@@ -865,7 +910,8 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   expect(await page.locator('#print-root .ps-page').first().evaluate((el) => el.classList.contains('ps-page--coloured')))
     .toBe(true);
 
-  await page.getByLabel('Seitenfarbe').uncheck();
+  await openDing(page, 'Seite');
+  await page.getByRole('button', { name: 'Seitenfarbe: Kein' }).click();
   await expect.poll(background).toBe('rgb(255, 255, 255)');
   await expect.poll(pageRule).not.toContain('margin: 0;');
 });
@@ -964,33 +1010,38 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await expect(sheet.locator('.ps-song-times')).toHaveCount(0);
 
   // What is on the sheet is the Lied's „Gestaltung", set once for every paper.
-  await openLook(page);
+  await openDing(page, 'Lied');
   await page.getByLabel('Wiederholte Zeilen nur einmal, mit Anzahl (2×, 3× …)').check();
   await expect(sheet.locator('.ps-song-times')).toHaveText(['2×', '2×']);
   await expect(sheet.locator('.ps-song-line')).toHaveCount(13);
 
   // The Refrain written out where it is first sung, a reference after that.
+  await openDing(page, 'Lied');
   await page.getByLabel('Refrain nur einmal ausschreiben, danach „↻ Refrain“').check();
   await expect(sheet.locator('.ps-song-part--refrain')).toHaveCount(1);
   await expect(sheet.locator('.ps-song-again')).toHaveText(['↻Refrain', '↻Refrain']);
+  await openDing(page, 'Lied');
   await page.getByLabel('Refrain nur einmal ausschreiben, danach „↻ Refrain“').uncheck();
   await expect(sheet.locator('.ps-song-part--refrain')).toHaveCount(3);
 
+  await openDing(page, 'Lied');
   await page.getByLabel('Überschriften drucken (Strophe, Refrain)').uncheck();
   await expect(sheet.locator('.ps-song-head')).toHaveCount(0);
 
   // The line as written, above its pictures, as a strip has it: off until
   // asked for, then on, and off again.
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
+  await openDing(page, 'Lied');
   await page.getByLabel('Satztext drucken').check();
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(13);
+  await openDing(page, 'Lied');
   await page.getByLabel('Satztext drucken').uncheck();
   await expect(sheet.locator('.ps-song-part .ps-caption')).toHaveCount(0);
 
   // A song sheet is printed on A5 as often as on A4: the paper is the Lied's to choose.
   await backToPrint(page);
   const pages = await sheet.locator('.ps-page').count();
-  await page.getByRole('button', { name: 'A5', exact: true }).click();
+  await pickPaper(page, 'A5');
   await expect.poll(() => sheet.locator('.ps-page').count()).toBeGreaterThan(pages);
   await showMaterial(page);
 
@@ -1097,14 +1148,18 @@ test('the copyright notice stays ticked in a Lied while other settings change', 
   await showSheet(page);
 
   const notice = page.getByLabel('Copyright-Hinweis drucken');
+  await openDing(page, 'Seite');
   await notice.check();
-  await page.getByRole('button', { name: 'Quer' }).click();
+  await pickPaper(page, 'Quer');
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('20');
+  await openDing(page, 'Seite');
   await expect(notice).toBeChecked();
   await expect(page.locator('.print-view .ps-attribution').first()).toContainText('METACOM Symbole © Annette Kitzinger');
 
   await page.reload();
   await showSheet(page);
+  await openDing(page, 'Seite');
   await expect(page.getByLabel('Copyright-Hinweis drucken')).toBeChecked();
 });
 
@@ -1121,6 +1176,7 @@ test('a Strophe too tall for one page goes on over the next, in whole lines', as
   await page.getByRole('button', { name: 'Übersetzen' }).click();
   await expect(page.locator('.song__head h3')).toHaveText(['Strophe 1']);
   await showSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('30');
 
   const sheet = page.locator('.preview-frame');
@@ -1231,6 +1287,7 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await expect(sheet.locator('.ps-talk-cut .ps-talk__word')).toHaveText([...more, 'fertig']);
 
   // The footer as everywhere — on the book's pages only.
+  await openDing(page, 'Seite');
   await page.getByLabel('Seitenzahlen drucken').check();
   await expect(sheet.locator('.ps-page__n')).toHaveText(['Seite 1 von 3', 'Seite 2 von 3', 'Seite 3 von 3']);
   expect(await sheet.locator('.ps-page').evaluateAll((all) => all
@@ -1248,8 +1305,8 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
 /*
  * Wortkarten are typed as a list: a comma, a semicolon or a new line makes
  * the next card, a space does not. The box says what Enter will make before
- * it is pressed, stands under the head in „Bearbeiten" and nowhere in
- * „Drucken", and the title is the heading under it.
+ * it is pressed, stands on top of the page in „Bearbeiten" and nowhere in
+ * „Drucken"; the head follows it, and the title heads the material's panel.
  */
 test('Wortkarten take a list, and say which cards it makes before Enter', async ({ page }) => {
   await pickTemplate(page, /^Wortkarten/);
@@ -1261,19 +1318,19 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.locator('.words .word:not(.word--add) .word__name'))
     .toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch'], { useInnerText: true });
 
-  // Head, box, title, cards — in that order on the page.
+  // Box, head, title, wall — in that order, once there is something to head.
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
-  expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
-  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  expect(await top('.composer')).toBeLessThan(await top('.collection-head'));
+  expect(await top('.collection-head')).toBeLessThan(await top('.title-line'));
   expect(await top('.title-line')).toBeLessThan(await top('.words'));
 
   await showSheet(page);
-  await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
-  await expect(page.locator('.title-line')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.print-dock .title-line')).toHaveCount(0);
 });
 
-/* An Einkaufsliste is typed as Wortkarten are: under its head, a list. */
-test('an Einkaufsliste takes a list under its head, its title under the box', async ({ page }) => {
+/* An Einkaufsliste is typed as Wortkarten are: the box on top, a list. */
+test('an Einkaufsliste takes a list in the box on top, its title over the cards', async ({ page }) => {
   await pickTemplate(page, /^Einkaufsliste/);
   const box = page.getByLabel('Wörter hinzufügen');
   await box.fill('Milch, Brot, Äpfel');
@@ -1281,10 +1338,10 @@ test('an Einkaufsliste takes a list under its head, its title under the box', as
   await box.press('Enter');
   await expect(page.locator('.words .word:not(.word--add)')).toHaveCount(3);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
-  expect(await top('.collection-head')).toBeLessThan(await top('.composer'));
-  expect(await top('.composer')).toBeLessThan(await top('.title-line'));
+  expect(await top('.composer')).toBeLessThan(await top('.collection-head'));
+  expect(await top('.collection-head')).toBeLessThan(await top('.title-line'));
   await showSheet(page);
-  await expect(page.getByLabel('Wörter hinzufügen')).toHaveCount(0);
+  await expect(page.locator('.print-dock').getByLabel('Wörter hinzufügen')).toHaveCount(0);
 });
 
 /*
@@ -1308,8 +1365,8 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
   await expect(cells.nth(2).locator('.word__name')).toHaveText('Banane');
   await expect(cells.nth(0)).toHaveClass(/cell--free/);
-  expect(await top('.board-head')).toBeLessThan(await top('.title-line'));
   expect(await top('.title-line')).toBeLessThan(await top('.board'));
+  expect(await top('.board')).toBeLessThan(await top('.board-head'));
 
   const box = page.getByLabel('Wörter hinzufügen');
   await box.fill('Kiwi');

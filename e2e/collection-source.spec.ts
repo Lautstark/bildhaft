@@ -120,6 +120,8 @@ test('a Sammlung that answered for itself keeps its source when the default move
   await expect(credit(page)).toHaveCount(0);
 
   // A second Sammlung, told to use METACOM itself rather than by inheritance.
+  // The first gets a name first: untouched, it would be reused instead.
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Erste');
   await newCollection(page, 'Zweite');
   await openSourceSheet(page);
   await sheetRow(page, 'metacom').click();

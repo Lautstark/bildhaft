@@ -87,6 +87,12 @@ export interface PrintOffer {
 export interface Template {
   /** Holds one-word cards: the wall of cards, the tray, the counter that says „Karten". */
   cards: boolean;
+  /**
+   * Sets its look in Bearbeiten, in the Zeile over the material (Seite ·
+   * Titel · Symbol), so the print preview shows no settings column for it.
+   * Set template by template as each one moves (2026-10-22).
+   */
+  zeileInEdit?: true;
   /** What a Sammlung of this template prints with until it sets something else. */
   defaults?(print: PrintSettings, board: Grid | null): Partial<PrintSettings>;
   /** What it always prints with, whatever was set: worked out from the rest, so it follows it. */
@@ -138,6 +144,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      when a Satzstreifen could be printed as one — opens as strips again. */
   satzstreifen: {
     cards: false,
+    zeileInEdit: true,
     fixed: () => ({ layout: 'strip' }),
     offers: () => ({
       ...BASE, size: { kind: 'symbol', max: 120, fallback: 40, note: null }, margin: 'strip',
@@ -150,6 +157,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      template's setting arriving in this one. */
   wortkarten: {
     cards: true,
+    zeileInEdit: true,
     fixed: () => ({ layout: 'sheet' }),
     offers: () => ({ ...BASE, size: { kind: 'cards' }, margin: 'cut', cutLines: true }),
   },
@@ -166,11 +174,13 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      sheet, so its title is over that sheet and nowhere else. */
   tafel: {
     cards: true,
-    defaults: (print, board) => {
+    zeileInEdit: true,
+    defaults: (_print, board) => {
       const grid = board ?? boardOf({});
-      const page = printableArea(print.paper, print.orientation);
+      const page = printableArea('a4', 'landscape');
       const field = Math.min(page.width / grid.cols, page.height / grid.rows);
-      return { cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false };
+      /* Quer, wie eine Tafel hängt: breiter als hoch (2026-10-23, ihr Standard). */
+      return { paper: 'a4', orientation: 'landscape', cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false };
     },
     fixed: (_settings, board) => {
       const grid = board ?? boardOf({});
@@ -192,17 +202,23 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      always on — round the cards to cut, which are the only thing cut. */
   einkaufsliste: {
     cards: true,
+    zeileInEdit: true,
     defaults: () => ({
       paper: 'a4', ...HEADED, titleColour: SHOP_GREEN,
       showGuide: true, pageColour: SHOP_PAGE, cartColour: SHOP_GREEN,
+      /* Starts as it always printed — but these are choices now, made in the
+         Zeile like everywhere else, not facts of the board: a frame, a ground,
+         the cut lines. The word is not among them: the board writes it on the
+         place itself and leaves the cards to cut wordless, so the game of
+         matching card to place works — a fact of the material, not a setting. */
+      cardBorderMm: 0, cardBackground: null, showCutLines: true,
     }),
     fixed: (settings) => {
       const k = SHOPPING_SCALE[settings.paper];
       return {
         layout: 'einkaufsliste', orientation: 'landscape',
         symbolSizeMm: Math.round(20 * k), cutMarginMm: Math.round(3 * k * 2) / 2,
-        showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2,
-        cardBorderMm: 0, cardBackground: null, showCutLines: true, titleEvery: false,
+        showLabel: true, labelSizePt: Math.round(11 * k * 2) / 2, titleEvery: false,
       };
     },
     offers: () => ({ paper: 'size', title: 'once', page: true, pageNumbers: true, cart: true, guide: true }),
@@ -215,6 +231,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      needs bigger pictures gets a second page rather than smaller ones. */
   rezept: {
     cards: false,
+    zeileInEdit: true,
     defaults: () => ({
       paper: 'a4', orientation: 'portrait', symbolSizeMm: 20, cutMarginMm: 1.5,
       showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
@@ -236,6 +253,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      it, or a 40 mm strip's frame would be the next song's. */
   lied: {
     cards: false,
+    zeileInEdit: true,
     defaults: () => ({
       paper: 'a4', orientation: 'portrait', symbolSizeMm: 16, cutMarginMm: 1,
       showLabel: true, labelPosition: 'below', labelSizePt: 9, cardBorderMm: 0, cardBackground: null,
@@ -274,8 +292,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      numbers as everywhere, off until asked for. */
   plauderbuch: {
     cards: false,
-    defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false }),
-    fixed: () => ({ layout: 'plauderbuch', showCollectionTitle: false }),
-    offers: () => ({ paper: true, pageNumbers: true }),
+    zeileInEdit: true,
+    defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false, ...HEADED }),
+    fixed: () => ({ layout: 'plauderbuch' }),
+    offers: () => ({ paper: true, pageNumbers: true, title: 'once' }),
   },
 };

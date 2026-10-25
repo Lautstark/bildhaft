@@ -19,6 +19,7 @@
   import Composer from './ui/Composer.svelte';
   import PrintView from './ui/PrintView.svelte';
   import TitleLine from './ui/TitleLine.svelte';
+  import SongIntake from './ui/SongIntake.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
   import Banners from './app/Banners.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
@@ -68,8 +69,8 @@
      typed there waits in its tray. One template at a time (2026-10-22). */
   const BOX_UNDER_HEAD: CollectionKind[] = ['satzstreifen', 'wortkarten', 'einkaufsliste', 'tafel'];
 
-  /** „Drucken" is shown only once there is something to print. */
-  let printing = $derived(s.view === 'print' && contentOf(s.sentences).length > 0);
+  /** The sheet beside the material, once there is something to print. */
+  let hasSheet = $derived(contentOf(s.sentences).length > 0);
 
   $effect(() => useToast(toast));
 
@@ -107,7 +108,37 @@
     if (s.isMobile) s.mobileNavOpen = !s.mobileNavOpen;
     else persistSettings({ ...s.settings, sidebarOpen: !s.settings.sidebarOpen });
   }
+
+  /*
+   * Folded or open, kept in this browser: the sheet beside the material is a
+   * fact about this screen, not about any Sammlung. Folded it stays alive as
+   * a thumbnail of itself — the same preview, just narrow.
+   */
+  const DOCK_MODE = 'bildhaft.preview';
+  let mini = $state(false);
+  try { mini = localStorage.getItem(DOCK_MODE) === 'mini'; } catch { /* a private window keeps nothing */ }
+  function fold(next: boolean): void {
+    mini = next;
+    try { localStorage.setItem(DOCK_MODE, next ? 'mini' : 'open'); } catch { /* a private window keeps nothing */ }
+  }
+
+  /*
+   * The large preview: the narrow panel pressed anywhere on its pages lays
+   * the sheet out big, over everything, until Esc, its × or the dimmed edge.
+   * A zoom, not a place to be — so it is not kept, and a switch of material
+   * closes it.
+   */
+  let big = $state(false);
+  $effect(() => { void s.activeId; big = false; });
+  $effect(() => {
+    if (!big) return;
+    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') big = false; };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  });
 </script>
+
+
 
 {#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} drawer={s.mobileNavOpen} {collapsed} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
   The page behind the drawer, and the way out of it. Always in the markup now
@@ -125,7 +156,7 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
+--><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}{hasSheet ? ' main__inner--printing' : ''}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
   Two views of the open Sammlung, switched in its head. The box to type into
   and the head stay where they are in both; only what is under them changes:
   the material („Bearbeiten"), or the sheet with its pages and its settings
@@ -140,7 +171,15 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead />{#if !printing}<Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{/if}{:else if kind() === 'lied'}<CollectionHead />{#if !printing}<TitleLine />{/if}{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<CollectionHead />{:else if kind() === 'spiel'}<CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<Composer /><CollectionHead />{:else if kind() === 'lied'}{#if !hasSheet}<SongIntake />{/if}<CollectionHead /><TitleLine />{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<CollectionHead />{:else if kind() === 'spiel'}<CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if s.choosing === s.activeId}<Material />{:else}<!--
+  Head and box keep the page's whole width; what is split is the work under
+  them. Left the material with its Zeile, right the sheet as it prints —
+  there by default, scrolled like a stack of paper, folded to a thumbnail of
+  itself when the work needs the room. Its left edge drags it wider.
+--><div class="work-split"><div class="work-main">{#if (BOX_UNDER_HEAD.includes(kind()) && kind() !== 'tafel') || kind() === 'plauderbuch' || kind() === 'spiel'}<TitleLine />{/if}<Material /></div>{#if hasSheet}<!--
+  svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions
+  (der Klick auf den abgedunkelten Rand ist ein zweiter Weg hinaus; Esc und das ✕ sind die ersten)
+--><aside class="print-dock{mini ? ' print-dock--mini' : ''}{big ? ' print-dock--big' : ''}" aria-label={t('ui.view_print')} onclick={(event) => { if (big && event.target === event.currentTarget) big = false; }}>{#if mini}<button class="print-dock__unfold" type="button" aria-label={t('ui.preview_unfold')} title={t('ui.preview_unfold')} onclick={() => fold(false)}>«</button>{/if}<PrintView mini={mini && !big} {big} onFold={() => fold(true)} onZoom={() => { big = true; }} onClose={() => { big = false; }} />{#if mini && !big}<button class="print-dock__peek" type="button" aria-label={t('ui.preview_unfold')} onclick={() => fold(false)}></button>{/if}</aside>{/if}</div>{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

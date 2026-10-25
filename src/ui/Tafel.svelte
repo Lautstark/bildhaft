@@ -41,23 +41,9 @@
 
   let { provider }: { provider: ProviderId } = $props();
 
-  /**
-   * The eight hues a group can be, each in two strengths: `frame` strong enough
-   * to be a line, `fill` pale enough for a white card to stay a white card on
-   * it, and for the toner. Frame and fill are picked apart — a yellow frame on
-   * a blue ground is allowed — but the hues are the same eight in both rows,
-   * so that the two rows read as one palette.
-   */
-  const ZONE_COLOURS: { frame: string; fill: string; name: string }[] = [
-    { frame: '#f0b323', fill: '#fff1b3', name: 'ui.zone_yellow' },
-    { frame: '#4caf50', fill: '#d8f2d2', name: 'ui.zone_green' },
-    { frame: '#3f88e0', fill: '#d8e9fc', name: 'ui.zone_blue' },
-    { frame: '#e35d8f', fill: '#fddfe9', name: 'ui.zone_pink' },
-    { frame: '#f0862b', fill: '#ffe3c9', name: 'ui.zone_orange' },
-    { frame: '#9366d6', fill: '#eadffb', name: 'ui.zone_purple' },
-    { frame: '#23ada0', fill: '#d3f2ee', name: 'ui.zone_teal' },
-    { frame: '#dd4a44', fill: '#fbdad8', name: 'ui.zone_red' },
-  ];
+  /* The eight hues of every palette in the app — moved to ui/palette.ts so
+     the Zeile over a material and a Tafel's groups pick from one box. */
+  import { ZONE_COLOURS } from './palette.ts';
 
   const MIME = 'text/plain';
   /** How far the pointer has to travel before a press on the air is a frame and not a click. */
@@ -352,11 +338,6 @@
 </script>
 
 <!--
-  How many fields across and down, over the Tafel: the grid is the Tafel's,
-  and making it smaller takes cards off it, which is work on the material and
-  not on the paper. Beside it, how big a field comes out on the paper chosen
-  under „Drucken".
---><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}{#if field}<span class="board-head__size small faint">{t('ui.board_size', { w: mm(field.width), h: mm(field.height) })}</span>{/if}</div><!--
   The title under the grid's counters, as the heading of the Tafel itself.
 --><TitleLine />
 
@@ -408,5 +389,14 @@
   mind rather than a word, is one press further.
 -->{#if typingAt === index}<div class="cell__type"><input use:focus class="cell__input" type="text" bind:value={fieldText} placeholder={t('ui.board_type_placeholder')} aria-label={t('ui.board_type_here', { n: index + 1 })} disabled={s.busy} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void typeInto(index); } else if (event.key === 'Escape') { typingAt = null; fieldText = ''; } }} onblur={() => { if (!fieldText.trim()) typingAt = null; }} /><button class="linklike small" type="button" onpointerdown={(event) => event.preventDefault()} onclick={() => { typingAt = null; fieldText = ''; void handleNewCard(index); }}>{t('ui.board_pick_here')}</button></div>{:else}<button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => { fieldText = ''; typingAt = index; }}>+</button>{/if}{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>
 
-<!-- svelte-ignore a11y_no_static_element_interactions --><div class="tray" class:tray--over={overTray} ondragover={(event) => { over(event); overTray = true; }} ondragleave={() => { overTray = false; }} ondrop={(event) => drop(event, (id) => void writeBoard((one) => takeOff(one, id)))}><div class="tray__head"><b>{t('ui.board_tray')}</b><span class="small faint">{t('ui.board_tray_hint')}</span></div><div class="words tray__wall">{#each waiting as sentence (sentence.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === sentence.id} title={t('ui.board_drag_hint')} draggable="true" ondragstart={(event) => cardDragStart(event, sentence.id)} ondragend={clear}><WordCard {sentence} {provider} /><button class="board-card__move" type="button" aria-label={t('ui.board_put_on', { word: caption(sentence) })} disabled={free === -1} onclick={() => void writeBoard((one) => placeOn(one, sentence.id, firstFree(board)))}>↑</button></div>{/each}<button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div></div>
 {#if selected.size > 0}<div class="board-dock">{@render panel()}</div>{/if}
+{#if !board.cells.some(Boolean) && waiting.length === 0}<p class="empty-whisper" style="text-align:center;margin:2px 0 0">{t('ui.tafel_whisper')}</p>{/if}
+<!--
+  How many fields across and down, under the Tafel (2026-10-23, ihr Wunsch):
+  the grid speaks for itself, its counters follow it. Beside them, how big a
+  field comes out on the paper chosen in the panel.
+--><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}{#if field}<span class="board-head__size small faint">{t('ui.board_size', { w: mm(field.width), h: mm(field.height) })}</span>{/if}</div>
+<!--
+  Only once words wait: a board with room for everything has no tray, and
+  the way onto the board is the board itself (2026-10-23, ihr Wunsch).
+-->{#if waiting.length > 0}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="tray" class:tray--over={overTray} ondragover={(event) => { over(event); overTray = true; }} ondragleave={() => { overTray = false; }} ondrop={(event) => drop(event, (id) => void writeBoard((one) => takeOff(one, id)))}><div class="tray__head"><b>{t('ui.board_tray')}</b><span class="small faint">{t('ui.board_tray_hint')}</span></div><div class="words tray__wall">{#each waiting as sentence (sentence.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === sentence.id} title={t('ui.board_drag_hint')} draggable="true" ondragstart={(event) => cardDragStart(event, sentence.id)} ondragend={clear}><WordCard {sentence} {provider} /><button class="board-card__move" type="button" aria-label={t('ui.board_put_on', { word: caption(sentence) })} disabled={free === -1} onclick={() => void writeBoard((one) => placeOn(one, sentence.id, firstFree(board)))}>↑</button></div>{/each}<button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div></div>{/if}

@@ -124,7 +124,7 @@ export class Printing {
    * frame as high as the page then is — up to `maxHeight` — so a page lying
    * on its side leaves no empty band under it, as in the column.
    */
-  fit: { kind: 'frame' } | { kind: 'width'; maxHeight: number } = { kind: 'frame' };
+  fit: { kind: 'frame' } | { kind: 'width'; maxHeight: number } | { kind: 'flow' } = { kind: 'frame' };
   preparing = $state(false);
   /**
    * What the scissors will leave, said where the size is set.
@@ -186,6 +186,17 @@ export class Printing {
    */
   update(options: PrintOptions): void {
     this.options = { ...options, settings: this.settings };
+    window.setTimeout(() => this.replan());
+  }
+
+  /**
+   * Settings written somewhere other than this preview while it is open —
+   * the paper pill in the overlay's head, the Zeile over the material.
+   * Adopted, not echoed back: `onChange` is for edits made here.
+   */
+  adopt(settings: PrintSettings): void {
+    this.settings = settings;
+    this.options = { ...this.options, settings };
     window.setTimeout(() => this.replan());
   }
 
@@ -264,7 +275,7 @@ export class Printing {
     /* On a Tafel nothing is cut and in a strip the symbols stand side by
        side: what is measured there is a field, not a card. */
     this.cardSize = t(this.options.board || this.options.kind === 'satzstreifen' ? 'ui.field_size' : 'ui.card_to_cut')
-      + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm.`;
+      + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm`;
   }
 
   /**
@@ -315,7 +326,12 @@ export class Printing {
     // The whole sheet, margin included — which is what a page box in the preview is.
     const pageHeight = paperSize(this.settings.paper, this.settings.orientation).height * PX_PER_MM;
     let scale: number;
-    if (this.fit.kind === 'width') {
+    if (this.fit.kind === 'flow') {
+      /* Every page below the one before, at the column's width: the frame
+         takes the whole scaled stack and the column around it scrolls. */
+      scale = Math.min(1, this.frame.clientWidth / sheet.offsetWidth);
+      this.frame.style.height = '';
+    } else if (this.fit.kind === 'width') {
       scale = Math.min(1, this.frame.clientWidth / sheet.offsetWidth, this.fit.maxHeight / pageHeight);
       this.frame.style.height = `${Math.ceil(pageHeight * scale)}px`;
     } else {

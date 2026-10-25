@@ -4,7 +4,7 @@ import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { resolveSlotsForProvider } from '../core/match.ts';
 import { withTimeout } from '../core/timeout.ts';
 import {
-  clearEverything, createCollection, deleteCollectionDeep,
+  clearEverything, createCollection, defaultCollectionName, deleteCollectionDeep,
   isWriting, mark, writtenSince,
   libraryTotals, listCollections, listOverrides, listSentences, overrideMap,
   putSentence, saveCollectionProvider, saveSettings, searchSentences,
@@ -15,6 +15,7 @@ import { LANG, t } from '../i18n/index.ts';
 import { openSheet } from '@lautstark/design/svelte/sheet';
 import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
+import { pagesOf } from '../core/talk.ts';
 import { activeCollection, providerId, s } from './state.svelte.ts';
 import { notify } from './notify.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
@@ -36,30 +37,6 @@ const keepUnwritten = <T extends { id: string }>(held: T[], since: number) => (f
 
 /** Which Sammlung is open, what the sidebar lists, and what happens to a whole one. */
 
-/*
- * Which view each Sammlung was left in — its material or its sheet — kept in
- * this browser, not on the Sammlung. Written to the Sammlung it would stamp it
- * as worked on at every switch and move it up the sidebar; and how somebody
- * last looked at a Sammlung is this screen's business, not the folder's.
- */
-const VIEWS = 'bildhaft.views';
-
-function readViews(): Record<string, 'edit' | 'print'> {
-  try { return JSON.parse(localStorage.getItem(VIEWS) ?? '{}') as Record<string, 'edit' | 'print'>; } catch { return {}; }
-}
-
-export function rememberedView(id: string): 'edit' | 'print' {
-  return readViews()[id] === 'print' ? 'print' : 'edit';
-}
-
-/** Switches the open Sammlung's view and remembers it for the next visit. */
-export function setView(view: 'edit' | 'print'): void {
-  s.view = view;
-  const id = s.activeId;
-  if (!id) return;
-  try { localStorage.setItem(VIEWS, JSON.stringify({ ...readViews(), [id]: view })); } catch { /* a private window keeps nothing */ }
-}
-
 export function setActive(id: string): void {
   /* Nothing from the last one stays on screen.
    *
@@ -69,7 +46,7 @@ export function setActive(id: string): void {
    * be resolved. Until then the head carried the new name over the previous
    * Sammlung's rows, which does not read as "loading", it reads as those rows
    * being what this Sammlung contains. */
-  if (s.activeId !== id) { s.sentences = []; s.view = rememberedView(id); }
+  if (s.activeId !== id) s.sentences = [];
   s.activeId = id;
   /* The symbol search follows the Sammlung, not the page.
    *
@@ -213,6 +190,16 @@ export async function resolveOpen(): Promise<void> {
 /* ------------------------------------------------------------ actions --- */
 
 export async function handleNewCollection(): Promise<void> {
+  /* Ein unberührtes Material wird wiederverwendet statt verdoppelt: wer
+     „+ Neues Material" drückt, noch eins drückt und wieder eins, legt sonst
+     drei leere an (2026-10-25, ihr Wunsch). Unberührt heißt: nichts drin
+     und der Name noch der des Tages — ein getippter Name ist eine Absicht. */
+  const open = activeCollection();
+  if (open && s.sentences.length === 0 && open.name === defaultCollectionName()
+    && !pagesOf(open.talk).some((page) => page.question || page.sayings.length > 0)) {
+    s.choosing = open.id;
+    return;
+  }
   const created = await createCollection();
   await refreshCollections();
   s.sentences = [];

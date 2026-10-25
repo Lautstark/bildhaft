@@ -4,7 +4,7 @@ import {
   arasaacHeading, chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings,
   withoutDirectoryPicker,
 } from './metacom-folder.ts';
-import { addCards, showSheet, translate } from './helpers.ts';
+import { addCards, openDing, showSheet, translate } from './helpers.ts';
 
 /**
  * METACOM with a fake symbol folder.
@@ -667,6 +667,7 @@ test('the copyright notice is offered for METACOM, and only on request', async (
   // carries no obligation, so the foot of the sheet stays empty until asked.
   await expect(page.locator('#print-root .ps-attribution')).toHaveCount(0);
 
+  await openDing(page, 'Seite');
   await page.getByLabel('Copyright-Hinweis drucken').check();
   await expect(page.locator('#print-root .ps-attribution'))
     .toContainText('METACOM Symbole © Annette Kitzinger');
@@ -680,7 +681,7 @@ test('a credit line does not push itself onto a page of its own', async ({ page 
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await addCards(page, ['Ich', 'möchte', 'schlafen']);
 
-  await showSheet(page);
+  await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   /*
    * One card per page, so the last page is full whatever the sentence yielded.
@@ -689,7 +690,9 @@ test('a credit line does not push itself onto a page of its own', async ({ page 
    */
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('1');
+  await openDing(page, 'Seite');
   await page.getByLabel('Copyright-Hinweis drucken').check();
+  await showSheet(page);
 
   /*
    * Asked of the last page box rather than measured off the sheet in
@@ -698,6 +701,9 @@ test('a credit line does not push itself onto a page of its own', async ({ page 
    * nothing; what the reservation is for is that the notice shares that page
    * with a card instead of taking a sheet for itself.
    */
+  /* One card per page, three cards: waited for, so the box below is read
+     from the replanned sheet and not from the one before the change. */
+  await expect(page.locator('.preview-frame .ps-page')).toHaveCount(3);
   const seen = await page.locator('.preview-frame .ps-sheet').evaluate((sheet: HTMLElement) => {
     const pages = [...sheet.querySelectorAll<HTMLElement>('.ps-page')];
     const last = pages[pages.length - 1]!;
