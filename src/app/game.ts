@@ -1,6 +1,7 @@
 import type { Collection, GameBook, Sentence } from '../core/types.ts';
 import { rowsOfGame, withGameRow, withoutGameCard } from '../core/game.ts';
 import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
+import { addLines } from './composing.ts';
 import { emptySlot, openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
 
@@ -58,12 +59,34 @@ export async function addGameCard(where: 'fest' | 'karte', rowId?: string): Prom
   openPicker(sentence.id, slot.id);
 }
 
-/** A new empty row after the last. */
-export async function addGameRow(): Promise<void> {
+/**
+ * A row typed as a line, the way a Schritt is: every word becomes a card of
+ * its own, looked up as any word is — and the last word is laid, so „Schuh
+ * Socke" is already a game of Zuordnen. The rest stands fixed on the sheet.
+ * Null rows are never placed: a line whose words found nothing comes back
+ * into the field, the cards that did arrive taken out again.
+ */
+export async function addGameLine(text: string): Promise<string> {
   const open = activeCollection();
-  if (!open) return;
-  const book = rowsOfGame(open.game).length > 0 ? open.game! : { rows: [] };
-  await keepGame(open, { rows: [...book.rows, { id: newId(), fest: [], karten: [] }] });
+  if (!open) return text;
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  const made = new Map<string, Sentence[]>();
+  const left = await addLines(words.join('\n'), undefined, (line, sentence) => {
+    made.set(line, [...(made.get(line) ?? []), sentence]);
+  });
+  const ids = words.map((word) => made.get(word)?.shift()?.id).filter((id): id is string => Boolean(id));
+  if (left) {
+    for (const id of ids) await deleteSentence(id);
+    const gone = new Set(ids);
+    s.sentences = s.sentences.filter((sentence) => !gone.has(sentence.id));
+    return text;
+  }
+  const fresh = activeCollection();
+  if (!fresh || fresh.id !== open.id) return '';
+  const book = rowsOfGame(fresh.game).length > 0 ? fresh.game! : { rows: [] };
+  await keepGame(fresh, { rows: [...book.rows, { id: newId(), fest: ids.slice(0, -1), karten: ids.slice(-1) }] });
+  return '';
 }
 
 /** A row taken out of the book, with its pictures and its cards. */
