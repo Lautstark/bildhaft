@@ -5,7 +5,7 @@ import Printable from './Printable.svelte';
 import {
   applyPageSetup, bleeds, cardRows, copyrightFor, paperSize, planPages,
   printableArea, PX_PER_MM, sheetBlocks, songPieces, stripLines,
-  type Block, type PrintBoard, type PrintSong, type PrintTalk, type SheetPlan,
+  type Block, type PrintBoard, type PrintGame, type PrintSong, type PrintTalk, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { previewToPdf } from './pdf.ts';
@@ -37,6 +37,8 @@ export interface PrintOptions {
   song?: PrintSong | null;
   /** A Plauderbuch, when this is one: its pages in order. */
   talk?: PrintTalk | null;
+  /** A Spiel, when this is one: its rows in order. */
+  game?: PrintGame | null;
   collectionName: string;
   /** The title's symbols: not among `sentences`, which are what the sheet is of. */
   pictures?: Slot[];
@@ -153,6 +155,7 @@ export class Printing {
     board: this.options.board,
     song: this.options.song,
     talk: this.options.talk,
+    game: this.options.game,
     settings: this.settings,
     provider: this.options.provider,
     attribution: this.options.attribution,

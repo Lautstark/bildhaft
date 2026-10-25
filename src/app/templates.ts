@@ -249,6 +249,22 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
   },
 
+  /* Opens on A4 lying on its side, one sheet per few rows: left the Ablage
+     the cut cards live on, right the rows with a dashed Klett field per card
+     — the sheet is laminated whole and goes into a folder. The cards come on
+     sheets of their own, at the fields' size, as a Plauderbuch's do. The
+     paper is a choice; everything grows with it, cards and fields together. */
+  spiel: {
+    cards: false,
+    defaults: () => ({
+      paper: 'a4', orientation: 'landscape',
+      showLabel: true, labelPosition: 'below', labelSizePt: 11,
+      ...HEADED, showPageNumbers: false,
+    }),
+    fixed: () => ({ layout: 'spiel', titleEvery: false }),
+    offers: () => ({ paper: true, title: 'once', label: true, pageNumbers: true }),
+  },
+
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
      into an A5 ring binder. The paper is all it is asked, and which way up;
      the fields and the cards grow with it (talkGeometry), as an

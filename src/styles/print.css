@@ -838,3 +838,117 @@
    the card at its natural size. */
 .ps-talk__band .ps-title__pic img { width: 100%; height: calc(var(--talk-h) * 0.8); object-fit: contain; }
 .ps-talk__card .ps-title__pic img { width: 100%; height: calc(var(--talk-h) * 0.6); object-fit: contain; }
+
+/* ----------------------------------------------------------------- spiel */
+
+/* A Spiel's sheet, exactly one page: left the Ablage, a dashed field with a
+   Klett dot per card; right the rows — fixed pictures, an arrow, a dashed
+   field per card to lay. No cutting line anywhere on it: the sheet is
+   laminated whole. Every length is A4's times the paper's factor --spiel-k. */
+.ps-spiel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(10mm * var(--spiel-k));
+  align-content: start;
+  height: var(--spiel-page);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ps-spiel__shelf {
+  display: grid;
+  grid-template-columns: var(--spiel-w);
+  gap: var(--spiel-gap);
+  align-content: start;
+  padding-right: calc(10mm * var(--spiel-k));
+  border-right: 0.25mm solid #e3ddda;
+}
+.ps-spiel__rows {
+  display: grid;
+  gap: var(--spiel-gap);
+  align-content: start;
+}
+.ps-spiel__row {
+  display: flex;
+  align-items: center;
+  gap: calc(5mm * var(--spiel-k));
+}
+/* The fixed picture: a white card with a light line, the word under it when
+   it is asked for — read where it is, as a Rezept's cards are. */
+.ps-spiel__bild {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(1mm * var(--spiel-k));
+  width: var(--spiel-w);
+  height: var(--spiel-h);
+  padding: calc(1.5mm * var(--spiel-k)) calc(2mm * var(--spiel-k));
+  border: 0.3mm solid #d9d3d0;
+  border-radius: calc(3.5mm * var(--spiel-k));
+  background: #fff;
+  text-align: center;
+}
+.ps-spiel__pfeil { font-size: calc(16pt * var(--spiel-k)); color: #9a938f; }
+/* Where a card goes: dashed, with the Klett dot — the Tafel's free-field
+   line (.ps-card__place) and the Plauderbuch's dot, on one field. */
+.ps-spiel__feld {
+  display: grid;
+  place-items: center;
+  width: var(--spiel-w);
+  height: var(--spiel-h);
+  border: 0.3mm dashed #8c8c8c;
+  border-radius: calc(3.5mm * var(--spiel-k));
+}
+.ps-spiel__dot {
+  width: calc(9mm * var(--spiel-k));
+  height: calc(9mm * var(--spiel-k));
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 calc(0.35mm * var(--spiel-k)) #e4dfdd;
+}
+.ps-spiel__wort {
+  font-size: calc(var(--label, 11pt) * var(--spiel-k));
+  font-weight: 600;
+  line-height: 1.15;
+}
+.ps-spiel__bild .ps-title__pic,
+.ps-spiel__karte .ps-title__pic {
+  flex: none;
+  width: 100%;
+  height: calc(var(--spiel-h) * 0.6);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ps-spiel__bild .ps-title__pic img,
+.ps-spiel__karte .ps-title__pic img { width: 100%; height: calc(var(--spiel-h) * 0.6); object-fit: contain; }
+
+/* The cards to cut out: the fields' size, air round each, a dashed line
+   between them — the Plauderbuch's cutting sheet, for a Spiel. */
+.ps-spiel-cut {
+  grid-template-columns: repeat(var(--cols), calc(var(--spiel-w) + 2 * var(--spiel-air)));
+  grid-auto-rows: calc(var(--spiel-h) + 2 * var(--spiel-air));
+  align-content: start;
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ps-spiel-cut__cell {
+  display: grid;
+  place-items: center;
+  outline: 0.25mm dashed #c4bcb9;
+}
+.ps-spiel__karte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(1mm * var(--spiel-k));
+  width: var(--spiel-w);
+  height: var(--spiel-h);
+  padding: calc(1.5mm * var(--spiel-k)) calc(2mm * var(--spiel-k));
+  border-radius: calc(3.5mm * var(--spiel-k));
+  background: #fff;
+  text-align: center;
+}

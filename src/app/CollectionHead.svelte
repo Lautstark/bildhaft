@@ -29,6 +29,7 @@
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
   import { symbolIdFor, titlePicture } from '../core/types.ts';
   import { pagesOf } from '../core/talk.ts';
+  import { rowsOfGame } from '../core/game.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
   import { chooseTitlePicture } from './recipe.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet, setView } from './collections.ts';
@@ -68,6 +69,9 @@
   /* A Plauderbuch's questions stand on its pages and are not cut out: its
      cards are its Aussagen. */
   let sayings = $derived(pagesOf(activeCollection()?.talk).reduce((all, page) => all + page.sayings.length, 0));
+  /* A Spiel's cards are the ones that are cut out and laid: its fixed
+     pictures stay on the Spielblatt and are not counted. */
+  let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.karten.length, 0));
   /* A Rezept's title picture, beside its name, until a Rezept has the title
      line the others have (TitleLine.svelte), where its symbols are chosen. */
   let pictured = $derived(kind() === 'rezept');
@@ -77,6 +81,8 @@
     ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
     : kind() === 'plauderbuch'
     ? (sayings === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: sayings }))
+    : kind() === 'spiel'
+    ? (laid === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: laid }))
     : holdsWords()
     ? (n === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n }))
     : n === 1
@@ -104,7 +110,7 @@
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.
--->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied' || kind() === 'plauderbuch' || kind() === 'tafel')}<!--
+-->{#if n === 0 && (kind() === 'rezept' || kind() === 'lied' || kind() === 'plauderbuch' || kind() === 'spiel' || kind() === 'tafel')}<!--
   A Rezept and a Lied draw their own empty parts, so the empty state's box
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.

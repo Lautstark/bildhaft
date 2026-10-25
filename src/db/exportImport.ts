@@ -2,7 +2,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, COLLECTION_KINDS, EXPORT_FORMAT, EXPORT_VERSION,
   type BackupExport, type Board, type Collection, type CollectionExport, type CollectionKind,
   OWN_PREFIX, ownImageId, ownImagesInUse,
-  type Override, type OwnImage, type OwnImageExport, type Sentence, type Slot, type Song, type TalkBook,
+  type GameBook, type Override, type OwnImage, type OwnImageExport, type Sentence, type Slot, type Song, type TalkBook,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
@@ -336,6 +336,8 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     ...(source.song ? { song: remapSong(source.song, sentenceIds) } : {}),
     // And a Plauderbuch's pages theirs.
     ...(source.talk ? { talk: remapTalk(source.talk, sentenceIds) } : {}),
+    // And a Spiel's rows theirs.
+    ...(source.game ? { game: remapGame(source.game, sentenceIds) } : {}),
     // How it printed is part of what it is; the copyright choice is not in it.
     ...(source.print ? { print: source.print } : {}),
     createdAt: now,
@@ -392,6 +394,17 @@ function remapTalk(talk: TalkBook, ids: Map<string, string>): TalkBook {
   };
 }
 
+/** A Spiel's rows pointing at the fresh ids their cards were given. */
+function remapGame(game: GameBook, ids: Map<string, string>): GameBook {
+  return {
+    rows: (game.rows ?? []).map((row) => ({
+      ...row,
+      fest: (row.fest ?? []).map((id) => ids.get(id)).filter((id): id is string => Boolean(id)),
+      karten: (row.karten ?? []).map((id) => ids.get(id)).filter((id): id is string => Boolean(id)),
+    })),
+  };
+}
+
 /** Restores a full backup. Like a single import, it only ever adds. */
 async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   const sourceCollections = parsed.collections ?? [];
@@ -433,6 +446,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
     if (collection.board) collection.board = remapBoard(collection.board, sentenceIds);
     if (collection.song) collection.song = remapSong(collection.song, sentenceIds);
     if (collection.talk) collection.talk = remapTalk(collection.talk, sentenceIds);
+    if (collection.game) collection.game = remapGame(collection.game, sentenceIds);
   }
 
   const db = await getDB();

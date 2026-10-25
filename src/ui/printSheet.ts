@@ -511,12 +511,19 @@ export interface PrintTalk {
   pages: { question: Sentence | null; sayings: Sentence[] }[];
 }
 
+/** A Spiel's rows as they print: the fixed pictures, then the cards to lay. */
+export interface PrintGame {
+  rows: { fest: Sentence[]; karten: Sentence[] }[];
+}
+
 export interface SheetOptions {
   sentences: Sentence[];
   /** Set for a Lied, and then it decides what is printed and in what order. */
   song?: PrintSong | null;
   /** Set for a Plauderbuch, and then it decides the pages. */
   talk?: PrintTalk | null;
+  /** Set for a Spiel, and then it decides the Spielblatt and the Kartenbogen. */
+  game?: PrintGame | null;
   /** Set for a Tafel, and then it decides the page; `sentences` are the cards on it. */
   board?: PrintBoard | null;
   settings: PrintSettings;
@@ -591,6 +598,10 @@ export type Block =
   | { kind: 'song-again' }
   | { kind: 'talk-page'; question: Slot | null; text: string; count: number; free: boolean; again: boolean; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
+  /* One sheet of a Spiel: the rows, each its fixed pictures and a dashed
+     field per card, and left of them the Ablage — one field per card too. */
+  | { kind: 'game-board'; rows: { fest: Slot[]; count: number }[]; shelf: number; geo: GameGeometry }
+  | { kind: 'game-cut'; slots: Slot[]; cols: number; geo: GameGeometry }
   | { kind: 'credit'; lines: string[] };
 
 /**
@@ -620,6 +631,43 @@ export interface TalkGeometry {
 }
 
 export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3: 2 };
+
+/**
+ * A Spiel's sheet, measured: the field a card lies on, the air round a card
+ * on the cutting sheet, and the paper's factor everything is multiplied by.
+ *
+ * Laid out for A4 lying on its side — a 50 × 42 mm field, the size a hand
+ * that is still learning can hit — and grown or shrunk with the paper, so a
+ * card printed on A3 goes onto a board printed on A3.
+ */
+export interface GameGeometry {
+  fieldW: number;
+  fieldH: number;
+  gap: number;
+  /** The air round a card on the cutting sheet. */
+  air: number;
+  /** The paper's factor against A4. */
+  k: number;
+  /** The page's height, the footer's and the title's room taken off. */
+  height: number;
+  /** How many rows one sheet holds. */
+  perPage: number;
+}
+
+export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
+
+export function gameGeometry(
+  settings: Pick<PrintSettings, 'paper'>, page: { width: number; height: number }, reserve: number,
+): GameGeometry {
+  const k = GAME_SCALE[settings.paper];
+  const fieldW = 50 * k;
+  const fieldH = 42 * k;
+  const gap = 6 * k;
+  const air = 3 * k;
+  const height = page.height - reserve;
+  const perPage = Math.max(1, Math.floor((height + gap) / (fieldH + gap)));
+  return { fieldW, fieldH, gap, air, k, height, perPage };
+}
 
 export function talkGeometry(
   settings: Pick<PrintSettings, 'paper' | 'orientation'>, page: { width: number; height: number }, reserve: number,
@@ -701,7 +749,7 @@ export function sheetBlocks(
   options: SheetOptions, rows: number[] | null, strips: (number[] | null)[] | null = null,
   songs: (number[] | null)[] | null = null,
 ): Block[] {
-  const { sentences, board, song, talk, settings, provider, attribution, copyright, collectionName } = options;
+  const { sentences, board, song, talk, game, settings, provider, attribution, copyright, collectionName } = options;
   const credits = creditLines(attribution, copyright);
   const page = printableArea(settings.paper, settings.orientation);
   const blocks: Block[] = [];
@@ -832,6 +880,33 @@ export function sheetBlocks(
     const rows = Math.max(1, Math.floor(page.height / (geo.cardH + 2 * air)));
     if (cards.length > 0) {
       for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo: cut });
+    }
+  } else if (settings.layout === 'spiel') {
+    /*
+     * The Spielblatt first, one sheet per few rows: each row its fixed
+     * pictures and a dashed Klett field per card to lay, and left of the
+     * rows the Ablage — a dashed field per card again, so the cut cards
+     * have a place to live when the game is in the folder. No cutting line
+     * on it: the sheet is laminated whole. Then the Kartenbogen, the cards
+     * at the fields' size with air round each for the scissors.
+     */
+    const geo = gameGeometry(settings, page, reserve);
+    const rows = (game?.rows ?? []).map((row) => ({
+      fest: row.fest.flatMap((sentence) => sentence.slots.slice(0, 1)),
+      count: Math.max(row.karten.length, 1),
+    }));
+    const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
+    let taken = 0;
+    for (const part of chunks(rows, geo.perPage)) {
+      const shelf = (game?.rows ?? []).slice(taken, taken + part.length)
+        .reduce((all, row) => all + row.karten.length, 0);
+      blocks.push({ kind: 'game-board', rows: part, shelf, geo });
+      taken += part.length;
+    }
+    if (karten.length > 0) {
+      const cols = Math.max(1, Math.floor(page.width / (geo.fieldW + 2 * geo.air) + 1e-6));
+      const cutRows = Math.max(1, Math.floor(page.height / (geo.fieldH + 2 * geo.air)));
+      for (const slots of chunks(karten, cols * cutRows)) blocks.push({ kind: 'game-cut', slots, cols, geo });
     }
   } else if (settings.layout === 'sheet') {
     const cards = deck(sentences, provider);

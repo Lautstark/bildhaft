@@ -140,7 +140,7 @@
   the head still stands where it stood. Under the head because that is where
   the next strip appears — the rows are newest first. The other templates
   follow one by one (2026-10-22).
--->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead />{#if !printing}<Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{/if}{:else if kind() === 'lied'}<CollectionHead />{#if !printing}<TitleLine />{/if}{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
+-->{#if s.choosing === s.activeId}{:else if BOX_UNDER_HEAD.includes(kind())}<CollectionHead />{#if !printing}<Composer />{#if kind() !== 'tafel'}<TitleLine />{/if}{/if}{:else if kind() === 'lied'}<CollectionHead />{#if !printing}<TitleLine />{/if}{:else if kind() === 'rezept'}<CollectionHead />{:else if kind() === 'plauderbuch'}<CollectionHead />{:else if kind() === 'spiel'}<CollectionHead />{:else}<Composer /><CollectionHead />{/if}{#if printing}<PrintView />{:else}<Material />{/if}{/if}</div><Footer /></main></div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug

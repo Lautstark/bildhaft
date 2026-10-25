@@ -422,6 +422,17 @@ export interface Collection {
   talk?: TalkBook;
 
   /**
+   * Ein Spiel: its rows in their order, each with the pictures printed fast
+   * onto the Spielblatt and the cards laid onto it. Only a `spiel` has one,
+   * and one without it is a Spiel nothing has been put into yet.
+   *
+   * On the Sammlung for the reason a Plauderbuch's pages are: it is the
+   * arrangement, and the cards are rows of the Sammlung. Which row a card
+   * stands in, and on which side, is a fact about the game, not the card.
+   */
+  game?: GameBook;
+
+  /**
    * The PDFs bildhaft saved of this Sammlung, newest first: where each lies
    * in the Ablage folder's `pdf/`, and what it was printed on. Files, not
    * records — the PDF is in the folder and this is the list of them, so one
@@ -465,6 +476,25 @@ export interface TalkPage {
   id: string;
   question: string | null;
   sayings: string[];
+}
+
+/**
+ * Ein Spiel, Zeile für Zeile: links was fest aufs Spielblatt gedruckt wird,
+ * rechts die Karten, die gelegt werden — beim Zuordnen ein Bild und eine
+ * Karte je Zeile. `fest` and `karten` name rows by id, as a Plauderbuch's
+ * pages do. The Spielblatt draws a dashed Klett field per card, on the
+ * board and in the Ablage; the Kartenbogen holds the cards to cut out.
+ */
+export interface GameBook {
+  rows: GameRow[];
+}
+
+export interface GameRow {
+  id: string;
+  /** Printed onto the Spielblatt, in this order. */
+  fest: string[];
+  /** Cut from the Kartenbogen and laid onto the row's free field(s). */
+  karten: string[];
 }
 
 export interface Song {
@@ -549,7 +579,7 @@ export interface BoardGroup {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied', 'plauderbuch'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied', 'plauderbuch', 'spiel'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /** What a Sammlung is when it has never been asked. */
@@ -650,7 +680,7 @@ export interface Override {
  * `plauderbuch`: a page per question with free fields to velcro onto, then
  * the cards to cut out for them.
  */
-export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied' | 'plauderbuch';
+export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied' | 'plauderbuch' | 'spiel';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**

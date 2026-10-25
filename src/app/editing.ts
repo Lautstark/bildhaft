@@ -13,6 +13,7 @@ import { kind, providerId, s } from './state.svelte.ts';
 import { writeBoard } from './board.ts';
 import { takeOutOfSong } from './song.ts';
 import { takeOutOfTalk } from './talk.ts';
+import { takeOutOfGame } from './game.ts';
 import { notify } from './notify.ts';
 
 /**
@@ -236,6 +237,7 @@ async function handleRemoveSlot(): Promise<void> {
     s.sentences = s.sentences.filter((x) => x.id !== sentence.id);
     if (kind() === 'tafel') await writeBoard((board) => takeOff(board, sentence.id));
     if (kind() === 'plauderbuch') await takeOutOfTalk(sentence);
+    if (kind() === 'spiel') await takeOutOfGame(sentence);
     return;
   }
   await mutateSlots(sentenceId, (slots) => slots.filter((sl) => sl.id !== slotId));
@@ -296,6 +298,8 @@ export async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
   if (kind() === 'lied') await takeOutOfSong(sentence);
   /* And off its page of a Plauderbuch. */
   if (kind() === 'plauderbuch') await takeOutOfTalk(sentence);
+  /* And out of its row of a Spiel. */
+  if (kind() === 'spiel') await takeOutOfGame(sentence);
 }
 
 export async function noteUnreadable(id: string): Promise<void> {

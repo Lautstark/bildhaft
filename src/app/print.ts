@@ -190,12 +190,22 @@ export function printOptions(): PrintOptions | null {
       sayings: page.sayings.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
     })),
   } : null;
+  /* A Spiel prints whole and in its order: the Spielblatt's rows, then the
+     cards to cut out for them. */
+  const game = kind() === 'spiel' && open?.game ? {
+    rows: open.game.rows.map((row) => ({
+      fest: row.fest.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
+      karten: row.karten.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
+    })),
+  } : null;
   const chosen = board
     ? placedIds(board).map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x))
     : song
       ? [...new Set(song.parts.flatMap((part) => part.lines))]
     : talk
       ? talk.pages.flatMap((page) => [...(page.question ? [page.question] : []), ...page.sayings])
+    : game
+      ? game.rows.flatMap((row) => [...row.fest, ...row.karten])
     : kind() === 'rezept'
       ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
       : contentOf(s.sentences);
@@ -210,6 +220,7 @@ export function printOptions(): PrintOptions | null {
     } : null,
     song,
     talk,
+    game,
     collectionName: open ? titleOf(open) : 'bildhaft',
     pictures: titlePictures(s.sentences),
     /* What this Sammlung set, over its template's defaults, under what the

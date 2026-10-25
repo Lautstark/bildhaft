@@ -108,7 +108,7 @@
      „Seite 3 von 9" are the pages of the book. An Einkaufsliste's guide
      neither: it is about the material, and carries none of it. */
   const bare = (held: Block[]): boolean => held.length > 0
-    && held.every((block) => block.kind === 'talk-cut' || block.kind === 'shop-guide');
+    && held.every((block) => block.kind === 'talk-cut' || block.kind === 'game-cut' || block.kind === 'shop-guide');
   let numbered = $derived(pages ? pages.filter((held) => !bare(held)).length : 0);
   const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
 
@@ -116,6 +116,11 @@
   const talkVars = (geo: { cardW: number; cardH: number; gap: number; air: number; k: number; height: number }, cols: number): string =>
     `--talk-w:${geo.cardW.toFixed(3)}mm;--talk-h:${geo.cardH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
     + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--cols:${cols}`;
+
+  /* And of a Spiel's sheets, for theirs. */
+  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; height: number }, cols: number): string =>
+    `--spiel-w:${geo.fieldW.toFixed(3)}mm;--spiel-h:${geo.fieldH.toFixed(3)}mm;--spiel-gap:${geo.gap.toFixed(3)}mm;`
+    + `--spiel-air:${geo.air.toFixed(3)}mm;--spiel-k:${geo.k.toFixed(4)};--spiel-page:${geo.height.toFixed(3)}mm;--cols:${cols}`;
 
 </script>
 
@@ -201,7 +206,15 @@
 --><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#if block.question}<PrintPicture slot={block.question} {provider} />{/if}<p class="ps-talk__question">{block.text}{#if block.again}<small>{t('ui.talk_again')}</small>{/if}</p>{#if block.free}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span>{/if}</div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
   The cards for the fields, at the fields' size, with room round each for
   the scissors and a dashed line where they go.
---><section class="ps-grid ps-grid--page ps-talk-cut" style={talkVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} /><span class="ps-talk__word">{slotCaption(slot)}</span></span></span>{/each}</section>{:else if block.kind === 'shop-guide'}<!--
+--><section class="ps-grid ps-grid--page ps-talk-cut" style={talkVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} /><span class="ps-talk__word">{slotCaption(slot)}</span></span></span>{/each}</section>{:else if block.kind === 'game-board'}<!--
+  A Spiel's sheet, laminated whole: left the Ablage, a dashed field with a
+  Klett dot per card, where the cut cards live between games; right the
+  rows — the fixed pictures, then a dashed field per card to lay.
+--><section class="ps-grid ps-grid--page ps-spiel" style={gameVars(block.geo, 1)}><div class="ps-spiel__shelf">{#each Array.from({ length: block.shelf }) as _, at (at)}<span class="ps-spiel__feld"><span class="ps-spiel__dot"></span></span>{/each}</div><div class="ps-spiel__rows">{#each block.rows as row, at (at)}<div class="ps-spiel__row">{#each row.fest as slot (slot.id)}<span class="ps-spiel__bild"><PrintPicture {slot} {provider} />{#if settings.showLabel}<span class="ps-spiel__wort">{slotCaption(slot)}</span>{/if}</span>{/each}<span class="ps-spiel__pfeil" aria-hidden="true">→</span>{#each Array.from({ length: row.count }) as _, k (k)}<span class="ps-spiel__feld"><span class="ps-spiel__dot"></span></span>{/each}</div>{/each}</div></section>{:else if block.kind === 'game-cut'}<!--
+  The cards for the fields, at the fields' size, with room round each for
+  the scissors and a dashed line where they go — a Plauderbuch's sheet of
+  cards, for a Spiel.
+--><section class="ps-grid ps-grid--page ps-spiel-cut" style={gameVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-spiel-cut__cell"><span class="ps-spiel__karte"><PrintPicture {slot} {provider} />{#if settings.showLabel}<span class="ps-spiel__wort">{slotCaption(slot)}</span>{/if}</span></span>{/each}</section>{:else if block.kind === 'shop-guide'}<!--
   A page of its own and the first: what the sheets become and how, for
   whoever is handed them without the person who printed them.
 --><section class="ps-guide ps-break"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><p>{t('ui.shop_guide_intro')}</p><h3>{t('ui.shop_guide_need')}</h3><p>{t('ui.shop_guide_need_text')}</p><div class="ps-guide__cols"><div><h3>{t('ui.shop_guide_make')}</h3><ol><li>{t('ui.shop_guide_make_1')}</li><li>{t('ui.shop_guide_make_2')}</li><li>{t('ui.shop_guide_make_3')}</li><li>{t('ui.shop_guide_make_4')}</li></ol><p class="ps-guide__tip">{t('ui.shop_guide_tip')}</p></div><div><h3>{t('ui.shop_guide_use')}</h3><ol><li>{t('ui.shop_guide_use_1')}</li><li>{t('ui.shop_guide_use_2')}</li><li>{t('ui.shop_guide_use_3')}</li></ol></div></div></section>{:else if block.kind === 'credit'}<!--
@@ -212,7 +225,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"

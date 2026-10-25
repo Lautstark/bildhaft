@@ -26,6 +26,7 @@
 
   let song = $derived(activeCollection()?.song);
   let talk = $derived(activeCollection()?.talk);
+  let game = $derived(activeCollection()?.game);
   let board = $derived(activeCollection()?.board);
   let name = $derived(activeCollection()?.name);
   let pdfs = $derived(activeCollection()?.pdfs ?? []);
@@ -45,7 +46,7 @@
     untrack(() => { allPdfs = false; });
   });
   $effect(() => {
-    void [s.sentences, song, talk, board, name];
+    void [s.sentences, song, talk, game, board, name];
     untrack(() => {
       const options = printOptions();
       if (!preview) { if (options) preview = made(options); return; }

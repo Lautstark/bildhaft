@@ -1708,3 +1708,21 @@ footer.footer {
 .talk__sayings { cursor: auto; }
 .talk__page .song__plus { cursor: pointer; }
 .talk__more { display: flex; justify-content: center; }
+
+/* ------------------------------------------------------------------ spiel */
+
+/* A Spiel's rows in Bearbeiten: left the fixed pictures, right the cards to
+   lay, the same card wall on both sides, an arrow between them. The legend
+   over the first row says which side is which, in the rows' own grid so the
+   words stand over their columns. */
+.game { display: flex; flex-direction: column; gap: 12px; }
+.game__intro { margin: 0 4px 12px; }
+.game__legend, .game__row { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 34px; align-items: center; gap: 10px; }
+.game__legend { margin: 0 14px; }
+.game__row { padding: 12px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); }
+.game__side { align-content: start; }
+.game__side .word--add { min-height: 0; aspect-ratio: 1/1.1; }
+.game__arrow { text-align: center; color: var(--text-faint); font-size: 18px; }
+.game__acts { display: flex; justify-content: flex-end; opacity: 0; transition: opacity .13s; }
+.game__row:hover .game__acts, .game__acts:focus-within { opacity: 1; }
+.game__more { display: flex; justify-content: center; }
