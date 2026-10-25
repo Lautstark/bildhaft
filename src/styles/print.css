@@ -862,9 +862,22 @@
   print-color-adjust: exact;
 }
 .ps-spiel__zelle { display: flex; align-items: center; gap: var(--talk-gap); }
-/* The Ablage's fields, a shade quieter than the game's. */
-.ps-spiel__zelle--lager .ps-talk__field { background: #f6f4f2; }
-.ps-spiel__zelle--lager .ps-talk__dot { box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #edeae7; }
+/* No grey grounds on paper. The lines carry the meaning, as on a Tafel:
+   dashed is the Ablage, solid is the game's field — and one fine rule
+   divides the two zones for the length of the sheet. */
+.ps-spiel { position: relative; }
+.ps-spiel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--spiel-lager) + 4mm * var(--talk-k));
+  width: 0.25mm;
+  background: #ddd6d0;
+}
+.ps-spiel .ps-talk__field { background: #fff; box-shadow: inset 0 0 0 calc(0.4mm * var(--talk-k)) #1d1918; }
+.ps-spiel__zelle--lager .ps-talk__field { box-shadow: none; border: 0.3mm dashed #b3aca7; }
+.ps-spiel .ps-talk__dot { box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #e4dfdd; }
 /* A fixed picture: frameless at its Symbolgröße; the frame and the card
    background come only when they are asked for — --frame-w is 0 otherwise. */
 .ps-spiel__bild {
@@ -883,3 +896,6 @@
 .ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
 .ps-spiel__pfeil { font-size: calc(12pt * var(--talk-k)); color: #9a938f; }
+/* The cutting sheet's cards: white, wordmarked, the dashed cell is the
+   scissors' line — no grey ground, no frame unless one is asked for. */
+.ps-spiel-cut .ps-talk__card { background: var(--card-bg, #fff); border: var(--frame-w) solid var(--frame-color); }
