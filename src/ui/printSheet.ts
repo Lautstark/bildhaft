@@ -660,6 +660,8 @@ export interface GameGeometry {
   pad: number;
   /** The Ablage block's width: as many fields a row as the leftover takes. */
   lagerW: number;
+  /** Where the Ablage went: beside the Brett, or under it when the Brett is wide. */
+  unten: boolean;
 }
 
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
@@ -678,21 +680,44 @@ export function gameGeometry(
   const units = Math.max(1, shape.units);
   const cells = Math.max(1, shape.cells);
   const karten = Math.max(1, shape.karten);
+  /* The field at its natural, hand-sized width — never inflated to fill the
+     paper: a game of two rows is a small, calm sheet, not a stretched one.
+     It only shrinks, a few per cent at a time, until everything fits. */
   const hLimit = (height - 2 * pad - (units - 1) * gap) / units;
   const wLimit = (page.width - colGap - arrow - 2 * pad - cells * gap) / (cells + 1);
-  let fieldW = Math.min(hLimit * (50 / 42), wLimit, 55 * k);
-  /* The Ablage must fit beside the Brett, in height too: a field size that
-     leaves it a sliver gives way, a few per cent at a time. */
-  let cols = 1;
-  for (let turn = 0; turn < 6; turn += 1) {
+  let fieldW = Math.min(46 * k, hLimit * (50 / 42), wLimit);
+  let lagerW = 0;
+  let unten = false;
+  for (let turn = 0; turn < 8; turn += 1) {
+    const fh = fieldW * (42 / 50);
     const brettW = 2 * pad + cells * fieldW + (cells - 1) * gap + arrow;
-    cols = Math.max(1, Math.floor((page.width - brettW - colGap + gap) / (fieldW + gap)));
-    const lagerH = Math.ceil(karten / cols) * (fieldW * (42 / 50) + gap) - gap;
-    if (lagerH <= height) break;
+    const brettH = 2 * pad + units * fh + (units - 1) * gap;
+    const sideCols = Math.floor((page.width - brettW - colGap + gap) / (fieldW + gap));
+    if (sideCols >= 2) {
+      const lagerH = Math.ceil(karten / sideCols) * (fh + gap) - gap;
+      if (Math.max(brettH, lagerH) <= height) {
+        const used = Math.min(sideCols, karten);
+        lagerW = used * fieldW + (used - 1) * gap;
+        unten = false;
+        break;
+      }
+    } else {
+      /* Too little room beside a wide Brett: the Ablage goes under it, a
+         quiet strip of as many fields a row as the paper takes. */
+      const botCols = Math.max(1, Math.floor((page.width + gap) / (fieldW + gap)));
+      const lagerH = Math.ceil(karten / botCols) * (fh + gap) - gap;
+      if (brettH + 2 * gap + lagerH <= height) {
+        const used = Math.min(botCols, karten);
+        lagerW = used * fieldW + (used - 1) * gap;
+        unten = true;
+        break;
+      }
+    }
     fieldW *= 0.93;
   }
   const fieldH = fieldW * (42 / 50);
-  return { fieldW, fieldH, gap, air, k, height, pad, lagerW: cols * fieldW + (cols - 1) * gap };
+  if (lagerW === 0) { lagerW = fieldW; unten = true; }
+  return { fieldW, fieldH, gap, air, k, height, pad, lagerW, unten };
 }
 
 export function talkGeometry(
