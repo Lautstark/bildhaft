@@ -275,13 +275,13 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   spiel: {
     cards: false,
     defaults: () => ({
-      paper: 'a4', orientation: 'landscape',
+      paper: 'a4', orientation: 'landscape', symbolSizeMm: 30, cutMarginMm: 3,
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
       ...HEADED, showPageNumbers: false,
     }),
     fixed: () => ({ layout: 'spiel' }),
     zeileInEdit: true,
-    offers: () => ({ ...BASE }),
+    offers: () => ({ ...BASE, size: { kind: 'symbol', max: 60, fallback: 30, note: null, cut: false }, margin: 'cut' }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes

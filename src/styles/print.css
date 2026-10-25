@@ -841,137 +841,44 @@
 
 /* ----------------------------------------------------------------- spiel */
 
-/* A Spiel's sheet, exactly one page: left the Ablage, a dashed field with a
-   Klett dot per card; right the rows — fixed pictures, an arrow, a dashed
-   field per card to lay. No cutting line anywhere on it: the sheet is
-   laminated whole. Every length is A4's times the paper's factor --spiel-k. */
-/* Nothing is stretched to fill the paper: the Lager block and the Brett are
-   content-sized and start at the top, under the title — the calm white is
-   below, where the folder's rings and the hands are. */
+/* One grid, started top left: each row is its cards' Ablage fields, the
+   fixed pictures, the arrow, the fields to lay on. Fields and cut cards
+   borrow the Plauderbuch's own classes — grey ground for the quiet Ablage,
+   white with its fine line where a card is laid — and the fixed pictures
+   stand frameless at their own Symbolgröße, framed only when the frame is
+   asked for. Every laying row shows the same number of fields, so the
+   fields never count out the answer. */
 .ps-spiel {
   display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
+  grid-template-columns: var(--spiel-lager) var(--spiel-fest) auto auto;
+  justify-content: start;
   align-content: start;
-  align-items: start;
-  column-gap: calc(14mm * var(--spiel-k));
-  row-gap: calc(10mm * var(--spiel-k));
-  height: var(--spiel-page);
+  align-items: center;
+  column-gap: calc(8mm * var(--talk-k));
+  row-gap: var(--talk-gap);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-/* A wide Brett sends the Ablage under itself, as a quiet strip. */
-.ps-spiel--unten { grid-template-columns: auto; justify-items: center; }
-.ps-spiel--unten .ps-spiel__lager { order: 2; flex-direction: row; width: auto; height: auto; max-width: 100%; justify-content: center; }
-/* The Ablage, compact: pale fields in full columns, top down — one clean
-   column before a second starts. No word; the quiet zone beside the game. */
-.ps-spiel__lager {
-  width: var(--spiel-lager);
-  height: var(--spiel-lagerh);
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  gap: var(--spiel-gap);
-  align-content: start;
-}
-.ps-spiel__feld--lager { border-color: #d4cfca; }
-.ps-spiel__feld--lager .ps-spiel__dot { box-shadow: 0 0 0 calc(0.35mm * var(--spiel-k)) #ece8e4; }
-/* The Brett: the game as an object on the paper — framed, on its own quiet
-   ground, exactly as big as its rows. */
-.ps-spiel__brett {
-  display: grid;
-  gap: var(--spiel-gap);
-  align-content: start;
-  padding: var(--spiel-pad);
-  border: 0.3mm solid #ddd6d0;
-  border-radius: calc(4mm * var(--spiel-k));
-  background: #f7f5f2;
-}
-.ps-spiel__row {
-  display: flex;
-  align-items: center;
-  gap: calc(5mm * var(--spiel-k));
-}
-/* The fixed picture: a white card with a light line, the word under it when
-   it is asked for — read where it is, as a Rezept's cards are. */
+.ps-spiel__zelle { display: flex; align-items: center; gap: var(--talk-gap); }
+/* The Ablage's fields, a shade quieter than the game's. */
+.ps-spiel__zelle--lager .ps-talk__field { background: #f6f4f2; }
+.ps-spiel__zelle--lager .ps-talk__dot { box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #edeae7; }
+/* A fixed picture: frameless at its Symbolgröße; the frame and the card
+   background come only when they are asked for — --frame-w is 0 otherwise. */
 .ps-spiel__bild {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: calc(1mm * var(--spiel-k));
-  width: var(--spiel-w);
-  height: var(--spiel-h);
-  padding: calc(1.5mm * var(--spiel-k)) calc(2mm * var(--spiel-k));
-  border: max(var(--frame-w), 0.25mm) solid var(--frame-color);
+  gap: calc(1mm * var(--talk-k));
+  padding: calc(1mm * var(--talk-k));
+  border: var(--frame-w) solid var(--frame-color);
   border-radius: var(--card-radius);
   background: var(--card-bg, transparent);
   text-align: center;
 }
-/* The word over the picture, when it is asked for there. */
+.ps-spiel__bild .ps-title__pic { width: var(--sym); height: var(--sym); padding: 0; border: 0; background: transparent; }
+.ps-spiel__bild .ps-title__pic img { width: 100%; height: 100%; object-fit: contain; }
+.ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
-.ps-spiel__pfeil { font-size: calc(16pt * var(--spiel-k)); color: #9a938f; }
-/* Where a card goes: dashed, with the Klett dot — the Tafel's free-field
-   line (.ps-card__place) and the Plauderbuch's dot, on one field. */
-.ps-spiel__feld {
-  display: grid;
-  place-items: center;
-  width: var(--spiel-w);
-  height: var(--spiel-h);
-  border: 0.3mm dashed #8c8c8c;
-  border-radius: calc(3.5mm * var(--spiel-k));
-}
-.ps-spiel__dot {
-  width: calc(9mm * var(--spiel-k));
-  height: calc(9mm * var(--spiel-k));
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 0 calc(0.35mm * var(--spiel-k)) #e4dfdd;
-}
-.ps-spiel__wort {
-  font-size: calc(var(--label, 11pt) * var(--spiel-k));
-  font-weight: 600;
-  line-height: 1.15;
-}
-.ps-spiel__bild .ps-title__pic,
-.ps-spiel__karte .ps-title__pic {
-  flex: none;
-  width: 100%;
-  height: calc(var(--spiel-h) * 0.6);
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-.ps-spiel__bild .ps-title__pic img,
-.ps-spiel__karte .ps-title__pic img { width: 100%; height: calc(var(--spiel-h) * 0.6); object-fit: contain; }
-
-/* The cards to cut out: the fields' size, air round each, a dashed line
-   between them — the Plauderbuch's cutting sheet, for a Spiel. */
-.ps-spiel-cut {
-  grid-template-columns: repeat(var(--cols), calc(var(--spiel-w) + 2 * var(--spiel-air)));
-  grid-auto-rows: calc(var(--spiel-h) + 2 * var(--spiel-air));
-  align-content: start;
-  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
-.ps-spiel-cut__cell {
-  display: grid;
-  place-items: center;
-  outline: 0.25mm dashed #c4bcb9;
-}
-.ps-spiel__karte {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: calc(1mm * var(--spiel-k));
-  width: var(--spiel-w);
-  height: var(--spiel-h);
-  padding: calc(1.5mm * var(--spiel-k)) calc(2mm * var(--spiel-k));
-  border: max(var(--frame-w), 0.25mm) solid var(--frame-color);
-  border-radius: var(--card-radius);
-  background: var(--card-bg, transparent);
-  text-align: center;
-}
+.ps-spiel__pfeil { font-size: calc(12pt * var(--talk-k)); color: #9a938f; }
