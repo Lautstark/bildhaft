@@ -1359,9 +1359,9 @@ footer.footer {
   font-size: 11px; font-weight: 700; line-height: 1.5; letter-spacing: .02em;
   pointer-events: none;
 }
-.cell .word { background: #fff; color: #222; border: 1px solid #dcdcdc; border-radius: 6px; }
-.cell .word__name { color: #222; }
-.cell .word__pic--asking { background: #f6f6f6; border-color: #bbb; color: #999; }
+/* Eine Karte ist eine Karte, auch im Feld: die WordCard trägt hier ihr
+   eigenes Kleid (2026-10-25, ihr Grundsatz) — nur die Maße unten passen
+   sie ins quadratische Feld ein. Wie sie druckt, zeigt rechts das Papier. */
 /* Free on purpose. Dashed and on the ground, the way every empty place in this
    app is drawn — and no darker than that, or a Tafel with ten free fields
    would read as a Tafel with ten mistakes. */
