@@ -847,9 +847,8 @@
    laminated whole. Every length is A4's times the paper's factor --spiel-k. */
 .ps-spiel {
   display: grid;
-  grid-template-columns: var(--spiel-shelf) 1fr;
-  column-gap: calc(12mm * var(--spiel-k));
-  row-gap: var(--spiel-gap);
+  grid-template-columns: var(--spiel-lager) 1fr;
+  column-gap: calc(8mm * var(--spiel-k));
   align-content: start;
   align-items: start;
   height: var(--spiel-page);
@@ -857,12 +856,28 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-/* A row's own Ablage, on the row's height: a card lives beside its task.
-   No word over it — the dashed fields say what they are. */
-.ps-spiel__shelfcell {
+/* The Ablage, compact: pale fields in rows of as many as fit, no word —
+   the quiet zone. The game is the loud one. */
+.ps-spiel__lager {
   display: flex;
-  flex-direction: row;
+  flex-wrap: wrap;
   gap: var(--spiel-gap);
+  align-content: start;
+}
+.ps-spiel__feld--lager { border-color: #d4cfca; }
+.ps-spiel__feld--lager .ps-spiel__dot { box-shadow: 0 0 0 calc(0.35mm * var(--spiel-k)) #ece8e4; }
+/* The Brett: the game as an object on the paper — framed, on its own quiet
+   ground, only as wide as its longest row, its rows spread over the height. */
+.ps-spiel__brett {
+  justify-self: end;
+  display: grid;
+  gap: var(--spiel-gap);
+  align-content: space-evenly;
+  height: var(--spiel-page);
+  padding: var(--spiel-pad);
+  border: 0.3mm solid #ddd6d0;
+  border-radius: calc(4mm * var(--spiel-k));
+  background: #f7f5f2;
 }
 .ps-spiel__row {
   display: flex;

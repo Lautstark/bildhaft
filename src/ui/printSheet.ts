@@ -598,10 +598,10 @@ export type Block =
   | { kind: 'song-again' }
   | { kind: 'talk-page'; question: Slot | null; text: string; count: number; free: boolean; again: boolean; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
-  /* One sheet of a Spiel: the rows, each its fixed pictures and a dashed
-     field per card — and left of each row its Ablage, one field per card,
-     on the row's own height, so a card lives beside its task. */
-  | { kind: 'game-board'; rows: { fest: Slot[]; count: number }[]; geo: GameGeometry }
+  /* One sheet of a Spiel: left the Ablage, a compact block of pale fields,
+     one per card; right the Brett — the game, framed and on its own ground,
+     only as wide as its longest row asks. `lager` is the fields' count. */
+  | { kind: 'game-board'; rows: { fest: Slot[]; count: number }[]; lager: number; geo: GameGeometry }
   | { kind: 'game-cut'; slots: Slot[]; cols: number; geo: GameGeometry }
   | { kind: 'credit'; lines: string[] };
 
@@ -638,13 +638,13 @@ export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3
  * card on the cutting sheet.
  *
  * One game is one sheet, always — the Tafel's reasoning: a game that needed
- * a second page would be two games. So the field is not chosen, it is
- * worked out, from the rows and the longest of them: as tall as the page
- * divided by the rows (a row with several cards stacks their Ablage fields
- * and counts for that many), as wide as the page divided by the longest
- * row's cells plus the Ablage column — whichever of the two binds, at the
- * card's own shape of 50 : 42, and never wider than a hand-sized 55 mm.
- * Only the cutting sheet goes on to more paper; it is cut apart anyway.
+ * a second page would be two games. The Brett takes only the width its
+ * longest row asks; what is left belongs to the Ablage, which packs its
+ * fields in rows of as many as fit. The field is not chosen, it is worked
+ * out — as tall as the Brett divided by the rows, at the card's shape of
+ * 50 : 42, never wider than a hand-sized 55 mm, and a notch smaller when
+ * the Ablage would not fit beside the Brett otherwise. Only the cutting
+ * sheet goes on to more paper; it is cut apart anyway.
  */
 export interface GameGeometry {
   fieldW: number;
@@ -656,32 +656,43 @@ export interface GameGeometry {
   k: number;
   /** The page's height, the footer's and the title's room taken off. */
   height: number;
-  /** The Ablage column's width: the row with the most cards, side by side. */
-  shelfW: number;
+  /** The Brett's inner padding. */
+  pad: number;
+  /** The Ablage block's width: as many fields a row as the leftover takes. */
+  lagerW: number;
 }
 
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
 export function gameGeometry(
   settings: Pick<PrintSettings, 'paper'>, page: { width: number; height: number },
-  reserve: number, shape: { units: number; cells: number; shelf: number },
+  reserve: number, shape: { units: number; cells: number; karten: number },
 ): GameGeometry {
   const k = GAME_SCALE[settings.paper];
   const gap = 6 * k;
   const air = 3 * k;
+  const colGap = 8 * k;
+  const arrow = 8 * k;
+  const pad = 5 * k;
   const height = page.height - reserve;
   const units = Math.max(1, shape.units);
   const cells = Math.max(1, shape.cells);
-  /* A row's Ablage fields stand beside each other, so the column is as wide
-     as the row with the most cards asks — and it stands beside the longest
-     row, with the arrow between the pictures and the fields. */
-  const shelf = Math.max(1, shape.shelf);
-  const wAvail = page.width - 12 * k - 8 * k;
-  const hLimit = (height - (units - 1) * gap) / units;
-  const wLimit = (wAvail - (cells - 1) * gap - (shelf - 1) * gap) / (cells + shelf);
-  const fieldW = Math.min(hLimit * (50 / 42), wLimit, 55 * k);
+  const karten = Math.max(1, shape.karten);
+  const hLimit = (height - 2 * pad - (units - 1) * gap) / units;
+  const wLimit = (page.width - colGap - arrow - 2 * pad - cells * gap) / (cells + 1);
+  let fieldW = Math.min(hLimit * (50 / 42), wLimit, 55 * k);
+  /* The Ablage must fit beside the Brett, in height too: a field size that
+     leaves it a sliver gives way, a few per cent at a time. */
+  let cols = 1;
+  for (let turn = 0; turn < 6; turn += 1) {
+    const brettW = 2 * pad + cells * fieldW + (cells - 1) * gap + arrow;
+    cols = Math.max(1, Math.floor((page.width - brettW - colGap + gap) / (fieldW + gap)));
+    const lagerH = Math.ceil(karten / cols) * (fieldW * (42 / 50) + gap) - gap;
+    if (lagerH <= height) break;
+    fieldW *= 0.93;
+  }
   const fieldH = fieldW * (42 / 50);
-  return { fieldW, fieldH, gap, air, k, height, shelfW: shelf * fieldW + (shelf - 1) * gap };
+  return { fieldW, fieldH, gap, air, k, height, pad, lagerW: cols * fieldW + (cols - 1) * gap };
 }
 
 export function talkGeometry(
@@ -909,13 +920,13 @@ export function sheetBlocks(
       fest: row.fest.flatMap((sentence) => sentence.slots.slice(0, 1)),
       count: row.karten.length,
     }));
+    const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
     const geo = gameGeometry(settings, page, reserve, {
       units: rows.length,
       cells: Math.max(1, ...rows.map((row) => row.fest.length + row.count)),
-      shelf: Math.max(1, ...rows.map((row) => row.count)),
+      karten: karten.length,
     });
-    const karten = (game?.rows ?? []).flatMap((row) => row.karten.flatMap((sentence) => sentence.slots.slice(0, 1)));
-    if (rows.length > 0) blocks.push({ kind: 'game-board', rows, geo });
+    if (rows.length > 0) blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
     if (karten.length > 0) {
       const cols = Math.max(1, Math.floor(page.width / (geo.fieldW + 2 * geo.air) + 1e-6));
       const cutRows = Math.max(1, Math.floor(page.height / (geo.fieldH + 2 * geo.air)));
