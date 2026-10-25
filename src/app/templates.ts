@@ -277,6 +277,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     defaults: () => ({
       paper: 'a4', orientation: 'landscape', symbolSizeMm: 30, cutMarginMm: 3,
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
+      cardBorderMm: 0.4, cardRadiusMm: 2,
       ...HEADED, showPageNumbers: false,
     }),
     fixed: () => ({ layout: 'spiel' }),
