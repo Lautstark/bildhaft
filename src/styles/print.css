@@ -851,6 +851,7 @@
 .ps-spiel {
   display: grid;
   grid-template-columns: var(--spiel-lager) var(--spiel-fest) auto auto;
+  grid-auto-rows: var(--spiel-zeile);
   justify-content: start;
   align-content: start;
   align-items: center;

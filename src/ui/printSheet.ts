@@ -658,12 +658,16 @@ export interface GameGeometry {
   lagerW: number;
   /** The fixed pictures' column: the row with the most of them. */
   festW: number;
+  /** The fixed picture, capped so every row fits its share of the page. */
+  symW: number;
+  /** A row's exact height: the page's share, handed to the grid as is. */
+  zeile: number;
 }
 
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
 export function gameGeometry(
-  settings: Pick<PrintSettings, 'paper' | 'symbolSizeMm' | 'cutMarginMm'>,
+  settings: Pick<PrintSettings, 'paper' | 'symbolSizeMm' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>,
   page: { width: number; height: number },
   reserve: number, shape: { units: number; fest: number; karten: number },
 ): GameGeometry {
@@ -675,17 +679,20 @@ export function gameGeometry(
   const units = Math.max(1, shape.units);
   const maxF = Math.max(1, shape.fest);
   const maxK = Math.max(1, shape.karten);
-  /* The fixed pictures keep their own Symbolgröße; the field is worked out
-     from what the longest row leaves beside them and the arrow's lane. */
-  const festW = maxF * settings.symbolSizeMm + (maxF - 1) * gap;
+  /* Every row gets the same share of the page's height, and everything in
+     the row keeps to it — the fixed picture too: its Symbolgröße is capped
+     so the word under it still fits the row. One game stays one sheet. */
   const hLimit = (height - (units - 1) * gap) / units;
+  const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
+  const symW = Math.max(10, Math.min(settings.symbolSizeMm, hLimit - label - 3 * k));
+  const festW = maxF * symW + (maxF - 1) * gap;
   const wLimit = (page.width - 16 * k - festW - (2 * maxK - 1) * gap) / (2 * maxK);
   const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
   const fieldH = fieldW * (42 / 50);
   return {
     fieldW, fieldH, gap, air, k, height,
     lagerW: maxK * fieldW + (maxK - 1) * gap,
-    festW,
+    festW, symW, zeile: hLimit,
   };
 }
 
