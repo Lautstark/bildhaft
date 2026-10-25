@@ -172,4 +172,4 @@
   Die Eingabe für den ganzen Text steht oben auf der Seite
   (SongIntake.svelte); hier stehen die leeren Teile bereit: eine Strophe
   oder ein Refrain, Kachel für Kachel, wie beim Rezept.
--->{@render gap(0, true)}{:else}{#each sung as at, place (place)}{#if place > 0}{@render gap(place, false)}{/if}{@render part(at, place)}{/each}{@render gap(sung.length, true)}{/if}</div>
+-->{@render gap(0, true)}<p class="empty-whisper" style="margin:2px 0 0">{t('ui.lied_whisper')}</p>{:else}{#each sung as at, place (place)}{#if place > 0}{@render gap(place, false)}{/if}{@render part(at, place)}{/each}{@render gap(sung.length, true)}{/if}</div>

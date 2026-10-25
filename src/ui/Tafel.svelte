@@ -390,6 +390,7 @@
 -->{#if typingAt === index}<div class="cell__type"><input use:focus class="cell__input" type="text" bind:value={fieldText} placeholder={t('ui.board_type_placeholder')} aria-label={t('ui.board_type_here', { n: index + 1 })} disabled={s.busy} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void typeInto(index); } else if (event.key === 'Escape') { typingAt = null; fieldText = ''; } }} onblur={() => { if (!fieldText.trim()) typingAt = null; }} /><button class="linklike small" type="button" onpointerdown={(event) => event.preventDefault()} onclick={() => { typingAt = null; fieldText = ''; void handleNewCard(index); }}>{t('ui.board_pick_here')}</button></div>{:else}<button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => { fieldText = ''; typingAt = index; }}>+</button>{/if}{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>
 
 {#if selected.size > 0}<div class="board-dock">{@render panel()}</div>{/if}
+{#if !board.cells.some(Boolean) && waiting.length === 0}<p class="empty-whisper" style="text-align:center;margin:2px 0 0">{t('ui.tafel_whisper')}</p>{/if}
 <!--
   How many fields across and down, under the Tafel (2026-10-23, ihr Wunsch):
   the grid speaks for itself, its counters follow it. Beside them, how big a
