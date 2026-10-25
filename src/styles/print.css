@@ -881,9 +881,10 @@
   height: min(calc(9mm * var(--talk-k)), calc(var(--talk-h) * 0.45));
   box-shadow: 0 0 0 calc(0.35mm * var(--talk-k)) #e4dfdd;
 }
-/* A printed card: the cell's own size, framed as the settings say — the
-   frame is on from the template's defaults and goes with its check. The
-   picture inside keeps to the Symbolgröße, capped at the cell. */
+/* A printed card: the cell's own size, always carrying at least the game
+   field's fine line, so it reads as a laid card beside the empty fields —
+   a chosen Rand only makes it heavier. The picture inside keeps to the
+   Symbolgröße, capped at the cell. */
 .ps-spiel__bild {
   display: flex;
   flex-direction: column;
@@ -893,7 +894,7 @@
   width: var(--talk-w);
   height: var(--talk-h);
   padding: calc(1mm * var(--talk-k));
-  border: var(--frame-w) solid var(--frame-color);
+  border: max(var(--frame-w), calc(0.4mm * var(--talk-k))) solid var(--frame-color, #1d1918);
   border-radius: var(--card-radius);
   background: var(--card-bg, #fff);
   text-align: center;
