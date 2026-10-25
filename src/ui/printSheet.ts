@@ -601,7 +601,7 @@ export type Block =
   /* One sheet of a Spiel: each row its free cells' Ablage fields, then its
      cells in their own order — a printed card, or the field where one is
      laid, in the middle of a Muster as well as at its end. */
-  | { kind: 'game-board'; rows: { cells: { slot: Slot; platz: boolean }[]; platz: number }[]; geo: GameGeometry }
+  | { kind: 'game-board'; rows: { cells: { slot: Slot; platz: boolean }[] }[]; lager: number; geo: GameGeometry }
   | { kind: 'game-cut'; slots: Slot[]; cols: number; geo: GameGeometry }
   | { kind: 'credit'; lines: string[] };
 
@@ -634,14 +634,15 @@ export interface TalkGeometry {
 export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3: 2 };
 
 /**
- * A Spiel's sheet, measured: one grid, one rule. A row is its cards' Ablage
- * fields, the fixed pictures, the arrow, the fields to lay on — and every
+ * A Spiel's sheet, measured: left the Ablage, right the rows — and every
  * cell has the same size, so everything stands on one line with its row.
- * One game is one sheet, always (the Tafel's reasoning: a game that needed
- * a second page would be two games): the field starts at its natural,
- * hand-sized width — never inflated to fill the paper — and shrinks only
- * until the longest row fits. Only the cutting sheet goes on to more
- * paper; it is cut apart anyway.
+ * The Ablage is a quiet block of all the game's fields, no echo of the
+ * rows: it must not give away how the right side is filled. One game is
+ * one sheet, always (the Tafel's reasoning: a game that needed a second
+ * page would be two games): the field starts at its natural, hand-sized
+ * width — never inflated to fill the paper — and shrinks only until the
+ * longest row fits. Only the cutting sheet goes on to more paper; it is
+ * cut apart anyway.
  */
 export interface GameGeometry {
   fieldW: number;
@@ -653,11 +654,13 @@ export interface GameGeometry {
   k: number;
   /** The page's height, the footer's and the title's room taken off. */
   height: number;
-  /** The Ablage column: the row with the most free cells, side by side. */
+  /** The Ablage block's width: its columns, side by side. */
   lagerW: number;
+  /** The Ablage block's columns: as many as the page's height asks for. */
+  lagerCols: number;
   /** The picture inside a printed card, capped so the word keeps its line. */
   symW: number;
-  /** A row's exact height: the page's share, handed to the grid as is. */
+  /** The most a row may be tall: its share of the page. */
   zeile: number;
 }
 
@@ -681,13 +684,27 @@ export function gameGeometry(
      whatever the Symbolgröße asks. One game stays one sheet. */
   const hLimit = (height - (units - 1) * gap) / units;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
-  const wLimit = (page.width - 16 * k - (platz + zellen - 1) * gap) / (platz + zellen);
-  const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
-  const fieldH = fieldW * (42 / 50);
+  /* The Ablage holds every card of the game in one block: as many columns
+     as the page's height asks for, no more. Columns widen the sheet and
+     the sheet caps the field, so the two feel for each other until they
+     agree — the columns only ever grow, and never past the cards. */
+  let cols = 1;
+  let fieldW = 0;
+  let fieldH = 0;
+  for (;;) {
+    const wLimit = (page.width - 16 * k - (cols + zellen - 1) * gap) / (cols + zellen);
+    fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
+    fieldH = fieldW * (42 / 50);
+    const lagerRows = Math.max(1, Math.floor((height + gap) / (fieldH + gap)));
+    const need = Math.max(1, Math.ceil(platz / lagerRows));
+    if (need <= cols) break;
+    cols = need;
+  }
   const symW = Math.max(8, Math.min(settings.symbolSizeMm, fieldH - label - 3 * k));
   return {
     fieldW, fieldH, gap, air, k, height,
-    lagerW: platz * fieldW + (platz - 1) * gap,
+    lagerW: cols * fieldW + (cols - 1) * gap,
+    lagerCols: cols,
     symW, zeile: hLimit,
   };
 }
@@ -908,24 +925,26 @@ export function sheetBlocks(
     /*
      * The Spielblatt first, one sheet per few rows: each row its fixed
      * pictures and a dashed Klett field per card to lay, and left of the
-     * rows the Ablage — a dashed field per card again, so the cut cards
-     * have a place to live when the game is in the folder. No cutting line
-     * on it: the sheet is laminated whole. Then the Kartenbogen, the cards
-     * at the fields' size with air round each for the scissors.
+     * rows the Ablage — one quiet block of fields for every card of the
+     * game, no echo of the rows, so the cut cards have a place to live
+     * when the game is in the folder without counting out any answer. No
+     * cutting line on it: the sheet is laminated whole. Then the
+     * Kartenbogen, the cards at the fields' size with air round each for
+     * the scissors.
      */
     const rows = (game?.rows ?? []).map((row) => {
       const cells = row.zellen
         .map((zelle) => ({ slot: zelle.karte.slots[0], platz: zelle.platz }))
         .filter((cell): cell is { slot: Slot; platz: boolean } => Boolean(cell.slot));
-      return { cells, platz: cells.filter((cell) => cell.platz).length };
+      return { cells };
     });
     const karten = rows.flatMap((row) => row.cells.filter((cell) => cell.platz).map((cell) => cell.slot));
     const geo = gameGeometry(settings, page, reserve, {
       units: rows.length,
       zellen: Math.max(1, ...rows.map((row) => row.cells.length)),
-      platz: Math.max(1, ...rows.map((row) => row.platz)),
+      platz: Math.max(1, karten.length),
     });
-    if (rows.length > 0) blocks.push({ kind: 'game-board', rows, geo });
+    if (rows.length > 0) blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
     if (karten.length > 0) {
       const cols = Math.max(1, Math.floor(page.width / (geo.fieldW + 2 * geo.air) + 1e-6));
       const cutRows = Math.max(1, Math.floor(page.height / (geo.fieldH + 2 * geo.air)));

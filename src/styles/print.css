@@ -841,29 +841,32 @@
 
 /* ----------------------------------------------------------------- spiel */
 
-/* One grid, started top left: each row is its cards' Ablage fields, then
-   the row's cells in their own order — printed pictures and fields to lay
-   on, mixed as the row says. Fields and cut cards borrow the Plauderbuch's
-   own classes, and the printed pictures stand frameless at their own
-   Symbolgröße, framed only when the frame is asked for. */
+/* Two zones, started top left: left the Ablage — one quiet block of every
+   card's field, no echo of the rows — then the rows, each its cells in
+   their own order: printed pictures and fields to lay on, mixed as the row
+   says. Fields and cut cards borrow the Plauderbuch's own classes. */
 .ps-spiel {
-  display: grid;
-  grid-template-columns: var(--spiel-lager) auto;
-  grid-auto-rows: var(--spiel-zeile);
-  justify-content: start;
-  align-content: start;
-  align-items: center;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
   column-gap: calc(8mm * var(--talk-k));
-  row-gap: var(--talk-gap);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
+.ps-spiel__lager {
+  flex: none;
+  width: var(--spiel-lager);
+  display: grid;
+  grid-template-columns: repeat(var(--lager-cols), var(--talk-w));
+  gap: var(--talk-gap);
+  align-content: start;
+}
+.ps-spiel__rows { display: flex; flex-direction: column; gap: var(--talk-gap); }
 .ps-spiel__zelle { display: flex; align-items: center; gap: var(--talk-gap); }
 /* No grey grounds on paper. The lines carry the meaning, as on a Tafel:
    dashed is the Ablage, solid is the game's field — and one fine rule
    divides the two zones for the length of the sheet. */
-.ps-spiel { position: relative; }
 .ps-spiel::before {
   content: "";
   position: absolute;
@@ -874,7 +877,7 @@
   background: #ddd6d0;
 }
 .ps-spiel .ps-talk__field { background: #fff; box-shadow: inset 0 0 0 calc(0.4mm * var(--talk-k)) #1d1918; }
-.ps-spiel__zelle--lager .ps-talk__field { box-shadow: none; border: 0.3mm dashed #b3aca7; }
+.ps-spiel__lager .ps-talk__field { box-shadow: none; border: 0.3mm dashed #b3aca7; }
 /* The velcro dot never crowds a small field: it keeps to the field's middle. */
 .ps-spiel .ps-talk__dot {
   width: min(calc(9mm * var(--talk-k)), calc(var(--talk-h) * 0.45));

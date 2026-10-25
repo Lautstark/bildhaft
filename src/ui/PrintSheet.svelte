@@ -119,10 +119,10 @@
 
   /* And of a Spiel's sheets, for theirs — said in the Plauderbuch's own
      variables, so its field, card and cutting rules apply as they are. */
-  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; symW: number; zeile: number }, cols: number): string =>
+  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; symW: number; zeile: number }, cols: number): string =>
     `--talk-w:${geo.fieldW.toFixed(3)}mm;--talk-h:${geo.fieldH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
     + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--sym:${geo.symW.toFixed(3)}mm;`
-    + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--spiel-zeile:${geo.zeile.toFixed(3)}mm;--cols:${cols}`;
+    + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--lager-cols:${geo.lagerCols};--spiel-zeile:${geo.zeile.toFixed(3)}mm;--cols:${cols}`;
 
 </script>
 
@@ -212,7 +212,7 @@
   A Spiel's sheet, laminated whole: left the Ablage, a dashed field with a
   Klett dot per card, where the cut cards live between games; right the
   rows — the fixed pictures, then a dashed field per card to lay.
---><section class="ps-grid ps-grid--page ps-spiel{settings.showLabel && settings.labelPosition === 'above' ? ' ps-spiel--above' : ''}" style={gameVars(block.geo, 1)}>{#each block.rows as row, at (at)}<div class="ps-spiel__zelle ps-spiel__zelle--lager">{#each Array.from({ length: row.platz }) as _, k (k)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div><div class="ps-spiel__zelle">{#each row.cells as cell, z (z)}{#if cell.platz}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span>{:else}<span class="ps-spiel__bild"><PrintPicture slot={cell.slot} {provider} />{#if settings.showLabel}<span class="ps-spiel__wort">{slotCaption(cell.slot)}</span>{/if}</span>{/if}{/each}</div>{/each}</section>{:else if block.kind === 'game-cut'}<!--
+--><section class="ps-grid ps-grid--page ps-spiel{settings.showLabel && settings.labelPosition === 'above' ? ' ps-spiel--above' : ''}" style={gameVars(block.geo, 1)}><div class="ps-spiel__lager">{#each Array.from({ length: block.lager }) as _, k (k)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div><div class="ps-spiel__rows">{#each block.rows as row, at (at)}<div class="ps-spiel__zelle">{#each row.cells as cell, z (z)}{#if cell.platz}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span>{:else}<span class="ps-spiel__bild"><PrintPicture slot={cell.slot} {provider} />{#if settings.showLabel}<span class="ps-spiel__wort">{slotCaption(cell.slot)}</span>{/if}</span>{/if}{/each}</div>{/each}</div></section>{:else if block.kind === 'game-cut'}<!--
   The cards for the fields: the Plauderbuch's cutting sheet, reused as it
   is — the fields' size, air round each, a dashed line for the scissors.
 --><section class="ps-grid ps-grid--page ps-talk-cut ps-spiel-cut{settings.showLabel && settings.labelPosition === 'above' ? ' ps-spiel--above' : ''}" style={gameVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} />{#if settings.showLabel}<span class="ps-talk__word ps-spiel__wort">{slotCaption(slot)}</span>{/if}</span></span>{/each}</section>{:else if block.kind === 'shop-guide'}<!--
