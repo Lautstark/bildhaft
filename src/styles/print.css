@@ -846,13 +846,14 @@
    field per card to lay. No cutting line anywhere on it: the sheet is
    laminated whole. Every length is A4's times the paper's factor --spiel-k. */
 /* Nothing is stretched to fill the paper: the Lager block and the Brett are
-   content-sized and stand centred, together, in the page's calm white. */
+   content-sized and start at the top, under the title — the calm white is
+   below, where the folder's rings and the hands are. */
 .ps-spiel {
   display: grid;
   grid-template-columns: auto auto;
   justify-content: center;
-  align-content: center;
-  align-items: center;
+  align-content: start;
+  align-items: start;
   column-gap: calc(14mm * var(--spiel-k));
   row-gap: calc(10mm * var(--spiel-k));
   height: var(--spiel-page);
