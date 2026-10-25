@@ -863,12 +863,14 @@
 }
 /* A wide Brett sends the Ablage under itself, as a quiet strip. */
 .ps-spiel--unten { grid-template-columns: auto; justify-items: center; }
-.ps-spiel--unten .ps-spiel__lager { order: 2; justify-content: center; }
-/* The Ablage, compact: pale fields in rows of as many as fit, no word —
-   the quiet zone. The game is the loud one. */
+.ps-spiel--unten .ps-spiel__lager { order: 2; flex-direction: row; width: auto; height: auto; max-width: 100%; justify-content: center; }
+/* The Ablage, compact: pale fields in full columns, top down — one clean
+   column before a second starts. No word; the quiet zone beside the game. */
 .ps-spiel__lager {
   width: var(--spiel-lager);
+  height: var(--spiel-lagerh);
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
   gap: var(--spiel-gap);
   align-content: start;

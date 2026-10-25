@@ -118,10 +118,11 @@
     + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--cols:${cols}`;
 
   /* And of a Spiel's sheets, for theirs. */
-  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; height: number; pad: number; lagerW: number; unten?: boolean }, cols: number): string =>
+  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; height: number; pad: number; lagerW: number; lagerH?: number; unten?: boolean }, cols: number): string =>
     `--spiel-w:${geo.fieldW.toFixed(3)}mm;--spiel-h:${geo.fieldH.toFixed(3)}mm;--spiel-gap:${geo.gap.toFixed(3)}mm;`
     + `--spiel-air:${geo.air.toFixed(3)}mm;--spiel-k:${geo.k.toFixed(4)};--spiel-page:${geo.height.toFixed(3)}mm;`
-    + `--spiel-pad:${geo.pad.toFixed(3)}mm;--spiel-lager:${geo.lagerW.toFixed(3)}mm;--cols:${cols}`;
+    + `--spiel-pad:${geo.pad.toFixed(3)}mm;--spiel-lager:${geo.lagerW.toFixed(3)}mm;`
+    + `--spiel-lagerh:${(geo.lagerH ?? 0).toFixed(3)}mm;--cols:${cols}`;
 
 </script>
 
