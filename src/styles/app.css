@@ -1044,7 +1044,7 @@ footer.footer {
   gap: 6px;
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   background: var(--surface);
 }
 /* Its own box rather than `.slot__img` at another size, which is what this was
@@ -1167,7 +1167,7 @@ footer.footer {
   cursor: pointer;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
 }
 .tpl:hover { border-color: var(--accent); }
 .tpl--on { border-color: var(--accent); outline: 1.5px solid var(--accent); }
@@ -1199,7 +1199,7 @@ footer.footer {
   cursor: pointer;
   background: none;
   border: 1px dashed var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
 }
 .word--add:hover { border-color: var(--accent); color: var(--accent-strong); }
 
@@ -1314,7 +1314,7 @@ footer.footer {
   gap: 3px;
   padding: 3px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
   /* Paper, in both themes, on purpose: the Tafel is the one thing on this
      screen that is a preview of a sheet, and a block of colour that is pale
      on paper has to be pale here, with white cards on it, or what is seen is
@@ -1430,7 +1430,7 @@ footer.footer {
 .cell__input:focus { outline: none; }
 .tray__head { display: flex; align-items: baseline; gap: 10px; padding: 0 4px; }
 .tray__head b { font-size: 13px; }
-.tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius-md); }
+.tray__wall { min-height: 60px; padding: 8px; border-radius: var(--radius); }
 
 /* ---------------------------------------------------------------- rezept */
 
@@ -1454,7 +1454,7 @@ footer.footer {
 .recipe__none { margin: 0; }
 /* Where a dragged card or Schritt will land: a line before or after the one
    it is over, the way a symbol inside a row shows it. */
-.recipe__entry { position: relative; border-radius: var(--radius-md); }
+.recipe__entry { position: relative; border-radius: var(--radius); }
 .recipe__entry > .word { height: 100%; }
 .recipe__cards .recipe__entry { cursor: grab; }
 .recipe__entry--before { box-shadow: -3px 0 0 var(--accent); }
