@@ -33,7 +33,9 @@ test('a new Sammlung is named for the day, and the caret is in its box', async (
   const before = await rows.count();
 
   await page.getByRole('button', { name: '+ Neues Material' }).click();
-  await expect(rows).toHaveCount(before + 1);
+  /* The untouched day-one material is reused, not doubled: the row count
+     stays, and the choice of template opens on it (2026-10-25). */
+  await expect(rows).toHaveCount(before);
   // Named once its template is chosen: the choice comes first, on its own.
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Satzstreifen/);

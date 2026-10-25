@@ -4,7 +4,7 @@ import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { resolveSlotsForProvider } from '../core/match.ts';
 import { withTimeout } from '../core/timeout.ts';
 import {
-  clearEverything, createCollection, deleteCollectionDeep,
+  clearEverything, createCollection, defaultCollectionName, deleteCollectionDeep,
   isWriting, mark, writtenSince,
   libraryTotals, listCollections, listOverrides, listSentences, overrideMap,
   putSentence, saveCollectionProvider, saveSettings, searchSentences,
@@ -15,6 +15,7 @@ import { LANG, t } from '../i18n/index.ts';
 import { openSheet } from '@lautstark/design/svelte/sheet';
 import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
+import { pagesOf } from '../core/talk.ts';
 import { activeCollection, providerId, s } from './state.svelte.ts';
 import { notify } from './notify.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
@@ -189,6 +190,16 @@ export async function resolveOpen(): Promise<void> {
 /* ------------------------------------------------------------ actions --- */
 
 export async function handleNewCollection(): Promise<void> {
+  /* Ein unberührtes Material wird wiederverwendet statt verdoppelt: wer
+     „+ Neues Material" drückt, noch eins drückt und wieder eins, legt sonst
+     drei leere an (2026-10-25, ihr Wunsch). Unberührt heißt: nichts drin
+     und der Name noch der des Tages — ein getippter Name ist eine Absicht. */
+  const open = activeCollection();
+  if (open && s.sentences.length === 0 && open.name === defaultCollectionName()
+    && !pagesOf(open.talk).some((page) => page.question || page.sayings.length > 0)) {
+    s.choosing = open.id;
+    return;
+  }
   const created = await createCollection();
   await refreshCollections();
   s.sentences = [];
