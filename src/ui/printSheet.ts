@@ -660,6 +660,9 @@ export interface GameGeometry {
   lagerCols: number;
   /** The game's rows — the Ablage has exactly as many, in the same rhythm. */
   units: number;
+  /** A cut card, the laminate's seam taken off each side: laminated, it is the field again. */
+  cutW: number;
+  cutH: number;
   /** The picture inside a printed card, capped so the word keeps its line. */
   symW: number;
   /** The most a row may be tall: its share of the page. */
@@ -716,17 +719,27 @@ export function gameGeometry(
   }
   const fieldW = best.fieldW;
   const fieldH = fieldW * (42 / 50);
-  /* The picture takes what the cell leaves it — the sheet says how big a
-     symbol prints, nobody is asked. */
-  const symW = Math.max(8, fieldH - label - 3 * k);
+  /* A cut card is printed the laminate's seam smaller than the field — two
+     millimetres a side, whatever the paper, because the seam is the pouch's
+     and not the print's. Laminated, card and field are the one size again. */
+  const cutW = Math.max(10, fieldW - 2 * LAMINATE_MM);
+  const cutH = Math.max(10, fieldH - 2 * LAMINATE_MM);
+  /* The picture takes what the smaller of the two boxes leaves it — the cut
+     card's — so a symbol is the one size on the sheet and on the card, and
+     the sheet says how big that is; nobody is asked. */
+  const symW = Math.max(8, cutH - label - 3 * k);
   return {
     fieldW, fieldH, gap, air, k, height,
     lagerW: best.lagerCols * fieldW + (best.lagerCols - 1) * gap,
     lagerCols: best.lagerCols,
     units: best.reihen,
+    cutW, cutH,
     symW, zeile: best.zeile,
   };
 }
+
+/** What the laminate seals beyond the paper's edge, each side. */
+const LAMINATE_MM = 2;
 
 export function talkGeometry(
   settings: Pick<PrintSettings, 'paper' | 'orientation'>, page: { width: number; height: number }, reserve: number,
@@ -965,8 +978,8 @@ export function sheetBlocks(
     });
     if (rows.length > 0) blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
     if (karten.length > 0) {
-      const cols = Math.max(1, Math.floor(page.width / (geo.fieldW + 2 * geo.air) + 1e-6));
-      const cutRows = Math.max(1, Math.floor(page.height / (geo.fieldH + 2 * geo.air)));
+      const cols = Math.max(1, Math.floor(page.width / (geo.cutW + 2 * geo.air) + 1e-6));
+      const cutRows = Math.max(1, Math.floor(page.height / (geo.cutH + 2 * geo.air)));
       for (const slots of chunks(karten, cols * cutRows)) blocks.push({ kind: 'game-cut', slots, cols, geo });
     }
   } else if (settings.layout === 'sheet') {
