@@ -1044,7 +1044,6 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   await pickPaper(page, 'A5');
   await expect.poll(() => sheet.locator('.ps-page').count()).toBeGreaterThan(pages);
   await showMaterial(page);
-
 });
 
 /**
@@ -1372,4 +1371,44 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await box.fill('Kiwi');
   await box.press('Enter');
   await expect(page.locator('.tray .word__name')).toHaveText(['Kiwi']);
+});
+
+test('a card that grows round its symbol grows upwards for the Anybook placeholder, and keeps its symbol', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await showSheet(page);
+  const sizes = () => page.evaluate(() => {
+    const mm = 96 / 25.4;
+    const card = document.querySelector('.preview-frame .ps-card:has(img)') as HTMLElement;
+    const scale = card.getBoundingClientRect().width / card.offsetWidth;
+    const img = card.querySelector('.ps-card__img') as HTMLElement;
+    const box = card.getBoundingClientRect();
+    const pic = img.getBoundingClientRect();
+    const after = getComputedStyle(card, '::after');
+    return {
+      width: card.offsetWidth / mm,
+      height: card.offsetHeight / mm,
+      symbol: img.offsetWidth / mm,
+      circle: after.content !== 'none' && after.content !== 'normal',
+      // The symbol's box below the circle (1 mm in, 9.5 mm tall): none of it under the sticker.
+      below: (pic.top - (box.top + scale * 10.5 * mm)) / scale / mm,
+      // And in the card's middle.
+      off: ((pic.left + pic.right) / 2 - (box.left + box.right) / 2) / scale / mm,
+      // The circle's middle against the card's, in mm.
+      circleOff: (parseFloat(after.left) + 4.75 * mm - card.offsetWidth / 2) / mm,
+    };
+  });
+  const before = await sizes();
+  expect(before.circle).toBe(false);
+
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  await expect.poll(async () => (await sizes()).circle).toBe(true);
+  const after = await sizes();
+  expect(after.symbol).toBeCloseTo(before.symbol, 1);
+  expect(after.width).toBeCloseTo(before.width, 1);
+  expect(after.height).toBeGreaterThan(before.height + 8);
+  expect(after.below).toBeGreaterThanOrEqual(-0.05);
+  expect(Math.abs(after.off)).toBeLessThan(0.3);
+  // Darüber means over the symbol's middle.
+  expect(Math.abs(after.circleOff)).toBeLessThan(0.3);
 });

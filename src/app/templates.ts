@@ -182,7 +182,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       const page = printableArea('a4', 'landscape');
       const field = Math.min(page.width / grid.cols, page.height / grid.rows);
       /* Quer, wie eine Tafel hängt: breiter als hoch (2026-10-23, ihr Standard). */
-      return { paper: 'a4', orientation: 'landscape', cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false };
+      /* A Tafel's fields are given: the Anybook circle lies over the symbol's corner rather than shrinking it. */
+      return { paper: 'a4', orientation: 'landscape', cutMarginMm: grid.airMm ?? defaultAirMm(field), markFreeFields: false, anybookPlace: 'over' };
     },
     fixed: (_settings, board) => {
       const grid = board ?? boardOf({});
@@ -283,6 +284,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       cardBackground: '#ffffff',
       accentColour: '#e0558c', gameGroundColour: '#fdeef3',
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
+      // Its cards are given: the Anybook circle lies over the symbol's corner rather than shrinking it.
+      anybookPlace: 'over',
     }),
     fixed: () => ({ layout: 'spiel' }),
     zeileInEdit: true,

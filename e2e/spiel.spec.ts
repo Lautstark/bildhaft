@@ -222,3 +222,68 @@ test('zum Lochen: der Rand an der Lochkante wird 2 cm, die Marken stehen darin',
   await expect(sheetPage.locator('.ps-punch')).toHaveCount(0);
   await expect.poll(pad).toEqual({ top: 10, left: 20 });
 });
+
+test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, mittig, der Kreis über höchstens der halben Ecke', async ({ page }) => {
+  const rows = page.locator('.game__row');
+  await pick(page, rows.first(), '+ Bild', 'Apfel');
+  await pick(page, rows.first(), '+ Platzhalter', 'Birne');
+
+  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  await showSheet(page);
+
+  /* The circle is the card's ::after; its place is the card's top right, so
+     what is measured is the picture against that corner. */
+  const measure = (selector: string) => page.evaluate((sel) => {
+    const mm = 96 / 25.4;
+    return [...document.querySelectorAll(`.preview-frame ${sel}`)].map((card) => {
+      const circle = getComputedStyle(card, '::after');
+      const box = card.getBoundingClientRect();
+      const img = card.querySelector('img')?.getBoundingClientRect();
+      const scale = box.width / (card as HTMLElement).offsetWidth;
+      return {
+        circle: circle.content !== 'none' && circle.content !== 'normal',
+        size: Math.round(parseFloat(circle.width) * 10 / mm) / 10,
+        // How far the picture's right edge stays left of the circle's, in mm: half of it may lie over the corner.
+        clear: img ? ((box.right - scale * 1 * mm) - scale * 9.5 * mm - img.right) / scale / mm : null,
+        top: Math.round(parseFloat(circle.top) * 100 / mm) / 100,
+        // The picture's middle against the card's, in mm: it stays in the middle.
+        off: img ? ((img.left + img.right) / 2 - (box.left + box.right) / 2) / scale / mm : null,
+      };
+    });
+  }, selector);
+
+  for (const sel of ['.ps-spiel__bild', '.ps-spiel-cut .ps-talk-cut__cell']) {
+    const cards = await measure(sel);
+    expect(cards.length, sel).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.circle, sel).toBe(true);
+      expect(card.size, sel).toBe(9.5);
+      // Close under the top edge — on the Kartenbogen the cut line's, not the card's inside it.
+      expect(card.top, sel).toBe(1);
+      expect(card.clear!, sel).toBeGreaterThanOrEqual(-5.3);
+      expect(Math.abs(card.off!), sel).toBeLessThan(0.3);
+    }
+  }
+  // A Platzhalter and the Ablage's dots carry no circle.
+  for (const field of await measure('.ps-talk__field')) expect(field.circle).toBe(false);
+
+  // A Spiel's cards are given: no room beside a symbol in the middle, so no „daneben“.
+  await expect(page.getByRole('button', { name: 'daneben' })).toHaveCount(0);
+  // Darüber: the symbol gives up the top instead, and none of it lies under the circle.
+  await page.getByRole('button', { name: 'darüber' }).click();
+  const under = (selector: string) => page.evaluate((sel) => {
+    const mm = 96 / 25.4;
+    return [...document.querySelectorAll(`.preview-frame ${sel}`)].map((card) => {
+      const box = card.getBoundingClientRect();
+      const scale = box.width / (card as HTMLElement).offsetWidth;
+      const pic = card.querySelector('.ps-title__pic') as HTMLElement;
+      const style = getComputedStyle(pic);
+      const top = pic.getBoundingClientRect().top + parseFloat(style.paddingTop) * scale;
+      return (top - (box.top + scale * 10.5 * mm)) / scale / mm;
+    });
+  }, selector);
+  for (const sel of ['.ps-spiel__bild', '.ps-spiel-cut .ps-talk-cut__cell']) {
+    await expect.poll(async () => Math.min(...await under(sel)), { message: sel }).toBeGreaterThanOrEqual(-0.3);
+  }
+});

@@ -230,7 +230,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}` : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"

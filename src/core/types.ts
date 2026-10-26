@@ -710,6 +710,9 @@ export type PaperSize = 'a5' | 'a4' | 'a3';
  */
 export type SheetFit = 'size' | 'card' | 'grid';
 
+/** Where an Anybook sticker's circle goes against a card's symbol. */
+export type AnybookPlace = 'above' | 'over';
+
 /** Where a sheet is punched: the long side of a portrait sheet, or the top of a landscape one. */
 export type PunchEdge = 'left' | 'top';
 
@@ -745,7 +748,19 @@ export interface PrintSettings {
   cardHeightMm: number | null;
   gridCols: number;
   gridRows: number;
-  showCutLines: boolean;
+/**
+   * A 10 mm circle in the top right of every card that shows a symbol, lightly
+   * dashed: where an Anybook sticker goes, so a pen can read the card aloud.
+   * The symbol keeps clear of it, smaller where it has to be.
+   */
+  anybookCircle: boolean;
+  /**
+   * Where the circle goes against the symbol: above it, or over its top right
+   * corner. Above, a card that grows round its symbol grows taller and a card of
+   * given size gives its symbol's top up; over, neither moves much.
+   */
+  anybookPlace: AnybookPlace;
+    showCutLines: boolean;
   onePerPage: boolean;
   showSentenceText: boolean;
   /**
@@ -887,6 +902,8 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   gridCols: 4,
   gridRows: 3,
   showCutLines: true,
+  anybookCircle: false,
+  anybookPlace: 'above',
   onePerPage: false,
   showSentenceText: true,
   sentencePosition: 'above',

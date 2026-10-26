@@ -134,6 +134,9 @@
       <PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} />
     </div>{/if}
     {#if offer.cutLines || kind() === 'einkaufsliste'}{@render check(t('ui.cut_lines'), mp.settings.showCutLines, (next) => mp?.set('showCutLines', next))}{/if}
+    <!-- Anybook (2026-10-26, ihr Wunsch): auf jeder Karte mit Symbol, in jeder Vorlage mit diesem Menü. -->
+    {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next))}
+    {#if mp.settings.anybookCircle}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each ['above', 'over'] as const as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(place === 'above' ? 'ui.anybook_above' : 'ui.anybook_over')}</button>{/each}</span></div></div>{/if}
     {#if kind() === 'einkaufsliste'}<!-- Das Maß als Fußnote: ein Fakt, keine Stellschraube. -->
       <div class="ding__row"><span class="small faint">{t('ui.symbol_from_paper', { size: mp.settings.symbolSizeMm, margin: mp.settings.cutMarginMm })}</span>{@render tip('brett')}</div>
       {#if info === 'brett'}<p class="small faint ding__hint">{t('ui.shop_geometry_info')}</p>{/if}
