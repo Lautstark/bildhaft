@@ -1748,8 +1748,7 @@ footer.footer {
 .game__cell--after { box-shadow: 3px 0 0 var(--accent); }
 .game__row--before { box-shadow: 0 -3px 0 var(--accent); }
 .game__row--after { box-shadow: 0 3px 0 var(--accent); }
-.game__adds { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-.game__adds .song__plus { cursor: pointer; white-space: nowrap; }
+.game__adds { display: flex; align-items: stretch; gap: 10px; }
 .game__acts { display: flex; justify-content: flex-end; opacity: 0; transition: opacity .13s; }
 .game__row:hover .game__acts, .game__acts:focus-within { opacity: 1; }
 .game__more { display: flex; justify-content: flex-start; }
