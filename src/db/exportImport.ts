@@ -9,7 +9,9 @@ import { t } from '../i18n/index.ts';
 import {
   getOwnImage, listCollections, listAllOverrides, listOwnImages, listSentences, newId,
 } from './repo.ts';
-import { isStale, isStore } from './folder.ts';
+import {
+  fileCollection, fileImage, fileOverride, fileSentence, isStale, isStore,
+} from './folder.ts';
 import { downloadJson as offer } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
@@ -236,6 +238,8 @@ async function restoreImages(packed: OwnImageExport[] | undefined): Promise<Map<
   const tx = db.transaction('ownImages', 'readwrite');
   for (const image of restored) await tx.store.put(image);
   await tx.done;
+  // To the folder too, bytes beside the record, before any card points at one.
+  for (const image of restored) await fileImage(image);
   return mapping;
 }
 
@@ -351,17 +355,19 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
 
   // Overrides merge in only where the user has no entry of their own — an import
   // should extend the personal dictionary, never overrule it.
-  let overrideCount = 0;
+  const added: Override[] = [];
   const store = tx.objectStore('overrides');
   for (const override of parsed.overrides ?? []) {
     if (!override?.key) continue;
     if (await store.get(override.key)) continue;
-    await store.put(remapOverride(override, imageIds));
-    overrideCount++;
+    const entry = remapOverride(override, imageIds);
+    await store.put(entry);
+    added.push(entry);
   }
   await tx.done;
+  await fileImported([collection], sentences, added);
 
-  return { collection, collectionCount: 1, sentenceCount: sentences.length, overrideCount };
+  return { collection, collectionCount: 1, sentenceCount: sentences.length, overrideCount: added.length };
 }
 
 /** A board's fields pointing at the fresh ids its cards were given. */
@@ -459,20 +465,39 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   for (const collection of collections) await tx.objectStore('collections').put(collection);
   for (const sentence of sentences) await tx.objectStore('sentences').put(sentence);
 
-  let overrideCount = 0;
+  const added: Override[] = [];
   const store = tx.objectStore('overrides');
   for (const override of parsed.overrides ?? []) {
     if (!override?.key) continue;
     if (await store.get(override.key)) continue;
-    await store.put(remapOverride(override, imageIds));
-    overrideCount++;
+    const entry = remapOverride(override, imageIds);
+    await store.put(entry);
+    added.push(entry);
   }
   await tx.done;
+  await fileImported(collections, sentences, added);
 
   return {
     collection: collections[0],
     collectionCount: collections.length,
     sentenceCount: sentences.length,
-    overrideCount,
+    overrideCount: added.length,
   };
+}
+
+/*
+ * Where a folder is the store, what an import added has to reach it, or the
+ * next read of the folder replaces the browser's copy and the import is gone —
+ * on screen until then, and silently not after. Record by record, as an edit
+ * files them: a wholesale pushKind() would also prune whatever this browser
+ * does not hold, and an import is no reason to touch anything else. Cards
+ * before their Sammlung, so a folder read halfway never finds a Sammlung
+ * naming cards it does not have.
+ */
+async function fileImported(
+  collections: Collection[], sentences: Sentence[], overrides: Override[],
+): Promise<void> {
+  for (const sentence of sentences) await fileSentence(sentence);
+  for (const collection of collections) await fileCollection(collection);
+  for (const override of overrides) await fileOverride(override);
 }
