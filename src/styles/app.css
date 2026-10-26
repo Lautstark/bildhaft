@@ -144,11 +144,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* A heading that folds its section, and a template's group inside one. The
    chevron points right when folded and down when open, the way a list that
    can be opened has always said so. */
-.sidebar__fold,
 /* Der Gruppenkopf mit seinem Druck-Knopf daneben: der Knopf wartet still und
    zeigt sich dem Zeiger — Platz nimmt er immer, damit nichts springt. */
-.sidebar__grouprow { display: flex; align-items: center; }
+.sidebar__grouprow { display: flex; align-items: center; border-radius: var(--radius-sm); }
+.sidebar__grouprow:hover { background: var(--surface-2); }
 .sidebar__grouprow .sidebar__group { flex: 1; min-width: 0; }
+.sidebar__grouprow .sidebar__group:hover { background: none; }
+.sidebar__grouprow > .sidebar__count { flex: none; margin-left: 2px; padding-right: 8px; color: var(--text-faint); font-size: 12px; }
 .sidebar__groupprint {
   flex: none;
   display: grid;
@@ -165,8 +167,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .sidebar__grouprow:hover .sidebar__groupprint,
 .sidebar__groupprint:focus-visible { opacity: 1; }
-.sidebar__groupprint:hover { color: var(--accent-strong); background: var(--surface-2); }
+.sidebar__groupprint:hover { color: var(--accent-strong); }
 
+.sidebar__fold,
 .sidebar__group {
   display: flex;
   align-items: center;

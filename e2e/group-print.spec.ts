@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { addCards, openDing, pickTemplate, translate } from './helpers.ts';
+import { addCards, openDing, pickTemplate, showSheet, translate } from './helpers.ts';
 
 /**
  * „Alle drucken": one print over a template group, from the printer button on
@@ -30,6 +30,14 @@ async function pick(page: Page, label: string, term: string): Promise<void> {
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
+/** The width of the first cut card under `scope`, in millimetres of paper. */
+async function cutWidth(page: Page, scope: string): Promise<number> {
+  return page.evaluate((selector) => {
+    const cut = document.querySelector(`${selector} .ps-spiel-cut`) as HTMLElement | null;
+    return cut ? parseFloat(getComputedStyle(cut).getPropertyValue('--talk-w')) : 0;
+  }, scope);
+}
+
 /** A new Material of the given template, named. */
 async function newMaterial(page: Page, template: RegExp, name: string): Promise<void> {
   await expect(page.locator('.sidebar')).toBeVisible();
@@ -56,6 +64,12 @@ test('der Gruppendruck druckt die Spiele zusammen, die Karten geteilt auf einem 
   await newGame(page, 'Spiel A', 'Schuh', 'Socke');
   await newGame(page, 'Spiel B', 'Regen', 'Banane');
 
+  // The cut card as Spiel B's single print cuts it — the measure the shared
+  // Bogen must keep, however many games' rows stand behind it.
+  await showSheet(page);
+  const single = await cutWidth(page, '.print-view .preview-frame');
+  expect(single).toBeGreaterThan(20);
+
   // The printer on the group's head opens the overlay: every Spiel ticked,
   // one board per Spiel — the group in the sidebar's order, latest first —
   // and one shared Bogen holding both games' cards.
@@ -67,6 +81,8 @@ test('der Gruppendruck druckt die Spiele zusammen, die Karten geteilt auf einem 
   await expect(overlay.locator('.ps-spiel-cut')).toHaveCount(1);
   await expect(overlay.locator('.ps-spiel-cut .ps-talk__card .ps-spiel__wort')).toHaveText(['Banane', 'Socke']);
   await expect(overlay.locator('.print-view__caprow')).toContainText('3 Seiten');
+  // The shared Bogen cuts the very card the single print cuts.
+  expect(await cutWidth(page, '.group-print')).toBeCloseTo(single, 1);
   // Each board is exactly its single print's board: its cells, its Ablage.
   const first = overlay.locator('.preview-frame').first();
   await expect(first.locator('.ps-spiel__bild .ps-spiel__wort')).toHaveText(['Regen']);

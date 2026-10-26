@@ -632,6 +632,26 @@ export interface SheetOptions {
    * as they are and gathers the cards of like materials onto one Bogen.
    */
   cut?: 'with' | 'none' | 'only';
+  /**
+   * The cut cards' measure, when they are printed apart from their pages
+   * (`cut: 'only'`): taken from the material's own print (cutGeometry), so a
+   * card on the group's shared Bogen is exactly the card its single print
+   * would cut. Worked out from the gathered rows instead, the measure was the
+   * measure of a game no sheet could hold, and the cards came out shrunk.
+   */
+  cutGeo?: GameGeometry | TalkGeometry;
+}
+
+/**
+ * The geometry a material's Kartenbogen is printed with in its single print,
+ * or null where it has none — the group print's measure of what may share a
+ * Bogen, and the measure the shared Bogen is drawn to.
+ */
+export function cutGeometry(options: SheetOptions): GameGeometry | TalkGeometry | null {
+  for (const block of sheetBlocks({ ...options, cut: 'only', cutGeo: undefined }, null)) {
+    if (block.kind === 'game-cut' || block.kind === 'talk-cut') return block.geo;
+  }
+  return null;
 }
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
@@ -1128,9 +1148,10 @@ export function sheetBlocks(
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0 && cut !== 'none') {
-      const cols = Math.max(1, Math.floor(cutPage.width / (geo.cutW + 2 * geo.air) + 1e-6));
-      const rows = Math.max(1, Math.floor(cutPage.height / (geo.cutH + 2 * geo.air)));
-      for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo });
+      const cutGeo = (cut === 'only' && options.cutGeo ? options.cutGeo : geo) as TalkGeometry;
+      const cols = Math.max(1, Math.floor(cutPage.width / (cutGeo.cutW + 2 * cutGeo.air) + 1e-6));
+      const rows = Math.max(1, Math.floor(cutPage.height / (cutGeo.cutH + 2 * cutGeo.air)));
+      for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo: cutGeo });
     }
   } else if (settings.layout === 'spiel') {
     /*
@@ -1159,9 +1180,10 @@ export function sheetBlocks(
     });
     if (rows.length > 0 && cut !== 'only') blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
     if (karten.length > 0 && cut !== 'none') {
-      const cols = Math.max(1, Math.floor(cutPage.width / (geo.cutW + 2 * geo.air) + 1e-6));
-      const cutRows = Math.max(1, Math.floor(cutPage.height / (geo.cutH + 2 * geo.air)));
-      for (const slots of chunks(karten, cols * cutRows)) blocks.push({ kind: 'game-cut', slots, cols, geo });
+      const cutGeo = (cut === 'only' && options.cutGeo ? options.cutGeo : geo) as GameGeometry;
+      const cols = Math.max(1, Math.floor(cutPage.width / (cutGeo.cutW + 2 * cutGeo.air) + 1e-6));
+      const cutRows = Math.max(1, Math.floor(cutPage.height / (cutGeo.cutH + 2 * cutGeo.air)));
+      for (const slots of chunks(karten, cols * cutRows)) blocks.push({ kind: 'game-cut', slots, cols, geo: cutGeo });
     }
   } else if (settings.layout === 'sheet') {
     const cards = deck(sentences, provider);

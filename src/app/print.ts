@@ -3,7 +3,7 @@ import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } fro
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { rowsOfGame } from '../core/game.ts';
 import {
-  copyrightFor, creditLines, gameFits, gameGeometry, gameReserveMm, printableArea, reserveMm, tafelFieldMm,
+  copyrightFor, creditLines, cutGeometry, gameFits, gameGeometry, gameReserveMm, printableArea, reserveMm, tafelFieldMm,
   talkCapacity, talkGeometry, type Titled,
 } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
@@ -306,24 +306,37 @@ export function groupPrintParts(loaded: GroupLoaded[], chosen: ReadonlySet<strin
   const parts: GroupPrintPart[] = [];
   const noop = () => undefined;
   const condense = loaded.some(({ collection }) => ['spiel', 'plauderbuch'].includes(kindOf(collection)));
-  const cutGroups = new Map<string, PrintOptions[]>();
+  const cutGroups = new Map<string, { geo: NonNullable<ReturnType<typeof cutGeometry>>; all: PrintOptions[] }>();
   for (const { collection, sentences } of loaded) {
     if (!chosen.has(collection.id)) continue;
     const options = buildOptions(collection, sentences, kindOf(collection), { onChange: noop });
     if (!options) continue;
     if (condense) {
+      /* The card as this material's own print cuts it — a game whose rows
+         did not fit the sheet at the one field size prints smaller cards,
+         and those share a Bogen only with cards of their very size. */
+      const geo = cutGeometry({
+        ...options, copyright: copyrightFor(options.provider, options.settings.showCopyright),
+      });
       options.cut = 'none';
-      const key = JSON.stringify(CUT_KEY.map((k) => options.settings[k]));
-      cutGroups.set(key, [...(cutGroups.get(key) ?? []), options]);
+      if (geo) {
+        const key = JSON.stringify([
+          ...CUT_KEY.map((k) => options.settings[k]), geo.cutW.toFixed(2), geo.cutH.toFixed(2), geo.air.toFixed(2),
+        ]);
+        const group = cutGroups.get(key) ?? { geo, all: [] };
+        group.all.push(options);
+        cutGroups.set(key, group);
+      }
     }
     parts.push({ collection, options });
   }
-  for (const group of cutGroups.values()) {
+  for (const { geo, all: group } of cutGroups.values()) {
     const first = group[0]!;
     parts.push({
       collection: null,
       options: {
         ...first,
+        cutGeo: geo,
         sentences: group.flatMap((options) => options.sentences),
         game: first.kind === 'spiel' ? { rows: group.flatMap((options) => options.game?.rows ?? []) } : null,
         talk: first.kind === 'plauderbuch' ? { pages: group.flatMap((options) => options.talk?.pages ?? []) } : null,

@@ -5,7 +5,7 @@ import Printables from './Printables.svelte';
 import {
   applyPageSetup, cardRows, copyrightFor, pagesOf, paperSize, planPages, printableArea, printerPaper,
   PX_PER_MM, sheetBlocks, sheetsOf, songPieces, stripLines,
-  type Block, type PrintBoard, type PrintGame, type PrintSong, type PrintTalk, type SheetPlan,
+  type Block, type PrintBoard, type PrintGame, type PrintSong, type PrintTalk, type SheetOptions, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { previewsToPdf, previewToPdf } from './pdf.ts';
@@ -44,6 +44,8 @@ export interface PrintOptions {
   pictures?: Slot[];
   /** What of a material with a Kartenbogen this preview shows — see SheetOptions. */
   cut?: 'with' | 'none' | 'only';
+  /** The cut cards' measure when they print apart from their pages — see SheetOptions. */
+  cutGeo?: SheetOptions['cutGeo'];
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
   provider: ProviderId;
@@ -165,6 +167,7 @@ export class Printing {
     collectionName: this.options.collectionName,
     pictures: this.options.pictures,
     cut: this.options.cut,
+    cutGeo: this.options.cutGeo,
   }, this.rows, this.strips, this.songs));
 
   plan: SheetPlan = $derived.by(() => ({ rows: this.rows, pages: this.pages }));
