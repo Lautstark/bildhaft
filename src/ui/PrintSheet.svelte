@@ -110,6 +110,9 @@
      neither: it is about the material, and carries none of it. */
   const bare = (held: Block[]): boolean => held.length > 0
     && held.every((block) => block.kind === 'talk-cut' || block.kind === 'game-cut' || block.kind === 'shop-guide');
+  /* A page only of cards to cut out is cut apart, not filed: no hole marks. */
+  const cutOnly = (held: Block[]): boolean => held.length > 0
+    && held.every((block) => block.kind === 'talk-cut' || block.kind === 'game-cut' || block.kind === 'cut');
   let numbered = $derived(pages ? pages.filter((held) => !bare(held)).length : 0);
   const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
 
@@ -227,7 +230,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}"
+  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"
@@ -261,4 +264,4 @@
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.
---><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if settings.punch && settings.punchMarks}{#each ['a', 'b', 'mid'] as at (at)}<span class="ps-punch ps-punch--{settings.punch} ps-punch--{at}" aria-hidden="true"></span>{/each}{/if}{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+--><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if settings.punch && settings.punchMarks && !cutOnly(held)}{#each ['a', 'b', 'mid'] as at (at)}<span class="ps-punch ps-punch--{settings.punch} ps-punch--{at}" aria-hidden="true"></span>{/each}{/if}{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRINT_SETTINGS } from '../../src/core/types.ts';
-import { bleeds, gameFits, pageMargins, printableArea, PUNCH_MARGIN_MM } from '../../src/ui/printSheet.ts';
+import {
+  bleeds, creditLines, gameFits, gameGeometry, gameReserveMm, METACOM_COPYRIGHT, pageMargins, printableArea, PUNCH_MARGIN_MM,
+} from '../../src/ui/printSheet.ts';
 
 /**
  * A sheet punched for a ring binder keeps its punched edge 2 cm free, and
@@ -26,18 +28,38 @@ describe('a punched sheet', () => {
     expect(DEFAULT_PRINT_SETTINGS.punch).toBeNull();
   });
 
-  it('costs a Spiel a row when punched at the top, a cell when punched at the left', () => {
-    const settings = { paper: 'a4' as const, cutMarginMm: 3, showLabel: false, labelSizePt: 10 };
-    // Measured as the sheet measures it: page, then the title's and credits' room.
+  it('keeps a Spiel at its rows and cells when punched, the fence closer at the left', () => {
+    const settings = { paper: 'a4' as const, cutMarginMm: 3, showLabel: false, labelSizePt: 10, punch: null };
     const reserve = 23;
-    const five = { units: 5, zellen: 2, platz: 5 };
     const wide = { units: 5, zellen: 6, platz: 5 };
-    expect(gameFits(settings, printableArea('a4', 'landscape'), reserve, five)).toBe(true);
     expect(gameFits(settings, printableArea('a4', 'landscape'), reserve, wide)).toBe(true);
-    // Oben: four rows stand under each other, so five pairs take two columns — and still fit.
-    expect(gameFits(settings, printableArea('a4', 'landscape', 'top'), reserve, five)).toBe(true);
-    // Links: a row of six no longer fits beside the Ablage.
+    // Links: the page is a centimetre narrower, and only the closer fence keeps a row of six.
+    expect(gameFits({ ...settings, punch: 'left' as const }, printableArea('a4', 'landscape', 'left'), reserve, wide)).toBe(true);
     expect(gameFits(settings, printableArea('a4', 'landscape', 'left'), reserve, wide)).toBe(false);
-    expect(gameFits(settings, printableArea('a4', 'landscape', 'left'), reserve, { ...wide, zellen: 5 })).toBe(true);
   });
+});
+
+describe('a Spiel of five rows and seven columns', () => {
+  /* Five rows of 30 mm under each other, the Ablage and six cells across:
+     the biggest a Spiel gets on A4 across. It prints at the one field size
+     whatever else is on the sheet — the title, the METACOM line, page
+     numbers, a punched edge at the top or the left. */
+  const full = { units: 5, zellen: 6, platz: 5 };
+  for (const paper of ['a5', 'a4', 'a3'] as const) for (const punch of [null, 'top', 'left'] as const) {
+    for (const copyright of [false, true]) {
+      for (const showPageNumbers of [false, true]) {
+        it(`fits at its field on ${paper} — Lochen ${punch ?? 'aus'}, Copyright ${copyright ? 'an' : 'aus'}, Seitenzahlen ${showPageNumbers ? 'an' : 'aus'}`, () => {
+          const settings = {
+            ...DEFAULT_PRINT_SETTINGS, paper, orientation: 'landscape' as const,
+            showCollectionTitle: true, titleSizePt: 15, titleLine: true, showLabel: false, punch, showPageNumbers,
+          };
+          const credits = creditLines(null, copyright ? METACOM_COPYRIGHT : null);
+          const page = printableArea(paper, 'landscape', punch);
+          const reserve = gameReserveMm(settings, credits, 'text');
+          expect(gameFits(settings, page, reserve, full)).toBe(true);
+          expect(gameGeometry(settings, page, reserve, full).units).toBe(5);
+        });
+      }
+    }
+  }
 });

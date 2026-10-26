@@ -179,6 +179,14 @@ test('ein Spiel wächst nur, solange das Blatt Platz hat — die Karten bleiben 
   // The field has not shrunk to make room: the game stopped growing instead.
   await showSheet(page);
   await expect.poll(field).toBeCloseTo(30, 1);
+
+  // Bearbeiten measured against the fullest sheet: punched at the left, with
+  // page numbers too, the full game still prints at 30 mm.
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await page.getByLabel('Zum Lochen').check();
+  await page.getByRole('button', { name: 'links' }).click();
+  await page.getByLabel('Seitenzahlen drucken').check();
+  await expect.poll(field).toBeCloseTo(30, 1);
 });
 
 test('zum Lochen: der Rand an der Lochkante wird 2 cm, die Marken stehen darin', async ({ page }) => {

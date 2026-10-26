@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_FIELD_MM, gameFits, gameGeometry } from '../../src/ui/printSheet.ts';
+import { GAME_FIELD_MM, GAME_SCALE, gameFits, gameGeometry } from '../../src/ui/printSheet.ts';
 
 /**
  * One card size for every Spiel.
@@ -10,7 +10,7 @@ import { GAME_FIELD_MM, gameFits, gameGeometry } from '../../src/ui/printSheet.t
  * offers a cell or a row only while gameFits() says the sheet holds it.
  */
 
-const settings = { paper: 'a4' as const, cutMarginMm: 3, showLabel: false, labelSizePt: 10 };
+const settings = { paper: 'a4' as const, cutMarginMm: 3, showLabel: false, labelSizePt: 10, punch: null };
 /* A4 landscape as the sheet measures it: 277 mm wide, 167 mm left for the game. */
 const page = { width: 277, height: 190 };
 const reserve = 23;
@@ -27,7 +27,7 @@ describe('a Spiel at its one field size', () => {
   it('scales the field with the paper, so a game holds as much on A5 as on A4', () => {
     const a5 = { ...settings, paper: 'a5' as const };
     const small = { width: page.width * 0.7, height: page.height * 0.7 };
-    expect(gameGeometry(a5, small, reserve * 0.7, pairs(8)).fieldW).toBeCloseTo(GAME_FIELD_MM * 0.7);
+    expect(gameGeometry(a5, small, reserve * 0.7, pairs(8)).fieldW).toBeCloseTo(GAME_FIELD_MM * GAME_SCALE.a5);
     expect(gameFits(a5, small, reserve * 0.7, pairs(8))).toBe(true);
   });
 
@@ -62,7 +62,19 @@ describe('a Spiel at its one field size', () => {
     expect(gameFits(settings, page, reserve, full)).toBe(false);
     const geo = gameGeometry(settings, page, reserve, full);
     expect(geo.fieldW).toBeLessThan(GAME_FIELD_MM);
-    // Small, but on its one sheet — the price of one raster for every game.
-    expect(geo.fieldW).toBeGreaterThan(5);
+    expect(geo.fieldW).toBeGreaterThan(20);
+  });
+
+  it('keeps a game that lost a row of room in one column, a little smaller, rather than halving it', () => {
+    /* Her „Wohin gehört es genau?" — five sorting rows of 1 + 3 — on a sheet
+       whose punched top and credit line leave room for four rows: a fifth
+       in a second column made the sheet too wide and every card 15 mm. */
+    const sorting = { units: 5, zellen: 4, platz: 15 };
+    const lower = 33;
+    expect(gameGeometry(settings, page, lower, pairs(4)).units).toBe(4);
+    expect(gameFits(settings, page, lower, sorting)).toBe(false);
+    const geo = gameGeometry(settings, page, lower, sorting);
+    expect(geo.units).toBe(5);
+    expect(geo.fieldW).toBeGreaterThan(25);
   });
 });

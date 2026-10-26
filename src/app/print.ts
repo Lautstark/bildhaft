@@ -2,7 +2,9 @@ import type { Board, Collection, CollectionKind, GameRow, PrintSettings, SavedPd
 import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { rowsOfGame } from '../core/game.ts';
-import { copyrightFor, creditLines, gameFits, gameGeometry, gameReserveMm, printableArea, tafelFieldMm } from '../ui/printSheet.ts';
+import {
+  copyrightFor, creditLines, gameFits, gameGeometry, gameReserveMm, printableArea, tafelFieldMm, type Titled,
+} from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
@@ -313,9 +315,9 @@ function gameSheet() {
   if (!open || kind() !== 'spiel' || !s.settings) return null;
   const print = printFor(printBase(), 'spiel', null, open.print ?? {});
   const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
-  const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
+  const titled: Titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
     : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
-  return { print, page: printableArea(print.paper, print.orientation, print.punch), reserve: gameReserveMm(print, credits, titled) };
+  return { print, titled, page: printableArea(print.paper, print.orientation, print.punch), reserve: gameReserveMm(print, credits, titled) };
 }
 
 /** A game's rows as the geometry counts them: how many, the longest, and
@@ -345,13 +347,20 @@ export function gameSymbol(): number | null {
  * What the open Spiel still has room for at its one card size: a picture or
  * a Platzhalter in a given row, and another row. Bearbeiten offers only that,
  * so a game never grows past its sheet and every game's cards stay the size
- * of every other's. A new row counts as holding one picture, the least it
- * prints with.
+ * of every other's. Measured against the fullest sheet the Spiel can be
+ * printed on — punched at the top or the left, with the METACOM line and
+ * page numbers — so that switching any of them on later never shrinks what
+ * was built. A new row counts as holding one picture, the least it prints with.
  */
 export function gameRoom(): { bild: (rowId?: string) => boolean; platz: (rowId?: string) => boolean; zeile: boolean } {
   const sheet = gameSheet();
   const rows = rowsOfGame(activeCollection()?.game ?? { rows: [] });
-  const fits = (next: GameRow[]) => !sheet || gameFits(sheet.print, sheet.page, sheet.reserve, shapeOf(next));
+  const fullest = !sheet ? [] : ([null, 'top', 'left'] as const).map((punch) => {
+    const print = { ...sheet.print, punch, showPageNumbers: true };
+    const credits = creditLines(provider().attribution, copyrightFor(providerId(), true));
+    return { print, page: printableArea(print.paper, print.orientation, punch), reserve: gameReserveMm(print, credits, sheet.titled) };
+  });
+  const fits = (next: GameRow[]) => fullest.every((one) => gameFits(one.print, one.page, one.reserve, shapeOf(next)));
   const grown = (rowId: string | undefined, platz: boolean) => {
     const book = rows.length > 0 ? rows : [{ id: '', zellen: [] }];
     const at = book.findIndex((row) => row.id === rowId);

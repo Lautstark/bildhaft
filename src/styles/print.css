@@ -902,6 +902,11 @@
   background-position: center top;
 }
 .ps-spiel__rows { flex: none; }
+/* Punched at the left the page is a centimetre narrower: the fence stands
+   closer, 3.5 mm a side, so a row of six still fits (gameRaster). */
+.ps-sheet--punch-left .ps-spiel__zaun { width: calc(7mm * var(--talk-k)); }
+/* A Spiel's name stays on its one line: the sheet counts one (gameReserveMm). */
+.ps-sheet--spiel .ps-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The Ablage shares the game's raster: exactly its rows, each as tall as a
    row of the game (field plus the group's padding), and the dots fill them
    column by column from the top — so every dot stands level with a row. */

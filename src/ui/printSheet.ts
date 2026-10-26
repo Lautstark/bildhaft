@@ -688,23 +688,40 @@ export interface GameGeometry {
   symW: number;
 }
 
-export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
+/*
+ * The field against A4's, per paper. A3 is A4 grown, and holds five rows of
+ * seven at 1.4. A5 is not quite A4 shrunk: its margins, a punched edge, the
+ * title and the footer keep their millimetres while the page loses a third,
+ * so its field is a little smaller than 0.7 — 0.62, the largest that still
+ * holds five rows of seven with all of them printed.
+ */
+export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.62, a4: 1, a3: 1.4 };
 
 /** A Spiel's field on A4, scaled with the paper like everything else on it. */
 export const GAME_FIELD_MM = 30;
 
-type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>;
+type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt' | 'punch'>;
 type GameShape = { units: number; zellen: number; platz: number };
 
 /** The air a Spiel keeps under its title, beyond the title's own margin. */
 export const GAME_TITLE_AIR_MM = 4;
 
-/** What a Spiel's sheet keeps free of the game: the page's own reserve, and
- *  the air under the title when there is one. */
+/**
+ * What a Spiel's sheet keeps free of the game, counted tighter than a grid
+ * page's reserve so five rows of 30 mm stand under each other whatever else
+ * prints: the title one line (a Spiel's name is a short question, and the
+ * sheet keeps it on one line), the air under it, and one footer line —
+ * the credit and the page number share it, so the taller of the two.
+ */
 export function gameReserveMm(
   settings: Parameters<typeof reserveMm>[0], credits: string[], titled: Titled,
 ): number {
-  return reserveMm(settings, credits, titled) + (titled ? GAME_TITLE_AIR_MM : 0);
+  const line = settings.titleSizePt * PT_MM * TITLE_LEADING;
+  const title = !titled ? 0 : TITLE_GAP_MM + GAME_TITLE_AIR_MM
+    + (titled === 'pictured' ? Math.max(line, titlePictureMm(settings.titleSizePt)) : line)
+    + (settings.titleLine ? TITLE_RULE_GAP_MM + TITLE_RULE_MM : 0);
+  const credit = credits.length > 0 ? creditAllowanceMm(credits, printableArea(settings.paper, settings.orientation, settings.punch).width) : 0;
+  return title + Math.max(credit, settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
 
 /*
@@ -714,10 +731,15 @@ export function gameReserveMm(
  * game both fill it column by column from the top, so a column is full before
  * the next begins and every dot of the Ablage stands level with a row. The
  * width is shared over the Ablage's and the game's cells (the 28 mm taken off
- * are the enclosures' padding and the fence with its step on either side;
+ * are the enclosures' padding and the fence with its step on either side —
+ * 21 mm on a sheet punched at the left, whose fence stands closer, so a row
+ * of six beside the Ablage still fits the narrower page;
  * every further column of the game brings its own padding and air). A game
- * built before Bearbeiten kept to the sheet, too wide for the field, has its
- * field shrunk to the width.
+ * the sheet cannot hold at the field — built before Bearbeiten kept to the
+ * sheet, or a margin grown since, a punched edge, a credit line — takes the
+ * raster that shrinks its field least, and that is nearly always more rows
+ * under each other at a slightly smaller field rather than a second column
+ * that would halve it.
  */
 function gameRaster(settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape) {
   const k = GAME_SCALE[settings.paper];
@@ -728,14 +750,24 @@ function gameRaster(settings: GameSettings, page: { width: number; height: numbe
   const pad = 2 * k;
   const rowGap = 3 * k;
   const field = GAME_FIELD_MM * k;
-  const reihen = Math.max(1, Math.floor((height - k + rowGap) / (field * (42 / 50) + 2 * pad + rowGap) + 1e-9));
   const zellen = Math.max(1, shape.zellen);
-  const spielCols = Math.ceil(Math.max(1, shape.units) / reihen);
-  const lagerCols = Math.ceil(Math.max(1, shape.platz) / reihen);
-  const fixed = 28 * k + (spielCols - 1) * 13 * k;
-  const gaps = (lagerCols - 1) * gap + spielCols * (zellen - 1) * gap;
-  const wLimit = (page.width - fixed - gaps) / (lagerCols + spielCols * zellen);
-  return { k, gap, height, reihen, lagerCols, fieldW: Math.min(field, wLimit), fits: wLimit >= field - 1e-6 };
+  const units = Math.max(1, shape.units);
+  const measure = (reihen: number) => {
+    const spielCols = Math.ceil(units / reihen);
+    const lagerCols = Math.ceil(Math.max(1, shape.platz) / reihen);
+    const fixed = (settings.punch === 'left' ? 21 : 28) * k + (spielCols - 1) * 13 * k;
+    const gaps = (lagerCols - 1) * gap + spielCols * (zellen - 1) * gap;
+    const wLimit = (page.width - fixed - gaps) / (lagerCols + spielCols * zellen);
+    const hLimit = ((height - k - (reihen - 1) * rowGap) / reihen - 2 * pad) * (50 / 42);
+    return { reihen, lagerCols, fieldW: Math.min(field, wLimit, hLimit) };
+  };
+  let best = measure(Math.max(1, Math.floor((height - k + rowGap) / (field * (42 / 50) + 2 * pad + rowGap) + 1e-9)));
+  const fits = best.fieldW >= field - 1e-6;
+  for (let reihen = best.reihen + 1; !fits && reihen <= units; reihen += 1) {
+    const taller = measure(reihen);
+    if (taller.fieldW > best.fieldW) best = taller;
+  }
+  return { k, gap, height, ...best, fits };
 }
 
 /** Whether a game of this shape fits its sheet at the one field size. */
