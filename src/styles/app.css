@@ -516,17 +516,26 @@ img.mirrored { transform: scaleX(-1); }
 
 /* The picture the field is showing, beside the buttons that change it. Small:
    it is here to be recognised, not to be judged — the square was already
-   decided when it was cropped. */
-.picker__own-shown {
+   decided when it was cropped.
+
+   Doubled with .word__pic, which the square wears for the white ground and the
+   fitted picture: that rule says `width: 100%` further down this file, and at
+   one class each the later one wins — this square was the sheet's whole width,
+   a white bar clipping its symbol. The cursor is the same fight: on a card the
+   picture is the button, here the buttons sit beside it. */
+.word__pic.picker__own-shown {
   width: 46px;
   height: 46px;
   flex: none;
+  cursor: default;
 }
-/* A field with nothing in it yet: the square it will fill, drawn as a gap. */
-.picker__own-shown--empty {
+/* A field with nothing in it yet: the square it will fill, drawn as a gap —
+   so no .word__pic white here either. */
+.word__pic.picker__own-shown--empty {
   border: 1px dashed var(--line);
   border-radius: var(--radius-sm);
   box-sizing: border-box;
+  background: transparent;
 }
 
 /* The search and the pictures it answers with are
@@ -1045,6 +1054,9 @@ footer.footer {
    here the picture is the button, and inheriting the chip made it a picture
    that could not be pressed and would not fit. */
 .word__pic {
+  /* The box the negation cross is laid over: .negate is `inset: 0` and finds
+     the nearest positioned ancestor — without this it found the whole card. */
+  position: relative;
   display: grid;
   place-items: center;
   width: 100%;
