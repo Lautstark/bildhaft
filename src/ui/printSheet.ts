@@ -964,12 +964,14 @@ export function sheetBlocks(
      * Kartenbogen, the cards at the fields' size with air round each for
      * the scissors.
      */
+    /* A row still empty in Bearbeiten is being built, not designed: it does
+       not print. */
     const rows = (game?.rows ?? []).map((row) => {
       const cells = row.zellen
         .map((zelle) => ({ slot: zelle.karte.slots[0], platz: zelle.platz }))
         .filter((cell): cell is { slot: Slot; platz: boolean } => Boolean(cell.slot));
       return { cells };
-    });
+    }).filter((row) => row.cells.length > 0);
     const karten = rows.flatMap((row) => row.cells.filter((cell) => cell.platz).map((cell) => cell.slot));
     const geo = gameGeometry(settings, page, reserve, {
       units: rows.length,

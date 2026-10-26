@@ -1719,8 +1719,9 @@ footer.footer {
    over the first row says which side is which, in the rows' own grid so the
    words stand over their columns. */
 .game { display: flex; flex-direction: column; gap: 12px; }
-.game__intro { margin: 0 4px 12px; }
 .game__row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); }
+/* Die erste Zeile eines leeren Spiels: schon da, nur noch nicht gefüllt. */
+.game__row--neu { outline-style: dashed; background: transparent; }
 .game__cells { flex: 1; display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; min-width: 0; }
 .game__cells .word { width: 104px; }
 /* Der Platzhalter: das gestrichelte freie Feld der Tafel, die Karte liegt

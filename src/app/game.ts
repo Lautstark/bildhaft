@@ -1,7 +1,6 @@
 import type { Collection, GameBook, Sentence } from '../core/types.ts';
 import { rowsOfGame, withGameRow, withoutGameCard } from '../core/game.ts';
 import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
-import { addLines } from './composing.ts';
 import { emptySlot, openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
 
@@ -62,35 +61,14 @@ export async function addGameCard(platz: boolean, rowId?: string): Promise<void>
 }
 
 /**
- * A row typed as a line, the way a Schritt is: every word becomes a card of
- * its own, looked up as any word is — and the last word is a Platzhalter, so
- * „Schuh Socke" is already a game of Zuordnen; dragged after, it may stand
- * anywhere in the row. One word is a printed picture, not an orphaned
- * Platzhalter. No half rows: a line whose words found nothing comes back
- * into the field, the cards that did arrive taken out again.
+ * A fresh, empty row at the game's end — begun with „+ Zeile", filled cell
+ * by cell with its two „+". Nothing is guessed: a Platzhalter stands only
+ * where one was asked for.
  */
-export async function addGameLine(text: string): Promise<string> {
+export async function addGameRow(): Promise<void> {
   const open = activeCollection();
-  if (!open) return text;
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '';
-  const made = new Map<string, Sentence[]>();
-  const left = await addLines(words.join('\n'), undefined, (line, sentence) => {
-    made.set(line, [...(made.get(line) ?? []), sentence]);
-  });
-  const ids = words.map((word) => made.get(word)?.shift()?.id).filter((id): id is string => Boolean(id));
-  if (left) {
-    for (const id of ids) await deleteSentence(id);
-    const gone = new Set(ids);
-    s.sentences = s.sentences.filter((sentence) => !gone.has(sentence.id));
-    return text;
-  }
-  const fresh = activeCollection();
-  if (!fresh || fresh.id !== open.id) return '';
-  const rows = rowsOfGame(fresh.game);
-  const zellen = ids.map((karte, at) => ({ karte, platz: ids.length > 1 && at === ids.length - 1 }));
-  await keepGame(fresh, { rows: [...rows, { id: newId(), zellen }] });
-  return '';
+  if (!open) return;
+  await keepGame(open, { rows: [...rowsOfGame(open.game), { id: newId(), zellen: [] }] });
 }
 
 /** A row dragged to another place of the game. */

@@ -3,21 +3,21 @@
    * Ein Spiel, Zeile unter Zeile — und wo es geändert wird.
    *
    * A row is one Aufgabe: a run of cells, each a card — printed where it
-   * stands, or a Platzhalter whose card lies loose on its dashed field.
-   * Typed where it will stand („+ Zeile", like „+ Schritt"), as any sentence
-   * is: „Schuh Socke", and the last word is the Platzhalter. „+ Bild" and
-   * „+ Platzhalter" append to the row; dragging puts a cell where it
-   * belongs — a Platzhalter into the middle of a Muster too — and dragging
-   * a row sorts the rows, as a Rezept's Schritte are sorted. The bin takes
-   * the row out — asked first, as every bin is.
+   * stands, or a Platzhalter whose card lies loose on its dashed field. A
+   * row builds as it prints: the „+" tile (the Wortkarten-wall's own) takes
+   * a picture through the picker, „+ Platzhalter" sets a gap — only where
+   * one is asked for, nothing is guessed — and „+ Zeile" begins the next
+   * row. Dragging puts a cell where it belongs — a Platzhalter into the
+   * middle of a Muster too — and dragging a row sorts the rows, as a
+   * Rezept's Schritte are sorted. The bin takes the row out — asked first,
+   * as every bin is.
    */
   import type { GameRow, ProviderId, Sentence } from '../core/types.ts';
   import { rowsOfGame } from '../core/game.ts';
   import WordCard from './WordCard.svelte';
-  import LineAdd from './LineAdd.svelte';
   import Icon from '../pieces/Icon.svelte';
   import { confirmDialog } from './dialog.ts';
-  import { addGameCard, addGameLine, moveGameRow, moveGameZelle, removeGameRow } from '../app/game.ts';
+  import { addGameCard, addGameRow, moveGameRow, moveGameZelle, removeGameRow } from '../app/game.ts';
   import { activeCollection, s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -25,11 +25,8 @@
 
   let rows = $derived(rowsOfGame(activeCollection()?.game));
   let byId = $derived(new Map(s.sentences.map((sentence) => [sentence.id, sentence])));
-  /* A game with nothing in it yet says what a row is, its line open to type into. */
+  /* An empty Spiel already shows its first row, made real by what is put into it. */
   let blank = $derived(rows.length === 0);
-  let adding = $state(false);
-
-  $effect(() => { void s.activeId; adding = false; });
 
   async function take(row: GameRow, at: number): Promise<void> {
     const ok = await confirmDialog({
@@ -96,4 +93,4 @@
   const cardOf = (id: string): Sentence | undefined => byId.get(id);
 </script>
 
-<div class="game">{#if blank}<p class="small faint game__intro">{t('ui.game_intro')}</p>{/if}{#each rows as row, at (row.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><section class="game__row{rowMark(at)}" aria-label={t('ui.game_row_n', { n: at + 1 })} draggable="true" title={t('ui.drag_to_reorder')} ondragstart={(event) => grabRow(event, at)} ondragover={(event) => overRow(event, at)} ondrop={(event) => dropRow(event, at)} ondragend={() => { rowCarry = null; rowOver = null; cellCarry = null; cellOver = null; }}><div class="game__cells">{#each row.zellen as zelle, z (zelle.karte)}{@const sentence = cardOf(zelle.karte)}{#if sentence}<!-- svelte-ignore a11y_no_static_element_interactions --><span class="game__cell{cellMark(row.id, z)}" draggable="true" title={t('ui.drag_to_reorder')} ondragstart={(event) => grabCell(event, row.id, z)} ondragover={(event) => overCell(event, row.id, z)} ondrop={(event) => dropCell(event, row, z)} ondragend={() => { cellCarry = null; cellOver = null; }}>{#if zelle.platz}<span class="luecke"><WordCard {sentence} {provider} /></span>{:else}<WordCard {sentence} {provider} />{/if}</span>{/if}{/each}<!-- svelte-ignore a11y_no_static_element_interactions --><span class="game__adds" ondragover={(event) => overCell(event, row.id, 'end')} ondrop={(event) => dropCell(event, row, 'end')}><button class="song__plus" type="button" onclick={() => void addGameCard(false, row.id)}>{t('ui.game_add_fest')}</button><button class="song__plus game__adds-platz" type="button" onclick={() => void addGameCard(true, row.id)}>{t('ui.game_add_karte')}</button></span></div><span class="game__acts"><button class="btn destructive icon" type="button" title={t('ui.game_delete_row', { n: at + 1 })} aria-label={t('ui.game_delete_row', { n: at + 1 })} onclick={() => void take(row, at)}><Icon name="trash" /></button></span></section>{/each}<div class="game__more"><LineAdd open={adding || blank} plus={t('ui.game_add_row')} label={t('ui.game_line_label')} placeholder={t('ui.game_line_placeholder')} onOpen={() => { adding = true; }} onClose={() => { adding = false; }} onSend={(raw) => addGameLine(raw)} /></div></div>
+<div class="game">{#if blank}<section class="game__row game__row--neu" aria-label={t('ui.game_row_n', { n: 1 })}><div class="game__cells"><span class="game__adds"><button class="word word--add" type="button" title={t('ui.game_add_fest')} aria-label={t('ui.game_add_fest')} onclick={() => void addGameCard(false)}>+</button><button class="song__plus game__adds-platz" type="button" onclick={() => void addGameCard(true)}>{t('ui.game_add_karte')}</button></span></div></section>{/if}{#each rows as row, at (row.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><section class="game__row{rowMark(at)}" aria-label={t('ui.game_row_n', { n: at + 1 })} draggable="true" title={t('ui.drag_to_reorder')} ondragstart={(event) => grabRow(event, at)} ondragover={(event) => overRow(event, at)} ondrop={(event) => dropRow(event, at)} ondragend={() => { rowCarry = null; rowOver = null; cellCarry = null; cellOver = null; }}><div class="game__cells">{#each row.zellen as zelle, z (zelle.karte)}{@const sentence = cardOf(zelle.karte)}{#if sentence}<!-- svelte-ignore a11y_no_static_element_interactions --><span class="game__cell{cellMark(row.id, z)}" draggable="true" title={t('ui.drag_to_reorder')} ondragstart={(event) => grabCell(event, row.id, z)} ondragover={(event) => overCell(event, row.id, z)} ondrop={(event) => dropCell(event, row, z)} ondragend={() => { cellCarry = null; cellOver = null; }}>{#if zelle.platz}<span class="luecke"><WordCard {sentence} {provider} /></span>{:else}<WordCard {sentence} {provider} />{/if}</span>{/if}{/each}<!-- svelte-ignore a11y_no_static_element_interactions --><span class="game__adds" ondragover={(event) => overCell(event, row.id, 'end')} ondrop={(event) => dropCell(event, row, 'end')}><button class="word word--add" type="button" title={t('ui.game_add_fest')} aria-label={t('ui.game_add_fest')} onclick={() => void addGameCard(false, row.id)}>+</button><button class="song__plus game__adds-platz" type="button" onclick={() => void addGameCard(true, row.id)}>{t('ui.game_add_karte')}</button></span></div><span class="game__acts"><button class="btn destructive icon" type="button" title={t('ui.game_delete_row', { n: at + 1 })} aria-label={t('ui.game_delete_row', { n: at + 1 })} onclick={() => void take(row, at)}><Icon name="trash" /></button></span></section>{/each}{#if !blank}<div class="game__more"><button class="song__plus song__plus--part" type="button" onclick={() => void addGameRow()}>{t('ui.game_add_row')}</button></div>{/if}</div>
