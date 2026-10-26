@@ -1884,13 +1884,13 @@ footer.footer {
    keine Mindesthöhe — das Panel selbst ist die Fassung. */
 .print-dock .print-view__frame { overflow: visible; width: 100%; height: auto; min-height: 0; padding: 0; border-radius: 0; background: none; }
 .print-dock .ps-sheet { counter-reset: dockpage; }
-.print-dock .ps-page { counter-increment: dockpage; position: relative; margin-bottom: 34px !important; box-shadow: 0 14px 30px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .4); }
+.print-dock .ps-paper { counter-increment: dockpage; position: relative; margin-bottom: 34px !important; box-shadow: 0 14px 30px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .4); }
 /* Hung over the page, not under it: overflow below counts into the page's
    scrollHeight (transforms too, in Chrome), which the plan holds at zero —
    overflow above counts into nothing. */
-.print-dock .ps-page::after { content: counter(dockpage); position: absolute; right: 0; top: -24px; font-size: 15px; line-height: 1; color: var(--muted); }
-.print-dock--mini .ps-page { margin-bottom: 10px !important; box-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
-.print-dock--mini .ps-page::after { content: none; }
+.print-dock .ps-paper::after { content: counter(dockpage); position: absolute; right: 0; top: -24px; font-size: 15px; line-height: 1; color: var(--muted); }
+.print-dock--mini .ps-paper { margin-bottom: 10px !important; box-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
+.print-dock--mini .ps-paper::after { content: none; }
 .print-dock--mini .print-view__panel, .print-dock--mini .print-view__acts { display: none; }
 
 /* Die Spalte der noch nicht umgezogenen Vorlagen, unter den Seiten. */

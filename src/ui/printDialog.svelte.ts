@@ -3,8 +3,8 @@ import type { CollectionKind, PrintSettings, ProviderId, Sentence, Slot } from '
 import { symbolIdsIn } from '../core/types.ts';
 import Printable from './Printable.svelte';
 import {
-  applyPageSetup, bleeds, cardRows, copyrightFor, paperSize, planPages,
-  printableArea, PX_PER_MM, sheetBlocks, songPieces, stripLines,
+  applyPageSetup, cardRows, copyrightFor, pagesOf, paperSize, planPages, printableArea, printerPaper,
+  PX_PER_MM, sheetBlocks, sheetsOf, songPieces, stripLines,
   type Block, type PrintBoard, type PrintGame, type PrintSong, type PrintTalk, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
@@ -228,7 +228,7 @@ export class Printing {
    * inside one is a re-entrant flush, and Svelte refuses it.
    */
   replan(): void {
-    applyPageSetup(this.settings.paper, this.settings.orientation, bleeds(this.settings));
+    applyPageSetup(this.settings);
     this.rows = null;
     this.strips = null;
     this.songs = null;
@@ -242,7 +242,8 @@ export class Printing {
     flushSync();
     this.pages = planPages(this.sheet!, this.settings);
     flushSync();
-    this.pageCount = this.pages.length;
+    /* Sheets of paper, which on A5 is not the pages: two to a sheet. */
+    this.pageCount = sheetsOf(pagesOf(this.blocks, this.pages), this.settings).length;
     this.measureCard();
     /* Now, and again once the frame has its size: a preview made while its
        frame is still being laid out measures it a frame late. */
@@ -323,8 +324,9 @@ export class Printing {
   rescale(): void {
     const sheet = this.sheet;
     if (!sheet || !this.frame || !this.scaler || !this.sizer) return;
-    // The whole sheet, margin included — which is what a page box in the preview is.
-    const pageHeight = paperSize(this.settings.paper, this.settings.orientation).height * PX_PER_MM;
+    // The whole sheet, margin included — which is what a sheet of paper in the preview is.
+    const sheetPaper = printerPaper(this.settings);
+    const pageHeight = paperSize(sheetPaper.paper, sheetPaper.orientation).height * PX_PER_MM;
     let scale: number;
     if (this.fit.kind === 'flow') {
       /* Every page below the one before, at the column's width: the frame
@@ -352,7 +354,7 @@ export class Printing {
    * shrinks to two pages while the third was showing shows the second.
    */
   showPage(at: number): void {
-    const pages = this.holder?.querySelectorAll<HTMLElement>('.ps-page') ?? [];
+    const pages = this.holder?.querySelectorAll<HTMLElement>('.ps-paper') ?? [];
     this.pageAt = Math.max(0, Math.min(Math.max(pages.length, 1) - 1, at));
     if (!this.frame) return;
     const page = pages[this.pageAt];
@@ -419,7 +421,7 @@ async function keep(state: Printing): Promise<void> {
   state.saving = true;
   try {
     await ready(state);
-    const pages = [...(state.holder?.querySelectorAll<HTMLElement>('.ps-page') ?? [])];
+    const pages = [...(state.holder?.querySelectorAll<HTMLElement>('.ps-paper') ?? [])];
     const pdf = await previewToPdf(pages, state.settings);
     await state.options.onPdf(pdf, state.settings, pages.length);
   } finally {

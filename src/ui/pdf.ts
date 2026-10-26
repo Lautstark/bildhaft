@@ -1,12 +1,12 @@
 import { PDFDocument } from 'pdf-lib';
 import { domToCanvas } from 'modern-screenshot';
 import type { PrintSettings } from '../core/types.ts';
-import { paperSize } from './printSheet.ts';
+import { paperSize, printerPaper } from './printSheet.ts';
 
 /**
  * The print preview, made into a PDF by bildhaft itself.
  *
- * Each page of the preview is the whole sheet — the printable area with the
+ * Each sheet of the preview is the whole paper — the printable area with the
  * paper's margin around it — so each is drawn to a picture at 300 dpi and laid
  * on a PDF page of exactly that paper. A picture rather than text and lines,
  * because the preview is the one thing already proven to break where the
@@ -23,7 +23,9 @@ const PT_PER_MM = 72 / 25.4;
 
 export async function previewToPdf(pages: HTMLElement[], settings: PrintSettings): Promise<Blob> {
   const pdf = await PDFDocument.create();
-  const paper = paperSize(settings.paper, settings.orientation);
+  /* The printer's sheet: on A5, an A4 with two pages on it. */
+  const sheetPaper = printerPaper(settings);
+  const paper = paperSize(sheetPaper.paper, sheetPaper.orientation);
   for (const page of pages) {
     const canvas = await domToCanvas(page, {
       /* Its own size, not the size on screen: the preview is scaled down to

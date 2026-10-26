@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ownPrint, printFor } from '../../src/app/print.ts';
 import { TEMPLATES } from '../../src/app/templates.ts';
-import { DEFAULT_PRINT_SETTINGS } from '../../src/core/types.ts';
+import { DEFAULT_PRINT_SETTINGS, type PrintSettings } from '../../src/core/types.ts';
 import { boardOf, defaultAirMm } from '../../src/core/board.ts';
 import { printableArea } from '../../src/ui/printSheet.ts';
 
@@ -23,6 +23,19 @@ describe('what a template opens the print dialog on', () => {
     expect(printFor(remembered, 'wortkarten', null)).toEqual({ ...remembered, layout: 'sheet' });
     const sheet = { ...remembered, layout: 'sheet' as const };
     expect(printFor(sheet, 'wortkarten', null)).toEqual(sheet);
+  });
+
+  it('prints Wortkarten on A4 only: cards to cut have no use for half a sheet', () => {
+    expect(printFor(remembered, 'wortkarten', null, { paper: 'a5', orientation: 'landscape' }))
+      .toMatchObject({ paper: 'a4', orientation: 'landscape' });
+    expect(TEMPLATES.wortkarten.offers(DEFAULT_PRINT_SETTINGS).paper).toBe('side');
+  });
+
+  it('opens an A3 kept from before there was none on A4', () => {
+    const a3 = { paper: 'a3' } as unknown as Partial<PrintSettings>;
+    for (const which of ['satzstreifen', 'tafel', 'rezept', 'lied', 'spiel', 'plauderbuch'] as const) {
+      expect(printFor(remembered, which, which === 'tafel' ? boardOf({}) : null, a3).paper).toBe('a4');
+    }
   });
 
   describe('a Tafel', () => {
@@ -60,9 +73,9 @@ describe('what a template opens the print dialog on', () => {
     });
   });
 
-  it('grows and shrinks an Einkaufsliste with the paper it set for itself, lying on its side', () => {
-    expect(printFor(remembered, 'einkaufsliste', null, { paper: 'a3', orientation: 'portrait' })).toMatchObject({
-      paper: 'a3', orientation: 'landscape', symbolSizeMm: 28, cutMarginMm: 4,
+  it('shrinks an Einkaufsliste with the paper it set for itself, lying on its side', () => {
+    expect(printFor(remembered, 'einkaufsliste', null, { paper: 'a3', orientation: 'portrait' } as unknown as Partial<PrintSettings>)).toMatchObject({
+      paper: 'a4', orientation: 'landscape', symbolSizeMm: 20, cutMarginMm: 3,
     });
     expect(printFor(remembered, 'einkaufsliste', null, { paper: 'a5' })).toMatchObject({
       paper: 'a5', orientation: 'landscape', symbolSizeMm: 14, cutMarginMm: 2,
@@ -71,7 +84,7 @@ describe('what a template opens the print dialog on', () => {
 
   describe('a Rezept', () => {
     it('opens on one A4 page standing up, headed by its name', () => {
-      expect(printFor({ ...remembered, orientation: 'landscape', paper: 'a3' }, 'rezept', null))
+      expect(printFor({ ...remembered, orientation: 'landscape', paper: 'a5' }, 'rezept', null))
         .toMatchObject({
           layout: 'rezept', paper: 'a4', orientation: 'portrait',
           symbolSizeMm: 20, showLabel: true, showCollectionTitle: true,
@@ -86,7 +99,7 @@ describe('what a template opens the print dialog on', () => {
 
   describe('a Lied', () => {
     it('opens on A4 standing up, written out, with headings and in blue', () => {
-      expect(printFor({ ...remembered, orientation: 'landscape', paper: 'a3' }, 'lied', null))
+      expect(printFor({ ...remembered, orientation: 'landscape', paper: 'a5' }, 'lied', null))
         .toMatchObject({
           layout: 'lied', paper: 'a4', orientation: 'portrait', symbolSizeMm: 16,
           showCollectionTitle: true, songHeadings: true, songRepeats: false, accentColour: '#2c66c8',
@@ -94,7 +107,7 @@ describe('what a template opens the print dialog on', () => {
     });
 
     it('takes the paper it set for itself, and not the household one', () => {
-      expect(printFor({ ...remembered, paper: 'a3' }, 'lied', null).paper).toBe('a4');
+      expect(printFor({ ...remembered, paper: 'a5' }, 'lied', null).paper).toBe('a4');
       expect(printFor(remembered, 'lied', null, { paper: 'a5', orientation: 'landscape' }))
         .toMatchObject({ paper: 'a5', orientation: 'landscape' });
       expect(printFor({ ...remembered, cardBorderMm: 1 }, 'lied', null).cardBorderMm).toBe(0);
@@ -141,13 +154,14 @@ describe('what a Sammlung keeps of its print', () => {
 
 /**
  * One base for every template, left out only where the paper decides: an
- * Einkaufsliste lies on its side with its millimetres from its paper.
+ * Einkaufsliste lies on its side with its millimetres from its paper, and
+ * Wortkarten are cut from the printer's A4, asked only which way up.
  */
 describe('what the print view offers', () => {
   it('offers every template but the Einkaufsliste the same base', () => {
     for (const which of ['satzstreifen', 'wortkarten', 'tafel', 'rezept', 'lied', 'spiel', 'plauderbuch'] as const) {
       expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS), which).toMatchObject({
-        paper: true, label: true, frames: true, background: true, page: true, pageNumbers: true,
+        paper: which === 'wortkarten' ? 'side' : true, label: true, frames: true, background: true, page: true, pageNumbers: true,
       });
       expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS).margin, which).toBeTruthy();
       expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS).title, which).toBeTruthy();

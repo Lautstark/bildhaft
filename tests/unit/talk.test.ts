@@ -28,7 +28,7 @@ describe('a Plauderbuch', () => {
   });
 
   it('opens on A5 across, its title printed, and keeps what it set for itself', () => {
-    const opened = printFor({ ...DEFAULT_PRINT_SETTINGS, paper: 'a3', orientation: 'portrait', showCollectionTitle: true }, 'plauderbuch', null);
+    const opened = printFor({ ...DEFAULT_PRINT_SETTINGS, paper: 'a4', orientation: 'portrait', showCollectionTitle: true }, 'plauderbuch', null);
     expect(opened).toMatchObject({ layout: 'plauderbuch', paper: 'a5', orientation: 'landscape', showCollectionTitle: true });
     expect(printFor(DEFAULT_PRINT_SETTINGS, 'plauderbuch', null, { paper: 'a4', orientation: 'portrait' }))
       .toMatchObject({ paper: 'a4', orientation: 'portrait' });
@@ -53,7 +53,7 @@ describe('a Plauderbuch', () => {
   });
 
   it('fits its fields and the band on the page, whatever the footer takes', () => {
-    for (const paper of ['a5', 'a4', 'a3'] as const) {
+    for (const paper of ['a5', 'a4'] as const) {
       for (const orientation of ['landscape', 'portrait'] as const) {
         for (const showLabel of [false, true]) {
           for (const reserve of [0, 25]) {
@@ -75,10 +75,10 @@ describe('a Plauderbuch', () => {
     expect(g.symW).toBeLessThanOrEqual(g.cutW);
   });
 
-  it('grows with the paper: A4 by √2, A3 by 2', () => {
+  it('grows with the paper: A4 by √2', () => {
     const a5 = talkGeometry({ ...settings, paper: 'a5', orientation: 'portrait' }, printableArea('a5', 'portrait'), 0);
-    const a3 = talkGeometry({ ...settings, paper: 'a3', orientation: 'portrait' }, printableArea('a3', 'portrait'), 0);
-    expect(a3.k / a5.k).toBe(2);
-    expect(a3.cardW).toBeGreaterThan(2 * a5.cardW);
+    const a4 = talkGeometry({ ...settings, paper: 'a4', orientation: 'portrait' }, printableArea('a4', 'portrait'), 0);
+    expect(a4.k / a5.k).toBe(Math.SQRT2);
+    expect(a4.cardW).toBeGreaterThan(Math.SQRT2 * a5.cardW);
   });
 });

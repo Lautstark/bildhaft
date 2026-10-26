@@ -695,12 +695,13 @@ export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied'
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**
- * The papers a laminator in this country actually takes. A5 for communication
- * books and fans, A4 for most things, A3 for a board that goes on a wall.
- * US sizes are absent because nothing else here is written for anywhere else;
- * adding one is a row in the table in printSheet.ts and nothing more.
+ * The size a material comes out at. The printer only ever takes A4: an A5
+ * material prints two pages to the sheet, to be cut apart (`twoUp()` in
+ * printSheet.ts). A5 for communication books and fans, A4 for most things.
+ * No A3 (2026-10-26): there is no printer here for it. A stored „a3" from
+ * before opens as A4 (`settle()`).
  */
-export type PaperSize = 'a5' | 'a4' | 'a3';
+export type PaperSize = 'a5' | 'a4';
 /**
  * How a card sheet decides how big a card is.
  *

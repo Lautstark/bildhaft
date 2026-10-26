@@ -256,34 +256,43 @@ test('paper size drives the sheet, the printer rule and the grid together', asyn
   const rule = () => page.evaluate(() =>
     document.getElementById('print-page-setup')?.textContent ?? '');
 
-  await pickPaper(page, 'A3');
-  await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
-    .toBeCloseTo(297, 0);
-  await expect.poll(rule).toContain('size: 297mm 420mm');
-
+  /* The printer only takes A4: A5 standing up goes two pages across an A4
+     lying on its side, each page its own A5 with its margin round it, and a
+     mark at the top and the foot where the sheet is folded. No A3. */
+  await page.getByRole('button', { name: 'Papier wählen' }).click();
+  await expect(page.locator('.paper-pick__pop').getByRole('button', { name: 'A3', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await pickPaper(page, 'A5');
   await expect.poll(async () => mm(await sheet.evaluate((el: HTMLElement) => el.offsetWidth)))
-    .toBeCloseTo(148, 0);
-  await expect.poll(rule).toContain('size: 148mm 210mm');
+    .toBeCloseTo(297, 0);
+  await expect.poll(rule).toContain('size: 297mm 210mm');
+  await expect(sheet.locator('.ps-paper--two.ps-paper--side .ps-fold')).toHaveCount(2);
+  const half = sheet.locator('.ps-paper--two > .ps-page').first();
+  expect(mm(await half.evaluate((el: HTMLElement) => el.offsetWidth))).toBeCloseTo(148, 0);
+  expect(mm(await half.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(210, 0);
 
   /*
    * The cards have to follow the paper, not just the sheet around them. Height,
    * not width: a card's width comes from the grid's 1fr columns and so tracks
    * the sheet whatever the paper table says, which makes it useless as evidence.
-   * The row height is the one measurement read straight off that table, so it is
-   * the one that catches a grid still dividing A4 on an A5 page.
+   * The row height is the one measurement read straight off that table. Cards
+   * to cut out are A4 only: the paper asks which way up, not A5.
    */
   await cardSheet(page);
-  await pickPaper(page, 'A5');
+  await page.getByRole('button', { name: 'Papier wählen' }).click();
+  await expect(page.locator('.paper-pick__pop').getByRole('button', { name: 'A5', exact: true })).toHaveCount(0);
+  await expect(page.locator('.paper-pick__pop').getByRole('button', { name: 'Quer', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
   await showSheet(page);
   const card = page.locator('.preview-frame .ps-card').first();
-  // A5 portrait: 210mm less 10mm at the top and 6mm at the foot, less the room ARASAAC's credit
+  // A4 portrait: 297mm less 10mm at the top and 6mm at the foot, less the room ARASAAC's credit
   // needs, halved.
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetHeight)))
-    .toBeCloseTo(92.3, 0);
+    .toBeGreaterThan(130);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeLessThan(140.5);
 });
 
 test('a card grid fills the page with exactly the asked-for cells', async ({ page }) => {
@@ -475,17 +484,18 @@ test('the ARASAAC credit fits in the room a grid page leaves it', async ({ page 
 });
 
 /*
- * The same room on the narrowest paper this app offers, now that „, erstellt
- * mit" and the address ride on the notice's own line. The collection's name is
- * not on the credit line at all: that is the title's job, and under the title
- * it only said the same thing twice.
+ * The same room on the narrowest paper a card sheet has — A4 standing up,
+ * cards to cut out having no A5 — now that „, erstellt mit" and the address
+ * ride on the notice's own line. The collection's name is not on the credit
+ * line at all: that is the title's job, and under the title it only said the
+ * same thing twice.
  */
 test('the credit line names no collection', async ({ page }) => {
   await cardSheet(page);
   await showMaterial(page);
   await page.getByLabel('Name des Materials', { exact: true })
     .fill('Kindergarten Sonnenschein – Morgenkreis und Mittagsrunde');
-  await pickPaper(page, 'A5');
+  await pickPaper(page, 'Hoch');
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
   await page.getByRole('spinbutton', { name: 'Spalten' }).fill('1');
@@ -899,15 +909,54 @@ test('every page of the printable copy holds inside the paper', async ({ page })
 });
 
 /*
+ * On A5 the printer still gets A4: two pages to a sheet, each sheet exactly
+ * the paper, its pages inside it whole. A sheet a hair too tall would print
+ * as two, and the half after it on a page of its own.
+ */
+test('two A5 pages share each A4 of the printable copy', async ({ page }) => {
+  await showMaterial(page);
+  await translateAll(page, ['Der Hund spielt im Garten', 'Die Katze schläft']);
+  await showSheet(page);
+  await pickPaper(page, 'A5');
+  await openDing(page, 'Seite');
+  await page.getByLabel('Ein Satz pro Seite').check();
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('2 pro A4 · 2 Blatt');
+  await page.emulateMedia({ media: 'print' });
+
+  const seen = await page.locator('#print-root .ps-sheet').evaluate((sheet: HTMLElement) => {
+    const mm = (px: number) => px / (96 / 25.4);
+    const papers = [...sheet.querySelectorAll<HTMLElement>(':scope > .ps-paper')];
+    return {
+      papers: papers.map((paper) => ({
+        w: mm(paper.offsetWidth), h: mm(paper.offsetHeight),
+        pages: paper.querySelectorAll('.ps-page').length,
+        folds: paper.querySelectorAll('.ps-fold').length,
+      })),
+      overflow: [...sheet.querySelectorAll<HTMLElement>('.ps-page')].map((one) => one.scrollHeight - one.clientHeight),
+      total: mm(sheet.offsetHeight),
+    };
+  });
+  // Four strips, one a page: two A4 lying on their side, two A5 standing up on each.
+  expect(seen.papers.map((paper) => paper.pages)).toEqual([2, 2]);
+  for (const paper of seen.papers) {
+    expect(paper.w).toBeCloseTo(297, 0);
+    expect(paper.h).toBeCloseTo(210, 0);
+    expect(paper.folds).toBe(2);
+  }
+  expect(seen.overflow.every((over) => over === 0)).toBe(true);
+  expect(seen.total).toBeCloseTo(2 * 210, 0);
+});
+
+/*
  * bildhaft makes the PDF itself, from the preview. Without a folder to keep it
  * in, it is downloaded — and it is the preview: the same number of pages, on
  * the same paper, named for the day and the paper.
  */
-test('saves the preview as a PDF of the same pages', async ({ page }) => {
+test('saves the preview as a PDF of the same sheets', async ({ page }) => {
   await pickPaper(page, 'A5');
-  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('Seite');
-  await expect(page.locator('.preview-frame .ps-page').first()).toBeVisible();
-  const pages = await page.locator('.preview-frame .ps-page').count();
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('Blatt');
+  await expect(page.locator('.preview-frame .ps-paper').first()).toBeVisible();
+  const pages = await page.locator('.preview-frame .ps-paper').count();
   const [file] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Als PDF speichern' }).click(),
@@ -917,9 +966,9 @@ test('saves the preview as a PDF of the same pages', async ({ page }) => {
   expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   const pdf = await PDFDocument.load(bytes);
   expect(pdf.getPageCount()).toBe(pages);
-  // A5 standing up, in points.
+  // A5 standing up comes out two to an A4 lying on its side, in points.
   const size = pdf.getPage(0).getSize();
-  expect(size.width).toBeCloseTo(148 * 72 / 25.4, 0);
+  expect(size.width).toBeCloseTo(297 * 72 / 25.4, 0);
   expect(size.height).toBeCloseTo(210 * 72 / 25.4, 0);
 });
 

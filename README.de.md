@@ -188,8 +188,11 @@ Einstellbar ist, was in der Praxis zählt:
 
 - **Layout**: *Satzstreifen* (eine Reihe, Leserichtung) oder *Kartenblatt*
   (einzelne Karten zum Ausschneiden).
-- **Papier**: A5, A4 oder A3, hoch oder quer. Tafeln sind fast immer quer;
-  A5 passt für Kommunikationsbücher und -fächer, A3 für eine Wandtafel.
+- **Papier**: A5 oder A4, hoch oder quer. Aus dem Drucker kommt immer A4: ein
+  A5-Material druckt zwei Seiten pro Blatt, zum Falten und Durchschneiden, und
+  seine Karten zum Ausschneiden kommen auf ganze A4-Bögen. Tafeln sind fast
+  immer quer; A5 passt für Kommunikationsbücher und -fächer. Wortkarten gibt
+  es nur auf A4.
 - **Kartengröße**, beim Kartenblatt, auf zwei Arten:
   - *in Millimetern* — Leute gleichen bestehende Tafeln ab; ein MetaTalk-3×5-Raster
     hat eine bestimmte Zellgröße;

@@ -13,6 +13,12 @@
    * preview draws a paginated sheet differently: the paper's margin moves onto
    * the page boxes. It cannot move before they exist — the plan is measured
    * inside the printable width, not inside the sheet with its margin taken off.
+   *
+   * A page is not always a sheet of paper. On A5 two pages share one A4,
+   * `.ps-paper--two`, with a short mark at either edge where it is folded and
+   * cut; a page of cards to cut out is a whole A4 of its own. Whatever is one
+   * sheet of paper carries `.ps-paper` — on A4 the page itself — and that is
+   * what the preview draws as paper and the PDF is drawn from.
    */
   import type { PrintSettings, ProviderId } from '../core/types.ts';
   import { sentenceCaption, slotCaption } from '../core/types.ts';
@@ -20,8 +26,9 @@
   import PrintCard from './PrintCard.svelte';
   import PrintPicture from './PrintPicture.svelte';
   import {
-    BILDHAFT_URL, bleeds, framePadMm, pageMargins, printableArea, SHOPPING, SHOPPING_SCALE,
-    TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, titlePictureMm, type Block, type SheetPlan,
+    BILDHAFT_URL, bleeds, cutArea, cutOnly, framePadMm, pageMargins, pagesOf, paperSize, printableArea, printerPaper,
+    SHOPPING, SHOPPING_SCALE, sheetsOf, TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, titlePictureMm, twoUp,
+    type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
 
@@ -34,6 +41,10 @@
 
   let page = $derived(printableArea(settings.paper, settings.orientation, settings.punch));
   let margins = $derived(pageMargins(settings.punch));
+  /* Two A5 pages to an A4: the sheet they share, and the whole one a page of cards gets. */
+  let two = $derived(twoUp(settings));
+  let paper = $derived.by(() => { const sheet = printerPaper(settings); return paperSize(sheet.paper, sheet.orientation); });
+  let whole = $derived(cutArea(settings));
   /* The colour behind every page — but an Einkaufsliste's, which is behind
      its board's page and no other: its cards and their places are cut and
      stored, not hung up. */
@@ -86,17 +97,9 @@
   let cutUp = $derived(blocks.some((block) => CUT_UP.has(block.kind)));
 
   /** The blocks of each page, or one page holding all of them while unplanned. */
-  let pages = $derived.by(() => {
-    if (!plan.pages) return null;
-    const body = blocks.filter((block) => block.kind !== 'credit');
-    const out: Block[][] = [];
-    let taken = 0;
-    for (const count of plan.pages) { out.push(body.slice(taken, taken + count)); taken += count; }
-    // Cannot happen, and is checked anyway: a block the plan did not account
-    // for would be a symbol silently missing from a printout.
-    if (taken < body.length && out.length > 0) out[out.length - 1]!.push(...body.slice(taken));
-    return out;
-  });
+  let pages = $derived(plan.pages ? pagesOf(blocks, plan.pages) : null);
+  /** The sheets of paper those pages go on. */
+  let sheets = $derived(pages ? sheetsOf(pages, settings) : null);
   /* The licence notice, drawn at the foot of every page rather than packed
      with the content: a sheet handed on alone carries it too. */
   let credit = $derived(blocks.find((block) => block.kind === 'credit') ?? null);
@@ -110,9 +113,6 @@
      neither: it is about the material, and carries none of it. */
   const bare = (held: Block[]): boolean => held.length > 0
     && held.every((block) => block.kind === 'talk-cut' || block.kind === 'game-cut' || block.kind === 'shop-guide');
-  /* A page only of cards to cut out is cut apart, not filed: no hole marks. */
-  const cutOnly = (held: Block[]): boolean => held.length > 0
-    && held.every((block) => block.kind === 'talk-cut' || block.kind === 'game-cut' || block.kind === 'cut');
   let numbered = $derived(pages ? pages.filter((held) => !bare(held)).length : 0);
   const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
 
@@ -131,6 +131,12 @@
     + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--lager-cols:${geo.lagerCols};--spiel-units:${geo.units};--cols:${cols}`;
 
 </script>
+
+<!--
+  One line at the foot of every page: the licence notice on the left, the page
+  number on the right — the usual footer of handed-out material. A page of
+  cards on A5 is laid out on the whole A4, and says so in its own size.
+-->{#snippet paged(held: Block[], at: number, sheet: 'half' | 'one' | 'whole')}<div class="ps-page" class:ps-paper={sheet !== 'half'} class:ps-page--whole={sheet === 'whole'} class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)} style:--page-w={sheet === 'whole' ? `${whole.width}mm` : undefined} style:--page-h={sheet === 'whole' ? `${whole.height}mm` : undefined}>{#if settings.punch && settings.punchMarks && !cutOnly(held)}{#each ['a', 'b', 'mid'] as at (at)}<span class="ps-punch ps-punch--{settings.punch} ps-punch--{at}" aria-hidden="true"></span>{/each}{/if}{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/snippet}
 
 {#snippet shoppingZones(cols: number, rows: number, extra: string)}<div class="ps-zones{extra}" style:--cols={String(cols)}>{#each Array.from({ length: cols * rows }) as _, i (i)}<span class="ps-zone"><span class="ps-dot"></span></span>{/each}</div>{/snippet}
 
@@ -186,7 +192,7 @@
   The cards carry no word. A card that is handed around in a shop has one job,
   and a word under it makes the picture smaller rather than clearer — the word
   is on the board nowhere and on the storage sheet always.
---><div class="ps-cut{block.last ? ' ps-break' : ''}">{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}</div>{:else if block.kind === 'store'}<!--
+--><div class="ps-cut{block.last ? ' ps-break' : ''}" style:width={two ? `${whole.width}mm` : undefined}>{#each block.slots as slot (slot.id)}<PrintCard {slot} settings={{ ...settings, showLabel: false }} {provider} />{/each}</div>{:else if block.kind === 'store'}<!--
   The storage sheet is the part most templates leave out and without which the
   material is in a bag by the third week: every card has a labelled place, with
   its symbol printed faintly so a child finds it without reading and the word so
@@ -230,7 +236,7 @@
 --><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}` : ''}"
+  class="ps-sheet{two ? ' ps-sheet--two' : ''}{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}` : ''}"
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"
@@ -243,6 +249,8 @@
   style:--pm-right="{margins.right}mm"
   style:--pm-bottom="{margins.bottom}mm"
   style:--pm-left="{margins.left}mm"
+  style:--paper-w="{paper.width}mm"
+  style:--paper-h="{paper.height}mm"
   style:--frame-w="{settings.cardBorderMm}mm"
   style:--frame-color={settings.cardBorderColor}
   style:--frame-pad="{framePadMm(settings)}mm"
@@ -262,7 +270,8 @@
   style:--talk-soft={talkSoft}
   style:--shop={String(SHOPPING_SCALE[settings.paper])}
   style:--cart={settings.cartColour}
->{#if pages}{#each pages as held, at (at)}<!--
-  One line at the foot of every page: the licence notice on the left, the page
-  number on the right — the usual footer of handed-out material.
---><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if settings.punch && settings.punchMarks && !cutOnly(held)}{#each ['a', 'b', 'mid'] as at (at)}<span class="ps-punch ps-punch--{settings.punch} ps-punch--{at}" aria-hidden="true"></span>{/each}{/if}{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+>{#if pages && sheets}{#each sheets as sheet (sheet.pages[0])}{#if !two}{@render paged(pages[sheet.pages[0]!]!, sheet.pages[0]!, 'one')}{:else if sheet.whole}{@render paged(pages[sheet.pages[0]!]!, sheet.pages[0]!, 'whole')}{:else}<!--
+  Two A5 pages on one A4, after each other, and a short mark at either
+  edge where the sheet is folded and cut — on the edge only, so nothing of it
+  is left on a page once it is cut.
+--><div class="ps-paper ps-paper--two ps-paper--{settings.orientation === 'landscape' ? 'stacked' : 'side'}">{#each sheet.pages as at (at)}{@render paged(pages[at]!, at, 'half')}{/each}<span class="ps-fold ps-fold--a" aria-hidden="true"></span><span class="ps-fold ps-fold--b" aria-hidden="true"></span></div>{/if}{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

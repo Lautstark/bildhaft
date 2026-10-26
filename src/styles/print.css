@@ -83,6 +83,45 @@
 .ps-punch--top.ps-punch--mid { top: 0; left: 50%; width: 0; height: 4mm; border-top: 0; border-left: 0.3mm solid #d6d0ca; }
 
 /*
+ * Two A5 pages on one A4 (twoUp()): the sheet is the printer's, the pages
+ * stand in it one after the other, each with its own margin round it, and a
+ * short mark at either edge says where it is folded and cut. Spread rather
+ * than packed: an A5 is half an A4 less half a millimetre, and that half
+ * goes to the fold, so each page sits on its half. A page of cards to cut
+ * out is a whole A4 (`.ps-page--whole`), its size given on it.
+ */
+.ps-paper--two {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  width: var(--paper-w);
+  height: var(--paper-h);
+  overflow: hidden;
+  background: #fff;
+  break-after: page;
+  page-break-after: always;
+}
+.ps-paper--stacked { flex-direction: column; }
+.ps-paper--two > .ps-page,
+.ps-page--whole {
+  box-sizing: content-box;
+  width: var(--page-w);
+  flex: none;
+}
+.ps-paper--two > .ps-page { break-after: auto; page-break-after: auto; }
+.ps-paper--two:last-child { break-after: auto; page-break-after: auto; }
+.ps-sheet--two.ps-sheet--paged { width: var(--paper-w); }
+/* 8 mm in from the edge: a printer leaves the outer 3 to 5 unprinted, and
+   the page's own margin begins at 10. */
+.ps-fold { position: absolute; border: 0 solid #6d655f; }
+.ps-paper--stacked .ps-fold { top: 50%; width: 8mm; margin-top: -0.15mm; border-top-width: 0.3mm; }
+.ps-paper--stacked .ps-fold--a { left: 0; }
+.ps-paper--stacked .ps-fold--b { right: 0; }
+.ps-paper--side .ps-fold { left: 50%; height: 8mm; margin-left: -0.15mm; border-left-width: 0.3mm; }
+.ps-paper--side .ps-fold--a { top: 0; }
+.ps-paper--side .ps-fold--b { bottom: 0; }
+
+/*
  * The fixed grid: exactly --cols across, each row --cell-h tall, so cols x rows
  * fills the page. 1fr columns need no arithmetic — the sheet's own padding has
  * already made the container the printable width.
@@ -408,9 +447,12 @@
   box-sizing: content-box;
   padding: var(--pm-top) var(--pm-right) var(--pm-bottom) var(--pm-left);
   background: var(--page-bg, #fff);
+}
+/* The paper is what has a shadow: on A5 two pages share one. */
+.preview-scaler .ps-paper {
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18), 0 10px 30px rgba(0, 0, 0, .12);
 }
-.preview-scaler .ps-page + .ps-page {
+.preview-scaler .ps-paper + .ps-paper {
   margin-top: 8mm;
 }
 
@@ -467,7 +509,8 @@
    * so left as it was it would have told the browser to avoid the break its
    * parent was asking for on every page but the last.
    */
-  #print-root .ps-page:last-child { break-after: avoid; page-break-after: avoid; }
+  #print-root .ps-page:last-child,
+  #print-root .ps-paper:last-child { break-after: avoid; page-break-after: avoid; }
 
   /*
    * A Tafel's colour, or an Einkaufsliste board's, to the paper's edge: its

@@ -20,8 +20,8 @@ import { printableArea, SHOPPING_SCALE } from '../ui/printSheet.ts';
 export interface PrintOffer {
   /** The material's own colour: a Rezept's headings, a Lied's refrain ground. Its own group. */
   colour?: boolean;
-  /** `true`: size and which way up; `size`: the size only, for a material that lies one way. */
-  paper?: boolean | 'size';
+  /** `true`: size and which way up; `size`: the size only, for a material that lies one way; `side`: which way up only, for cards that go on the printer's A4 whatever. */
+  paper?: boolean | 'size' | 'side';
   /**
    * How big. `symbol` is one number, with its bounds and a note under it (or
    * the card readout when there is none); `cards` is the card sheet's choice
@@ -120,10 +120,11 @@ export function openPrint(
   return settle(which, set, board);
 }
 
-/** What a template always is, over settings that just changed. */
+/** What a template always is, over settings that just changed. An A3 kept from before there was none is A4. */
 export function settle(which: CollectionKind, settings: PrintSettings, board: Grid | null): PrintSettings {
-  const fixed = TEMPLATES[which].fixed?.(settings, board);
-  return fixed ? { ...settings, ...fixed } : settings;
+  const known = settings.paper === 'a5' || settings.paper === 'a4' ? settings : { ...settings, paper: 'a4' as const };
+  const fixed = TEMPLATES[which].fixed?.(known, board);
+  return fixed ? { ...known, ...fixed } : known;
 }
 
 /* What every template offers, unless the paper decides otherwise. */
@@ -162,8 +163,11 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   wortkarten: {
     cards: true,
     zeileInEdit: true,
-    fixed: () => ({ layout: 'sheet' }),
-    offers: () => ({ ...BASE, size: { kind: 'cards' }, margin: 'cut', cutLines: true }),
+    /* Only cards to cut out, so only the printer's A4: half a sheet of
+       cards is a sheet with half of it left empty. Which way up is still
+       asked — it decides how many go across. */
+    fixed: () => ({ layout: 'sheet', paper: 'a4' }),
+    offers: () => ({ ...BASE, paper: 'side', size: { kind: 'cards' }, margin: 'cut', cutLines: true }),
   },
 
   /* Prints as the grid it is. Its columns and rows are the Sammlung's, not
@@ -198,7 +202,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
      A4 sheet is only possible at 20 mm, measured rather than chosen — and a
      3 mm laminating margin, because 5 mm around a 20 mm card is a third of the
      card. Facts about this material, not preferences. So the paper is all it
-     is asked, and its name: on A3 or A5 the whole of it grows or shrinks by
+     is asked, and its name: on A5 the whole of it shrinks by
      the same factor, always lying on its side. The name over the board as
      everywhere, its size, colour and line. A colour behind the board's page,
      as a Tafel has, and its cart drawn in a colour to go with it — the board

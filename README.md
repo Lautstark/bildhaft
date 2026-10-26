@@ -181,8 +181,11 @@ The options are the ones that matter in practice:
 
 - **Layout**: *sentence strip* (one row, reading order) or *card sheet* (individual
   cards for cutting up).
-- **Paper**: A5, A4 or A3, portrait or landscape. Boards are nearly always
-  landscape; A5 suits communication books and fans, A3 a board for a wall.
+- **Paper**: A5 or A4, portrait or landscape. What comes out of the printer is
+  always A4: an A5 material prints two pages to a sheet, to be folded and cut
+  apart, and its cards to cut out go on whole A4 sheets. Boards are nearly
+  always landscape; A5 suits communication books and fans. Word cards are A4
+  only.
 - **Card size**, for a card sheet, either way round:
   - *in millimetres* — people match existing boards, where a MetaTalk 3×5 grid has
     a specific cell size;

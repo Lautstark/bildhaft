@@ -20,8 +20,10 @@ describe('a punched sheet', () => {
   });
 
   it('carries its margin on the page box, so the marks can stand in it', () => {
-    expect(bleeds({ pageColour: null, punch: null })).toBe(false);
-    expect(bleeds({ pageColour: null, punch: 'top' })).toBe(true);
+    expect(bleeds({ pageColour: null, punch: null, paper: 'a4' })).toBe(false);
+    expect(bleeds({ pageColour: null, punch: 'top', paper: 'a4' })).toBe(true);
+    // Two A5 pages on an A4 carry a margin each.
+    expect(bleeds({ pageColour: null, punch: null, paper: 'a5' })).toBe(true);
   });
 
   it('is off until asked for', () => {
@@ -45,7 +47,7 @@ describe('a Spiel of five rows and seven columns', () => {
      whatever else is on the sheet — the title, the METACOM line, page
      numbers, a punched edge at the top or the left. */
   const full = { units: 5, zellen: 6, platz: 5 };
-  for (const paper of ['a5', 'a4', 'a3'] as const) for (const punch of [null, 'top', 'left'] as const) {
+  for (const paper of ['a5', 'a4'] as const) for (const punch of [null, 'top', 'left'] as const) {
     for (const copyright of [false, true]) {
       for (const showPageNumbers of [false, true]) {
         it(`fits at its field on ${paper} — Lochen ${punch ?? 'aus'}, Copyright ${copyright ? 'an' : 'aus'}, Seitenzahlen ${showPageNumbers ? 'an' : 'aus'}`, () => {

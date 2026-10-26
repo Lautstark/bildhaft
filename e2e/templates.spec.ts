@@ -184,7 +184,7 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
     }
     await pop.getByRole('button', { name, exact: true }).click();
   };
-  await paper('A3');
+  await paper('A5');
   await expect(sheet.locator('.ps-title').last()).toHaveCSS('border-bottom-style', 'solid');
   await paper('A4');
   /* NaN until the replanned sheet is back, so a poll simply asks again. */
@@ -197,7 +197,7 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
   // A card to cut is square, its cut line included: the dashed border used to sit outside the padding top and bottom only.
   const card = await sheet.locator('.ps-cut .ps-card').first().evaluate((node) => ({ w: node.getBoundingClientRect().width, h: node.getBoundingClientRect().height }));
   expect(card.h).toBeCloseTo(card.w, 0);
-  for (const [paperName, mm] of [['A3', 28], ['A5', 14]] as const) {
+  for (const [paperName, mm] of [['A5', 14]] as const) {
     await paper(paperName);
     await expect.poll(symbolMm).toBeCloseTo(mm, 0);
     // Still the guide and three sheets: nothing outgrows its page on any paper.
@@ -799,8 +799,9 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
   await expect(page.getByText('Karte zum Ausschneiden')).toHaveCount(0);
   await pickPaper(page, 'A5');
   await pickPaper(page, 'Quer');
+  // Two A5 across, one under the other on an A4 standing up.
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
-    .toContain('size: 210mm 148mm');
+    .toContain('size: 210mm 297mm');
   await untilKept(page, 'orientation', 'landscape');
   await page.reload();
   await showSheet(page);
@@ -1286,8 +1287,14 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
+  // A5 lying on its side goes two pages down an A4 standing up: the printer takes nothing else.
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
-    .toContain('size: 210mm 148mm');
+    .toContain('size: 210mm 297mm');
+  await expect(sheet.locator('.ps-paper--two.ps-paper--stacked .ps-talk')).toHaveCount(2);
+  await expect(sheet.locator('.ps-paper--two .ps-fold')).toHaveCount(2);
+  // The cards on a whole A4 of their own, and the head counts sheets of paper.
+  await expect(sheet.locator('.ps-page--whole .ps-talk-cut')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toHaveText('A5 quer · 2 pro A4 · 2 Blatt');
   // One sheet a page, its question's symbols and words on the band, eight
   // square fields — what waits is not printed.
   const pages = sheet.locator('.ps-talk');

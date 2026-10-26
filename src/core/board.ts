@@ -100,7 +100,7 @@ export const isBare = (style: ZoneStyle | undefined): boolean =>
  * The air around a card when nobody has said: a ninth of the field, held
  * between 2 and 5 mm. Seven fields across an A5 are 27 mm each and get 3;
  * four across an A4 are 47 mm and get 5. A fixed 4 was a third of the card
- * on the first and a hairline on a wall-sized A3.
+ * on the first and a hairline on a roomy board.
  */
 export function defaultAirMm(fieldMm: number): number {
   if (!Number.isFinite(fieldMm) || fieldMm <= 0) return 4;

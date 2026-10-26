@@ -18,7 +18,7 @@ export const PAGE_MARGIN_BOTTOM_MM = 6;
 /**
  * Paper, in millimetres, short edge first.
  *
- * Given as numbers rather than as the CSS keywords A4/A5/A3, because the same
+ * Given as numbers rather than as the CSS keywords A4/A5, because the same
  * figures have to do two different jobs: @page needs a size to tell the printer,
  * and the card grid needs to divide the printable area. Two sources for one
  * paper is how a preview comes to disagree with what comes out of the printer.
@@ -26,7 +26,6 @@ export const PAGE_MARGIN_BOTTOM_MM = 6;
 const PAPER: Record<PaperSize, { short: number; long: number; label: string }> = {
   a5: { short: 148, long: 210, label: 'A5' },
   a4: { short: 210, long: 297, label: 'A4' },
-  a3: { short: 297, long: 420, label: 'A3' },
 };
 
 export const paperLabel = (paper: PaperSize): string => PAPER[paper].label;
@@ -38,6 +37,23 @@ export function paperSize(
   const { short, long } = PAPER[paper];
   const landscape = orientation === 'landscape';
   return { width: landscape ? long : short, height: landscape ? short : long };
+}
+
+/**
+ * What comes out of the printer, which is always A4 (2026-10-26: hers takes
+ * nothing else). An A5 material is laid out on A5 and printed two pages to a
+ * sheet turned the other way — A5 lying on its side twice down an A4
+ * standing up, A5 standing up twice across an A4 lying on its side — to be
+ * folded and cut apart. Its cards to cut out are not halved: they go on
+ * whole sheets of that A4 (`cutArea`).
+ */
+export const twoUp = (settings: Pick<PrintSettings, 'paper'>): boolean => settings.paper === 'a5';
+
+export function printerPaper(
+  settings: Pick<PrintSettings, 'paper' | 'orientation'>,
+): { paper: PaperSize; orientation: Orientation } {
+  if (!twoUp(settings)) return { paper: settings.paper, orientation: settings.orientation };
+  return { paper: 'a4', orientation: settings.orientation === 'landscape' ? 'portrait' : 'landscape' };
 }
 
 /**
@@ -65,6 +81,14 @@ export function printableArea(
   return { width: width - m.left - m.right, height: height - m.top - m.bottom };
 }
 
+/** Where a sheet of cards to cut out is laid out: the printer's whole sheet, an A5 material's too. */
+export function cutArea(
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'punch'>,
+): { width: number; height: number } {
+  const sheet = printerPaper(settings);
+  return printableArea(sheet.paper, sheet.orientation, settings.punch);
+}
+
 /**
  * The frame's inner padding. Rounded corners need room, or the corner clips the
  * symbol — the METACOM manual makes the same point. Derived rather than asked
@@ -84,31 +108,33 @@ const PAGE_STYLE_ID = 'print-page-setup';
 
 /**
  * Whether the page boxes carry the margin themselves, the paper none: when a
- * colour is set behind them, so it reaches the paper's edge, and when the
- * sheet is punched, so the hole marks can stand in the margin. The sheet and
- * the page rule ask this one question.
+ * colour is set behind them, so it reaches the paper's edge, when the sheet
+ * is punched, so the hole marks can stand in the margin, and when two A5
+ * pages share a sheet, each with its own margin round it. The sheet and the
+ * page rule ask this one question.
  */
-export const bleeds = (settings: Pick<PrintSettings, 'pageColour' | 'punch'>): boolean =>
-  settings.pageColour !== null || settings.punch !== null;
+export const bleeds = (settings: Pick<PrintSettings, 'pageColour' | 'punch' | 'paper'>): boolean =>
+  settings.pageColour !== null || settings.punch !== null || twoUp(settings);
 
 /**
  * `bleed`: pages on a colour of their own (`bleeds`). The paper then has no margin of its
  * own and the page box carries it inside, on the colour, so the colour reaches
  * the paper's edge — as far as the printer can print, which is its business.
  */
-export function applyPageSetup(paper: PaperSize, orientation: Orientation, bleed = false): void {
+export function applyPageSetup(settings: Pick<PrintSettings, 'paper' | 'orientation' | 'pageColour' | 'punch'>): void {
   const style = document.getElementById(PAGE_STYLE_ID) ?? (() => {
     const made = document.createElement('style');
     made.id = PAGE_STYLE_ID;
     return document.head.appendChild(made);
   })();
-  const { width, height } = paperSize(paper, orientation);
+  const sheet = printerPaper(settings);
+  const { width, height } = paperSize(sheet.paper, sheet.orientation);
   /*
    * An explicit size rather than the `A4 landscape` keyword pair: the keywords
    * only cover the standard papers, and stating the millimetres keeps this rule
    * and printableArea() reading from the same table.
    */
-  const margin = bleed ? '0' : `${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_BOTTOM_MM}mm`;
+  const margin = bleeds(settings) ? '0' : `${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_MM}mm ${PAGE_MARGIN_BOTTOM_MM}mm`;
   style.textContent = `@page { size: ${width}mm ${height}mm; margin: ${margin}; }`;
 }
 
@@ -313,12 +339,15 @@ export function cardRows(sheet: HTMLElement): number[] | null {
 }
 
 /** What a page holds above its foot, in pixels: the notice and the number take the rest. */
-function pageRoom(credit: HTMLElement | null, settings: PrintSettings): number {
+function pageRoom(
+  credit: HTMLElement | null, settings: PrintSettings,
+  area = printableArea(settings.paper, settings.orientation, settings.punch),
+): number {
   const foot = Math.max(
     credit ? outer(credit).top + outer(credit).height : 0,
     settings.showPageNumbers ? PAGE_NUMBER_MM * PX_PER_MM : 0,
   );
-  return printableArea(settings.paper, settings.orientation, settings.punch).height * PX_PER_MM - foot;
+  return area.height * PX_PER_MM - foot;
 }
 
 /**
@@ -424,6 +453,44 @@ export function songPieces(sheet: HTMLElement, settings: PrintSettings): (number
   return pieces.some(Boolean) ? pieces : null;
 }
 
+/** The blocks of each page, as the plan counts them; the credit is every page's foot, not a block of one. */
+export function pagesOf(blocks: Block[], counts: number[]): Block[][] {
+  const body = blocks.filter((block) => block.kind !== 'credit');
+  const out: Block[][] = [];
+  let taken = 0;
+  for (const count of counts) { out.push(body.slice(taken, taken + count)); taken += count; }
+  // Cannot happen, and is checked anyway: a block the plan did not account
+  // for would be a symbol silently missing from a printout.
+  if (taken < body.length && out.length > 0) out[out.length - 1]!.push(...body.slice(taken));
+  return out;
+}
+
+/** A page only of cards to cut out: cut apart, not filed, and on A5 a whole sheet of its own. */
+export const cutOnly = (held: Block[]): boolean => held.length > 0
+  && held.every((block) => block.kind === 'talk-cut' || block.kind === 'game-cut' || block.kind === 'cut');
+
+/**
+ * The sheets of paper the pages go on, in order: one page each on A4; on A5
+ * two after each other — to be folded and cut apart, so no reordering — and
+ * a page of cards to cut out on a whole sheet of its own (`whole`), which
+ * leaves the half before it empty when it is the odd one.
+ */
+export function sheetsOf(pages: Block[][], settings: Pick<PrintSettings, 'paper'>): { pages: number[]; whole: boolean }[] {
+  if (!twoUp(settings)) return pages.map((_, at) => ({ pages: [at], whole: true }));
+  const out: { pages: number[]; whole: boolean }[] = [];
+  let half: number | null = null;
+  pages.forEach((held, at) => {
+    if (cutOnly(held)) {
+      if (half !== null) out.push({ pages: [half], whole: false });
+      half = null;
+      out.push({ pages: [at], whole: true });
+    } else if (half === null) half = at;
+    else { out.push({ pages: [half, at], whole: false }); half = null; }
+  });
+  if (half !== null) out.push({ pages: [half], whole: false });
+  return out;
+}
+
 /** Sub-pixel slack, so a block that fits exactly is not pushed off the page. */
 const FIT_TOLERANCE = 0.5;
 
@@ -456,7 +523,9 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
    * taken off every page, and it is drawn there, not here.
    */
   const credit = blocks.at(-1)?.classList.contains('ps-attribution') ? blocks.pop()! : null;
-  const limit = pageRoom(credit, settings);
+  const page = pageRoom(credit, settings);
+  /* An Einkaufsliste's cards to cut go on the printer's whole sheet. */
+  const whole = pageRoom(credit, settings, cutArea(settings));
 
   const pages: number[] = [];
   const filled: number[] = [];
@@ -475,6 +544,7 @@ export function planPages(sheet: HTMLElement, settings: PrintSettings): number[]
 
   for (const block of blocks) {
     const box = outer(block);
+    const limit = block.classList.contains('ps-cut') ? whole : page;
     // A block that will not fit in what is left starts the page it needs. Its
     // margin below counts: a page is a flex column, so the last block's margin
     // stays on the page rather than collapsing into the foot, and leaving it
@@ -630,7 +700,7 @@ export type Block =
  * down, the cards cut for them, and the paper's factor everything else is
  * multiplied by.
  *
- * The page is laid out for A5 and grows with the paper — A4 by √2, A3 by 2 —
+ * The page is laid out for A5 and grows with the paper — A4 by √2 —
  * so the fields and the cards cut for them are bigger together, and a page
  * holds as many Antworten on every paper. Which way up it stands, and
  * whether the cards carry their word, decide the field's shape and how many
@@ -675,7 +745,7 @@ export const talkCapacity = (settings: Pick<PrintSettings, 'orientation' | 'show
   return cols * rows;
 };
 
-export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3: 2 };
+export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2 };
 
 /**
  * A Spiel's sheet, measured: left the Ablage, right the rows — and every
@@ -713,13 +783,12 @@ export interface GameGeometry {
 }
 
 /*
- * The field against A4's, per paper. A3 is A4 grown, and holds five rows of
- * seven at 1.4. A5 is not quite A4 shrunk: its margins, a punched edge, the
+ * The field against A4's, per paper. A5 is not quite A4 shrunk: its margins, a punched edge, the
  * title and the footer keep their millimetres while the page loses a third,
  * so its field is a little smaller than 0.7 — 0.62, the largest that still
  * holds five rows of seven with all of them printed.
  */
-export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.62, a4: 1, a3: 1.4 };
+export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.62, a4: 1 };
 
 /** A Spiel's field on A4, scaled with the paper like everything else on it. */
 export const GAME_FIELD_MM = 30;
@@ -867,10 +936,10 @@ export const SHOPPING = { list: { cols: 3, rows: 5 }, cart: { cols: 5, rows: 3 }
 /**
  * How much bigger an Einkaufsliste comes out than on A4, which it was measured
  * on. All of it by the same factor — cards, zones, the air between them, the
- * cart — so a card printed on A3 goes into a board printed on A3, and the
+ * cart — so a card printed for an A5 board goes into an A5 board, and the
  * sheets hold as many on every paper as they do on A4.
  */
-export const SHOPPING_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
+export const SHOPPING_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1 };
 
 /** The air a laminated card needs before it will go into a zone at all. */
 const ZONE_AIR_MM = 3;
@@ -923,6 +992,8 @@ export function sheetBlocks(
   const { sentences, board, song, talk, game, settings, provider, attribution, copyright, collectionName } = options;
   const credits = creditLines(attribution, copyright);
   const page = printableArea(settings.paper, settings.orientation, settings.punch);
+  /* Cards to cut out go on the printer's whole sheet, an A5 material's too. */
+  const cutPage = cutArea(settings);
   const blocks: Block[] = [];
 
   /*
@@ -977,7 +1048,7 @@ export function sheetBlocks(
        as the page is wide, and as many rows as the page is tall, which
        planPages measures. */
     const cardMm = settings.symbolSizeMm + 2 * settings.cutMarginMm;
-    const cutRows = chunks(cards, Math.max(1, Math.floor(page.width / cardMm + 1e-6)));
+    const cutRows = chunks(cards, Math.max(1, Math.floor(cutPage.width / cardMm + 1e-6)));
     cutRows.forEach((slots, at) => blocks.push({ kind: 'cut', slots, last: at === cutRows.length - 1 }));
   } else if (settings.layout === 'rezept') {
     /*
@@ -1047,8 +1118,8 @@ export function sheetBlocks(
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0) {
-      const cols = Math.max(1, Math.floor(page.width / (geo.cutW + 2 * geo.air) + 1e-6));
-      const rows = Math.max(1, Math.floor(page.height / (geo.cutH + 2 * geo.air)));
+      const cols = Math.max(1, Math.floor(cutPage.width / (geo.cutW + 2 * geo.air) + 1e-6));
+      const rows = Math.max(1, Math.floor(cutPage.height / (geo.cutH + 2 * geo.air)));
       for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo });
     }
   } else if (settings.layout === 'spiel') {
@@ -1078,8 +1149,8 @@ export function sheetBlocks(
     });
     if (rows.length > 0) blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
     if (karten.length > 0) {
-      const cols = Math.max(1, Math.floor(page.width / (geo.cutW + 2 * geo.air) + 1e-6));
-      const cutRows = Math.max(1, Math.floor(page.height / (geo.cutH + 2 * geo.air)));
+      const cols = Math.max(1, Math.floor(cutPage.width / (geo.cutW + 2 * geo.air) + 1e-6));
+      const cutRows = Math.max(1, Math.floor(cutPage.height / (geo.cutH + 2 * geo.air)));
       for (const slots of chunks(karten, cols * cutRows)) blocks.push({ kind: 'game-cut', slots, cols, geo });
     }
   } else if (settings.layout === 'sheet') {
