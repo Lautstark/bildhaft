@@ -1219,8 +1219,9 @@ async function pickCard(page: import('@playwright/test').Page, scope: import('@p
  * book; its first words bring a picture, words written again keep the
  * symbols. An Antwort is a card added by the wall's „+"; there is no „✎
  * Text". On paper each page is a sheet with its question on the band, a
- * free field, and a field for each Antwort the page holds — eight square
- * ones on A5 across, ten upright with the word; the rest wait under the
+ * free field, and every field the page holds, however many Antworten it
+ * has — eight square ones on A5 across, ten upright with the word; more
+ * Antworten wait under the
  * page, as cards beside a Tafel do, and are not printed, and a waiting card
  * dropped on one on the page changes places with it; the cards follow on
  * sheets of their own, cut lines on, the laminate's seam smaller than a
@@ -1295,15 +1296,15 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   // The cards on a whole A4 of their own, and the head counts sheets of paper.
   await expect(sheet.locator('.ps-page--whole .ps-talk-cut')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Papier wählen' })).toHaveText('A5 quer · 2 pro A4 · 2 Blatt');
-  // One sheet a page, its question's symbols and words on the band, eight
-  // square fields — what waits is not printed.
+  // One sheet a page, its question's symbols and words on the band, all
+  // eight square fields on every page — what waits is not printed.
   const pages = sheet.locator('.ps-talk');
   await expect(pages).toHaveCount(2);
   await expect(pages.nth(0).locator('.ps-talk__question')).toHaveText('Was ich erzähle');
   await expect(pages.nth(0).locator('.ps-talk__band .ps-title__pic')).toHaveCount(2);
   await expect(sheet.locator('.ps-talk__field--free')).toHaveCount(2);
   expect(await pages.evaluateAll((all) => all.map((one) =>
-    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([8, 1]);
+    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([8, 8]);
   const mm = (where: string, name: string) => sheet.locator(where).first().evaluate((node, prop) =>
     parseFloat(getComputedStyle(node).getPropertyValue(prop)), name);
   await expect.poll(async () => await mm('.ps-talk', '--talk-w') - await mm('.ps-talk', '--talk-h')).toBeCloseTo(0, 2);

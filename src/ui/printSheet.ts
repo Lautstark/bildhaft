@@ -1100,10 +1100,12 @@ export function sheetBlocks(
   } else if (settings.layout === 'plauderbuch') {
     /*
      * A page of the book is a sheet of paper, always: the question on its
-     * band with the free field beside it, the fields for the Aussagen below
-     * — as many as the page holds (talkCapacity). More wait in Bearbeiten,
-     * as the cards beside a Tafel do, and are not printed. Then the cards
-     * for every field, to cut out and laminate.
+     * band with the free field beside it, and below it every field the
+     * page holds (talkCapacity), however many Antworten it has — every page
+     * of the binder looks alike, and a card made later has its place
+     * without the page being printed again. More Antworten than fields wait
+     * in Bearbeiten, as the cards beside a Tafel do, and are not printed.
+     * Then the cards there are, to cut out and laminate.
      */
     const geo = talkGeometry(settings, page, reserve);
     const room = geo.cols * geo.rows;
@@ -1114,7 +1116,7 @@ export function sheetBlocks(
          its caption. */
       const first = one.question?.slots[0];
       const text = one.question?.rawInput || (first ? slotCaption(first) : '');
-      blocks.push({ kind: 'talk-page', pictures: picturesOf(one.question), text, count: one.sayings.length, geo });
+      blocks.push({ kind: 'talk-page', pictures: picturesOf(one.question), text, count: room, geo });
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0) {

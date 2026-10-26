@@ -214,7 +214,7 @@
   The Refrain once more, by reference: its colour, an arrow round, its name.
 --><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'talk-page'}<!--
   A page of a Plauderbuch: the question on its band, the free field the
-  answer is put into beside it, then a field for each Antwort the page holds.
+  answer is put into beside it, then every field the page holds.
 --><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#each block.pictures as picture (picture.id)}<PrintPicture slot={picture} {provider} />{/each}<p class="ps-talk__question">{block.text}</p><span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span></div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
   The cards for the fields, the laminate's seam smaller than a field, with
   the Rand round each for the scissors; the cut lines where they are asked for.
