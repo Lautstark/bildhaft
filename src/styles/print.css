@@ -850,14 +850,23 @@
 .ps-spiel {
   position: relative;
   display: flex;
-  /* The zones stand equally tall: the Ablage's enclosure runs as far down
-     as the game does. */
+  /* The zones stand equally tall and apart: the Ablage at the left edge,
+     the game at the right — the width between them is the border, and the
+     fence of accent dots stands in its middle. */
   align-items: stretch;
-  column-gap: calc(12mm * var(--talk-k));
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
+.ps-spiel__zaun {
+  flex: 1;
+  min-width: calc(10mm * var(--talk-k));
+  background-image: radial-gradient(circle, var(--spiel-accent, #e0558c) calc(0.8mm * var(--talk-k)), transparent calc(0.8mm * var(--talk-k) + 0.15mm));
+  background-size: calc(2mm * var(--talk-k)) calc(5mm * var(--talk-k));
+  background-repeat: repeat-y;
+  background-position: center top;
+}
+.ps-spiel__rows { flex: none; }
 /* The Ablage shares the game's raster: exactly its rows, each as tall as a
    row of the game (field plus the group's padding), and the dots fill them
    column by column from the top — so every dot stands level with a row. */
