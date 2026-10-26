@@ -2,7 +2,7 @@ import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Senten
 import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { rowsOfGame } from '../core/game.ts';
-import { copyrightFor, creditLines, tafelFieldMm } from '../ui/printSheet.ts';
+import { copyrightFor, creditLines, gameGeometry, printableArea, reserveMm, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
@@ -304,4 +304,27 @@ export function tafelField(): { width: number; height: number } | null {
   const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
     : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
   return tafelFieldMm(print, board, credits, titled);
+}
+
+/**
+ * How big the open Spiel's symbols print, in millimetres — the sheet's own
+ * answer, asked the same way the sheet asks (the same credits, the same name
+ * over it), so the menu can show it as a fact. Null for anything that is not
+ * a Spiel.
+ */
+export function gameSymbol(): number | null {
+  const open = activeCollection();
+  if (!open || kind() !== 'spiel' || !s.settings) return null;
+  const print = printFor(printBase(), 'spiel', null, open.print ?? {});
+  const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
+  const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
+    : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
+  const rows = rowsOfGame(open.game ?? { rows: [] });
+  const shape = {
+    units: Math.max(1, rows.length),
+    zellen: Math.max(1, ...rows.map((row) => row.zellen.length)),
+    platz: Math.max(1, rows.reduce((n, row) => n + row.zellen.filter((zelle) => zelle.platz).length, 0)),
+  };
+  const page = printableArea(print.paper, print.orientation);
+  return gameGeometry(print, page, reserveMm(print, credits, titled), shape).symW;
 }

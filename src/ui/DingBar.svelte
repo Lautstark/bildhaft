@@ -12,7 +12,7 @@
    * settings stay in the print preview's column.
    */
   import type { CollectionKind } from '../core/types.ts';
-  import { materialPrint } from '../app/print.ts';
+  import { gameSymbol, materialPrint } from '../app/print.ts';
   import { kind, providerId } from '../app/state.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
   import PaletteRow from './PaletteRow.svelte';
@@ -110,6 +110,10 @@
       {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}
     {:else if offer.size?.kind === 'board'}
       {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}
+      {#if kind() === 'spiel'}{@const sym = gameSymbol()}{#if sym !== null}<!--
+        Das Maß als Fakt, wie bei der Einkaufsliste: das Blatt rechnet die
+        Symbolgröße selbst, das Menü zeigt sie nur.
+      --><div class="ding__row"><span class="small faint">{t('ui.game_symbol', { size: Math.round(sym) })}</span></div>{/if}{/if}
     {/if}
     {#if offer.label}{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<div class="ding__sub"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next), t('ui.label_size'))}</div>{/if}
     {/if}

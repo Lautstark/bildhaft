@@ -277,7 +277,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   spiel: {
     cards: false,
     defaults: () => ({
-      paper: 'a4', orientation: 'landscape', symbolSizeMm: 30, cutMarginMm: 3,
+      paper: 'a4', orientation: 'landscape', cutMarginMm: 3,
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
       cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56',
       accentColour: '#e0558c', gameGroundColour: '#fdeef3',
@@ -285,7 +285,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
     fixed: () => ({ layout: 'spiel' }),
     zeileInEdit: true,
-    offers: () => ({ ...BASE, size: { kind: 'symbol', max: 60, fallback: 30, note: null, cut: false }, margin: 'cut', game: true }),
+    /* The symbol's size is the sheet's own answer — the menu shows it and
+       asks only for the margin round the cut cards. */
+    offers: () => ({ ...BASE, size: { kind: 'board' }, margin: 'cut', game: true }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes

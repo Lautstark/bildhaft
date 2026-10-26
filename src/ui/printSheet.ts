@@ -538,7 +538,7 @@ export interface SheetOptions {
 }
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
-function reserveMm(
+export function reserveMm(
   settings: Pick<PrintSettings, 'paper' | 'orientation' | 'titleSizePt' | 'titleLine' | 'showPageNumbers'>,
   credits: string[], titled: Titled,
 ): number {
@@ -669,7 +669,7 @@ export interface GameGeometry {
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
 export function gameGeometry(
-  settings: Pick<PrintSettings, 'paper' | 'symbolSizeMm' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>,
+  settings: Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>,
   page: { width: number; height: number },
   reserve: number, shape: { units: number; zellen: number; platz: number },
 ): GameGeometry {
@@ -688,7 +688,9 @@ export function gameGeometry(
      rows' own gap come off the height before the field takes its share. */
   const pad = 2.5 * k;
   const rowGap = 3 * k;
-  const hLimit = (height - (units - 1) * rowGap) / units - 2 * pad;
+  /* A millimetre of slack: a board measured at exactly the page's height is
+     one rounding away from being pushed to a page of its own. */
+  const hLimit = (height - k - (units - 1) * rowGap) / units - 2 * pad;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
   /* The sheet is one raster: the Ablage has exactly the game's rows, in the
      game's own rhythm, and the cards' dots fill it column by column from the
@@ -699,7 +701,9 @@ export function gameGeometry(
   const wLimit = (page.width - 24 * k - (cols + zellen - 1) * gap) / (cols + zellen);
   const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
   const fieldH = fieldW * (42 / 50);
-  const symW = Math.max(8, Math.min(settings.symbolSizeMm, fieldH - label - 3 * k));
+  /* The picture takes what the cell leaves it — the sheet says how big a
+     symbol prints, nobody is asked. */
+  const symW = Math.max(8, fieldH - label - 3 * k);
   return {
     fieldW, fieldH, gap, air, k, height,
     lagerW: cols * fieldW + (cols - 1) * gap,

@@ -871,7 +871,10 @@
   column-gap: var(--talk-gap);
   align-content: start;
   padding: 0 calc(2.5mm * var(--talk-k));
-  border: 0.25mm dashed #c4bcb6;
+  /* The enclosure is an outline: it takes no height, so a board measured to
+     exactly the page is not pushed to a page of its own by its own line. */
+  outline: 0.25mm dashed #c4bcb6;
+  outline-offset: calc(1mm * var(--talk-k));
   border-radius: calc(3mm * var(--talk-k));
 }
 .ps-spiel__lager .ps-talk__field { place-self: center; }
