@@ -656,8 +656,10 @@ export interface GameGeometry {
   height: number;
   /** The Ablage block's width: its columns, side by side. */
   lagerW: number;
-  /** The Ablage block's columns: as many as the page's height asks for. */
+  /** The Ablage block's columns: the cards shared over the game's rows. */
   lagerCols: number;
+  /** The game's rows — the Ablage has exactly as many, in the same rhythm. */
+  units: number;
   /** The picture inside a printed card, capped so the word keeps its line. */
   symW: number;
   /** The most a row may be tall: its share of the page. */
@@ -688,29 +690,21 @@ export function gameGeometry(
   const rowGap = 3 * k;
   const hLimit = (height - (units - 1) * rowGap) / units - 2 * pad;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
-  /* The Ablage holds every card of the game in one block: as many columns
-     as the page's height asks for, no more. Columns widen the sheet and
-     the sheet caps the field, so the two feel for each other until they
-     agree — the columns only ever grow, and never past the cards. The
-     24 mm of width they share out is the enclosures' padding and the air
-     between the zones. */
-  let cols = 1;
-  let fieldW = 0;
-  let fieldH = 0;
-  for (;;) {
-    const wLimit = (page.width - 24 * k - (cols + zellen - 1) * gap) / (cols + zellen);
-    fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
-    fieldH = fieldW * (42 / 50);
-    const lagerRows = Math.max(1, Math.floor((height - 6 * k + gap) / (fieldH + gap)));
-    const need = Math.max(1, Math.ceil(platz / lagerRows));
-    if (need <= cols) break;
-    cols = need;
-  }
+  /* The sheet is one raster: the Ablage has exactly the game's rows, in the
+     game's own rhythm, and the cards' dots fill it column by column from the
+     top. The columns follow from cards over rows; they widen the sheet, and
+     the sheet caps the field. The 24 mm of width taken off is the
+     enclosures' padding and the air between the zones. */
+  const cols = Math.max(1, Math.ceil(platz / units));
+  const wLimit = (page.width - 24 * k - (cols + zellen - 1) * gap) / (cols + zellen);
+  const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
+  const fieldH = fieldW * (42 / 50);
   const symW = Math.max(8, Math.min(settings.symbolSizeMm, fieldH - label - 3 * k));
   return {
     fieldW, fieldH, gap, air, k, height,
     lagerW: cols * fieldW + (cols - 1) * gap,
     lagerCols: cols,
+    units,
     symW, zeile: hLimit,
   };
 }

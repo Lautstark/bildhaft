@@ -858,16 +858,23 @@
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
+/* The Ablage shares the game's raster: exactly its rows, each as tall as a
+   row of the game (field plus the group's padding), and the dots fill them
+   column by column from the top — so every dot stands level with a row. */
 .ps-spiel__lager {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(var(--lager-cols), var(--talk-w));
-  gap: var(--talk-gap);
+  grid-template-rows: repeat(var(--spiel-units), calc(var(--talk-h) + 5mm * var(--talk-k)));
+  grid-auto-flow: column;
+  grid-auto-columns: var(--talk-w);
+  row-gap: calc(3mm * var(--talk-k));
+  column-gap: var(--talk-gap);
   align-content: start;
-  padding: calc(2.5mm * var(--talk-k));
+  padding: 0 calc(2.5mm * var(--talk-k));
   border: 0.25mm dashed #c4bcb6;
   border-radius: calc(3mm * var(--talk-k));
 }
+.ps-spiel__lager .ps-talk__field { place-self: center; }
 .ps-spiel__rows { display: flex; flex-direction: column; gap: calc(3mm * var(--talk-k)); }
 .ps-spiel__zelle {
   display: flex;
