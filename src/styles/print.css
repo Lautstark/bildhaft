@@ -907,21 +907,22 @@
 .ps-talk__band .ps-title__pic img { width: 100%; height: calc(var(--talk-h) * 0.75); object-fit: contain; }
 .ps-talk__card .ps-title__pic img { width: 100%; height: calc(var(--talk-h) * 0.6); object-fit: contain; }
 
-/* A Plauderbuch's cards to cut: as the Symbol menu sets them — the ground,
-   a frame if asked for, the word above or below if asked for — the picture
-   the size the sheet works out (--sym). The dashed cell is the scissors'
-   line, drawn when the cut lines are on. */
+/* The cards to cut of a Plauderbuch and of a Spiel, one rule for both: as
+   the Symbol menu sets them — the ground, a frame if asked for, the word
+   above or below if asked for — and the picture the size the sheet works
+   out (--sym), so a symbol is the one size on its page and on its card.
+   A Plauderbuch draws its scissors' line when the cut lines are on. */
 .ps-sheet--talk .ps-talk-cut__cell { outline: 0; }
 .ps-sheet--talk.ps-sheet--cutlines .ps-talk-cut__cell { outline: 0.25mm dashed #c4bcb9; }
-.ps-sheet--talk .ps-talk__card {
+:is(.ps-sheet--talk, .ps-sheet--spiel) .ps-talk__card {
   padding: calc(1mm * var(--talk-k));
   background: var(--card-bg, #fff);
   border: var(--frame-w) solid var(--frame-color);
   border-radius: var(--card-radius);
   box-sizing: border-box;
 }
-.ps-sheet--talk .ps-talk__card .ps-title__pic { flex: none; width: var(--sym); height: var(--sym); }
-.ps-sheet--talk .ps-talk__card .ps-title__pic img { width: 100%; height: 100%; }
+:is(.ps-sheet--talk, .ps-sheet--spiel) .ps-talk__card .ps-title__pic { flex: none; width: var(--sym); height: var(--sym); }
+:is(.ps-sheet--talk, .ps-sheet--spiel) .ps-talk__card .ps-title__pic img { width: 100%; height: 100%; }
 .ps-sheet--talk .ps-talk__word { font-size: var(--label); }
 .ps-talk-cut--above .ps-talk__word { order: -1; }
 
@@ -941,10 +942,12 @@
  * taller and keeps its symbol's size, and a card whose size is given — a
  * Spiel's, a Tafel's, a grid's, a Kartenbogen's — gives its symbol's top up;
  * the circle stands over the symbol's middle and touches none of it. Over,
- * a growing card stays as it is, and a given one's symbol gives up 6 mm a
- * side, so the circle lies over at most half of the symbol box's corner — a
- * picture seldom reaches its corner, and one kept wholly clear came out too
- * small. (Beside was tried and dropped: wide cards, few uses.)
+ * a growing card stays as it is, and a given one's symbol box keeps 6 mm
+ * from the edge a side — giving up only what it does not already keep — so
+ * the circle lies over at most half of the box's corner; a picture seldom
+ * reaches its corner, and one kept wholly clear came out too small. The
+ * circle never makes a symbol bigger. (Beside was tried and dropped: wide
+ * cards, few uses.)
  * The room is the circle's 1 + 9.5 mm and half a millimetre of air, less what
  * the card's own padding already keeps.
  */
@@ -993,7 +996,6 @@
 .ps-sheet--anybook .ps-spiel__bild .ps-title__pic:has(img) {
   box-sizing: border-box;
 }
-.ps-sheet--anybook .ps-spiel__bild .ps-title__pic:has(img) { width: 100%; }
 .ps-sheet--any-above :is(.ps-card--fill, .ps-card--exact, .ps-cut .ps-card):not(.ps-card--framed) .ps-card__img:has(img) {
   padding-top: max(0mm, 11.7mm - var(--cut));
 }
@@ -1012,11 +1014,14 @@
 .ps-sheet--any-over :is(.ps-card--fill, .ps-card--exact, .ps-cut .ps-card).ps-card--framed .ps-card__img:has(img) {
   padding-inline: max(0mm, 6mm - var(--frame-pad) - var(--frame-w));
 }
-.ps-sheet--any-over .ps-talk__card .ps-title__pic:has(img) {
-  padding-inline: max(0mm, 6mm - var(--talk-air, 0mm) - 2mm * var(--talk-k));
-}
-.ps-sheet--any-over .ps-spiel__bild .ps-title__pic:has(img) {
-  padding-inline: max(0mm, 6mm - 1.4mm * var(--talk-k));
+/* A card whose picture box is the sheet's --sym — a Spiel's printed card, a
+   Spiel's or a Plauderbuch's card to cut — says how far that box already
+   stands in from the edge the circle is measured from (--any-gap), and the
+   box gives up only what is still short of 6 mm. It never grows. */
+.ps-spiel__bild { --any-gap: calc((var(--talk-w) - var(--sym)) / 2); }
+.ps-talk-cut__cell .ps-talk__card { --any-gap: calc(var(--talk-air) + (var(--talk-w) - var(--sym)) / 2); }
+.ps-sheet--any-over :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic:has(img) {
+  padding-inline: max(0mm, 6mm - var(--any-gap));
 }
 
 /* A symbol that gave up its sides is narrower than its box is tall: it sits
@@ -1153,6 +1158,3 @@
 .ps-spiel__bild .ps-title__pic img { width: 100%; height: 100%; object-fit: contain; }
 .ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
-/* The cutting sheet's cards: white, wordmarked, the dashed cell is the
-   scissors' line — no grey ground, no frame unless one is asked for. */
-.ps-spiel-cut .ps-talk__card { background: var(--card-bg, #fff); border: var(--frame-w) solid var(--frame-color); }

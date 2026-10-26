@@ -96,17 +96,21 @@ test('ein Spiel baut sich Zeile für Zeile, und druckt Blatt und Kartenbogen', a
   // the fields, the symbol the one size on both.
   const cut = sheet.locator('.ps-spiel-cut');
   await expect(cut.locator('.ps-talk__card .ps-spiel__wort')).toHaveText(['Banane', 'Socke']);
+  /* The symbol as drawn, not the variable it is drawn from: the two can part,
+     and once did — the cut cards drew theirs at a share of the card instead. */
   const sizes = await page.evaluate(() => {
     const board = document.querySelector('.preview-frame .ps-spiel') as HTMLElement;
     const cut = document.querySelector('.preview-frame .ps-spiel-cut') as HTMLElement;
     const mm = (node: HTMLElement, name: string): number => parseFloat(getComputedStyle(node).getPropertyValue(name));
+    const drawn = (img: HTMLImageElement) => Math.min(img.offsetWidth, img.offsetHeight) / (96 / 25.4);
     return {
       feld: mm(board, '--talk-w'), karte: mm(cut, '--talk-w'),
-      symbolBlatt: mm(board, '--sym'), symbolBogen: mm(cut, '--sym'),
+      symbolBlatt: drawn(board.querySelector('.ps-spiel__bild img')!),
+      symbolBogen: drawn(cut.querySelector('.ps-talk__card img')!),
     };
   });
   expect(sizes.karte).toBeCloseTo(sizes.feld - 4, 1);
-  expect(sizes.symbolBogen).toBeCloseTo(sizes.symbolBlatt, 3);
+  expect(sizes.symbolBogen).toBeCloseTo(sizes.symbolBlatt, 0);
 
   // An empty row is being built, not designed: it does not print.
   await showMaterial(page);
@@ -267,6 +271,13 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   }
   // A Platzhalter and the Ablage's dots carry no circle.
   for (const field of await measure('.ps-talk__field')) expect(field.circle).toBe(false);
+  // The circle never makes a symbol bigger than the sheet's measure.
+  const grown = await page.evaluate(() => {
+    const sym = parseFloat(getComputedStyle(document.querySelector('.preview-frame .ps-spiel') as HTMLElement).getPropertyValue('--sym'));
+    return [...document.querySelectorAll<HTMLImageElement>('.preview-frame :is(.ps-spiel__bild, .ps-talk__card) img')]
+      .map((img) => Math.min(img.offsetWidth, img.offsetHeight) / (96 / 25.4) - sym);
+  });
+  expect(Math.max(...grown)).toBeLessThanOrEqual(0.2);
 
   // A Spiel's cards are given: no room beside a symbol in the middle, so no „daneben“.
   await expect(page.getByRole('button', { name: 'daneben' })).toHaveCount(0);
