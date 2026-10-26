@@ -18,6 +18,7 @@
   import TemplateArt from '../ui/TemplateArt.svelte';
   import Tafel from '../ui/Tafel.svelte';
   import WordCard from '../ui/WordCard.svelte';
+  import AddTile from '../ui/AddTile.svelte';
   import Recipe from '../ui/Recipe.svelte';
   import Song from '../ui/Song.svelte';
   import Talk from '../ui/Talk.svelte';
@@ -75,10 +76,10 @@
   Leer ist die leere Version der Vorlage, nicht ein leerer Kasten: die Wand
   nur mit ihrer „+"-Kachel, der Streifen als gestrichelte Zeile, die zur Box
   führt (2026-10-23, ihr Grundsatz).
--->{#if holdsWords()}<div class="rows words"><button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button><span class="empty-whisper empty-whisper--wall">{t('ui.cards_whisper')}</span></div>{:else}<div class="rows"><button class="row-ghost" type="button" aria-label={t('ui.first_strip')} title={t('ui.first_strip')} onclick={() => document.querySelector<HTMLTextAreaElement>('.composer__input')?.focus()}><span class="row-ghost__pic"></span><span class="row-ghost__pic"></span><span class="row-ghost__pic"></span><span class="empty-whisper">{t('ui.strip_whisper')}</span></button></div>{/if}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
+-->{#if holdsWords()}<div class="rows words"><AddTile label={t('ui.new_card')} onAdd={() => void handleNewCard()} /><span class="empty-whisper empty-whisper--wall">{t('ui.cards_whisper')}</span></div>{:else}<div class="rows"><button class="row-ghost" type="button" aria-label={t('ui.first_strip')} title={t('ui.first_strip')} onclick={() => document.querySelector<HTMLTextAreaElement>('.composer__input')?.focus()}><span class="row-ghost__pic"></span><span class="row-ghost__pic"></span><span class="row-ghost__pic"></span><span class="empty-whisper">{t('ui.strip_whisper')}</span></button></div>{/if}{:else if holdsWords()}<div class="rows words">{#each content as sentence (sentence.id)}<WordCard {sentence} {provider} />{/each}<!--
   The empty card at the end. Typing is the fast way for ten words at once;
   this is the way for the one that is missing, and for somebody who has no word
   in mind and is looking for a picture. It opens the same picker every other
   card does. What the wall means on paper stands beside it, on the sheet —
   the wall itself stays the fast, quiet place to work.
---><button class="word word--add" type="button" aria-label={t('ui.new_card')} onclick={() => void handleNewCard()}>+</button></div>{:else}<div class="rows">{#each content as sentence (sentence.id)}<Row {sentence} {provider} />{/each}</div>{/if}
+--><AddTile label={t('ui.new_card')} onAdd={() => void handleNewCard()} /></div>{:else}<div class="rows">{#each content as sentence (sentence.id)}<Row {sentence} {provider} />{/each}</div>{/if}
