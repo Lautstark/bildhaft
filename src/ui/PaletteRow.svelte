@@ -24,8 +24,12 @@
 
   /* Five of the Tafel's eight (2026-10-23): a row of a menu, not a zone box —
      eight plus „keine" plus the wheel broke the line. A hue from the other
-     three, set elsewhere, shows on the wheel as one's own. */
-  let colours = $derived(ZONE_COLOURS.slice(0, 5).map((hue) => ({ value: hue[strength], name: hue.name })));
+     three, set elsewhere, shows on the wheel as one's own. The pale row opens
+     with white (2026-10-26, her wish): paper's own ground is a colour too. */
+  let colours = $derived([
+    ...(strength === 'fill' ? [{ value: '#ffffff', name: 'ui.zone_white' }] : []),
+    ...ZONE_COLOURS.slice(0, 5).map((hue) => ({ value: hue[strength], name: hue.name })),
+  ]);
   let own = $derived(value !== null && !colours.some((c) => c.value === value));
 </script>
 

@@ -280,6 +280,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       paper: 'a4', orientation: 'landscape', cutMarginMm: 3,
       showLabel: true, labelPosition: 'below', labelSizePt: 11,
       cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56',
+      cardBackground: '#ffffff',
       accentColour: '#e0558c', gameGroundColour: '#fdeef3',
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
     }),
