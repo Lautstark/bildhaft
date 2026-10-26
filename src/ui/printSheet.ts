@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, PunchEdge, Sentence, Slot, SongPartKind, ZoneStyle,
 } from '../core/types.ts';
-import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
+import { partOf, picturesOf, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
@@ -616,7 +616,7 @@ export type Block =
      going on. */
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[]; more: boolean }
   | { kind: 'song-again' }
-  | { kind: 'talk-page'; question: Slot | null; text: string; count: number; geo: TalkGeometry }
+  | { kind: 'talk-page'; pictures: Slot[]; text: string; count: number; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
   /* One sheet of a Spiel: each row its free cells' Ablage fields, then its
      cells in their own order — a printed card, or the field where one is
@@ -1038,9 +1038,12 @@ export function sheetBlocks(
     const room = geo.cols * geo.rows;
     const shown = (talk?.pages ?? []).map((one) => ({ ...one, sayings: one.sayings.slice(0, room) }));
     for (const one of shown) {
-      const question = one.question?.slots[0] ?? null;
-      const text = question ? slotCaption(question) : '';
-      blocks.push({ kind: 'talk-page', question, text, count: one.sayings.length, geo });
+      /* The question as its line stands in Bearbeiten: its symbols, then its
+         words — a card made before questions had words of their own says
+         its caption. */
+      const first = one.question?.slots[0];
+      const text = one.question?.rawInput || (first ? slotCaption(first) : '');
+      blocks.push({ kind: 'talk-page', pictures: picturesOf(one.question), text, count: one.sayings.length, geo });
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0) {

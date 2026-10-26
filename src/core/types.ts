@@ -256,9 +256,12 @@ export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | 'titel' =
 
 const chosen = (slot: Slot): boolean => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean));
 
+/** A line's symbols that have a picture chosen, in their order: a title's, a Plauderbuch question's. */
+export const picturesOf = (sentence: Pick<Sentence, 'slots'> | null | undefined): Slot[] => sentence?.slots.filter(chosen) ?? [];
+
 /** The symbols of a material's title, in their order: those with a picture chosen. */
 export const titlePictures = (sentences: readonly Sentence[]): Slot[] =>
-  sentences.find((sentence) => sentence.part === 'titel')?.slots.filter(chosen) ?? [];
+  picturesOf(sentences.find((sentence) => sentence.part === 'titel'));
 
 /** The first of them: a Rezept's or a Tafel's title picture, as the head shows it. */
 export const titlePicture = (sentences: readonly Sentence[]): Slot | null => titlePictures(sentences)[0] ?? null;

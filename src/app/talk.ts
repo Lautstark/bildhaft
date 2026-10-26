@@ -1,15 +1,15 @@
-import type { Collection, Sentence, TalkBook, TalkPage } from '../core/types.ts';
-import { slotCaption } from '../core/types.ts';
+import type { Collection, Sentence, TalkBook } from '../core/types.ts';
+import { picturesOf } from '../core/types.ts';
 import { pagesOf, withoutRow, withPage, withSwapped } from '../core/talk.ts';
 import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
 import { addLines } from './composing.ts';
-import { emptySlot, openPicker } from './editing.ts';
+import { emptySlot, handleAddSlot, openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
 
 /**
  * A Plauderbuch changed page by page, where the page stands — the way a
- * Lied's parts are: each page has its Frage, the „+" at the end of its
- * Antworten, and „✎ Text".
+ * Lied's parts are: each page has its Frage, written as a title is (its
+ * symbols, a „+", its words), and the „+" at the end of its Antworten.
  *
  * Every write goes through the book on the Sammlung: a row is only on a page
  * because the book says so, and a row the book no longer names is deleted
@@ -17,17 +17,6 @@ import { activeCollection, s } from './state.svelte.ts';
  */
 
 const linesOf = (text: string): string[] => text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-
-/** What a card reads as on the page, and in its text: its caption. */
-export const shown = (sentence: Sentence): string =>
-  (sentence.slots[0] ? slotCaption(sentence.slots[0]) : '') || sentence.rawInput;
-
-
-/** A page's Aussagen as text, one a line, for writing them again. */
-export function sayingsText(page: TalkPage): string {
-  const byId = new Map(s.sentences.map((sentence) => [sentence.id, sentence]));
-  return page.sayings.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)).map(shown).join('\n');
-}
 
 async function keepBook(open: Collection, talk: TalkBook): Promise<void> {
   const next: Collection = { ...open, talk, updatedAt: Date.now() };
@@ -113,58 +102,44 @@ export async function addPage(): Promise<void> {
 }
 
 /**
- * A page's question written, written again, or taken off with an empty
- * line. The same question again keeps its card and the picture fixed in it.
+ * A page's question written where it stands, as a title is. The first words
+ * on a page make its question, looked up as an Aussage is so it comes with
+ * a picture; words written again only change the words, and keep every
+ * symbol chosen for it. Emptied, a question with no symbol goes.
  */
-export async function setQuestion(pageId: string | null, text: string): Promise<string> {
+export async function writeQuestion(pageId: string | null, text: string): Promise<void> {
   const open = activeCollection();
-  if (!open || s.busy) return text;
+  if (!open || s.busy) return;
   const line = text.trim().replace(/\s+/g, ' ');
-  const held = pagesOf(open.talk).find((one) => one.id === pageId)?.question ?? null;
-  const before = held ? s.sentences.find((sentence) => sentence.id === held) : undefined;
-  if (before && shown(before) === line) return '';
-  if (!before && !line) return '';
-  let id: string | null = null;
-  if (line) {
-    const cards = await cardsFor(line);
-    if (!cards) return text;
-    id = cards.ids[0] ?? null;
+  const id = pagesOf(open.talk).find((one) => one.id === pageId)?.question ?? null;
+  const held = id ? s.sentences.find((sentence) => sentence.id === id) : undefined;
+  if (held) {
+    if (line === held.rawInput) return;
+    if (!line && picturesOf(held).length === 0) {
+      await keepBook(open, withPage(open.talk!, pageId!, (one) => ({ ...one, question: null })));
+      await dropRows([held.id]);
+      return;
+    }
+    const next: Sentence = { ...held, rawInput: line, normalizedInput: line.toLowerCase(), updatedAt: Date.now() };
+    await putSentence(next);
+    s.sentences = s.sentences.map((sentence) => (sentence.id === next.id ? next : sentence));
+    return;
   }
+  if (!line) return;
+  const cards = await cardsFor(line);
+  const made = cards?.ids[0];
   const fresh = activeCollection();
-  if (!fresh || fresh.id !== open.id) return '';
+  if (!made || !fresh || fresh.id !== open.id) return;
   const book = bookWithPage(fresh);
   const page = book.pages.find((one) => one.id === pageId) ?? book.pages.at(-1)!;
-  await keepBook(fresh, withPage(book, page.id, (one) => ({ ...one, question: id })));
-  if (page.question) await dropRows([page.question]);
-  return '';
+  await keepBook(fresh, withPage(book, page.id, (one) => ({ ...one, question: made })));
 }
 
-/**
- * A page's Aussagen written again as text. A line that is kept keeps its
- * card and every picture fixed in it; only new lines are looked up; lines
- * taken out go. The order is the text's.
- */
-export async function rewriteSayings(pageId: string, text: string): Promise<string> {
-  const open = activeCollection();
-  const page = pagesOf(open?.talk).find((one) => one.id === pageId);
-  if (!open || !page || s.busy) return text;
-  const byId = new Map(s.sentences.map((sentence) => [sentence.id, sentence]));
-  const pool = page.sayings.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x));
-  const lines = linesOf(text);
-  const kept = lines.map((line) => {
-    const at = pool.findIndex((sentence) => shown(sentence).trim() === line || sentence.rawInput.trim() === line);
-    return at === -1 ? null : pool.splice(at, 1)[0]!.id;
-  });
-  const fresh = lines.filter((_, at) => !kept[at]);
-  const cards = await cardsFor(fresh.join('\n'));
-  if (!cards) return text;
-  const made = [...cards.ids];
-  const sayings = kept.map((id) => id ?? made.shift()!).filter(Boolean);
-  const now = activeCollection();
-  if (!now?.talk || now.id !== open.id) return '';
-  await keepBook(now, withPage(now.talk, pageId, (one) => ({ ...one, sayings })));
-  await dropRows(pool.map((sentence) => sentence.id));
-  return '';
+/** One more symbol for a page's question, chosen in the picker — the first one makes the question. */
+export async function addQuestionSymbol(pageId: string | null): Promise<void> {
+  const id = pagesOf(activeCollection()?.talk).find((one) => one.id === pageId)?.question;
+  if (id) await handleAddSlot(id);
+  else await addCard('question', pageId ?? undefined);
 }
 
 /** A page taken out of the book, with its question and its Aussagen. */

@@ -1198,21 +1198,33 @@ test('a Strophe too tall for one page goes on over the next, in whole lines', as
   await expect(sheet.locator('.ps-page').first().locator('.ps-song-part')).toHaveCount(1);
 });
 
+/** Adds a card through a „+" in `scope`, picking `term` in the symbol search. */
+async function pickCard(page: import('@playwright/test').Page, scope: import('@playwright/test').Locator, label: string, term: string): Promise<void> {
+  await scope.getByRole('button', { name: label }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  const search = page.getByLabel('Symbol suchen');
+  await search.fill(term);
+  await search.press('Enter');
+  await page.locator('.picker__item', { hasText: term }).first().click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
 /**
  * A Plauderbuch is written page by page, as the Plauderplan-Drehbuch is laid
  * out: a question on each page, the Antworten to choose from under it.
  *
- * Held here: a page reads Frage, then Antworten; the question line stands
- * open on an empty page with the caret in it; an Antwort is one card with the
- * picture of its last word and the whole line under it, added by the wall's
- * „+" or many at once by „✎ Text", which keeps the card of a line it keeps; on paper each page is a
- * sheet with its question on the band, a free field, and a field for each
- * Antwort the page holds — eight square ones on A5 across, ten upright with
- * the word; the rest wait under the page, as cards beside a Tafel do, and
- * are not printed, and a waiting card dropped on one on the page changes
- * places with it; the cards follow on sheets of their own, cut lines on,
- * the laminate's seam smaller than a field, which carry no footer and are
- * not counted in the page numbers; the paper opens A5 across.
+ * Held here: the question is a title's line — its symbols, a „+" for one
+ * more, its words written where they stand, the caret in them on an empty
+ * book; its first words bring a picture, words written again keep the
+ * symbols. An Antwort is a card added by the wall's „+"; there is no „✎
+ * Text". On paper each page is a sheet with its question on the band, a
+ * free field, and a field for each Antwort the page holds — eight square
+ * ones on A5 across, ten upright with the word; the rest wait under the
+ * page, as cards beside a Tafel do, and are not printed, and a waiting card
+ * dropped on one on the page changes places with it; the cards follow on
+ * sheets of their own, cut lines on, the laminate's seam smaller than a
+ * field, which carry no footer and are not counted in the page numbers; the
+ * paper opens A5 across.
  */
 test('a Plauderbuch is written page by page, and prints its pages and the cards to cut', async ({ page }) => {
   await pickTemplate(page, /^Plauderbuch/);
@@ -1221,79 +1233,67 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await expect(page.locator('.empty')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Andere Vorlage wählen' })).toBeVisible();
 
-  // The first page's question stands open, with the caret in it, and the „+"
-  // before it starts from a symbol — closed without one, nothing is left.
+  // The first page's question is a title's line, the caret in its words; its
+  // „+" opens the symbol search — closed without one, nothing is left.
   const ask = page.getByLabel('Frage für „Seite 1“');
   await expect(ask).toBeFocused();
-  await page.getByRole('button', { name: 'Symbol zur Frage von „Seite 1“ wählen' }).click();
+  await expect(ask).toHaveClass(/title-line__text/);
+  await page.getByRole('button', { name: 'Symbol zur Frage von „Seite 1“ hinzufügen' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(ask).toBeVisible();
   await expect.poll(async () => (await readSentences(page)).length).toBe(0);
   await ask.fill('Was ich erzählen will');
   await ask.press('Enter');
   const first = page.getByRole('region', { name: 'Was ich erzählen will' });
-  await expect(first.locator('.talk__question')).toHaveText('Was ich erzählen will');
+  await expect(first.getByLabel('Frage für „Was ich erzählen will“')).toHaveValue('Was ich erzählen will');
+  await expect(first.locator('.title-line__pic')).toHaveCount(1);
   await expect(page.getByText('Jede Seite ist eine Frage mit Antworten zum Kletten.')).toHaveCount(0);
 
-  // Antworten end in the „+" a card wall ends with: a card, the symbol search open on it.
-  await first.getByRole('button', { name: 'Antwort zu „Was ich erzählen will“ hinzufügen' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(first.locator('.word:not(.word--add)')).toHaveCount(0);
+  // Written again, the words change and the symbol stays; the „+" adds one.
+  const question = await readSentences(page).then((rows) => rows[0]!);
+  await first.getByLabel('Frage für „Was ich erzählen will“').fill('Was ich erzähle');
+  await first.getByLabel('Frage für „Was ich erzählen will“').press('Enter');
+  const asked = page.getByRole('region', { name: 'Was ich erzähle' });
+  await expect(asked.locator('.title-line__pic')).toHaveCount(1);
+  await pickCard(page, asked, 'Symbol zur Frage von „Was ich erzähle“ hinzufügen', 'Sonne');
+  await expect(asked.locator('.title-line__pic')).toHaveCount(2);
+  const rows = await readSentences(page);
+  expect(rows.find((row) => row.id === question.id)?.rawInput).toBe('Was ich erzähle');
 
-  // Many at once as text, on a page with none yet.
-  await first.getByRole('button', { name: 'Antworten von „Was ich erzählen will“ als Text bearbeiten' }).click();
-  await page.getByRole('textbox', { name: 'Antworten von „Was ich erzählen will“ als Text bearbeiten' })
-    .fill('vom Morgenkreis\nvom Essen');
-  await page.locator('.song__edit-acts').getByRole('button', { name: 'Fertig', exact: true }).click();
-  await expect(first.locator('.word__name')).toHaveText(['vom Morgenkreis', 'vom Essen']);
-  const essen = await readSentences(page).then((rows) => rows.find((r) => r.rawInput === 'vom Essen'));
-  expect(essen?.slots).toHaveLength(1);
-  expect(essen?.slots[0]?.sourceToken).toBe('Essen');
+  // Antworten by the wall's „+", one at a time; no „✎ Text".
+  await expect(page.getByRole('button', { name: /als Text bearbeiten/ })).toHaveCount(0);
+  const words = ['Apfel', 'Ball', 'Hund', 'Katze', 'Maus', 'Baum', 'Haus', 'Auto', 'Kuchen'];
+  for (const word of words) await pickCard(page, asked, 'Antwort zu „Was ich erzähle“ hinzufügen', word);
+
+  // Eight fit on the page; the ninth waits under it, with the „+".
+  await expect(asked.locator('.talk__sayings .word__name')).toHaveText(words.slice(0, 8));
+  const tray = asked.locator('.talk__tray');
+  await expect(tray.locator('.tray__head b')).toHaveText('Passt nicht mehr auf die Seite');
+  await expect(tray.locator('.word__name')).toHaveText(['Kuchen']);
+  await expect(asked.locator('.talk__sayings .word--add')).toHaveCount(0);
+  await expect(tray.locator('.word--add')).toHaveCount(1);
+  // Dropped on a card on the page, the waiting one takes its place.
+  await tray.locator('.board-card').first().dragTo(asked.locator('.talk__sayings .board-card').nth(7));
+  await expect(asked.locator('.talk__sayings .word__name').nth(7)).toHaveText('Kuchen');
+  await expect(tray.locator('.word__name')).toHaveText(['Auto']);
 
   // A new page, named by its place while it has no question.
   await page.getByRole('button', { name: '+ Seite' }).click();
   const second = page.getByRole('region', { name: 'Seite 2' });
-  await second.getByRole('button', { name: 'Antworten von „Seite 2“ als Text bearbeiten' }).click();
-  await page.getByRole('textbox', { name: 'Antworten von „Seite 2“ als Text bearbeiten' }).fill('fertig');
-  await page.locator('.song__edit-acts').getByRole('button', { name: 'Fertig', exact: true }).click();
-  await expect(second.locator('.word__name')).toHaveText(['fertig']);
-  await expect(first.locator('.word__name')).toHaveCount(2);
-
-  // As text: one dropped, the rest reordered and added to — the kept keep their cards.
-  await first.getByRole('button', { name: 'Antworten von „Was ich erzählen will“ als Text bearbeiten' }).click();
-  const text = page.getByRole('textbox', { name: 'Antworten von „Was ich erzählen will“ als Text bearbeiten' });
-  await expect(text).toHaveValue('vom Morgenkreis\nvom Essen');
-  const more = ['vom Essen', 'vom Spielen', 'vom Turnen', 'von der Pause', 'vom Malen', 'vom Singen', 'vom Ausflug', 'vom Garten', 'vom Basteln'];
-  await text.fill(more.join('\n'));
-  await page.locator('.song__edit-acts').getByRole('button', { name: 'Fertig', exact: true }).click();
-  await expect(first.locator('.word__name')).toHaveText(more);
-  const after = await readSentences(page);
-  expect(after.find((row) => row.rawInput === 'vom Essen')!.id).toBe(essen!.id);
-  expect(after.map((row) => row.rawInput)).not.toContain('vom Morgenkreis');
-
-  // Eight fit on the page; the ninth waits under it, with the „+".
-  await expect(first.locator('.talk__sayings .word__name')).toHaveText(more.slice(0, 8));
-  const tray = first.locator('.talk__tray');
-  await expect(tray.locator('.tray__head b')).toHaveText('Passt nicht mehr auf die Seite');
-  await expect(tray.locator('.word__name')).toHaveText(['vom Basteln']);
-  await expect(first.locator('.talk__sayings .word--add')).toHaveCount(0);
-  await expect(tray.locator('.word--add')).toHaveCount(1);
-  // Dropped on a card on the page, the waiting one takes its place.
-  await tray.locator('.board-card').first().dragTo(first.locator('.talk__sayings .board-card').nth(7));
-  await expect(first.locator('.talk__sayings .word__name').nth(7)).toHaveText('vom Basteln');
-  await expect(tray.locator('.word__name')).toHaveText(['vom Garten']);
+  await pickCard(page, second, 'Antwort zu „Seite 2“ hinzufügen', 'Stern');
+  await expect(second.locator('.word__name')).toHaveText(['Stern']);
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
     .toContain('size: 210mm 148mm');
-  // One sheet a page, eight square fields — what waits is not printed.
+  // One sheet a page, its question's symbols and words on the band, eight
+  // square fields — what waits is not printed.
   const pages = sheet.locator('.ps-talk');
   await expect(pages).toHaveCount(2);
-  await expect(pages.nth(0).locator('.ps-talk__question')).toHaveText('Was ich erzählen will');
+  await expect(pages.nth(0).locator('.ps-talk__question')).toHaveText('Was ich erzähle');
+  await expect(pages.nth(0).locator('.ps-talk__band .ps-title__pic')).toHaveCount(2);
   await expect(sheet.locator('.ps-talk__field--free')).toHaveCount(2);
   expect(await pages.evaluateAll((all) => all.map((one) =>
     one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([8, 1]);
@@ -1310,10 +1310,10 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   // With the word the cards stand upright and ten fit: nothing waits any more.
   await openDing(page, 'Symbol');
   await page.getByLabel('Beschriftung drucken').check();
-  await expect(first.locator('.talk__tray')).toHaveCount(0);
-  await expect(first.locator('.talk__sayings .word__name')).toHaveCount(9);
+  await expect(asked.locator('.talk__tray')).toHaveCount(0);
+  await expect(asked.locator('.talk__sayings .word__name')).toHaveCount(9);
   await expect.poll(async () => await mm('.ps-talk', '--talk-w') / await mm('.ps-talk', '--talk-h')).toBeCloseTo(0.75, 2);
-  await expect(cut.locator('.ps-talk__word')).toHaveText([...more.slice(0, 7), 'vom Basteln', 'vom Garten', 'fertig']);
+  await expect(cut.locator('.ps-talk__word')).toHaveText([...words.slice(0, 7), 'Kuchen', 'Auto', 'Stern']);
 
   // Its own colours: the band and the free field's line.
   await openDing(page, 'Plauderbuch');
@@ -1331,10 +1331,11 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
 
   // A page taken out goes with its cards.
   await showMaterial(page);
+  await expect.poll(async () => (await readSentences(page)).length).toBe(11);
   await second.getByRole('button', { name: '„Seite 2“ löschen' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
   await expect(page.locator('.talk__page')).toHaveCount(1);
-  await expect.poll(async () => (await readSentences(page)).map((row) => row.rawInput)).not.toContain('fertig');
+  await expect.poll(async () => (await readSentences(page)).length).toBe(10);
 });
 
 /*
