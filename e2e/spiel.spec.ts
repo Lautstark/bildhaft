@@ -148,3 +148,69 @@ test('das Spiel-Menü zeigt das Maß und hält die zwei Farben', async ({ page }
     return zelle ? getComputedStyle(zelle).backgroundColor : '';
   })).toBe('rgba(0, 0, 0, 0)');
 });
+
+test('ein Spiel wächst nur, solange das Blatt Platz hat — die Karten bleiben gleich groß', async ({ page }) => {
+  /* Every Spiel prints the one field, 30 mm on A4, so a row offers its „+"
+     only while another cell fits beside the Ablage, and the game its
+     „+ Zeile" only while the sheet holds another row. */
+  const rows = page.locator('.game__row');
+  const first = rows.first();
+  for (const term of ['Apfel', 'Birne', 'Apfel', 'Birne', 'Apfel']) await pick(page, first, '+ Bild', term);
+  await expect(first.getByRole('button', { name: '+ Bild' })).toBeVisible();
+  await pick(page, first, '+ Platzhalter', 'Birne');
+  // Six cells and the Ablage's column fill A4 across: the row is full.
+  await expect(first.locator('.game__cell')).toHaveCount(6);
+  await expect(first.getByRole('button', { name: '+ Bild' })).toHaveCount(0);
+  await expect(first.getByRole('button', { name: '+ Platzhalter' })).toHaveCount(0);
+
+  await showSheet(page);
+  const field = () => page.evaluate(() =>
+    parseFloat(getComputedStyle(document.querySelector('.preview-frame .ps-spiel') as HTMLElement).getPropertyValue('--talk-w')));
+  await expect.poll(field).toBeCloseTo(30, 1);
+  await showMaterial(page);
+
+  // Rows: five fit under each other at six cells wide, and no sixth.
+  const more = page.getByRole('button', { name: '+ Zeile' });
+  for (let n = 2; n <= 5; n += 1) {
+    await more.click();
+    await expect(rows).toHaveCount(n);
+  }
+  await expect(more).toHaveCount(0);
+  // The field has not shrunk to make room: the game stopped growing instead.
+  await showSheet(page);
+  await expect.poll(field).toBeCloseTo(30, 1);
+});
+
+test('zum Lochen: der Rand an der Lochkante wird 2 cm, die Marken stehen darin', async ({ page }) => {
+  const rows = page.locator('.game__row');
+  await pick(page, rows.first(), '+ Bild', 'Apfel');
+  await pick(page, rows.first(), '+ Platzhalter', 'Birne');
+
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await page.getByLabel('Zum Lochen').check();
+  // A Spiel is landscape: it starts punched at the top, where a binder wants it.
+  await expect(page.getByRole('button', { name: 'oben' })).toHaveAttribute('aria-pressed', 'true');
+
+  await showSheet(page);
+  const sheetPage = page.locator('.preview-frame .ps-page').first();
+  await expect(sheetPage.locator('.ps-punch')).toHaveCount(3);
+  await expect(sheetPage.locator('.ps-punch--top')).toHaveCount(3);
+  // The page box carries the margin itself, the paper none: so the marks can stand in it.
+  await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
+    .toContain('margin: 0');
+  const pad = () => sheetPage.evaluate((node) => {
+    const style = getComputedStyle(node);
+    const mm = (px: string) => Math.round(parseFloat(px) / (96 / 25.4));
+    return { top: mm(style.paddingTop), left: mm(style.paddingLeft) };
+  });
+  await expect.poll(pad).toEqual({ top: 20, left: 10 });
+
+  await page.getByRole('button', { name: 'links' }).click();
+  await expect(sheetPage.locator('.ps-punch--left')).toHaveCount(3);
+  await expect.poll(pad).toEqual({ top: 10, left: 20 });
+
+  // Marks off: the margin stays, the marks go.
+  await page.getByLabel('Lochmarken').uncheck();
+  await expect(sheetPage.locator('.ps-punch')).toHaveCount(0);
+  await expect.poll(pad).toEqual({ top: 10, left: 20 });
+});

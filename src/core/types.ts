@@ -710,6 +710,9 @@ export type PaperSize = 'a5' | 'a4' | 'a3';
  */
 export type SheetFit = 'size' | 'card' | 'grid';
 
+/** Where a sheet is punched: the long side of a portrait sheet, or the top of a landscape one. */
+export type PunchEdge = 'left' | 'top';
+
 export interface PrintSettings {
   /** Symbol edge length in millimetres. People match existing boards. */
   symbolSizeMm: number;
@@ -849,6 +852,15 @@ export interface PrintSettings {
   showPageNumbers: boolean;
 
   /**
+   * The edge a sheet is punched at for a ring binder, or null for none. That
+   * edge keeps 2 cm free instead of 1 — the holes sit 12 mm in — and everything
+   * on the page is measured on what is left, as for any margin.
+   */
+  punch: PunchEdge | null;
+  /** On a punched sheet: where the holes go, printed so the punch can be set. */
+  punchMarks: boolean;
+
+  /**
    * A Tafel: a dashed line where a field is free, so a board laminated with
    * an empty middle shows where the Klett goes and the cards go on later.
    * Off, which prints a free field as nothing — a field left free for air.
@@ -897,6 +909,8 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   songRepeats: false,
   songRefrainOnce: false,
   showPageNumbers: false,
+  punch: null,
+  punchMarks: true,
   markFreeFields: false,
   showGuide: true,
   cartColour: null,

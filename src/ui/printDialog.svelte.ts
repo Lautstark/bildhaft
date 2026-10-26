@@ -294,7 +294,7 @@ export class Printing {
    * reason.
    */
   measureSymbolLeft(): void {
-    const page = printableArea(this.settings.paper, this.settings.orientation);
+    const page = printableArea(this.settings.paper, this.settings.orientation, this.settings.punch);
     const height = this.settings.cardHeightMm ?? this.settings.cardWidthMm;
     const cols = Math.floor(page.width / this.settings.cardWidthMm);
     const rows = Math.floor(page.height / height);

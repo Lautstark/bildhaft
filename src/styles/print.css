@@ -17,13 +17,16 @@
      are here so the rule reads on its own and never resolves to nothing. */
   --page-w: 190mm;
   --page-h: 281mm;
-  --page-margin: 10mm;
-  --page-margin-bottom: 6mm;
+  /* The four margins, one side widened where the sheet is punched. */
+  --pm-top: 10mm;
+  --pm-right: 10mm;
+  --pm-bottom: 6mm;
+  --pm-left: 10mm;
   --strip-w: 0.5mm;
 
-  width: calc(var(--page-w) + 2 * var(--page-margin));
-  min-height: calc(var(--page-h) + var(--page-margin) + var(--page-margin-bottom));
-  padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
+  width: calc(var(--page-w) + var(--pm-left) + var(--pm-right));
+  min-height: calc(var(--page-h) + var(--pm-top) + var(--pm-bottom));
+  padding: var(--pm-top) var(--pm-right) var(--pm-bottom) var(--pm-left);
   box-sizing: border-box;
   background: #fff;
   color: #000;
@@ -53,6 +56,31 @@
   break-after: auto;
   page-break-after: auto;
 }
+/*
+ * Where the punch goes on a punched sheet: two holes 80 mm apart, centred on
+ * the edge and 12 mm in (ISO 838), and a short stroke at the middle to set the
+ * punch's guide by. Measured from the paper's edge, so they stand in the page
+ * box's own margin — a punched sheet's page boxes carry it (bleeds()).
+ */
+.ps-page { position: relative; }
+.ps-punch {
+  position: absolute;
+  width: 4.5mm;
+  height: 4.5mm;
+  margin: -2.25mm 0 0 -2.25mm;
+  border: 0.25mm dashed #9a948e;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.ps-punch--mid { width: 4mm; height: 0; margin: 0; border: 0; border-top: 0.3mm solid #d6d0ca; border-radius: 0; }
+.ps-punch--left { left: 12mm; }
+.ps-punch--left.ps-punch--a { top: calc(50% - 40mm); }
+.ps-punch--left.ps-punch--b { top: calc(50% + 40mm); }
+.ps-punch--left.ps-punch--mid { left: 0; top: 50%; }
+.ps-punch--top { top: 12mm; }
+.ps-punch--top.ps-punch--a { left: calc(50% - 40mm); }
+.ps-punch--top.ps-punch--b { left: calc(50% + 40mm); }
+.ps-punch--top.ps-punch--mid { top: 0; left: 50%; width: 0; height: 4mm; border-top: 0; border-left: 0.3mm solid #d6d0ca; }
 
 /*
  * The fixed grid: exactly --cols across, each row --cell-h tall, so cols x rows
@@ -378,7 +406,7 @@
   /* content-box, so `height` stays the printable height and the margin is added
      round it rather than taken out of it. */
   box-sizing: content-box;
-  padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
+  padding: var(--pm-top) var(--pm-right) var(--pm-bottom) var(--pm-left);
   background: var(--page-bg, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .18), 0 10px 30px rgba(0, 0, 0, .12);
 }
@@ -450,7 +478,7 @@
    */
   #print-root .ps-sheet--bleed .ps-page {
     box-sizing: content-box;
-    padding: var(--page-margin) var(--page-margin) var(--page-margin-bottom);
+    padding: var(--pm-top) var(--pm-right) var(--pm-bottom) var(--pm-left);
   }
   #print-root .ps-page--coloured { background: var(--page-bg); }
 
@@ -841,6 +869,10 @@
 
 /* ----------------------------------------------------------------- spiel */
 
+/* The title keeps more air than on other sheets: the game starts a good
+   step below it. GAME_TITLE_AIR_MM in printSheet.ts reserves the same 4 mm. */
+.ps-sheet--spiel .ps-title { margin-bottom: calc(4mm + 4mm); }
+
 /* Two zones, started top left, and the weight lies on the game. The Ablage
    is as quiet as paper allows: one dashed enclosure, inside it nothing but
    a velcro dot per card, in the cards' raster. A good step of air parts it
@@ -850,17 +882,20 @@
 .ps-spiel {
   position: relative;
   display: flex;
-  /* The zones stand equally tall and apart: the Ablage at the left edge,
-     the game at the right — the width between them is the border, and the
-     fence of accent dots stands in its middle. */
+  /* The zones stand equally tall and one after the other, read left to right
+     as one block: the Ablage at the left edge, the fence of accent dots a
+     fixed step after its last column, the game the same step after the fence.
+     What the sheet has left over stays on the right, as it would after text. */
   align-items: stretch;
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
 .ps-spiel__zaun {
-  flex: 1;
-  min-width: calc(10mm * var(--talk-k));
+  /* 14 mm, the dots in its middle: the step on either side of the fence.
+     gameRaster() counts it in the 28 mm it keeps off the width. */
+  flex: none;
+  width: calc(14mm * var(--talk-k));
   background-image: radial-gradient(circle, var(--spiel-accent, #e0558c) calc(0.8mm * var(--talk-k)), transparent calc(0.8mm * var(--talk-k) + 0.15mm));
   background-size: calc(2mm * var(--talk-k)) calc(5mm * var(--talk-k));
   background-repeat: repeat-y;
@@ -873,7 +908,7 @@
 .ps-spiel__lager {
   flex: none;
   display: grid;
-  grid-template-rows: repeat(var(--spiel-units), calc(var(--talk-h) + 5mm * var(--talk-k)));
+  grid-template-rows: repeat(var(--spiel-units), calc(var(--talk-h) + 4mm * var(--talk-k)));
   grid-auto-flow: column;
   grid-auto-columns: var(--talk-w);
   row-gap: calc(3mm * var(--talk-k));
@@ -903,7 +938,7 @@
   display: flex;
   align-items: center;
   gap: var(--talk-gap);
-  padding: calc(2.5mm * var(--talk-k));
+  padding: calc(2mm * var(--talk-k));
   border-radius: calc(3mm * var(--talk-k));
   background: var(--spiel-grund, #fdeef3);
 }

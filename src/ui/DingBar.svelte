@@ -90,6 +90,17 @@
     {/if}
     {#if offer.onePerPage}{@render check(t('ui.one_per_page'), mp.settings.onePerPage, (next) => mp?.set('onePerPage', next))}{/if}
     {#if offer.guide}{@render check(t('ui.shop_guide_print'), mp.settings.showGuide, (next) => mp?.set('showGuide', next))}{/if}
+    <!--
+      Zum Lochen (2026-10-26, ihr Wunsch, Mock mit links|oben): der Rand an der
+      Lochkante wird 2 cm, die Marken zeigen, wo der Locher trifft. Angehakt
+      beginnt es dort, wo ein Ordner es meist will — links am Hochformat, oben
+      am Querformat.
+    -->
+    {@render check(t('ui.punch'), mp.settings.punch !== null, (next) => mp?.set('punch', next ? (mp.settings.orientation === 'landscape' ? 'top' : 'left') : null))}
+    {#if mp.settings.punch}<div class="ding__dep">
+      <div class="ding__row"><span class="segmented">{#each ['left', 'top'] as const as edge (edge)}<button type="button" aria-pressed={mp.settings.punch === edge} onclick={() => mp?.set('punch', edge)}>{t(edge === 'left' ? 'ui.punch_left' : 'ui.punch_top')}</button>{/each}</span></div>
+      {@render check(t('ui.punch_marks'), mp.settings.punchMarks, (next) => mp?.set('punchMarks', next))}
+    </div>{/if}
     {#if offer.pageNumbers}{@render check(t('ui.page_numbers'), mp.settings.showPageNumbers, (next) => mp?.set('showPageNumbers', next))}{/if}
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>

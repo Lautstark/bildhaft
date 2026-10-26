@@ -1,5 +1,5 @@
 import type {
-  Orientation, PaperSize, PrintSettings, ProviderId, Sentence, Slot, SongPartKind, ZoneStyle,
+  Orientation, PaperSize, PrintSettings, ProviderId, PunchEdge, Sentence, Slot, SongPartKind, ZoneStyle,
 } from '../core/types.ts';
 import { partOf, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
@@ -40,12 +40,29 @@ export function paperSize(
   return { width: landscape ? long : short, height: landscape ? short : long };
 }
 
+/**
+ * The margin a punched edge keeps: the holes sit 12 mm in and are 5.5 mm
+ * across, so 20 mm leaves the punch clear of everything printed.
+ */
+export const PUNCH_MARGIN_MM = 20;
+
+/** The four margins of a page, the punched edge's widened. */
+export function pageMargins(punch: PunchEdge | null = null): { top: number; right: number; bottom: number; left: number } {
+  return {
+    top: punch === 'top' ? PUNCH_MARGIN_MM : PAGE_MARGIN_MM,
+    right: PAGE_MARGIN_MM,
+    bottom: PAGE_MARGIN_BOTTOM_MM,
+    left: punch === 'left' ? PUNCH_MARGIN_MM : PAGE_MARGIN_MM,
+  };
+}
+
 /** The area a page actually has for cards, once the margin is taken off. */
 export function printableArea(
-  paper: PaperSize, orientation: Orientation,
+  paper: PaperSize, orientation: Orientation, punch: PunchEdge | null = null,
 ): { width: number; height: number } {
   const { width, height } = paperSize(paper, orientation);
-  return { width: width - 2 * PAGE_MARGIN_MM, height: height - PAGE_MARGIN_MM - PAGE_MARGIN_BOTTOM_MM };
+  const m = pageMargins(punch);
+  return { width: width - m.left - m.right, height: height - m.top - m.bottom };
 }
 
 /**
@@ -66,10 +83,13 @@ export function framePadMm(settings: PrintSettings): number {
 const PAGE_STYLE_ID = 'print-page-setup';
 
 /**
- * Whether the pages carry a colour to the paper's edge: whenever one is set
- * behind them. The sheet and the page rule ask this one question.
+ * Whether the page boxes carry the margin themselves, the paper none: when a
+ * colour is set behind them, so it reaches the paper's edge, and when the
+ * sheet is punched, so the hole marks can stand in the margin. The sheet and
+ * the page rule ask this one question.
  */
-export const bleeds = (settings: Pick<PrintSettings, 'pageColour'>): boolean => settings.pageColour !== null;
+export const bleeds = (settings: Pick<PrintSettings, 'pageColour' | 'punch'>): boolean =>
+  settings.pageColour !== null || settings.punch !== null;
 
 /**
  * `bleed`: pages on a colour of their own (`bleeds`). The paper then has no margin of its
@@ -298,7 +318,7 @@ function pageRoom(credit: HTMLElement | null, settings: PrintSettings): number {
     credit ? outer(credit).top + outer(credit).height : 0,
     settings.showPageNumbers ? PAGE_NUMBER_MM * PX_PER_MM : 0,
   );
-  return printableArea(settings.paper, settings.orientation).height * PX_PER_MM - foot;
+  return printableArea(settings.paper, settings.orientation, settings.punch).height * PX_PER_MM - foot;
 }
 
 /**
@@ -539,10 +559,10 @@ export interface SheetOptions {
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
 export function reserveMm(
-  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'titleSizePt' | 'titleLine' | 'showPageNumbers'>,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'punch' | 'titleSizePt' | 'titleLine' | 'showPageNumbers'>,
   credits: string[], titled: Titled,
 ): number {
-  return (credits.length > 0 ? creditAllowanceMm(credits, printableArea(settings.paper, settings.orientation).width) : 0)
+  return (credits.length > 0 ? creditAllowanceMm(credits, printableArea(settings.paper, settings.orientation, settings.punch).width) : 0)
     + (titled ? titleAllowanceMm(settings, titled) : 0)
     + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
@@ -554,10 +574,10 @@ export function reserveMm(
  * as tall for its width while it is filled as when it is printed.
  */
 export function tafelFieldMm(
-  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showPageNumbers' | 'titleSizePt' | 'titleLine'>,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'punch' | 'showPageNumbers' | 'titleSizePt' | 'titleLine'>,
   grid: { cols: number; rows: number }, credits: string[], titled: Titled,
 ): { width: number; height: number } {
-  const page = printableArea(settings.paper, settings.orientation);
+  const page = printableArea(settings.paper, settings.orientation, settings.punch);
   const height = page.height - reserveMm(settings, credits, titled);
   return { width: page.width / grid.cols, height: height / grid.rows };
 }
@@ -639,10 +659,11 @@ export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3
  * The Ablage is a quiet block of all the game's fields, no echo of the
  * rows: it must not give away how the right side is filled. One game is
  * one sheet, always (the Tafel's reasoning: a game that needed a second
- * page would be two games): the field starts at its natural, hand-sized
- * width — never inflated to fill the paper — and shrinks only until the
- * longest row fits. Only the cutting sheet goes on to more paper; it is
- * cut apart anyway.
+ * page would be two games). Every game has the one field, GAME_FIELD_MM, so
+ * the cards of all of them are the same size; Bearbeiten adds no cell or
+ * row the sheet has no room for (gameFits). Only a game built before that
+ * limit, too full for the field, has it shrunk until its longest row fits.
+ * Only the cutting sheet goes on to more paper; it is cut apart anyway.
  */
 export interface GameGeometry {
   fieldW: number;
@@ -658,66 +679,79 @@ export interface GameGeometry {
   lagerW: number;
   /** The Ablage block's columns: the cards shared over the game's rows. */
   lagerCols: number;
-  /** The game's rows — the Ablage has exactly as many, in the same rhythm. */
+  /** The raster's rows, filled from the top by the Ablage and the game alike. */
   units: number;
   /** A cut card, the laminate's seam taken off each side: laminated, it is the field again. */
   cutW: number;
   cutH: number;
   /** The picture inside a printed card, capped so the word keeps its line. */
   symW: number;
-  /** The most a row may be tall: its share of the page. */
-  zeile: number;
 }
 
 export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.7, a4: 1, a3: 1.4 };
 
-export function gameGeometry(
-  settings: Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>,
-  page: { width: number; height: number },
-  reserve: number, shape: { units: number; zellen: number; platz: number },
-): GameGeometry {
+/** A Spiel's field on A4, scaled with the paper like everything else on it. */
+export const GAME_FIELD_MM = 30;
+
+type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt'>;
+type GameShape = { units: number; zellen: number; platz: number };
+
+/** The air a Spiel keeps under its title, beyond the title's own margin. */
+export const GAME_TITLE_AIR_MM = 4;
+
+/** What a Spiel's sheet keeps free of the game: the page's own reserve, and
+ *  the air under the title when there is one. */
+export function gameReserveMm(
+  settings: Parameters<typeof reserveMm>[0], credits: string[], titled: Titled,
+): number {
+  return reserveMm(settings, credits, titled) + (titled ? GAME_TITLE_AIR_MM : 0);
+}
+
+/*
+ * The sheet is one raster of rows: as many as the field leaves room for under
+ * each other (a millimetre of slack, so a board measured at exactly the page's
+ * height is not pushed to a page of its own) — five on A4. The Ablage and the
+ * game both fill it column by column from the top, so a column is full before
+ * the next begins and every dot of the Ablage stands level with a row. The
+ * width is shared over the Ablage's and the game's cells (the 28 mm taken off
+ * are the enclosures' padding and the fence with its step on either side;
+ * every further column of the game brings its own padding and air). A game
+ * built before Bearbeiten kept to the sheet, too wide for the field, has its
+ * field shrunk to the width.
+ */
+function gameRaster(settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape) {
   const k = GAME_SCALE[settings.paper];
   const gap = 6 * k;
-  /* The air round a cut card is the margin, as everywhere. */
-  const air = settings.cutMarginMm * k;
   const height = page.height - reserve;
-  const units = Math.max(1, shape.units);
-  const zellen = Math.max(1, shape.zellen);
-  const platz = Math.max(1, shape.platz);
-  /* Every row gets the same share of the page's height, every cell the one
-     size — and the picture inside a printed card is capped at that cell,
-     whatever the Symbolgröße asks. One game stays one sheet. */
   /* A row is a group: a soft ground round its cells, so its padding and the
      rows' own gap come off the height before the field takes its share. */
-  const pad = 2.5 * k;
+  const pad = 2 * k;
   const rowGap = 3 * k;
+  const field = GAME_FIELD_MM * k;
+  const reihen = Math.max(1, Math.floor((height - k + rowGap) / (field * (42 / 50) + 2 * pad + rowGap) + 1e-9));
+  const zellen = Math.max(1, shape.zellen);
+  const spielCols = Math.ceil(Math.max(1, shape.units) / reihen);
+  const lagerCols = Math.ceil(Math.max(1, shape.platz) / reihen);
+  const fixed = 28 * k + (spielCols - 1) * 13 * k;
+  const gaps = (lagerCols - 1) * gap + spielCols * (zellen - 1) * gap;
+  const wLimit = (page.width - fixed - gaps) / (lagerCols + spielCols * zellen);
+  return { k, gap, height, reihen, lagerCols, fieldW: Math.min(field, wLimit), fits: wLimit >= field - 1e-6 };
+}
+
+/** Whether a game of this shape fits its sheet at the one field size. */
+export function gameFits(
+  settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
+): boolean {
+  return gameRaster(settings, page, reserve, shape).fits;
+}
+
+export function gameGeometry(
+  settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
+): GameGeometry {
+  const { k, gap, height, reihen, lagerCols, fieldW } = gameRaster(settings, page, reserve, shape);
+  /* The air round a cut card is the margin, as everywhere. */
+  const air = settings.cutMarginMm * k;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
-  /*
-   * The sheet is one raster, and the game may run in columns: many short
-   * rows side by side rather than a thin ribbon down a wide page. The rule
-   * is the simplest there is — take the number of columns that makes the
-   * field biggest. Each candidate is measured both ways: the height shared
-   * over the rows a column holds (a millimetre of slack, so a board
-   * measured at exactly the page's height is not pushed to a page of its
-   * own), and the width shared over the Ablage's and the game's cells (the
-   * 24 mm taken off are the enclosures' padding and the air between the
-   * zones; every further column brings its own padding and air). The
-   * Ablage has exactly the raster's rows, filled column by column from the
-   * top.
-   */
-  let best = { spielCols: 1, reihen: units, lagerCols: 1, fieldW: 0, zeile: 0 };
-  for (let c = 1; c <= Math.min(4, units); c += 1) {
-    const reihen = Math.ceil(units / c);
-    const hLimit = (height - k - (reihen - 1) * rowGap) / reihen - 2 * pad;
-    const lagerCols = Math.max(1, Math.ceil(platz / reihen));
-    const cells = lagerCols + c * zellen;
-    const fixed = 24 * k + (c - 1) * 13 * k;
-    const gaps = (lagerCols - 1) * gap + c * (zellen - 1) * gap;
-    const wLimit = (page.width - fixed - gaps) / cells;
-    const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
-    if (fieldW > best.fieldW) best = { spielCols: c, reihen, lagerCols, fieldW, zeile: hLimit };
-  }
-  const fieldW = best.fieldW;
   const fieldH = fieldW * (42 / 50);
   /* A cut card is printed the laminate's seam smaller than the field — two
      millimetres a side, whatever the paper, because the seam is the pouch's
@@ -730,11 +764,11 @@ export function gameGeometry(
   const symW = Math.max(8, cutH - label - 3 * k);
   return {
     fieldW, fieldH, gap, air, k, height,
-    lagerW: best.lagerCols * fieldW + (best.lagerCols - 1) * gap,
-    lagerCols: best.lagerCols,
-    units: best.reihen,
+    lagerW: lagerCols * fieldW + (lagerCols - 1) * gap,
+    lagerCols,
+    units: reihen,
     cutW, cutH,
-    symW, zeile: best.zeile,
+    symW,
   };
 }
 
@@ -823,7 +857,7 @@ export function sheetBlocks(
 ): Block[] {
   const { sentences, board, song, talk, game, settings, provider, attribution, copyright, collectionName } = options;
   const credits = creditLines(attribution, copyright);
-  const page = printableArea(settings.paper, settings.orientation);
+  const page = printableArea(settings.paper, settings.orientation, settings.punch);
   const blocks: Block[] = [];
 
   /*
@@ -973,7 +1007,7 @@ export function sheetBlocks(
       return { cells };
     }).filter((row) => row.cells.length > 0);
     const karten = rows.flatMap((row) => row.cells.filter((cell) => cell.platz).map((cell) => cell.slot));
-    const geo = gameGeometry(settings, page, reserve, {
+    const geo = gameGeometry(settings, page, gameReserveMm(settings, credits, titled), {
       units: rows.length,
       zellen: Math.max(1, ...rows.map((row) => row.cells.length)),
       platz: Math.max(1, karten.length),

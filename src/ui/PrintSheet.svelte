@@ -20,7 +20,7 @@
   import PrintCard from './PrintCard.svelte';
   import PrintPicture from './PrintPicture.svelte';
   import {
-    BILDHAFT_URL, bleeds, framePadMm, PAGE_MARGIN_BOTTOM_MM, PAGE_MARGIN_MM, printableArea, SHOPPING, SHOPPING_SCALE,
+    BILDHAFT_URL, bleeds, framePadMm, pageMargins, printableArea, SHOPPING, SHOPPING_SCALE,
     TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, titlePictureMm, type Block, type SheetPlan,
   } from './printSheet.ts';
   import { t } from '../i18n/index.ts';
@@ -32,7 +32,8 @@
     provider: ProviderId;
   } = $props();
 
-  let page = $derived(printableArea(settings.paper, settings.orientation));
+  let page = $derived(printableArea(settings.paper, settings.orientation, settings.punch));
+  let margins = $derived(pageMargins(settings.punch));
   /* The colour behind every page — but an Einkaufsliste's, which is behind
      its board's page and no other: its cards and their places are cut and
      stored, not hung up. */
@@ -119,10 +120,10 @@
 
   /* And of a Spiel's sheets, for theirs — said in the Plauderbuch's own
      variables, so its field, card and cutting rules apply as they are. */
-  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; units: number; symW: number; zeile: number }, cols: number): string =>
+  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; units: number; symW: number; }, cols: number): string =>
     `--talk-w:${geo.fieldW.toFixed(3)}mm;--talk-h:${geo.fieldH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
     + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--sym:${geo.symW.toFixed(3)}mm;`
-    + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--lager-cols:${geo.lagerCols};--spiel-units:${geo.units};--spiel-zeile:${geo.zeile.toFixed(3)}mm;--cols:${cols}`;
+    + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--lager-cols:${geo.lagerCols};--spiel-units:${geo.units};--cols:${cols}`;
 
 </script>
 
@@ -235,8 +236,10 @@
   style:--sentence="{settings.sentenceSizePt}pt"
   style:--page-w="{page.width}mm"
   style:--page-h="{page.height}mm"
-  style:--page-margin="{PAGE_MARGIN_MM}mm"
-  style:--page-margin-bottom="{PAGE_MARGIN_BOTTOM_MM}mm"
+  style:--pm-top="{margins.top}mm"
+  style:--pm-right="{margins.right}mm"
+  style:--pm-bottom="{margins.bottom}mm"
+  style:--pm-left="{margins.left}mm"
   style:--frame-w="{settings.cardBorderMm}mm"
   style:--frame-color={settings.cardBorderColor}
   style:--frame-pad="{framePadMm(settings)}mm"
@@ -258,4 +261,4 @@
 >{#if pages}{#each pages as held, at (at)}<!--
   One line at the foot of every page: the licence notice on the left, the page
   number on the right — the usual footer of handed-out material.
---><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+--><div class="ps-page" class:ps-page--coloured={pageColour !== null || boardColour(held) !== null} style:--page-bg={boardColour(held)}>{#if settings.punch && settings.punchMarks}{#each ['a', 'b', 'mid'] as at (at)}<span class="ps-punch ps-punch--{settings.punch} ps-punch--{at}" aria-hidden="true"></span>{/each}{/if}{#if heading && (held[0]?.kind === 'store' || (settings.titleEvery && at > 0))}{@render one(heading)}{/if}{#each held as block, i (i)}{@render one(block)}{/each}{#if (credit || settings.showPageNumbers) && !bare(held)}<div class="ps-foot">{#if credit}{@render one(credit)}{/if}{#if settings.showPageNumbers}<p class="ps-page__n">{t('ui.page_n', { n: numberOf(at), total: numbered })}</p>{/if}</div>{/if}</div>{/each}{:else}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

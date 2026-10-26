@@ -1,8 +1,8 @@
-import type { Board, Collection, CollectionKind, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
+import type { Board, Collection, CollectionKind, GameRow, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
 import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { rowsOfGame } from '../core/game.ts';
-import { copyrightFor, creditLines, gameGeometry, printableArea, reserveMm, tafelFieldMm } from '../ui/printSheet.ts';
+import { copyrightFor, creditLines, gameFits, gameGeometry, gameReserveMm, printableArea, tafelFieldMm } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
@@ -306,6 +306,28 @@ export function tafelField(): { width: number; height: number } | null {
   return tafelFieldMm(print, board, credits, titled);
 }
 
+/** The open Spiel's sheet as the sheet itself measures it: its print, its
+ *  page and the room the credits and the name over it take. */
+function gameSheet() {
+  const open = activeCollection();
+  if (!open || kind() !== 'spiel' || !s.settings) return null;
+  const print = printFor(printBase(), 'spiel', null, open.print ?? {});
+  const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
+  const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
+    : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
+  return { print, page: printableArea(print.paper, print.orientation, print.punch), reserve: gameReserveMm(print, credits, titled) };
+}
+
+/** A game's rows as the geometry counts them: how many, the longest, and
+ *  every Platzhalter, whose cards the Ablage holds. */
+function shapeOf(rows: GameRow[]) {
+  return {
+    units: Math.max(1, rows.length),
+    zellen: Math.max(1, ...rows.map((row) => row.zellen.length)),
+    platz: Math.max(1, rows.reduce((n, row) => n + row.zellen.filter((zelle) => zelle.platz).length, 0)),
+  };
+}
+
 /**
  * How big the open Spiel's symbols print, in millimetres — the sheet's own
  * answer, asked the same way the sheet asks (the same credits, the same name
@@ -313,18 +335,32 @@ export function tafelField(): { width: number; height: number } | null {
  * a Spiel.
  */
 export function gameSymbol(): number | null {
-  const open = activeCollection();
-  if (!open || kind() !== 'spiel' || !s.settings) return null;
-  const print = printFor(printBase(), 'spiel', null, open.print ?? {});
-  const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
-  const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
-    : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
-  const rows = rowsOfGame(open.game ?? { rows: [] });
-  const shape = {
-    units: Math.max(1, rows.length),
-    zellen: Math.max(1, ...rows.map((row) => row.zellen.length)),
-    platz: Math.max(1, rows.reduce((n, row) => n + row.zellen.filter((zelle) => zelle.platz).length, 0)),
+  const sheet = gameSheet();
+  if (!sheet) return null;
+  const rows = rowsOfGame(activeCollection()?.game ?? { rows: [] });
+  return gameGeometry(sheet.print, sheet.page, sheet.reserve, shapeOf(rows)).symW;
+}
+
+/**
+ * What the open Spiel still has room for at its one card size: a picture or
+ * a Platzhalter in a given row, and another row. Bearbeiten offers only that,
+ * so a game never grows past its sheet and every game's cards stay the size
+ * of every other's. A new row counts as holding one picture, the least it
+ * prints with.
+ */
+export function gameRoom(): { bild: (rowId?: string) => boolean; platz: (rowId?: string) => boolean; zeile: boolean } {
+  const sheet = gameSheet();
+  const rows = rowsOfGame(activeCollection()?.game ?? { rows: [] });
+  const fits = (next: GameRow[]) => !sheet || gameFits(sheet.print, sheet.page, sheet.reserve, shapeOf(next));
+  const grown = (rowId: string | undefined, platz: boolean) => {
+    const book = rows.length > 0 ? rows : [{ id: '', zellen: [] }];
+    const at = book.findIndex((row) => row.id === rowId);
+    const target = at >= 0 ? at : book.length - 1;
+    return book.map((row, i) => (i === target ? { ...row, zellen: [...row.zellen, { karte: '', platz }] } : row));
   };
-  const page = printableArea(print.paper, print.orientation);
-  return gameGeometry(print, page, reserveMm(print, credits, titled), shape).symW;
+  return {
+    bild: (rowId) => fits(grown(rowId, false)),
+    platz: (rowId) => fits(grown(rowId, true)),
+    zeile: fits([...rows, { id: '', zellen: [{ karte: '', platz: false }] }]),
+  };
 }
