@@ -1,6 +1,6 @@
 import type { Collection, Sentence, TalkBook, TalkPage } from '../core/types.ts';
 import { slotCaption } from '../core/types.ts';
-import { pagesOf, withoutRow, withPage } from '../core/talk.ts';
+import { pagesOf, withoutRow, withPage, withSwapped } from '../core/talk.ts';
 import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
 import { addLines } from './composing.ts';
 import { emptySlot, openPicker } from './editing.ts';
@@ -174,6 +174,13 @@ export async function removePage(pageId: string): Promise<void> {
   if (!open?.talk || !page) return;
   await keepBook(open, { pages: open.talk.pages.filter((one) => one.id !== pageId) });
   await dropRows([...(page.question ? [page.question] : []), ...page.sayings]);
+}
+
+/** Two Aussagen of a page changed places: a waiting card onto the page, the other off it. */
+export async function swapSayings(pageId: string, a: string, b: string): Promise<void> {
+  const open = activeCollection();
+  if (!open?.talk) return;
+  await keepBook(open, withSwapped(open.talk, pageId, a, b));
 }
 
 /** A card deleted where it stands: out of the book too. */

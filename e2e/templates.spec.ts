@@ -1206,10 +1206,13 @@ test('a Strophe too tall for one page goes on over the next, in whole lines', as
  * open on an empty page with the caret in it; an Antwort is one card with the
  * picture of its last word and the whole line under it, added by the wall's
  * „+" or many at once by „✎ Text", which keeps the card of a line it keeps; on paper each page is a
- * sheet with its question on the band, a free field once, and a field for
- * each Antwort, going on to another sheet when there are more than six; the
- * cards follow on sheets of their own, which carry no footer and are not
- * counted in the page numbers; the paper opens A5 across.
+ * sheet with its question on the band, a free field, and a field for each
+ * Antwort the page holds — eight square ones on A5 across, ten upright with
+ * the word; the rest wait under the page, as cards beside a Tafel do, and
+ * are not printed, and a waiting card dropped on one on the page changes
+ * places with it; the cards follow on sheets of their own, cut lines on,
+ * the laminate's seam smaller than a field, which carry no footer and are
+ * not counted in the page numbers; the paper opens A5 across.
  */
 test('a Plauderbuch is written page by page, and prints its pages and the cards to cut', async ({ page }) => {
   await pickTemplate(page, /^Plauderbuch/);
@@ -1263,7 +1266,7 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await first.getByRole('button', { name: 'Antworten von „Was ich erzählen will“ als Text bearbeiten' }).click();
   const text = page.getByRole('textbox', { name: 'Antworten von „Was ich erzählen will“ als Text bearbeiten' });
   await expect(text).toHaveValue('vom Morgenkreis\nvom Essen');
-  const more = ['vom Essen', 'vom Spielen', 'vom Turnen', 'von der Pause', 'vom Malen', 'vom Singen', 'vom Ausflug'];
+  const more = ['vom Essen', 'vom Spielen', 'vom Turnen', 'von der Pause', 'vom Malen', 'vom Singen', 'vom Ausflug', 'vom Garten', 'vom Basteln'];
   await text.fill(more.join('\n'));
   await page.locator('.song__edit-acts').getByRole('button', { name: 'Fertig', exact: true }).click();
   await expect(first.locator('.word__name')).toHaveText(more);
@@ -1271,24 +1274,57 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   expect(after.find((row) => row.rawInput === 'vom Essen')!.id).toBe(essen!.id);
   expect(after.map((row) => row.rawInput)).not.toContain('vom Morgenkreis');
 
+  // Eight fit on the page; the ninth waits under it, with the „+".
+  await expect(first.locator('.talk__sayings .word__name')).toHaveText(more.slice(0, 8));
+  const tray = first.locator('.talk__tray');
+  await expect(tray.locator('.tray__head b')).toHaveText('Passt nicht mehr auf die Seite');
+  await expect(tray.locator('.word__name')).toHaveText(['vom Basteln']);
+  await expect(first.locator('.talk__sayings .word--add')).toHaveCount(0);
+  await expect(tray.locator('.word--add')).toHaveCount(1);
+  // Dropped on a card on the page, the waiting one takes its place.
+  await tray.locator('.board-card').first().dragTo(first.locator('.talk__sayings .board-card').nth(7));
+  await expect(first.locator('.talk__sayings .word__name').nth(7)).toHaveText('vom Basteln');
+  await expect(tray.locator('.word__name')).toHaveText(['vom Garten']);
+
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect.poll(() => page.evaluate(() => document.getElementById('print-page-setup')?.textContent ?? ''))
     .toContain('size: 210mm 148mm');
-  // Seven Antworten go on over two sheets, the question again on the second and no second free field.
+  // One sheet a page, eight square fields — what waits is not printed.
   const pages = sheet.locator('.ps-talk');
-  await expect(pages).toHaveCount(3);
+  await expect(pages).toHaveCount(2);
   await expect(pages.nth(0).locator('.ps-talk__question')).toHaveText('Was ich erzählen will');
-  await expect(pages.nth(1).locator('.ps-talk__question')).toHaveText('Was ich erzählen willweiter');
   await expect(sheet.locator('.ps-talk__field--free')).toHaveCount(2);
   expect(await pages.evaluateAll((all) => all.map((one) =>
-    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([6, 1, 1]);
-  await expect(sheet.locator('.ps-talk-cut .ps-talk__word')).toHaveText([...more, 'fertig']);
+    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([8, 1]);
+  const mm = (where: string, name: string) => sheet.locator(where).first().evaluate((node, prop) =>
+    parseFloat(getComputedStyle(node).getPropertyValue(prop)), name);
+  await expect.poll(async () => await mm('.ps-talk', '--talk-w') - await mm('.ps-talk', '--talk-h')).toBeCloseTo(0, 2);
+  // The cards to cut: square, no word, the laminate's 2 mm a side smaller, cut lines on.
+  const cut = sheet.locator('.ps-talk-cut');
+  await expect(cut.locator('.ps-talk__card')).toHaveCount(9);
+  await expect(cut.locator('.ps-talk__word')).toHaveCount(0);
+  await expect.poll(async () => await mm('.ps-talk', '--talk-w') - await mm('.ps-talk-cut', '--talk-w')).toBeCloseTo(4, 2);
+  await expect(sheet.locator('.ps-sheet')).toHaveClass(/ps-sheet--cutlines/);
+
+  // With the word the cards stand upright and ten fit: nothing waits any more.
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Beschriftung drucken').check();
+  await expect(first.locator('.talk__tray')).toHaveCount(0);
+  await expect(first.locator('.talk__sayings .word__name')).toHaveCount(9);
+  await expect.poll(async () => await mm('.ps-talk', '--talk-w') / await mm('.ps-talk', '--talk-h')).toBeCloseTo(0.75, 2);
+  await expect(cut.locator('.ps-talk__word')).toHaveText([...more.slice(0, 7), 'vom Basteln', 'vom Garten', 'fertig']);
+
+  // Its own colours: the band and the free field's line.
+  await openDing(page, 'Plauderbuch');
+  await page.getByRole('button', { name: 'Band Grün', exact: true }).click();
+  await expect.poll(() => sheet.locator('.ps-talk__band').first().evaluate((node) => getComputedStyle(node).backgroundColor))
+    .toBe('rgb(216, 242, 210)');
 
   // The footer as everywhere — on the book's pages only.
   await openDing(page, 'Seite');
   await page.getByLabel('Seitenzahlen drucken').check();
-  await expect(sheet.locator('.ps-page__n')).toHaveText(['Seite 1 von 3', 'Seite 2 von 3', 'Seite 3 von 3']);
+  await expect(sheet.locator('.ps-page__n')).toHaveText(['Seite 1 von 2', 'Seite 2 von 2']);
   expect(await sheet.locator('.ps-page').evaluateAll((all) => all
     .filter((one) => one.querySelector('.ps-talk-cut'))
     .map((one) => one.querySelector('.ps-foot') === null))).not.toContain(false);

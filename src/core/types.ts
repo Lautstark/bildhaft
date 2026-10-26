@@ -836,11 +836,15 @@ export interface PrintSettings {
    * A Rezept's colour: its headings, its step numbers and the dotted line
    * around each card. A Lied's too: the ground behind its refrain. A Spiel's
    * as well: the frame of its printed cards and the dashed line of its
-   * fields. A CSS colour.
+   * fields. A Plauderbuch's: the line round its free field. A CSS colour.
    */
   accentColour: string;
 
-  /** A Spiel: the ground behind each of its rows — null prints them bare. */
+  /**
+   * A Spiel: the ground behind each of its rows — null prints them bare.
+   * A Plauderbuch: its band, and paler its fields — null prints a bare band
+   * and grey fields.
+   */
   gameGroundColour: string | null;
 
   /** A Lied: „Strophe 1", „Refrain" over each part. */

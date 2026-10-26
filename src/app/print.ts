@@ -3,7 +3,8 @@ import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } fro
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { rowsOfGame } from '../core/game.ts';
 import {
-  copyrightFor, creditLines, gameFits, gameGeometry, gameReserveMm, printableArea, tafelFieldMm, type Titled,
+  copyrightFor, creditLines, gameFits, gameGeometry, gameReserveMm, printableArea, reserveMm, tafelFieldMm,
+  talkCapacity, talkGeometry, type Titled,
 } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { patchCollection } from '../db/repo.ts';
@@ -318,6 +319,21 @@ function gameSheet() {
   const titled: Titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
     : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
   return { print, titled, page: printableArea(print.paper, print.orientation, print.punch), reserve: gameReserveMm(print, credits, titled) };
+}
+
+/**
+ * The open Plauderbuch as Bearbeiten needs it: how many Antworten a page
+ * prints — the rest wait under it, as cards beside a Tafel do — and the
+ * card the sheet cuts for a field, as the sheet measures both.
+ */
+export function talkPrint(): { room: number; cutW: number; cutH: number } | null {
+  const open = activeCollection();
+  if (!open || kind() !== 'plauderbuch' || !s.settings) return null;
+  const print = printFor(printBase(), 'plauderbuch', null, open.print ?? {});
+  const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
+  const titled: Titled = !print.showCollectionTitle || !titleOf(open).trim() ? false : 'text';
+  const geo = talkGeometry(print, printableArea(print.paper, print.orientation, print.punch), reserveMm(print, credits, titled));
+  return { room: talkCapacity(print), cutW: geo.cutW, cutH: geo.cutH };
 }
 
 /** A game's rows as the geometry counts them: how many, the longest, and

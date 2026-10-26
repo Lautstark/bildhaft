@@ -616,7 +616,7 @@ export type Block =
      going on. */
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[]; more: boolean }
   | { kind: 'song-again' }
-  | { kind: 'talk-page'; question: Slot | null; text: string; count: number; free: boolean; again: boolean; geo: TalkGeometry }
+  | { kind: 'talk-page'; question: Slot | null; text: string; count: number; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
   /* One sheet of a Spiel: each row its free cells' Ablage fields, then its
      cells in their own order — a printed card, or the field where one is
@@ -627,15 +627,16 @@ export type Block =
 
 /**
  * A Plauderbuch page, measured: how big a field is, how many go across and
- * down, and the paper's factor everything else is multiplied by.
+ * down, the cards cut for them, and the paper's factor everything else is
+ * multiplied by.
  *
- * The paper is all it is asked, as an Einkaufsliste's is. The page is laid
- * out for A5 and grows with the paper — A4 by √2, A3 by 2 — so the fields
- * and the cards cut for them are bigger together. Lying on its side three
- * fields go across and two down, as in the Plauderplan-Drehbuch; standing up,
- * two across and three down. The fields take the width; their height is a
- * card's (3 : 5) unless the sheet is too short for that, and what the
- * footer needs comes off first.
+ * The page is laid out for A5 and grows with the paper — A4 by √2, A3 by 2 —
+ * so the fields and the cards cut for them are bigger together, and a page
+ * holds as many Antworten on every paper. Which way up it stands, and
+ * whether the cards carry their word, decide the field's shape and how many
+ * there are (talkShape): a card with only its picture is square, one with
+ * its word under it stands upright. The fields take what the page has, the
+ * band with the free field counted as one more row.
  */
 export interface TalkGeometry {
   cols: number;
@@ -649,7 +650,30 @@ export interface TalkGeometry {
   k: number;
   /** The page's height, the footer's room taken off. */
   height: number;
+  /** A cut card, the laminate's seam taken off each side: laminated, it is the field again. */
+  cutW: number;
+  cutH: number;
+  /** The picture inside a cut card, capped so the word keeps its lines. */
+  symW: number;
 }
+
+/**
+ * How a Plauderbuch page is divided: lying on its side four square fields
+ * across and two down, or five upright ones with their word; standing up
+ * three by three either way. The free field beside the question is the
+ * same shape as the others — any card goes into it.
+ */
+export function talkShape(settings: Pick<PrintSettings, 'orientation' | 'showLabel'>): { cols: number; rows: number; aspect: number } {
+  const aspect = settings.showLabel ? 3 / 4 : 1;
+  if (settings.orientation === 'landscape') return settings.showLabel ? { cols: 5, rows: 2, aspect } : { cols: 4, rows: 2, aspect };
+  return { cols: 3, rows: 3, aspect };
+}
+
+/** How many Antworten a page of a Plauderbuch prints; the rest wait in Bearbeiten. */
+export const talkCapacity = (settings: Pick<PrintSettings, 'orientation' | 'showLabel'>): number => {
+  const { cols, rows } = talkShape(settings);
+  return cols * rows;
+};
 
 export const TALK_SCALE: Record<PaperSize, number> = { a5: 1, a4: Math.SQRT2, a3: 2 };
 
@@ -808,18 +832,27 @@ export function gameGeometry(
 const LAMINATE_MM = 2;
 
 export function talkGeometry(
-  settings: Pick<PrintSettings, 'paper' | 'orientation'>, page: { width: number; height: number }, reserve: number,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel' | 'labelSizePt' | 'cutMarginMm'>,
+  page: { width: number; height: number }, reserve: number,
 ): TalkGeometry {
   const k = TALK_SCALE[settings.paper];
-  const landscape = settings.orientation === 'landscape';
-  const cols = landscape ? 3 : 2;
-  const rows = landscape ? 2 : 3;
+  const { cols, rows, aspect } = talkShape(settings);
   const gap = 6 * k;
   const air = 3 * k;
   const height = page.height - reserve;
-  const cardW = (page.width - (cols - 1) * gap) / cols;
-  const cardH = Math.min(cardW * 0.62, (height - 2 * air - 8 * k - (rows - 1) * gap) / (rows + 1));
-  return { cols, rows, cardW, cardH, gap, air, k, height };
+  /* The band is a row of its own: a field tall, its padding round it. */
+  const byHeight = (height - 2 * air - rows * gap) / (rows + 1);
+  const byWidth = (page.width - (cols - 1) * gap) / cols / aspect;
+  const cardH = Math.min(byHeight, byWidth);
+  const cardW = cardH * aspect;
+  /* As a Spiel's: printed the laminate's seam smaller than the field, so
+     the laminated card is the field's size again. */
+  const cutW = Math.max(10, cardW - 2 * LAMINATE_MM);
+  const cutH = Math.max(10, cardH - 2 * LAMINATE_MM);
+  /* Two lines for the word: an Antwort is often more than one. */
+  const label = settings.showLabel ? 2 * settings.labelSizePt * 0.3528 * 1.15 + k : 0;
+  const symW = Math.max(8, Math.min(cutW - 2 * k, cutH - label - 3 * k));
+  return { cols, rows, cardW, cardH, gap, air: settings.cutMarginMm * k, k, height, cutW, cutH, symW };
 }
 
 /**
@@ -996,28 +1029,24 @@ export function sheetBlocks(
   } else if (settings.layout === 'plauderbuch') {
     /*
      * A page of the book is a sheet of paper, always: the question on its
-     * band with the free field beside it, the fields for the Aussagen below.
-     * More Aussagen than a sheet holds go on to the next sheet, the question
-     * once more over them and no second free field — one answer per page.
-     * Then the cards for every field, to cut out, at the size of the fields.
+     * band with the free field beside it, the fields for the Aussagen below
+     * — as many as the page holds (talkCapacity). More wait in Bearbeiten,
+     * as the cards beside a Tafel do, and are not printed. Then the cards
+     * for every field, to cut out and laminate.
      */
     const geo = talkGeometry(settings, page, reserve);
-    for (const one of talk?.pages ?? []) {
+    const room = geo.cols * geo.rows;
+    const shown = (talk?.pages ?? []).map((one) => ({ ...one, sayings: one.sayings.slice(0, room) }));
+    for (const one of shown) {
       const question = one.question?.slots[0] ?? null;
       const text = question ? slotCaption(question) : '';
-      chunks(one.sayings, geo.cols * geo.rows).forEach((part, at) => blocks.push({
-        kind: 'talk-page', question, text, count: part.length, free: at === 0, again: at > 0, geo,
-      }));
+      blocks.push({ kind: 'talk-page', question, text, count: one.sayings.length, geo });
     }
-    const cards = (talk?.pages ?? []).flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
-    /* As many across as the page has fields across, at least: the air round
-       a card gives way first, down to none. */
-    const air = Math.max(0, Math.min(geo.air, (page.width / geo.cols - geo.cardW) / 2));
-    const cut = { ...geo, air };
-    const cols = Math.max(1, Math.floor(page.width / (geo.cardW + 2 * air) + 1e-6));
-    const rows = Math.max(1, Math.floor(page.height / (geo.cardH + 2 * air)));
+    const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0) {
-      for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo: cut });
+      const cols = Math.max(1, Math.floor(page.width / (geo.cutW + 2 * geo.air) + 1e-6));
+      const rows = Math.max(1, Math.floor(page.height / (geo.cutH + 2 * geo.air)));
+      for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo });
     }
   } else if (settings.layout === 'spiel') {
     /*

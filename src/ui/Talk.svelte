@@ -19,6 +19,12 @@
    *
    * No numbers: the binder keeps the order, and the question says which page
    * it is.
+   *
+   * A page prints as many Antworten as its paper holds (talkPrint). The rest
+   * wait under it, as the cards beside a Tafel do — „Passt nicht mehr auf
+   * die Seite", not printed — and the „+" goes there while the page is full.
+   * A card dragged onto another changes places with it: so a waiting one
+   * comes onto the page and the one it was dropped on goes to wait.
    */
   import type { ProviderId, Sentence, TalkPage } from '../core/types.ts';
   import { slotCaption, symbolIdFor } from '../core/types.ts';
@@ -29,7 +35,8 @@
   import Icon from '../pieces/Icon.svelte';
   import { confirmDialog } from './dialog.ts';
   import { openPicker } from '../app/editing.ts';
-  import { addCard, addPage, removePage, rewriteSayings, sayingsText, setQuestion } from '../app/talk.ts';
+  import { addCard, addPage, removePage, rewriteSayings, sayingsText, setQuestion, swapSayings } from '../app/talk.ts';
+  import { talkPrint } from '../app/print.ts';
   import { activeCollection, s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -43,6 +50,8 @@
     return held.length > 0 ? held : [BLANK];
   });
   let byId = $derived(new Map(s.sentences.map((sentence) => [sentence.id, sentence])));
+  /* How many Antworten a page prints; the paper and the Beschriftung decide. */
+  let room = $derived(talkPrint()?.room ?? Infinity);
   /* A book with nothing in it yet says what a page is. */
   let blank = $derived(pages.every((page) => !page.question && page.sayings.length === 0));
 
@@ -119,6 +128,27 @@
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!s.busy) void finishEditing(); }
   }
 
+  /* A card carried from one place on a page to another. */
+  let carrying = $state<string | null>(null);
+  function dragStart(event: DragEvent, id: string): void {
+    carrying = id;
+    event.dataTransfer?.setData('text/plain', id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+  function over(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+  /* A tick later, as on the Tafel: a repaint while the drop is still being
+     handled takes the dragged card out of the page, and Chrome then never
+     starts another drag. */
+  function dropOn(event: DragEvent, page: TalkPage, onto: string): void {
+    event.preventDefault();
+    const id = carrying ?? (event.dataTransfer?.getData('text/plain') || null);
+    carrying = null;
+    if (id && id !== onto) setTimeout(() => void swapSayings(page.id, id, onto), 0);
+  }
+
   function focused(node: HTMLElement): void { node.focus(); }
   function maybeFocused(node: HTMLElement, when: boolean): void { if (when) node.focus(); }
 </script>
@@ -128,4 +158,8 @@
   book, and before it the „+" that starts from a symbol instead.
 --><button class="talk__pic talk__pic--add" type="button" aria-label={t('ui.talk_question_symbol', { page: nameOf(page, at) })} title={t('ui.talk_question_symbol', { page: nameOf(page, at) })} onclick={() => void addCard('question', page.id || undefined)}>+</button><div class="line-add talk__ask"><input class="line-add__input" use:maybeFocused={!page.id} bind:value={() => questions[page.id] ?? '', (value) => { questions[page.id] = value; }} disabled={s.busy} aria-label={t('ui.talk_question_of', { page: nameOf(page, at) })} placeholder={t('ui.talk_question_placeholder')} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void firstQuestion(page.id); } }} /><button class="btn primary sm" type="button" disabled={s.busy || !(questions[page.id] ?? '').trim()} onclick={() => void firstQuestion(page.id)}>{t('ui.done')}</button></div>{/if}{#if asking !== page.id}<span class="talk__tools">{#if page.id && editing !== page.id}<button class="song__tool" type="button" aria-label={t('ui.talk_edit_sayings', { page: nameOf(page, at) })} onclick={() => startEditing(page)}>{t('ui.song_edit')}</button>{/if}{#if page.id}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.talk_delete_page', { page: nameOf(page, at) })} aria-label={t('ui.talk_delete_page', { page: nameOf(page, at) })} onclick={() => void take(page, at)}><Icon name="trash" /></button></span>{/if}</span>{/if}</div>{/snippet}
 
-<div class="talk">{#if blank}<p class="small faint talk__intro">{t('ui.talk_intro')}</p>{/if}{#each pages as page, at (page.id || 'blank')}<section class="talk__page" aria-label={nameOf(page, at)}>{@render head(page, at)}<span class="talk__label">{t('ui.talk_answers')}</span>{#if editing === page.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.talk_edit_sayings', { page: nameOf(page, at) })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span></span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}<div class="words talk__sayings">{#each page.sayings as id (id)}{@const sentence = byId.get(id)}{#if sentence}<WordCard {sentence} {provider} />{/if}{/each}<AddTile label={t('ui.talk_saying_add', { page: nameOf(page, at) })} onAdd={() => void addCard('saying', page.id || undefined)} />{#if page.sayings.length === 0}<span class="empty-whisper empty-whisper--wall">{t('ui.talk_whisper')}</span>{/if}</div>{/if}</section>{/each}<div class="talk__more"><button class="song__plus song__plus--part" type="button" onclick={() => void addPage()}>{t('ui.talk_add_page')}</button></div></div>
+{#snippet card(page: TalkPage, id: string)}{@const sentence = byId.get(id)}{#if sentence}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === id} draggable="true" ondragstart={(event) => dragStart(event, id)} ondragend={() => { carrying = null; }} ondragover={over} ondrop={(event) => dropOn(event, page, id)}><WordCard {sentence} {provider} /></div>{/if}{/snippet}
+
+{#snippet add(page: TalkPage, at: number)}<AddTile label={t('ui.talk_saying_add', { page: nameOf(page, at) })} onAdd={() => void addCard('saying', page.id || undefined)} />{/snippet}
+
+<div class="talk">{#if blank}<p class="small faint talk__intro">{t('ui.talk_intro')}</p>{/if}{#each pages as page, at (page.id || 'blank')}<section class="talk__page" aria-label={nameOf(page, at)}>{@render head(page, at)}<span class="talk__label">{t('ui.talk_answers')}</span>{#if editing === page.id}<div class="song__edit"><textarea class="song__text" use:focused bind:value={text} disabled={s.busy} aria-label={t('ui.talk_edit_sayings', { page: nameOf(page, at) })} rows={Math.max(3, text.split('\n').length + 1)} onkeydown={editKeys}></textarea><div class="song__edit-acts"><span></span><button class="btn sm" type="button" onclick={() => { editing = null; }}>{t('ui.cancel')}</button><button class="btn primary sm" type="button" disabled={s.busy} onclick={() => void finishEditing()}>{t('ui.done')}</button></div></div>{:else}{@const full = page.sayings.length >= room}<div class="words talk__sayings">{#each page.sayings.slice(0, room) as id (id)}{@render card(page, id)}{/each}{#if !full}{@render add(page, at)}{/if}{#if page.sayings.length === 0}<span class="empty-whisper empty-whisper--wall">{t('ui.talk_whisper')}</span>{/if}</div>{#if full}<div class="tray talk__tray"><div class="tray__head"><b>{t('ui.talk_tray')}</b><span class="small faint">{t('ui.talk_tray_hint')}</span></div><div class="words tray__wall">{#each page.sayings.slice(room) as id (id)}{@render card(page, id)}{/each}{@render add(page, at)}</div></div>{/if}{/if}</section>{/each}<div class="talk__more"><button class="song__plus song__plus--part" type="button" onclick={() => void addPage()}>{t('ui.talk_add_page')}</button></div></div>

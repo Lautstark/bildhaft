@@ -12,7 +12,7 @@
    * settings stay in the print preview's column.
    */
   import type { CollectionKind } from '../core/types.ts';
-  import { gameSymbol, materialPrint } from '../app/print.ts';
+  import { gameSymbol, materialPrint, talkPrint } from '../app/print.ts';
   import { kind, providerId } from '../app/state.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
   import PaletteRow from './PaletteRow.svelte';
@@ -31,10 +31,9 @@
   let symbolish = $derived(Boolean(offer && (offer.size || offer.label || offer.frames
     || offer.background || offer.cutLines || kind() === 'einkaufsliste')));
   /* Was nur diese Vorlage hat, hinter einem Chip mit ihrem Namen — der
-     vierte Knopf des Mocks. Ein Rezept und ein Plauderbuch haben nichts
-     Eigenes und darum keinen. */
-  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel', spiel: 'ui.ding_spiel' };
-  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields || offer.game)));
+     vierte Knopf des Mocks. Ein Rezept hat nichts Eigenes und darum keinen. */
+  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel', spiel: 'ui.ding_spiel', plauderbuch: 'ui.ding_plauderbuch' };
+  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields || offer.game || offer.talk)));
   let ownName = $derived(OWN_NAMES[kind()] ? t(OWN_NAMES[kind()]!) : '');
   let exact = $derived(offer?.size?.kind === 'cards' && mp?.settings.sheetFit === 'card');
   /* The one colour of the material, set at the title: title, its line and
@@ -125,6 +124,11 @@
         Das Maß als Fakt, wie bei der Einkaufsliste: das Blatt rechnet die
         Symbolgröße selbst, das Menü zeigt sie nur.
       --><div class="ding__row"><span class="small faint">{t('ui.game_symbol', { size: Math.round(sym) })}</span></div>{/if}{/if}
+      {#if kind() === 'plauderbuch'}{@const talk = talkPrint()}{#if talk}<!--
+        Ebenso beim Plauderbuch: die Karte, die das Blatt schneidet — 2 mm
+        kleiner als ihr Feld, laminiert passt sie hinein — und wie viele
+        Antworten eine Seite fasst. Beides folgt aus Papier und Beschriftung.
+      --><div class="ding__row"><span class="small faint">{t('ui.talk_card', { w: Math.round(talk.cutW), h: Math.round(talk.cutH), n: talk.room })}</span></div>{/if}{/if}
     {/if}
     {#if offer.label}{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<div class="ding__sub"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next), t('ui.label_size'))}</div>{/if}
     {/if}
@@ -142,7 +146,7 @@
       {#if info === 'brett'}<p class="small faint ding__hint">{t('ui.shop_geometry_info')}</p>{/if}
     {/if}
   </div>{/if}</span>{/if}
-  {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
+  {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{#if offer.talk}{#if mp.settings.gameGroundColour}<span class="ding__dot" style:--c={mp.settings.gameGroundColour}></span>{/if}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
     {#if offer.sentence}{@render check(t('ui.print_sentence'), mp.settings.showSentenceText, (next) => mp?.set('showSentenceText', next))}{#if mp.settings.showSentenceText}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.sentencePosition === where} onclick={() => mp?.set('sentencePosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => mp?.set('sentenceSizePt', next), t('ui.sentence_size'))}</div></div>{/if}{/if}
     {#if offer.stripFrame}{@render check(t('ui.frame_strip'), mp.settings.stripFrame, (next) => mp?.set('stripFrame', next))}{#if mp.settings.stripFrame}<div class="ding__dep"><div class="ding__row">{@render num(t('ui.thickness'), mp.settings.cardBorderMm > 0 ? mp.settings.cardBorderMm : 0.5, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next))}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next))}</div><PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} /></div>{/if}{/if}
     {#if offer.songChecks}{@render check(t('ui.song_headings'), mp.settings.songHeadings, (next) => mp?.set('songHeadings', next))}
@@ -155,5 +159,11 @@
       gestrichelten Felder zeichnet.
     --><PaletteRow label={t('ui.game_ground')} value={mp.settings.gameGroundColour} strength="fill" none ownStart="#fdeef3" onPick={(next) => mp?.set('gameGroundColour', next)} />
     <PaletteRow label={t('ui.game_accent')} value={mp.settings.accentColour} strength="frame" ownStart="#e0558c" onPick={(next) => mp?.set('accentColour', next ?? '#e0558c')} />{/if}
+    {#if offer.talk}<!--
+      Die zwei Farben des Plauderbuchs, gespeichert wie die des Spiels: das
+      Band der Frage (blasser die Felder; Aus druckt es nackt, die Felder grau)
+      und die Linie um das freie Feld.
+    --><PaletteRow label={t('ui.talk_band')} value={mp.settings.gameGroundColour} strength="fill" none ownStart="#d8e9fc" onPick={(next) => mp?.set('gameGroundColour', next)} />
+    <PaletteRow label={t('ui.talk_line')} value={mp.settings.accentColour} strength="frame" ownStart="#3f88e0" onPick={(next) => mp?.set('accentColour', next ?? '#3f88e0')} />{/if}
   </div>{/if}</span>{/if}
 </div>{/if}

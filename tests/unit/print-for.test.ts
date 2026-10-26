@@ -141,12 +141,11 @@ describe('what a Sammlung keeps of its print', () => {
 
 /**
  * One base for every template, left out only where the paper decides: an
- * Einkaufsliste lies on its side with its millimetres from its paper, a
- * Plauderbuch is a book of fields.
+ * Einkaufsliste lies on its side with its millimetres from its paper.
  */
 describe('what the print view offers', () => {
-  it('offers every template but those two the same base', () => {
-    for (const which of ['satzstreifen', 'wortkarten', 'tafel', 'rezept', 'lied'] as const) {
+  it('offers every template but the Einkaufsliste the same base', () => {
+    for (const which of ['satzstreifen', 'wortkarten', 'tafel', 'rezept', 'lied', 'spiel', 'plauderbuch'] as const) {
       expect(TEMPLATES[which].offers(DEFAULT_PRINT_SETTINGS), which).toMatchObject({
         paper: true, label: true, frames: true, background: true, page: true, pageNumbers: true,
       });

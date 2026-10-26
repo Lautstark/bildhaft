@@ -45,3 +45,19 @@ export function withoutRow(book: TalkBook, id: string): TalkBook {
 /** The book with one page changed, found by its id. */
 export const withPage = (book: TalkBook, id: string, change: (page: TalkPage) => TalkPage): TalkBook =>
   ({ pages: book.pages.map((page) => (page.id === id ? change(page) : page)) });
+
+/**
+ * The book with two Aussagen of a page changed places: how a card waiting
+ * under a full page comes onto it — the one it is dropped on goes to wait
+ * in its stead. The rest keep their order.
+ */
+export function withSwapped(book: TalkBook, pageId: string, a: string, b: string): TalkBook {
+  return withPage(book, pageId, (page) => {
+    const at = page.sayings.indexOf(a);
+    const to = page.sayings.indexOf(b);
+    if (at === -1 || to === -1 || at === to) return page;
+    const sayings = [...page.sayings];
+    [sayings[at], sayings[to]] = [sayings[to]!, sayings[at]!];
+    return { ...page, sayings };
+  });
+}

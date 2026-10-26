@@ -15,7 +15,7 @@ import { printableArea, SHOPPING_SCALE } from '../ui/printSheet.ts';
  *
  * Absent means not offered — not greyed out, not there. Left out only where
  * the paper decides: an Einkaufsliste lies on its side and takes its
- * millimetres from its paper, a Plauderbuch is a book of fields.
+ * millimetres from its paper.
  */
 export interface PrintOffer {
   /** The material's own colour: a Rezept's headings, a Lied's refrain ground. Its own group. */
@@ -69,6 +69,8 @@ export interface PrintOffer {
   cart?: boolean;
   /** A Spiel: the board's ground colour, and the accent that frames its printed cards. */
   game?: boolean;
+  /** A Plauderbuch: its band's colour, and the line round its free field. */
+  talk?: boolean;
 }
 
 /**
@@ -295,17 +297,28 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
-     into an A5 ring binder. The paper is all it is asked, and which way up;
-     the fields and the cards grow with it (talkGeometry), as an
-     Einkaufsliste's do. Always to velcro — empty fields on the pages, the
-     cards on sheets of their own — and always a free field for the answer.
-     No name over the first page: every sheet is a page of the book. Page
-     numbers as everywhere, off until asked for. */
+     into an A5 ring binder. Every paper and either way up, as everywhere;
+     the fields and the cards grow with it (talkGeometry), and which way up
+     and whether the cards carry their word decide how many Antworten a page
+     holds (talkCapacity). Always to velcro — empty fields on the pages, the
+     cards on sheets of their own, the laminate's seam smaller than a field —
+     and always a free field for the answer. Seite and Symbol as everywhere;
+     its own menu has the band's colour and the free field's line, a Spiel's
+     two colours under its names. Cards without their word, white, the cut
+     lines on; page numbers off until asked for. */
   plauderbuch: {
     cards: false,
     zeileInEdit: true,
-    defaults: () => ({ paper: 'a5', orientation: 'landscape', showPageNumbers: false, ...HEADED }),
+    defaults: () => ({
+      paper: 'a5', orientation: 'landscape', cutMarginMm: 3, showCutLines: true,
+      showLabel: false, labelPosition: 'below', labelSizePt: 9,
+      cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56', cardBackground: '#ffffff',
+      gameGroundColour: '#d8e9fc', accentColour: '#3f88e0',
+      // Its cards are given, as a Spiel's: the Anybook circle lies over the symbol's corner.
+      anybookPlace: 'over',
+      showPageNumbers: false, ...HEADED,
+    }),
     fixed: () => ({ layout: 'plauderbuch' }),
-    offers: () => ({ paper: true, pageNumbers: true, title: 'once' }),
+    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true }),
   },
 };

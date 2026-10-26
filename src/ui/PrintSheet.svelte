@@ -82,7 +82,7 @@
    * line through every field of a Tafel, three lines under that same dialog's
    * own sentence saying nothing on a Tafel is cut.
    */
-  const CUT_UP = new Set(['row', 'grid', 'cut']);
+  const CUT_UP = new Set(['row', 'grid', 'cut', 'talk-cut']);
   let cutUp = $derived(blocks.some((block) => CUT_UP.has(block.kind)));
 
   /** The blocks of each page, or one page holding all of them while unplanned. */
@@ -117,9 +117,11 @@
   const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
 
   /* The millimetres of a Plauderbuch page, for its own rules in print.css. */
-  const talkVars = (geo: { cardW: number; cardH: number; gap: number; air: number; k: number; height: number }, cols: number): string =>
+  const talkVars = (geo: { cardW: number; cardH: number; gap: number; air: number; k: number; height: number; symW: number }, cols: number): string =>
     `--talk-w:${geo.cardW.toFixed(3)}mm;--talk-h:${geo.cardH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
-    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--cols:${cols}`;
+    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--sym:${geo.symW.toFixed(3)}mm;--cols:${cols}`;
+  /* Its fields are the band's colour, paler; with no band, a quiet grey. */
+  let talkSoft = $derived(settings.gameGroundColour ? `color-mix(in srgb, ${settings.gameGroundColour} 45%, #fff)` : '#f2efee');
 
   /* And of a Spiel's sheets, for theirs — said in the Plauderbuch's own
      variables, so its field, card and cutting rules apply as they are. */
@@ -206,13 +208,11 @@
   The Refrain once more, by reference: its colour, an arrow round, its name.
 --><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'talk-page'}<!--
   A page of a Plauderbuch: the question on its band, the free field the
-  chosen Aussage is velcroed onto, and a field with a velcro dot for each
-  Aussage. A page carried over says so under its question, and has no free
-  field of its own.
---><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#if block.question}<PrintPicture slot={block.question} {provider} />{/if}<p class="ps-talk__question">{block.text}{#if block.again}<small>{t('ui.talk_again')}</small>{/if}</p>{#if block.free}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span>{/if}</div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
-  The cards for the fields, at the fields' size, with room round each for
-  the scissors and a dashed line where they go.
---><section class="ps-grid ps-grid--page ps-talk-cut" style={talkVars(block.geo, block.cols)}>{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} /><span class="ps-talk__word">{slotCaption(slot)}</span></span></span>{/each}</section>{:else if block.kind === 'game-board'}<!--
+  answer is put into beside it, then a field for each Antwort the page holds.
+--><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#if block.question}<PrintPicture slot={block.question} {provider} />{/if}<p class="ps-talk__question">{block.text}</p><span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span></div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
+  The cards for the fields, the laminate's seam smaller than a field, with
+  the Rand round each for the scissors; the cut lines where they are asked for.
+--><section class="ps-grid ps-grid--page ps-talk-cut{settings.showLabel && settings.labelPosition === 'above' ? ' ps-talk-cut--above' : ''}" style="{talkVars(block.geo, block.cols)};--talk-w:{block.geo.cutW.toFixed(3)}mm;--talk-h:{block.geo.cutH.toFixed(3)}mm">{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell"><span class="ps-talk__card"><PrintPicture {slot} {provider} />{#if settings.showLabel}<span class="ps-talk__word">{slotCaption(slot)}</span>{/if}</span></span>{/each}</section>{:else if block.kind === 'game-board'}<!--
   A Spiel's sheet, laminated whole: left the Ablage, a dashed field with a
   Klett dot per card, where the cut cards live between games; right the
   rows — the fixed pictures, then a dashed field per card to lay.
@@ -259,6 +259,7 @@
   style:--song={settings.accentColour}
   style:--spiel-accent={settings.accentColour}
   style:--spiel-grund={settings.gameGroundColour ?? 'transparent'}
+  style:--talk-soft={talkSoft}
   style:--shop={String(SHOPPING_SCALE[settings.paper])}
   style:--cart={settings.cartColour}
 >{#if pages}{#each pages as held, at (at)}<!--
