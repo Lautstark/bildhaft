@@ -625,6 +625,13 @@ export interface SheetOptions {
   collectionName: string;
   /** The title's symbols, printed before it, in their order. */
   pictures?: Slot[];
+  /**
+   * What of a material with a Kartenbogen is wanted: everything (`with`, the
+   * default), its pages without the cut cards (`none`), or only the cut cards
+   * (`only`). The group print is the caller: it prints each material's pages
+   * as they are and gathers the cards of like materials onto one Bogen.
+   */
+  cut?: 'with' | 'none' | 'only';
 }
 
 /** The height a page sets aside for what is not the grid: credits, the Sammlung's name, the page number. */
@@ -990,6 +997,7 @@ export function sheetBlocks(
   songs: (number[] | null)[] | null = null,
 ): Block[] {
   const { sentences, board, song, talk, game, settings, provider, attribution, copyright, collectionName } = options;
+  const cut = options.cut ?? 'with';
   const credits = creditLines(attribution, copyright);
   const page = printableArea(settings.paper, settings.orientation, settings.punch);
   /* Cards to cut out go on the printer's whole sheet, an A5 material's too. */
@@ -1110,7 +1118,7 @@ export function sheetBlocks(
     const geo = talkGeometry(settings, page, reserve);
     const room = geo.cols * geo.rows;
     const shown = (talk?.pages ?? []).map((one) => ({ ...one, sayings: one.sayings.slice(0, room) }));
-    for (const one of shown) {
+    if (cut !== 'only') for (const one of shown) {
       /* The question as its line stands in Bearbeiten: its symbols, then its
          words — a card made before questions had words of their own says
          its caption. */
@@ -1119,7 +1127,7 @@ export function sheetBlocks(
       blocks.push({ kind: 'talk-page', pictures: picturesOf(one.question), text, count: room, geo });
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
-    if (cards.length > 0) {
+    if (cards.length > 0 && cut !== 'none') {
       const cols = Math.max(1, Math.floor(cutPage.width / (geo.cutW + 2 * geo.air) + 1e-6));
       const rows = Math.max(1, Math.floor(cutPage.height / (geo.cutH + 2 * geo.air)));
       for (const slots of chunks(cards, cols * rows)) blocks.push({ kind: 'talk-cut', slots, cols, geo });
@@ -1149,8 +1157,8 @@ export function sheetBlocks(
       zellen: Math.max(1, ...rows.map((row) => row.cells.length)),
       platz: Math.max(1, karten.length),
     });
-    if (rows.length > 0) blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
-    if (karten.length > 0) {
+    if (rows.length > 0 && cut !== 'only') blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
+    if (karten.length > 0 && cut !== 'none') {
       const cols = Math.max(1, Math.floor(cutPage.width / (geo.cutW + 2 * geo.air) + 1e-6));
       const cutRows = Math.max(1, Math.floor(cutPage.height / (geo.cutH + 2 * geo.air)));
       for (const slots of chunks(karten, cols * cutRows)) blocks.push({ kind: 'game-cut', slots, cols, geo });

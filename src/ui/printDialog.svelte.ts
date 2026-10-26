@@ -1,14 +1,14 @@
 import { flushSync, mount, unmount } from 'svelte';
 import type { CollectionKind, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
 import { symbolIdsIn } from '../core/types.ts';
-import Printable from './Printable.svelte';
+import Printables from './Printables.svelte';
 import {
   applyPageSetup, cardRows, copyrightFor, pagesOf, paperSize, planPages, printableArea, printerPaper,
   PX_PER_MM, sheetBlocks, sheetsOf, songPieces, stripLines,
   type Block, type PrintBoard, type PrintGame, type PrintSong, type PrintTalk, type SheetPlan,
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
-import { previewToPdf } from './pdf.ts';
+import { previewsToPdf, previewToPdf } from './pdf.ts';
 import { LOCALE, t } from '../i18n/index.ts';
 import { settle } from '../app/templates.ts';
 
@@ -42,6 +42,8 @@ export interface PrintOptions {
   collectionName: string;
   /** The title's symbols: not among `sentences`, which are what the sheet is of. */
   pictures?: Slot[];
+  /** What of a material with a Kartenbogen this preview shows — see SheetOptions. */
+  cut?: 'with' | 'none' | 'only';
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
   provider: ProviderId;
@@ -162,6 +164,7 @@ export class Printing {
     copyright: copyrightFor(this.options.provider, this.settings.showCopyright),
     collectionName: this.options.collectionName,
     pictures: this.options.pictures,
+    cut: this.options.cut,
   }, this.rows, this.strips, this.songs));
 
   plan: SheetPlan = $derived.by(() => ({ rows: this.rows, pages: this.pages }));
@@ -372,11 +375,12 @@ export class Printing {
  * nothing else is open, so the browser's own print (Ctrl+P too) prints what the
  * column shows; the big preview takes it while it is open and hands it back.
  * A stack because that is the whole of the arrangement: one on top, the one
- * underneath waiting.
+ * underneath waiting. An entry holds one preview, or — for the group print —
+ * several, whose sheets stand one under the other on the one printout.
  */
-const owners: { state: Printing; printable: ReturnType<typeof mount> | null }[] = [];
+const owners: { states: Printing[]; printable: ReturnType<typeof mount> | null }[] = [];
 
-function mountPrintable(entry: { state: Printing; printable: ReturnType<typeof mount> | null }): void {
+function mountPrintable(entry: { states: Printing[]; printable: ReturnType<typeof mount> | null }): void {
   const printRoot = document.getElementById('print-root');
   if (!printRoot) return;
   printRoot.replaceChildren();
@@ -385,7 +389,7 @@ function mountPrintable(entry: { state: Printing; printable: ReturnType<typeof m
      one, so neither copy can steal nodes from the other — and mounted into
      #print-root, which index.html puts outside #app-root because that is what
      @media print hides. */
-  entry.printable = mount(Printable, { target: printRoot, props: { s: entry.state } });
+  entry.printable = mount(Printables, { target: printRoot, props: { states: entry.states } });
 }
 
 /* Never open the browser's print over half-loaded images. Asked the same way
@@ -403,15 +407,28 @@ async function ready(state: Printing): Promise<void> {
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-async function run(state: Printing): Promise<void> {
-  if (state.preparing) return;
-  state.preparing = true;
+async function run(states: Printing[]): Promise<void> {
+  if (states.some((state) => state.preparing)) return;
+  for (const state of states) state.preparing = true;
   try {
-    await ready(state);
+    for (const state of states) await ready(state);
   } finally {
-    state.preparing = false;
+    for (const state of states) state.preparing = false;
   }
   window.print();
+}
+
+/**
+ * The group print's PDF: every preview's pages, in order, as one file. Each
+ * part keeps its own paper — an A5 material's sheets land as the A4 the
+ * printer gets, beside an A4 one's.
+ */
+export async function groupPdf(states: Printing[]): Promise<Blob> {
+  for (const state of states) await ready(state);
+  return previewsToPdf(states.map((state) => ({
+    pages: [...(state.holder?.querySelectorAll<HTMLElement>('.ps-paper') ?? [])],
+    settings: state.settings,
+  })));
 }
 
 /* The preview's pages are what the PDF is drawn from, made ready the way the
@@ -438,24 +455,39 @@ async function keep(state: Printing): Promise<void> {
  * effect, after its first paint.
  */
 export function attachPrinting(state: Printing): () => void {
+  return attachGroupPrinting([state]);
+}
+
+/**
+ * The group print's attach: several previews as one print job, their sheets
+ * one under the other in #print-root. Each state still measures and scales in
+ * boxes of its own; print and PDF go over all of them, in order.
+ */
+export function attachGroupPrinting(states: Printing[]): () => void {
   const below = owners.at(-1);
   if (below?.printable) { void unmount(below.printable); below.printable = null; }
-  const entry = { state, printable: null as ReturnType<typeof mount> | null };
+  const entry = { states, printable: null as ReturnType<typeof mount> | null };
   owners.push(entry);
   mountPrintable(entry);
-  state.print = () => void run(state);
-  state.savePdf = () => void keep(state);
+  for (const state of states) {
+    state.print = () => void run(states);
+    state.savePdf = () => void keep(state);
+  }
   /* mount() draws, but the effects that hand back the preview's boxes have
      not run yet — and nothing can be measured until they have. */
   flushSync();
-  const watching = state.frame ? new ResizeObserver(() => state.rescale()) : null;
-  if (state.frame) watching!.observe(state.frame);
-  state.replan();
+  const watchers = states.map((state) => {
+    if (!state.frame) return null;
+    const watching = new ResizeObserver(() => state.rescale());
+    watching.observe(state.frame);
+    return watching;
+  });
+  for (const state of states) state.replan();
   let done = false;
   return () => {
     if (done) return;
     done = true;
-    watching?.disconnect();
+    for (const watching of watchers) watching?.disconnect();
     const at = owners.indexOf(entry);
     if (at !== -1) owners.splice(at, 1);
     if (entry.printable) void unmount(entry.printable);
@@ -467,7 +499,7 @@ export function attachPrinting(state: Printing): () => void {
     if (back) {
       mountPrintable(back);
       flushSync();
-      back.state.replan();
+      for (const state of back.states) state.replan();
     }
   };
 }

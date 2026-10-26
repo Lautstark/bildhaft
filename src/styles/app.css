@@ -145,6 +145,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
    chevron points right when folded and down when open, the way a list that
    can be opened has always said so. */
 .sidebar__fold,
+/* Der Gruppenkopf mit seinem Druck-Knopf daneben: der Knopf wartet still und
+   zeigt sich dem Zeiger — Platz nimmt er immer, damit nichts springt. */
+.sidebar__grouprow { display: flex; align-items: center; }
+.sidebar__grouprow .sidebar__group { flex: 1; min-width: 0; }
+.sidebar__groupprint {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+}
+.sidebar__grouprow:hover .sidebar__groupprint,
+.sidebar__groupprint:focus-visible { opacity: 1; }
+.sidebar__groupprint:hover { color: var(--accent-strong); background: var(--surface-2); }
+
 .sidebar__group {
   display: flex;
   align-items: center;
@@ -1898,6 +1920,22 @@ footer.footer {
 
 /* Die große Vorschau: dasselbe Panel, über allem, bis Esc, ✕ oder der Rand. */
 .print-dock--big { position: fixed; inset: 0; z-index: 70; width: auto !important; max-height: none; border: 0; border-radius: 0; background: rgba(0, 0, 0, .6); padding: 28px; align-items: center; cursor: zoom-out; overflow: hidden; }
+/* „Alle drucken": das große Overlay, mit der Auswahl unter dem Kopf. Die
+   Vorschauen stehen untereinander, jede ein Material (oder der gemeinsame
+   Kartenbogen), und scrollen als ein Stapel. */
+.group-print { display: flex; flex-direction: column; height: calc(100vh - 56px); }
+.group-print .print-view__scroll { flex: 1; min-height: 0; overflow: auto; }
+.group-print .print-view__stage { display: flex; flex-direction: column; gap: 10px; }
+.group-print__wahl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 8px 2px 10px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.group-print__check { white-space: nowrap; }
+.group-print__check--aus { color: var(--text-faint); text-decoration: line-through; }
 .print-dock--big .print-view { width: min(1000px, 92vw); max-height: calc(100vh - 56px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 22px 0; cursor: auto; }
 .print-dock--big .ding { position: relative; }
 .print-dock--big .ding__pop { left: 0; right: auto; top: calc(100% + 6px); }

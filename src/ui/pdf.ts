@@ -22,7 +22,22 @@ const CSS_DPI = 96;
 const PT_PER_MM = 72 / 25.4;
 
 export async function previewToPdf(pages: HTMLElement[], settings: PrintSettings): Promise<Blob> {
+  return previewsToPdf([{ pages, settings }]);
+}
+
+/**
+ * Several previews as the one file — the group print's PDF. Each part keeps
+ * its own paper, so an A5 material's sheets stand beside an A4 one's, each as
+ * the sheet its printer would get.
+ */
+export async function previewsToPdf(parts: { pages: HTMLElement[]; settings: PrintSettings }[]): Promise<Blob> {
   const pdf = await PDFDocument.create();
+  for (const part of parts) await addPages(pdf, part.pages, part.settings);
+  const bytes = await pdf.save();
+  return new Blob([bytes as BlobPart], { type: 'application/pdf' });
+}
+
+async function addPages(pdf: PDFDocument, pages: HTMLElement[], settings: PrintSettings): Promise<void> {
   /* The printer's sheet: on A5, an A4 with two pages on it. */
   const sheetPaper = printerPaper(settings);
   const paper = paperSize(sheetPaper.paper, sheetPaper.orientation);
@@ -45,6 +60,4 @@ export async function previewToPdf(pages: HTMLElement[], settings: PrintSettings
     const sheet = pdf.addPage([paper.width * PT_PER_MM, paper.height * PT_PER_MM]);
     sheet.drawImage(image, { x: 0, y: 0, width: sheet.getWidth(), height: sheet.getHeight() });
   }
-  const bytes = await pdf.save();
-  return new Blob([bytes as BlobPart], { type: 'application/pdf' });
 }

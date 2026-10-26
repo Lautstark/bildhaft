@@ -7,7 +7,7 @@ import {
   talkCapacity, talkGeometry, type Titled,
 } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
-import { patchCollection } from '../db/repo.ts';
+import { listSentences, patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
 import { download } from '@lautstark/werkzeuge/download';
 import { t } from '../i18n/index.ts';
@@ -167,20 +167,45 @@ export async function openSavedPdf(saved: SavedPdf): Promise<void> {
  * there is nothing to print.
  */
 export function printOptions(): PrintOptions | null {
-  const byId = new Map(s.sentences.map((sentence) => [sentence.id, sentence]));
+  const open = activeCollection();
+  return buildOptions(open, s.sentences, kind(), {
+    onChange: (print: PrintSettings) => {
+      if (!s.settings) return;
+      /* The Sammlung keeps what was set, so it prints tomorrow as it printed
+         today; nothing of it reaches another one. Whether the METACOM notice
+         prints is the household's, and keepPrint leaves it out. */
+      if (print.showCopyright !== s.settings.print.showCopyright) {
+        persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: print.showCopyright } });
+      }
+      void keepPrint(print);
+    },
+    onPdf: (pdf, print, pages) => keepPdf(pdf, print, pages),
+  });
+}
+
+/**
+ * One material's print, put together from what is handed in rather than from
+ * what is open — the group print asks for many at once, and only one of them
+ * can be the open one. The hooks are the caller's: the live preview writes
+ * settings back and keeps PDFs, the group print does neither.
+ */
+function buildOptions(
+  open: Collection | null, all: Sentence[], which: CollectionKind,
+  hooks: Pick<PrintOptions, 'onChange' | 'onPdf'>,
+): PrintOptions | null {
+  const byId = new Map(all.map((sentence) => [sentence.id, sentence]));
   /* A Tafel prints whole and in its own order: the fields, free ones
      included, and nothing from the tray. What is asked for is ignored on
      purpose — there is no such thing as printing half a Tafel. A Tafel with
      every field free is still a Tafel, and a blank laminated one is a thing
      people make. */
-  const open = activeCollection();
-  const board = kind() === 'tafel' && open ? boardOf(open) : null;
+  const board = which === 'tafel' && open ? boardOf(open) : null;
   /* A Rezept prints whole too, and in the order it reads on screen: oldest
      first, each part in its place on the paper. */
   /* A Lied prints whole, as it is sung: every part where it comes, its rows
      looked up by id each time, so a row sung ten times is the same row ten
      times on paper. */
-  const song = kind() === 'lied' && open?.song ? {
+  const song = which === 'lied' && open?.song ? {
     parts: sungParts(open.song).map((at) => ({
       kind: at.kind, n: at.n, first: at.first,
       lines: at.part.lines.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
@@ -188,7 +213,7 @@ export function printOptions(): PrintOptions | null {
   } : null;
   /* A Plauderbuch prints whole and in its order: page after page, each with
      its question, then the cards to cut out for all of them. */
-  const talk = kind() === 'plauderbuch' && open?.talk ? {
+  const talk = which === 'plauderbuch' && open?.talk ? {
     pages: open.talk.pages.map((page) => ({
       question: page.question ? byId.get(page.question) ?? null : null,
       sayings: page.sayings.map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x)),
@@ -196,7 +221,7 @@ export function printOptions(): PrintOptions | null {
   } : null;
   /* A Spiel prints whole and in its order: the Spielblatt's rows, cell by
      cell, then the cards to cut out for the free ones. */
-  const game = kind() === 'spiel' && open?.game ? {
+  const game = which === 'spiel' && open?.game ? {
     rows: rowsOfGame(open.game).map((row) => ({
       zellen: row.zellen
         .map((zelle) => ({ karte: byId.get(zelle.karte), platz: zelle.platz }))
@@ -211,14 +236,14 @@ export function printOptions(): PrintOptions | null {
       ? talk.pages.flatMap((page) => [...(page.question ? [page.question] : []), ...page.sayings])
     : game
       ? game.rows.flatMap((row) => row.zellen.map((zelle) => zelle.karte))
-    : kind() === 'rezept'
-      ? [...s.sentences].sort((a, b) => a.createdAt - b.createdAt)
-      : contentOf(s.sentences);
+    : which === 'rezept'
+      ? [...all].sort((a, b) => a.createdAt - b.createdAt)
+      : contentOf(all);
   if ((chosen.length === 0 && !board) || !s.settings) return null;
 
   return {
     sentences: chosen,
-    kind: kind(),
+    kind: which,
     board: board ? {
       cols: board.cols, rows: board.rows, zones: zonesOf(board), styles: stylesOf(board),
       cells: board.cells.map((id) => (id ? byId.get(id) ?? null : null)),
@@ -227,25 +252,89 @@ export function printOptions(): PrintOptions | null {
     talk,
     game,
     collectionName: open ? titleOf(open) : 'bildhaft',
-    pictures: titlePictures(s.sentences),
+    pictures: titlePictures(all),
     /* What this Sammlung set, over its template's defaults, under what the
        template always is (templates.ts). */
-    settings: printFor(printBase(), kind(), board, open?.print ?? {}),
-    onChange: (print: PrintSettings) => {
-      if (!s.settings) return;
-      /* The Sammlung keeps what was set, so it prints tomorrow as it printed
-         today; nothing of it reaches another one. Whether the METACOM notice
-         prints is the household's, and keepPrint leaves it out. */
-      if (print.showCopyright !== s.settings.print.showCopyright) {
-        persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: print.showCopyright } });
-      }
-      void keepPrint(print);
-    },
-    onPdf: (pdf, print, pages) => keepPdf(pdf, print, pages),
+    settings: printFor(printBase(), which, board, open?.print ?? {}),
+    onChange: hooks.onChange,
+    onPdf: hooks.onPdf,
     provider: providerId(),
     attribution: provider().attribution,
     onClose: () => undefined,
   };
+}
+
+/** A material loaded for the group print: the Sammlung with its rows. */
+export interface GroupLoaded { collection: Collection; sentences: Sentence[] }
+
+/** One sheet of the group print: a material's, or (collection null) a shared Kartenbogen. */
+export interface GroupPrintPart { collection: Collection | null; options: PrintOptions }
+
+/**
+ * Everything one template group holds, loaded once: the open material's rows
+ * are the live ones, every other material's come from the store.
+ */
+export async function groupPrintLoad(which: CollectionKind): Promise<GroupLoaded[]> {
+  const rows = s.collections.filter((c) => kindOf(c) === which);
+  return Promise.all(rows.map(async (collection) => ({
+    collection,
+    sentences: collection.id === s.activeId ? s.sentences : await listSentences(collection.id),
+  })));
+}
+
+/**
+ * What decides whether two materials' cut cards may share a Bogen: everything
+ * that shapes or dresses a cut card. The paper and the Beschriftung are in
+ * here because they are the card's size and form; the colours because a card
+ * must print on the shared Bogen exactly as it would have printed alone.
+ */
+const CUT_KEY: (keyof PrintSettings)[] = [
+  'paper', 'orientation', 'punch', 'cutMarginMm',
+  'showLabel', 'labelPosition', 'labelSizePt',
+  'cardBorderMm', 'cardBorderColor', 'cardRadiusMm', 'cardBackground',
+];
+
+/**
+ * The group print's sheets, from what is loaded and what is ticked: each
+ * chosen material prints exactly as it prints alone — only its Kartenbogen,
+ * where its template has one (Spiel, Plauderbuch), moves to the end and is
+ * shared with every material whose cards would print identically. Materials
+ * whose cards differ (another paper, with instead of without Beschriftung)
+ * keep a Bogen of their own, after the shared one.
+ */
+export function groupPrintParts(loaded: GroupLoaded[], chosen: ReadonlySet<string>): GroupPrintPart[] {
+  const parts: GroupPrintPart[] = [];
+  const noop = () => undefined;
+  const condense = loaded.some(({ collection }) => ['spiel', 'plauderbuch'].includes(kindOf(collection)));
+  const cutGroups = new Map<string, PrintOptions[]>();
+  for (const { collection, sentences } of loaded) {
+    if (!chosen.has(collection.id)) continue;
+    const options = buildOptions(collection, sentences, kindOf(collection), { onChange: noop });
+    if (!options) continue;
+    if (condense) {
+      options.cut = 'none';
+      const key = JSON.stringify(CUT_KEY.map((k) => options.settings[k]));
+      cutGroups.set(key, [...(cutGroups.get(key) ?? []), options]);
+    }
+    parts.push({ collection, options });
+  }
+  for (const group of cutGroups.values()) {
+    const first = group[0]!;
+    parts.push({
+      collection: null,
+      options: {
+        ...first,
+        sentences: group.flatMap((options) => options.sentences),
+        game: first.kind === 'spiel' ? { rows: group.flatMap((options) => options.game?.rows ?? []) } : null,
+        talk: first.kind === 'plauderbuch' ? { pages: group.flatMap((options) => options.talk?.pages ?? []) } : null,
+        collectionName: '',
+        pictures: [],
+        cut: 'only',
+        onPdf: undefined,
+      },
+    });
+  }
+  return parts;
 }
 
 /**

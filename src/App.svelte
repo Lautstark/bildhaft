@@ -16,6 +16,7 @@
   import Reveal from '@lautstark/design/svelte/Reveal';
   import TopBar from '@lautstark/design/svelte/TopBar';
   import Footer from './ui/Footer.svelte';
+  import GroupPrint from './ui/GroupPrint.svelte';
   import Composer from './ui/Composer.svelte';
   import PrintView from './ui/PrintView.svelte';
   import TitleLine from './ui/TitleLine.svelte';
@@ -179,7 +180,7 @@
 --><div class="work-split"><div class="work-main">{#if (BOX_UNDER_HEAD.includes(kind()) && kind() !== 'tafel') || kind() === 'plauderbuch' || kind() === 'spiel'}<TitleLine />{/if}<Material /></div>{#if hasSheet}<!--
   svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions
   (der Klick auf den abgedunkelten Rand ist ein zweiter Weg hinaus; Esc und das ✕ sind die ersten)
---><aside class="print-dock{mini ? ' print-dock--mini' : ''}{big ? ' print-dock--big' : ''}" aria-label={t('ui.view_print')} onclick={(event) => { if (big && event.target === event.currentTarget) big = false; }}>{#if mini}<button class="print-dock__unfold" type="button" aria-label={t('ui.preview_unfold')} title={t('ui.preview_unfold')} onclick={() => fold(false)}>«</button>{/if}<PrintView mini={mini && !big} {big} onFold={() => fold(true)} onZoom={() => { big = true; }} onClose={() => { big = false; }} />{#if mini && !big}<button class="print-dock__peek" type="button" aria-label={t('ui.preview_unfold')} onclick={() => fold(false)}></button>{/if}</aside>{/if}</div>{/if}{/if}</div><Footer /></main></div>{/if}<!--
+--><aside class="print-dock{mini ? ' print-dock--mini' : ''}{big ? ' print-dock--big' : ''}" aria-label={t('ui.view_print')} onclick={(event) => { if (big && event.target === event.currentTarget) big = false; }}>{#if mini}<button class="print-dock__unfold" type="button" aria-label={t('ui.preview_unfold')} title={t('ui.preview_unfold')} onclick={() => fold(false)}>«</button>{/if}<PrintView mini={mini && !big} {big} onFold={() => fold(true)} onZoom={() => { big = true; }} onClose={() => { big = false; }} />{#if mini && !big}<button class="print-dock__peek" type="button" aria-label={t('ui.preview_unfold')} onclick={() => fold(false)}></button>{/if}</aside>{/if}</div>{/if}{/if}</div><Footer /></main>{#if s.groupPrint}<GroupPrint which={s.groupPrint} onClose={() => { s.groupPrint = null; }} />{/if}</div>{/if}<!--
   The toast goes in with the app and stays for the life of the page. It is a
   sibling of #app-root rather than a child because @media print hides that
   element, and a live region that is swapped out between messages is the bug
