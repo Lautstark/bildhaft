@@ -688,28 +688,43 @@ export function gameGeometry(
      rows' own gap come off the height before the field takes its share. */
   const pad = 2.5 * k;
   const rowGap = 3 * k;
-  /* A millimetre of slack: a board measured at exactly the page's height is
-     one rounding away from being pushed to a page of its own. */
-  const hLimit = (height - k - (units - 1) * rowGap) / units - 2 * pad;
   const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
-  /* The sheet is one raster: the Ablage has exactly the game's rows, in the
-     game's own rhythm, and the cards' dots fill it column by column from the
-     top. The columns follow from cards over rows; they widen the sheet, and
-     the sheet caps the field. The 24 mm of width taken off is the
-     enclosures' padding and the air between the zones. */
-  const cols = Math.max(1, Math.ceil(platz / units));
-  const wLimit = (page.width - 24 * k - (cols + zellen - 1) * gap) / (cols + zellen);
-  const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
+  /*
+   * The sheet is one raster, and the game may run in columns: many short
+   * rows side by side rather than a thin ribbon down a wide page. The rule
+   * is the simplest there is — take the number of columns that makes the
+   * field biggest. Each candidate is measured both ways: the height shared
+   * over the rows a column holds (a millimetre of slack, so a board
+   * measured at exactly the page's height is not pushed to a page of its
+   * own), and the width shared over the Ablage's and the game's cells (the
+   * 24 mm taken off are the enclosures' padding and the air between the
+   * zones; every further column brings its own padding and air). The
+   * Ablage has exactly the raster's rows, filled column by column from the
+   * top.
+   */
+  let best = { spielCols: 1, reihen: units, lagerCols: 1, fieldW: 0, zeile: 0 };
+  for (let c = 1; c <= Math.min(4, units); c += 1) {
+    const reihen = Math.ceil(units / c);
+    const hLimit = (height - k - (reihen - 1) * rowGap) / reihen - 2 * pad;
+    const lagerCols = Math.max(1, Math.ceil(platz / reihen));
+    const cells = lagerCols + c * zellen;
+    const fixed = 24 * k + (c - 1) * 13 * k;
+    const gaps = (lagerCols - 1) * gap + c * (zellen - 1) * gap;
+    const wLimit = (page.width - fixed - gaps) / cells;
+    const fieldW = Math.min(44 * k, hLimit * (50 / 42), wLimit);
+    if (fieldW > best.fieldW) best = { spielCols: c, reihen, lagerCols, fieldW, zeile: hLimit };
+  }
+  const fieldW = best.fieldW;
   const fieldH = fieldW * (42 / 50);
   /* The picture takes what the cell leaves it — the sheet says how big a
      symbol prints, nobody is asked. */
   const symW = Math.max(8, fieldH - label - 3 * k);
   return {
     fieldW, fieldH, gap, air, k, height,
-    lagerW: cols * fieldW + (cols - 1) * gap,
-    lagerCols: cols,
-    units,
-    symW, zeile: hLimit,
+    lagerW: best.lagerCols * fieldW + (best.lagerCols - 1) * gap,
+    lagerCols: best.lagerCols,
+    units: best.reihen,
+    symW, zeile: best.zeile,
   };
 }
 

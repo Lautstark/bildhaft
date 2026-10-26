@@ -887,7 +887,18 @@
   border-radius: calc(3mm * var(--talk-k));
 }
 .ps-spiel__lager .ps-talk__field { place-self: center; }
-.ps-spiel__rows { display: flex; flex-direction: column; gap: calc(3mm * var(--talk-k)); }
+/* The game's rows run down and then over: as many raster rows as the
+   geometry chose, filled column by column — one column on a wide game, two
+   or three where many short rows would leave the page empty. */
+.ps-spiel__rows {
+  display: grid;
+  grid-template-rows: repeat(var(--spiel-units), min-content);
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-content: start;
+  row-gap: calc(3mm * var(--talk-k));
+  column-gap: calc(8mm * var(--talk-k));
+}
 .ps-spiel__zelle {
   display: flex;
   align-items: center;
