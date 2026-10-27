@@ -861,10 +861,23 @@ export function gameReserveMm(
  * under each other at a slightly smaller field rather than a second column
  * that would halve it.
  */
+/**
+ * A Spiel's field: 30 mm wide and 42/50 of that tall, and taller by the
+ * word's line when the cards carry their word — a word makes a card taller,
+ * never its symbol smaller, the rule every card in bildhaft follows. The width
+ * is wider than the square symbol on purpose: the strip beside it is where an
+ * Anybook sticker's circle lies, so the circle costs the symbol next to
+ * nothing.
+ */
+const GAME_ASPECT = 42 / 50;
+const gameLabelMm = (settings: GameSettings, k: number): number =>
+  settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
+
 function gameRaster(settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape) {
   const k = GAME_SCALE[settings.paper];
   const gap = 6 * k;
   const height = page.height - reserve;
+  const label = gameLabelMm(settings, k);
   /* A row is a group: a soft ground round its cells, so its padding and the
      rows' own gap come off the height before the field takes its share. */
   const pad = 2 * k;
@@ -878,10 +891,10 @@ function gameRaster(settings: GameSettings, page: { width: number; height: numbe
     const fixed = (settings.punch === 'left' ? 21 : 28) * k + (spielCols - 1) * 13 * k;
     const gaps = (lagerCols - 1) * gap + spielCols * (zellen - 1) * gap;
     const wLimit = (page.width - fixed - gaps) / (lagerCols + spielCols * zellen);
-    const hLimit = ((height - k - (reihen - 1) * rowGap) / reihen - 2 * pad) * (50 / 42);
+    const hLimit = ((height - k - (reihen - 1) * rowGap) / reihen - 2 * pad - label) / GAME_ASPECT;
     return { reihen, lagerCols, fieldW: Math.min(field, wLimit, hLimit) };
   };
-  let best = measure(Math.max(1, Math.floor((height - k + rowGap) / (field * (42 / 50) + 2 * pad + rowGap) + 1e-9)));
+  let best = measure(Math.max(1, Math.floor((height - k + rowGap) / (field * GAME_ASPECT + label + 2 * pad + rowGap) + 1e-9)));
   const fits = best.fieldW >= field - 1e-6;
   for (let reihen = best.reihen + 1; !fits && reihen <= units; reihen += 1) {
     const taller = measure(reihen);
@@ -903,8 +916,8 @@ export function gameGeometry(
   const { k, gap, height, reihen, lagerCols, fieldW } = gameRaster(settings, page, reserve, shape);
   /* The air round a cut card is the margin, as everywhere. */
   const air = settings.cutMarginMm * k;
-  const label = settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
-  const fieldH = fieldW * (42 / 50);
+  const label = gameLabelMm(settings, k);
+  const fieldH = fieldW * GAME_ASPECT + label;
   /* A cut card is printed the laminate's seam smaller than the field — two
      millimetres a side, whatever the paper, because the seam is the pouch's
      and not the print's. Laminated, card and field are the one size again. */

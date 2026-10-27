@@ -77,4 +77,19 @@ describe('a Spiel at its one field size', () => {
     expect(geo.units).toBe(5);
     expect(geo.fieldW).toBeGreaterThan(25);
   });
+
+  it('grows its cards by the word, never shrinks the symbol for it', () => {
+    /* The rule every card in bildhaft follows: the symbol is square, and a
+       word makes the card taller. The field kept 50:42 whatever was printed,
+       so a word cost the symbol a third of its size instead. */
+    const bare = gameGeometry(settings, page, reserve, pairs(3));
+    const worded = gameGeometry({ ...settings, showLabel: true }, page, reserve, pairs(3));
+    expect(worded.fieldW).toBe(bare.fieldW);
+    expect(worded.symW).toBeCloseTo(bare.symW, 6);
+    expect(worded.fieldH).toBeGreaterThan(bare.fieldH);
+    expect(worded.cutH - bare.cutH).toBeCloseTo(worded.fieldH - bare.fieldH, 6);
+    // The taller card is paid for in rows: four stand under each other, not five.
+    expect(bare.units).toBe(5);
+    expect(gameGeometry({ ...settings, showLabel: true }, page, reserve, pairs(5)).units).toBe(4);
+  });
 });

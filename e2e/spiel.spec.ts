@@ -159,7 +159,13 @@ test('ein Spiel wächst nur, solange das Blatt Platz hat — die Karten bleiben 
      „+ Zeile" only while the sheet holds another row. */
   const rows = page.locator('.game__row');
   const first = rows.first();
-  for (const term of ['Apfel', 'Birne', 'Apfel', 'Birne', 'Apfel']) await pick(page, first, '+ Bild', term);
+  await pick(page, first, '+ Bild', 'Apfel');
+  /* Without the word, as her games print: a word makes every card taller,
+     and then four rows stand under each other instead of five. */
+  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await page.getByLabel('Beschriftung drucken').uncheck();
+  await page.keyboard.press('Escape');
+  for (const term of ['Birne', 'Apfel', 'Birne', 'Apfel']) await pick(page, first, '+ Bild', term);
   await expect(first.getByRole('button', { name: '+ Bild' })).toBeVisible();
   await pick(page, first, '+ Platzhalter', 'Birne');
   // Six cells and the Ablage's column fill A4 across: the row is full.
