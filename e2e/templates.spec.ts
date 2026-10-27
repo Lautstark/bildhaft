@@ -877,7 +877,9 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   const sheet = page.locator('.preview-frame');
   const pictures = () => sheet.locator('.ps-recipe-step .ps-card__img').evaluateAll((all) =>
     all.map((el) => (el as HTMLElement).offsetHeight));
-  const before = await pictures();
+  /* Measured once the sheet has settled: two readings alike. */
+  let before = await pictures();
+  await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
   expect(before.length).toBeGreaterThan(0);
 
   await openDing(page, 'Symbol');
@@ -885,9 +887,9 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
     all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
   await expect.poll(() => circles('.ps-recipe-cards .ps-card__img')).toEqual([true]);
-  expect(await circles('.ps-recipe-step__n')).toEqual([true]);
+  await expect.poll(() => circles('.ps-recipe-step__n')).toEqual([true]);
   expect(await circles('.ps-recipe-step .ps-card__img')).toEqual(before.map(() => false));
-  expect(await pictures()).toEqual(before);
+  await expect.poll(pictures).toEqual(before);
   // Under the number, not beside it or over the row's pictures.
   await expect.poll(() => sheet.locator('.ps-recipe-step__n').evaluate((el) => {
     const box = el.getBoundingClientRect();
@@ -910,7 +912,9 @@ test('a Lied gives each line one Anybook circle, at its start', async ({ page })
   const sheet = page.locator('.preview-frame');
   const pictures = () => sheet.locator('.ps-song-line .ps-card__img').evaluateAll((all) =>
     all.map((el) => (el as HTMLElement).offsetHeight));
-  const before = await pictures();
+  /* Measured once the sheet has settled: two readings alike. */
+  let before = await pictures();
+  await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
   expect(before.length).toBeGreaterThan(2);
 
   await openDing(page, 'Symbol');
@@ -920,7 +924,7 @@ test('a Lied gives each line one Anybook circle, at its start', async ({ page })
     all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
   await expect.poll(() => circles('.ps-song-line')).toEqual([true, true]);
   expect(await circles('.ps-song-line .ps-card__img')).toEqual(before.map(() => false));
-  expect(await pictures()).toEqual(before);
+  await expect.poll(pictures).toEqual(before);
   // At the line's start: left of its first picture.
   const [ring, first] = await sheet.locator('.ps-song-line').first().evaluate((el) => {
     const box = el.getBoundingClientRect();
