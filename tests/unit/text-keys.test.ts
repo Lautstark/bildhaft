@@ -6,7 +6,7 @@ import { TEXTS } from '../../src/i18n/texts.ts';
 import { SLOT_ORIGINS } from '../../src/core/types.ts';
 import { SOURCE_STATUS_CODES } from '../../src/ui/symbolSources.ts';
 import { TOPICS } from '../../src/core/tags.ts';
-import { COLLECTION_KINDS, RECIPE_PARTS } from '../../src/core/types.ts';
+import { ANYBOOK_PLACES, COLLECTION_KINDS, RECIPE_PARTS } from '../../src/core/types.ts';
 
 /** The parts of a Rezept that are cards rather than rows. */
 const CARD_PARTS = RECIPE_PARTS.filter((p) => p !== 'schritt');
@@ -128,6 +128,8 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // that are cards.
   { prefix: 'ui.recipe_', from: RECIPE_PARTS, where: 'ui/Recipe.svelte' },
   { prefix: 'ui.recipe_', from: CARD_PARTS.map((p) => `${p}_label`), where: 'ui/Recipe.svelte' },
+  // Where an Anybook code goes against the symbol, on the Symbol menu's segments.
+  { prefix: 'ui.anybook_', from: ANYBOOK_PLACES, where: 'ui/DingBar.svelte' },
 ];
 
 const declared = new Set(Object.keys(TEXTS.de!));

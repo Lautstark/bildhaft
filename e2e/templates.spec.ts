@@ -885,7 +885,7 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   await openDing(page, 'Symbol');
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
-    all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
+    all.map((el) => getComputedStyle(el.querySelector(':scope > .ps-any') ?? el).borderRadius === '50%'));
   await expect.poll(() => circles('.ps-recipe-cards .ps-card__img')).toEqual([true]);
   await expect.poll(() => circles('.ps-recipe-step__n')).toEqual([true]);
   expect(await circles('.ps-recipe-step .ps-card__img')).toEqual(before.map(() => false));
@@ -893,7 +893,7 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   // Under the number, not beside it or over the row's pictures.
   await expect.poll(() => sheet.locator('.ps-recipe-step__n').evaluate((el) => {
     const box = el.getBoundingClientRect();
-    const after = getComputedStyle(el, '::after');
+    const after = getComputedStyle(el.querySelector(':scope > .ps-any') ?? el);
     return box.top + parseFloat(after.top) * (box.height / (el as HTMLElement).offsetHeight) - box.bottom;
   })).toBeGreaterThan(0);
 });
@@ -921,7 +921,7 @@ test('a Lied gives each line one Anybook circle, at its start', async ({ page })
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   await expect(page.getByRole('button', { name: 'überlappend' })).toHaveCount(0);
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
-    all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
+    all.map((el) => getComputedStyle(el.querySelector(':scope > .ps-any') ?? el).borderRadius === '50%'));
   await expect.poll(() => circles('.ps-song-line')).toEqual([true, true]);
   expect(await circles('.ps-song-line .ps-card__img')).toEqual(before.map(() => false));
   await expect.poll(pictures).toEqual(before);
@@ -929,7 +929,7 @@ test('a Lied gives each line one Anybook circle, at its start', async ({ page })
   const [ring, first] = await sheet.locator('.ps-song-line').first().evaluate((el) => {
     const box = el.getBoundingClientRect();
     const scale = box.width / (el as HTMLElement).offsetWidth;
-    const after = getComputedStyle(el, '::after');
+    const after = getComputedStyle(el.querySelector(':scope > .ps-any') ?? el);
     return [box.left + (parseFloat(after.left) + parseFloat(after.width)) * scale, el.querySelector('.ps-card')!.getBoundingClientRect().left];
   });
   expect(ring).toBeLessThanOrEqual(first + 0.5);
@@ -1557,8 +1557,8 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
     const scale = card.getBoundingClientRect().width / card.offsetWidth;
     const box = card.querySelector('.ps-card__img') as HTMLElement;
     // Darüber and daneben hang the circle on the symbol's box, überlappend on the card.
-    const host = getComputedStyle(box, '::after').borderRadius === '50%' ? box : card;
-    const ring = getComputedStyle(host, '::after');
+    const host = getComputedStyle(box.querySelector(':scope > .ps-any') ?? box).borderRadius === '50%' ? box : card;
+    const ring = getComputedStyle(host.querySelector(':scope > .ps-any') ?? host);
     const at = box.getBoundingClientRect();
     const hostAt = host.getBoundingClientRect();
     // The mocked symbol is 1 px: asked to be big, it takes what room the box leaves it, as a real one does.
