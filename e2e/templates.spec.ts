@@ -852,6 +852,44 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
 });
 
+/*
+ * A Rezept with the Anybook placeholder: a Zutat keeps its circle on its
+ * card, and a Schritt is read as one — one circle under its number, none on
+ * its pictures, so they keep their size and the row is no taller for them.
+ */
+test('a Rezept gives each Schritt one Anybook circle, under its number', async ({ page }) => {
+  await pickTemplate(page, /^Rezept/);
+  await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
+  const schritte = page.getByRole('region', { name: 'Schritte' });
+  await schritte.getByRole('button', { name: '+ Schritt' }).click();
+  await page.getByLabel('Neuer Schritt').fill('Eier in die Schüssel');
+  await page.getByLabel('Neuer Schritt').press('Enter');
+  await expect(schritte.locator('.row')).toHaveCount(1);
+  await showSheet(page);
+
+  const sheet = page.locator('.preview-frame');
+  const pictures = () => sheet.locator('.ps-recipe-step .ps-card__img').evaluateAll((all) =>
+    all.map((el) => (el as HTMLElement).offsetHeight));
+  const before = await pictures();
+  expect(before.length).toBeGreaterThan(0);
+
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
+    all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
+  await expect.poll(() => circles('.ps-recipe-cards .ps-card__img')).toEqual([true]);
+  expect(await circles('.ps-recipe-step__n')).toEqual([true]);
+  expect(await circles('.ps-recipe-step .ps-card__img')).toEqual(before.map(() => false));
+  expect(await pictures()).toEqual(before);
+  // Under the number, not beside it or over the row's pictures.
+  const [n, ring] = await sheet.locator('.ps-recipe-step__n').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const after = getComputedStyle(el, '::after');
+    return [box.bottom, box.top + parseFloat(after.top) * (box.height / (el as HTMLElement).offsetHeight)];
+  });
+  expect(ring).toBeGreaterThan(n);
+});
+
 /**
  * A Tafel can have a picture beside its name and a colour behind its page —
  * what tells a household's boards apart. The picture is chosen as a Rezept's

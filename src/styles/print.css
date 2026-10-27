@@ -946,7 +946,9 @@
  * card round it, so where the word stands does not matter: above, below or
  * none, the circle is between word and symbol or above the symbol, never on
  * the word. Only where there is a picture: an empty field, a Platzhalter, a
- * blank slot and an Einkaufsliste's places get none.
+ * blank slot and an Einkaufsliste's places get none. A Rezept's Schritt is
+ * read as one: one circle under its number, none on its pictures (her call,
+ * 2026-10-27).
  *
  * Where it goes against the symbol is the material's choice (her calls,
  * 2026-10-26): above it, or over its top right corner — a Spiel's and a
@@ -961,10 +963,12 @@
  * circle never makes a symbol bigger. (Beside was tried and dropped: wide
  * cards, few uses. One host for all since 2026-10-27.)
  */
-.ps-sheet--anybook :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) {
+.ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
+.ps-sheet--anybook .ps-recipe-step__n {
   position: relative;
 }
-.ps-sheet--anybook :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+.ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after,
+.ps-sheet--anybook .ps-recipe-step__n::after {
   content: '';
   position: absolute;
   top: 0;
@@ -975,7 +979,18 @@
   border: 0.25mm dashed #cfc8c1;
   border-radius: 50%;
 }
-.ps-sheet--any-above :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+  right: auto;
+  left: calc(50% - 4.75mm);
+}
+
+/* The Schritt's number stands over its circle, the column as wide as the
+   circle, the row as tall as the two. */
+.ps-sheet--anybook .ps-recipe-step__n {
+  margin: 0 1.25mm 11mm;
+}
+.ps-sheet--anybook .ps-recipe-step__n::after {
+  top: calc(100% + 1.5mm);
   right: auto;
   left: calc(50% - 4.75mm);
 }
@@ -986,7 +1001,7 @@
 .ps-sheet--any-over { --any-side: 5mm; }
 
 /* Growing: the room comes on top of the symbol. Given: it comes off it. */
-.ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, .ps-place .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
+.ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
   box-sizing: content-box;
   padding-top: var(--any-top, 0mm);
 }
