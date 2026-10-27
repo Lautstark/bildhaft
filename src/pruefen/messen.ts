@@ -34,8 +34,6 @@ export interface Stueck {
 export interface Messung {
   stuecke: Stueck[];
   befunde: Befund[];
-  /** What the app's own foot line says about this sheet. */
-  anzeige: string;
   seiten: number;
 }
 
@@ -69,7 +67,7 @@ const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: str
   { sel: '.ps-talk__fields .ps-talk__field', art: () => 'Antwortfeld', sym: null, wort: null, kreis: () => null },
 ];
 
-export function messen(holder: HTMLElement, fall: Fall, anzeige: string): Messung {
+export function messen(holder: HTMLElement, fall: Fall): Messung {
   const sheet = holder.firstElementChild as HTMLElement;
   const origin = sheet.getBoundingClientRect();
   const scale = origin.width / sheet.offsetWidth || 1;
@@ -139,7 +137,7 @@ export function messen(holder: HTMLElement, fall: Fall, anzeige: string): Messun
   const karte = median(stuecke.filter((s) => s.art === 'Spielkarte').map((s) => s.sym?.w ?? 0));
   if (bild && karte) {
     befunde.push(Math.abs(bild - karte) > TOL
-      ? { schwere: 'fehler', text: `Symbol auf dem Spielbogen ${mmText(bild)} mm, auf dem Kartenbogen ${mmText(karte)} mm`, frage: 1 }
+      ? { schwere: 'fehler', text: `Symbol auf Spielbogen und Kartenbogen ungleich (Spielbogen ${mmText(bild)} mm, Kartenbogen ${mmText(karte)} mm)`, frage: 1 }
       : { schwere: 'ok', text: `Symbol auf Spielbogen und Kartenbogen gleich: ${mmText(bild)} mm`, frage: 1 });
   }
   /* Cards of one kind that came out unlike: a word that wrapped, mostly. */
@@ -160,7 +158,7 @@ export function messen(holder: HTMLElement, fall: Fall, anzeige: string): Messun
       if (!befunde.some((one) => one.text === text)) befunde.push({ ...befund, text });
     }
   }
-  return { stuecke, befunde, anzeige, seiten: holder.querySelectorAll('.ps-paper').length };
+  return { stuecke, befunde, seiten: holder.querySelectorAll('.ps-paper').length };
 }
 
 export function median(values: number[]): number {

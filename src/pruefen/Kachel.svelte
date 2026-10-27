@@ -69,7 +69,7 @@
       const sheet = preview.sheet;
       if (gone || !sheet || !preview.holder) return;
       size = { w: sheet.offsetWidth, h: sheet.offsetHeight };
-      onGemessen(fall.id, messen(preview.holder, fall, preview.cardSize));
+      onGemessen(fall.id, messen(preview.holder, fall));
       /* Wrapped to another width, the sheet is another size. */
       if (gezeigt) {
         const watching = new ResizeObserver(() => { size = { w: sheet.offsetWidth, h: sheet.offsetHeight }; });
