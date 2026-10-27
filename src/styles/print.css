@@ -963,7 +963,7 @@
  * bigger. One host for all since 2026-10-27.
  */
 .ps-sheet--anybook:not(.ps-sheet--any-over) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
-.ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk__card, .ps-spiel__bild):has(img),
+.ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img),
 .ps-sheet--anybook :is(.ps-recipe-step__n, .ps-song-line:has(img)) {
   position: relative;
 }
@@ -971,7 +971,7 @@
    below gives it a place. */
 .ps-any { display: none; }
 .ps-sheet--anybook:not(.ps-sheet--any-over) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any,
-.ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any,
+.ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any,
 .ps-sheet--anybook .ps-recipe-step__n > .ps-any,
 .ps-sheet--anybook .ps-song-line:has(img) > .ps-any {
   display: block;
@@ -1087,6 +1087,8 @@
 
 /*
  * Over (her calls, 2026-10-27): the circle on the card itself, 1 mm in
+ * (a card to cut out — a Spiel's, a Plauderbuch's — from its cut line, not
+ * from the card inside its laminating air: her call, again, 2026-10-27)
  * from its top right corner — its edge, or its frame's — on every card
  * alike, the word on top or not: on top, a word longer than the corner
  * leaves is covered, and that is the price of the pairing. --any-pad is how
@@ -1118,7 +1120,7 @@
   --any-s0: var(--sym);
   --any-s: var(--any-sym);
 }
-.ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any {
+.ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any {
   top: 1mm;
   right: 1mm;
 }

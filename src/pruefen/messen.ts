@@ -80,7 +80,7 @@ const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: str
     /* The card itself, not the cell with the air round it: laminated, it is the field. */
     sel: '.ps-talk-cut__cell', box: '.ps-talk__card',
     art: (el) => (el.closest('.ps-spiel-cut') ? 'Spielkarte' : 'Plauderkarte'),
-    sym: 'img', wort: '.ps-talk__word', kreis: (el) => [el.querySelector('.ps-title__pic'), el.querySelector('.ps-talk__card')],
+    sym: 'img', wort: '.ps-talk__word', kreis: (el) => [el.querySelector('.ps-title__pic'), el.querySelector('.ps-talk__card'), el],
   },
   { sel: '.ps-spiel__rows .ps-talk__field', art: () => 'Klettfeld', sym: null, wort: null, kreis: () => [] },
   { sel: '.ps-spiel__lager .ps-talk__field', art: () => 'Ablagefeld', sym: null, wort: null, kreis: () => [] },
