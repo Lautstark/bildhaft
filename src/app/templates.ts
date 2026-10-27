@@ -44,6 +44,11 @@ export interface PrintOffer {
   background?: boolean;
   /** A frame around a whole strip, as well as around each card. */
   stripFrame?: boolean;
+  /**
+   * `false`: the Anybook circle only over the symbol's corner, no „darüber“ —
+   * a Spiel's and a Plauderbuch's cards have no room above their symbol.
+   */
+  anybookAbove?: false;
   cutLines?: boolean;
   /** The line as written, over or under its pictures, and how big: a strip's, a Lied's. */
   sentence?: boolean;
@@ -292,14 +297,13 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       cardBackground: '#ffffff',
       accentColour: '#e0558c', gameGroundColour: '#fdeef3',
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
-      // Its cards are given: the Anybook circle lies over the symbol's corner rather than shrinking it.
-      anybookPlace: 'over',
     }),
-    fixed: () => ({ layout: 'spiel' }),
+    // Its cards have no room above their symbol: the Anybook circle lies over its corner.
+    fixed: () => ({ layout: 'spiel', anybookPlace: 'over' }),
     zeileInEdit: true,
     /* The symbol's size is the sheet's own answer — the menu shows it and
        asks only for the margin round the cut cards. */
-    offers: () => ({ ...BASE, size: { kind: 'board' }, margin: 'cut', game: true }),
+    offers: () => ({ ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookAbove: false }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
@@ -320,11 +324,10 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       showLabel: false, labelPosition: 'below', labelSizePt: 9,
       cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56', cardBackground: '#ffffff',
       gameGroundColour: '#d8e9fc', accentColour: '#3f88e0',
-      // Its cards are given, as a Spiel's: the Anybook circle lies over the symbol's corner.
-      anybookPlace: 'over',
       showPageNumbers: false, ...HEADED,
     }),
-    fixed: () => ({ layout: 'plauderbuch' }),
-    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true }),
+    // As a Spiel's: no room above the symbol, the Anybook circle lies over its corner.
+    fixed: () => ({ layout: 'plauderbuch', anybookPlace: 'over' }),
+    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true, anybookAbove: false }),
   },
 };

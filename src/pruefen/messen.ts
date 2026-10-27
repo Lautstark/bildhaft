@@ -53,14 +53,14 @@ const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: str
     sel: '.ps-card:not(.ps-card--empty)',
     art: (el) => (el.closest('.ps-cut') ? 'Schnittkarte' : el.closest('.ps-place') ? 'Platz' : el.closest('.ps-tafel') ? 'Feld' : 'Karte'),
     sym: '.ps-card__img img', wort: '.ps-card__label',
-    kreis: (el) => el.querySelector(':scope > .ps-card__frame') ?? el,
+    kreis: (el) => el.querySelector('.ps-card__img'),
   },
-  { sel: '.ps-spiel__bild', art: () => 'Spielbild', sym: 'img', wort: '.ps-spiel__wort', kreis: (el) => el },
+  { sel: '.ps-spiel__bild', art: () => 'Spielbild', sym: 'img', wort: '.ps-spiel__wort', kreis: (el) => el.querySelector('.ps-title__pic') },
   {
     /* The card itself, not the cell with the air round it: laminated, it is the field. */
     sel: '.ps-talk-cut__cell', box: '.ps-talk__card',
     art: (el) => (el.closest('.ps-spiel-cut') ? 'Spielkarte' : 'Plauderkarte'),
-    sym: 'img', wort: '.ps-talk__word', kreis: (el) => el,
+    sym: 'img', wort: '.ps-talk__word', kreis: (el) => el.querySelector('.ps-title__pic'),
   },
   { sel: '.ps-spiel__rows .ps-talk__field', art: () => 'Klettfeld', sym: null, wort: null, kreis: () => null },
   { sel: '.ps-spiel__lager .ps-talk__field', art: () => 'Ablagefeld', sym: null, wort: null, kreis: () => null },
@@ -95,8 +95,8 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
     const bottom = Math.max(...rects.map((r) => r.bottom));
     return mm(new DOMRect(left, top, right - left, bottom - top));
   };
-  /* The circle is a ::after, which has no box of its own to ask: its place
-     is read off its computed style, in the host's padding box. */
+  /* The circle is the symbol box's ::after, which has no box of its own to
+     ask: its place is read off its computed style, in the host's padding box. */
   const circle = (host: Element | null): Rect | null => {
     if (!(host instanceof HTMLElement)) return null;
     const style = getComputedStyle(host, '::after');

@@ -821,6 +821,25 @@ export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.62, a4: 1 };
 export const GAME_FIELD_MM = 30;
 
 type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt' | 'punch'>;
+type AnybookSettings = Partial<Pick<PrintSettings, 'anybookCircle'>>;
+
+/** What the card keeps clear a side for an Anybook circle over its corner; print.css's --any-side. */
+const ANYBOOK_SIDE_MM = 5;
+/** The circle itself, as print.css draws it: no symbol under it is smaller. */
+const ANYBOOK_CIRCLE_MM = 9.5;
+/**
+ * A Spiel's and a Plauderbuch's symbol: as big as the smaller card, the
+ * Kartenbogen's, leaves it room, and never under 8 mm. With an Anybook circle
+ * (over the corner: there is no room above) the card keeps up to 5 mm a side
+ * clear and the symbol gives up what the card is short of — at the circle's
+ * own size it gives up no more, and the circle lies further over it. The one
+ * size on sheet and card.
+ */
+function cardSymbol(settings: AnybookSettings, room: { width: number; height: number }): number {
+  const full = Math.max(8, Math.min(room.width, room.height));
+  if (!settings.anybookCircle) return full;
+  return Math.min(full, Math.max(ANYBOOK_CIRCLE_MM, room.width - 2 * ANYBOOK_SIDE_MM));
+}
 type GameShape = { units: number; zellen: number; platz: number };
 
 /** The air a Spiel keeps under its title, beyond the title's own margin. */
@@ -911,7 +930,7 @@ export function gameFits(
 }
 
 export function gameGeometry(
-  settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
+  settings: GameSettings & AnybookSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
 ): GameGeometry {
   const { k, gap, height, reihen, lagerCols, fieldW } = gameRaster(settings, page, reserve, shape);
   /* The air round a cut card is the margin, as everywhere. */
@@ -926,7 +945,7 @@ export function gameGeometry(
   /* The picture takes what the smaller of the two boxes leaves it — the cut
      card's — so a symbol is the one size on the sheet and on the card, and
      the sheet says how big that is; nobody is asked. */
-  const symW = Math.max(8, cutH - label - 3 * k);
+  const symW = cardSymbol(settings, { width: cutW - 2 * k, height: cutH - label - 3 * k });
   return {
     fieldW, fieldH, gap, air, k, height,
     lagerW: lagerCols * fieldW + (lagerCols - 1) * gap,
@@ -941,7 +960,7 @@ export function gameGeometry(
 const LAMINATE_MM = 2;
 
 export function talkGeometry(
-  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel' | 'labelSizePt' | 'cutMarginMm'>,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel' | 'labelSizePt' | 'cutMarginMm'> & AnybookSettings,
   page: { width: number; height: number }, reserve: number,
 ): TalkGeometry {
   const k = TALK_SCALE[settings.paper];
@@ -960,7 +979,7 @@ export function talkGeometry(
   const cutH = Math.max(10, cardH - 2 * LAMINATE_MM);
   /* Two lines for the word: an Antwort is often more than one. */
   const label = settings.showLabel ? 2 * settings.labelSizePt * 0.3528 * 1.15 + k : 0;
-  const symW = Math.max(8, Math.min(cutW - 2 * k, cutH - label - 3 * k));
+  const symW = cardSymbol(settings, { width: cutW - 2 * k, height: cutH - label - 3 * k });
   return { cols, rows, cardW, cardH, gap, air: settings.cutMarginMm * k, k, height, cutW, cutH, symW };
 }
 

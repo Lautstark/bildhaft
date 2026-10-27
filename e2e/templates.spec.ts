@@ -1434,21 +1434,21 @@ test('a card that grows round its symbol grows upwards for the Anybook placehold
     const mm = 96 / 25.4;
     const card = document.querySelector('.preview-frame .ps-card:has(img)') as HTMLElement;
     const scale = card.getBoundingClientRect().width / card.offsetWidth;
-    const img = card.querySelector('.ps-card__img') as HTMLElement;
-    const box = card.getBoundingClientRect();
-    const pic = img.getBoundingClientRect();
-    const after = getComputedStyle(card, '::after');
+    const box = card.querySelector('.ps-card__img') as HTMLElement;
+    const after = getComputedStyle(box, '::after');
+    const pic = (box.querySelector('img') as HTMLElement).getBoundingClientRect();
+    const at = box.getBoundingClientRect();
     return {
       width: card.offsetWidth / mm,
       height: card.offsetHeight / mm,
-      symbol: img.offsetWidth / mm,
+      symbol: box.clientWidth / mm,
       circle: after.content !== 'none' && after.content !== 'normal',
-      // The symbol's box below the circle (1 mm in, 9.5 mm tall): none of it under the sticker.
-      below: (pic.top - (box.top + scale * 10.5 * mm)) / scale / mm,
+      // The picture below the circle (at the box's top, 9.5 mm tall): none of it under the sticker.
+      below: (pic.top - (at.top + scale * (parseFloat(after.top) + 9.5 * mm))) / scale / mm,
       // And in the card's middle.
-      off: ((pic.left + pic.right) / 2 - (box.left + box.right) / 2) / scale / mm,
-      // The circle's middle against the card's, in mm.
-      circleOff: (parseFloat(after.left) + 4.75 * mm - card.offsetWidth / 2) / mm,
+      off: ((pic.left + pic.right) / 2 - (card.getBoundingClientRect().left + card.getBoundingClientRect().right) / 2) / scale / mm,
+      // The circle's middle against the box's, in mm.
+      circleOff: (parseFloat(after.left) + 4.75 * mm - box.offsetWidth / 2) / mm,
     };
   });
   const before = await sizes();
@@ -1466,3 +1466,4 @@ test('a card that grows round its symbol grows upwards for the Anybook placehold
   // Darüber means over the symbol's middle.
   expect(Math.abs(after.circleOff)).toBeLessThan(0.3);
 });
+

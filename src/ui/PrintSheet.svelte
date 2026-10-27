@@ -125,7 +125,7 @@
 
   /* And of a Spiel's sheets, for theirs — said in the Plauderbuch's own
      variables, so its field, card and cutting rules apply as they are. */
-  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; units: number; symW: number; }, cols: number): string =>
+  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; units: number; symW: number }, cols: number): string =>
     `--talk-w:${geo.fieldW.toFixed(3)}mm;--talk-h:${geo.fieldH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
     + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--sym:${geo.symW.toFixed(3)}mm;`
     + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--lager-cols:${geo.lagerCols};--spiel-units:${geo.units};--cols:${cols}`;

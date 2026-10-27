@@ -273,11 +273,13 @@ export function achsen(which: CollectionKind, m: Material = testdaten(which)): A
   }
   if (offer.background) wahl('hintergrund', 'Symbol', 'Karten (Hintergrund)', [{ ...aus, set: { cardBackground: null } }, { name: 'gelb', set: { cardBackground: '#fff1b3' } }]);
   if (offer.cutLines) wahl('schnitt', 'Symbol', 'Schnittlinien anzeigen', flag('showCutLines'));
-  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', [
-    { ...aus, set: { anybookCircle: false } },
-    { name: 'darüber', set: { anybookCircle: true, anybookPlace: 'above' } },
-    { name: 'überlappend', set: { anybookCircle: true, anybookPlace: 'over' } },
-  ]);
+  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', offer.anybookAbove === false
+    ? [{ ...aus, set: { anybookCircle: false } }, { ...an, set: { anybookCircle: true } }]
+    : [
+      { ...aus, set: { anybookCircle: false } },
+      { name: 'darüber', set: { anybookCircle: true, anybookPlace: 'above' } },
+      { name: 'überlappend', set: { anybookCircle: true, anybookPlace: 'over' } },
+    ]);
 
   /* The template's own */
   const own = VORLAGE[which];
