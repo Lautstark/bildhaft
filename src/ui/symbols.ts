@@ -210,6 +210,14 @@ export function dropSymbolUrl(provider: ProviderId, id: string, url: string): vo
   if (cache.get(key) === url) forget(key);
 }
 
+/**
+ * A URL known without asking any source: the Prüfseite's test symbols, which
+ * are drawn into data URLs and must reach the sheet without network or store.
+ */
+export function primeSymbolUrl(provider: ProviderId, id: string, url: string): void {
+  cache.set(cacheKey(provider, id), url);
+}
+
 /** Dropped when a provider is reconfigured and its object URLs are revoked. */
 export function clearSymbolCache(provider: ProviderId): void {
   const prefix = `${provider}:`;

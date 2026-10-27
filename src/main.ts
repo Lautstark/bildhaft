@@ -31,4 +31,13 @@ document.documentElement.lang = LANG;
  * that watches the request paths is what caught it happening again here. */
 setSymbolLanguage(LANG);
 
-mount(App, { target: document.getElementById('root')! });
+/* `?pruefen`: the Prüfseite, every template's print in its variants side by
+ * side, on test symbols and nothing of anybody's data. Not linked from the app;
+ * loaded only when asked for, so the app's own bundle carries none of it. */
+if (new URLSearchParams(location.search).has('pruefen')) {
+  void import('./pruefen/Pruefseite.svelte').then(({ default: Pruefseite }) => {
+    mount(Pruefseite, { target: document.getElementById('root')! });
+  });
+} else {
+  mount(App, { target: document.getElementById('root')! });
+}
