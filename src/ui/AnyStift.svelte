@@ -16,9 +16,9 @@
   import { hear, loadVoices, voiceOf } from './voices.svelte.ts';
   import { t } from '../i18n/index.ts';
 
-  /* `section` in the small code sheet, with ✕ and ↺ beside the words; `field`
-     in the Symbol dialog, beside the card's text, where „Mehr …" takes it off
-     (her pick „D", 2026-10-27). */
+  /* `section` in the small code sheet, under its heading; `field` in the
+     Symbol dialog, under the card's text, ▶ and ✕ inside the field (her pick
+     „Karte", 2026-10-27). */
   let { code, mode = 'section' }: { code: CodeHere; mode?: 'section' | 'field' } = $props();
 
   // svelte-ignore state_referenced_locally
@@ -36,8 +36,8 @@
   void loadVoices();
 </script>
 
-{#snippet say()}<div class="any-stift__say{off ? ' any-stift__say--off' : ''}"><input id="any-stift-{code.key}" class="field" type="text" maxlength="120" placeholder={code.standing} bind:value={words} disabled={off} oninput={later} onchange={() => keep()} />{#if !off}<PlayButton label={t('ui.anybook_hear')} text={() => words.trim() || code.standing} hear={(said) => hear(said, voiceOf(materialPrint()?.settings))} trouble={(said) => { trouble = said; }} nothing={t('ui.anybook_nothing')} />{/if}{#if mode === 'section'}<!--
+{#snippet say()}<div class="any-stift__say{off ? ' any-stift__say--off' : ''}{mode === 'field' ? ' any-stift__say--in' : ''}"><input id="any-stift-{code.key}" class="field" type="text" maxlength="120" placeholder={code.standing} bind:value={words} disabled={off} oninput={later} onchange={() => keep()} />{#if !off}<PlayButton label={t('ui.anybook_hear')} text={() => words.trim() || code.standing} hear={(said) => hear(said, voiceOf(materialPrint()?.settings))} trouble={(said) => { trouble = said; }} nothing={t('ui.anybook_nothing')} />{/if}<!--
   ✕ takes the code off, ↺ puts it back: the list's two buttons, her pick over a checkbox.
---><button class="btn quiet sm any-stift__x" type="button" title={off ? t('ui.anybook_back') : t('ui.anybook_remove')} aria-label={off ? t('ui.anybook_back') : t('ui.anybook_remove')} onclick={() => keep(!off)}>{off ? '↺' : '✕'}</button>{/if}</div>{#if off}<p class="small faint">{t('ui.anybook_off_note')}</p>{:else if trouble}<p class="small any-stift__error">{trouble}</p>{/if}{/snippet}
+--><button class="btn quiet sm any-stift__x" type="button" title={off ? t('ui.anybook_back') : t('ui.anybook_remove')} aria-label={off ? t('ui.anybook_back') : t('ui.anybook_remove')} onclick={() => keep(!off)}>{off ? '↺' : '✕'}</button></div>{#if off}<p class="small faint">{t('ui.anybook_off_note')}</p>{:else if trouble}<p class="small any-stift__error">{trouble}</p>{/if}{/snippet}
 
 {#if mode === 'field'}<div class="any-field"><label class="small muted" for="any-stift-{code.key}"><span class="any-mark any-mark--still" aria-hidden="true"></span>{t('ui.anybook_says')}</label>{@render say()}</div>{:else}<section class="any-stift" aria-label={t('ui.anybook_pen')}><h4 class="any-stift__head"><span class="any-mark any-mark--still" aria-hidden="true"></span>{t('ui.anybook_pen')}</h4><label class="small muted" for="any-stift-{code.key}">{t('ui.anybook_says')}</label>{@render say()}</section>{/if}

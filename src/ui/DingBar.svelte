@@ -114,7 +114,7 @@
     {#if offer.anybookOff}<p class="ding-check__why small faint">{t(offer.anybookOff)}</p>{/if}
     {#if mp.settings.anybookCircle && (offer.anybookPlaces ?? ANYBOOK_PLACES).length > 1}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each offer.anybookPlaces ?? ANYBOOK_PLACES as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(`ui.anybook_${place}`)}</button>{/each}</span></div></div>{/if}
     <!-- Der Aktivierungscode oben rechts in der Ecke der ersten Seite (2026-10-27): eine Wahl des Materials, darum hier bei den Codes. -->
-    {#if mp.settings.anybookCircle}<div class="ding__dep">{@render check(t('ui.anybook_activation'), mp.settings.anybookActivation !== false, (next) => mp?.set('anybookActivation', next ? undefined : false))}</div>{/if}
+    {#if mp.settings.anybookCircle}<div class="ding__dep">{@render check(t('ui.anybook_activation'), mp.settings.anybookActivation !== false, (next) => mp?.set('anybookActivation', next ? undefined : false))}{#if mp.settings.anybookOff?.length}<!-- Wo Codes weggenommen sind, sagt es auch das Menü (ihr Wunsch): in Bearbeiten ist ihr Ring rot durchgestrichen. --><p class="ding-check__why small faint">{t(mp.settings.anybookOff.length === 1 ? 'ui.anybook_off_one' : 'ui.anybook_off_n', { n: mp.settings.anybookOff.length })}</p>{/if}</div>{/if}
     {#if offer.pageNumbers}{@render check(t('ui.page_numbers'), mp.settings.showPageNumbers, (next) => mp?.set('showPageNumbers', next))}{/if}
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>

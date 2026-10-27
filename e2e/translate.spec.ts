@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { showSheet, translate } from './helpers.ts';
+import { openSymbolSearch, showSheet, translate } from './helpers.ts';
 
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
@@ -50,6 +50,7 @@ test('remembers a correction and applies it to later sentences', async ({ page }
 
   // Correct "Apfel" to the second offered symbol.
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await openSymbolSearch(page);
   const alternative = labelsForTerm('Apfel')[1];
   await page.locator('.picker__item', { hasText: alternative }).first().click();
   await expect(page.locator('dialog.sheet')).toHaveCount(0);
@@ -109,8 +110,6 @@ test('the „+" opens the same picker as a filled field, rows and all', async ({
   // Wording and crossing out are set before the symbol is, and both survive
   // the pick that closes the dialog.
   await page.getByLabel('Text zum Symbol').fill('Obst');
-  // Crossing out is folded under „Mehr …“, below the pictures.
-  await page.getByText('Mehr …').click();
   await page.getByLabel('Symbol durchstreichen').check();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
@@ -138,6 +137,7 @@ test('the Wortschatz picker draws only the rows it can act on', async ({ page })
   await translate(page, 'Ich möchte einen Apfel essen');
   // A symbol chosen by hand is what puts a word into the Wortschatz.
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await openSymbolSearch(page);
   await page.locator('.picker__item').nth(1).click();
   await expect(page.locator('dialog.sheet')).toHaveCount(0);
 
@@ -343,7 +343,9 @@ test('a focused field inside a sheet is not clipped by its scroll region', async
    * `between` snippet. The assertion is the tight one again — and it is now also
    * what keeps them there.
    */
-  expect(clipped).toMatchObject({ top: 0, left: 0, right: 0 });
+  // Since the dialog is laid out as the card (her pick „Karte“), the field sits
+  // in the search's fold under the picture, with room round it on every side.
+  for (const edge of [clipped.top, clipped.left, clipped.right]) expect(edge).toBeLessThanOrEqual(0);
 });
 
 test('crosses a symbol out for a negation, and keeps it crossed', async ({ page }) => {
@@ -353,7 +355,6 @@ test('crosses a symbol out for a negation, and keeps it crossed', async ({ page 
   await expect(slot.locator('.negate')).toHaveCount(0);
 
   await slot.click();
-  await page.getByText('Mehr …').click();
   await page.getByLabel('Symbol durchstreichen').check();
   // Crossing out is not a choice of symbol, so the dialog stays open for the
   // next thing the user wants to do to this field.
@@ -390,7 +391,6 @@ test('mirrors a symbol in its one field, and keeps it mirrored', async ({ page }
   await expect.poll(() => turned(slot.locator('img'))).toBe('none');
 
   await slot.click();
-  await page.getByText('Mehr …').click();
   await page.getByLabel('Symbol spiegeln').check();
   // Like crossing out, it is not a choice of symbol: the dialog stays open.
   await expect(page.locator('dialog.sheet')).toBeVisible();

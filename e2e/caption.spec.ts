@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { showSheet, translate } from './helpers.ts';
+import { openSymbolSearch, showSheet, translate } from './helpers.ts';
 
 /**
  * The words under a symbol.
@@ -45,6 +45,7 @@ test('survives being settled by picking a symbol in the same breath', async ({ p
   await translate(page, 'Ich möchte einen Apfel essen');
 
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await openSymbolSearch(page);
   await caption(page).fill('der Apfel');
   // No pause: the pick closes the dialog while the typing is still on its way.
   await page.locator('.picker__item', { hasText: labelsForTerm('Apfel')[1] }).first().click();
@@ -97,6 +98,7 @@ test('Enter in the search field searches instead of closing', async ({ page }) =
   await translate(page, 'Ich möchte einen Apfel essen');
 
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await openSymbolSearch(page);
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.getByLabel('Symbol suchen').press('Enter');
 
@@ -108,6 +110,7 @@ test('Enter on a symbol picks it rather than closing the field unchanged', async
   await translate(page, 'Ich möchte einen Apfel essen');
 
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await openSymbolSearch(page);
   const alternative = labelsForTerm('Apfel')[1];
   await page.locator('.picker__item', { hasText: alternative }).first().focus();
   await page.keyboard.press('Enter');

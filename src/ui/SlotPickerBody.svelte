@@ -6,20 +6,15 @@
    * stale-answer guard, the roving arrows and the credit line — is
    * `@lautstark/bildquelle/svelte/SymbolSearch`. What is left here is everything
    * bildhaft's picker carries that a search does not: a picture of the user's
-   * own and the square it is cut to, the caption that gets printed, the negation
-   * checkbox, and the line about the choice being remembered.
+   * own and the square it is cut to, crossing out and mirroring, the caption
+   * that gets printed, and what the Anybook pen says.
    *
-   * **The three rows sit between the field and the grid, which is where they
-   * have always sat.** Adopting the component moved them above the field: it is
-   * the field *and* the grid in one block — `busy` suppresses both, which is the
-   * whole reason it is a prop rather than a wrapper — so anything of ours had to
-   * go above the block or below it, and above put the search field fourth in a
-   * dialog somebody opened in order to search. That was reported rather than
-   * lived with, and §6 answers it: if a component cannot serve one consumer,
-   * change the component. bildquelle v2.4.0's `between` snippet is that change —
-   * drawn after the field and before the results box, in neither of them — and
-   * the three rows go in it. app.css's sentence about the negation, "below the
-   * own-image row and above the suggestions", is true again as written.
+   * **Laid out as the card (her pick „Karte", 2026-10-27).** The picture large
+   * in the middle with its two buttons beside it — they change the picture, so
+   * they sit with it — and the words under it, one width. The search is not
+   * shown while there is a picture: pressing the picture folds it open under it,
+   * an own picture is its last tile, and choosing is done, as it always was. The
+   * crop takes the fold's place and everything else goes away while it is up.
    */
   import SymbolSearch, { type SearchAnswer } from '@lautstark/bildquelle/svelte/SymbolSearch';
   import { getProvider, type Candidate } from '@lautstark/bildquelle';
@@ -29,16 +24,12 @@
   import NegationCross from '../pieces/NegationCross.svelte';
   import type { Picking } from './slotPicker.svelte.ts';
   import AnyStift from './AnyStift.svelte';
-  import { writeAnybook } from './anybookEdit.ts';
-  import { materialPrint } from '../app/print.ts';
-
-  /** Whether the field's code is taken off, as the material says now. */
-  const anyOff = (key: string): boolean => materialPrint()?.settings.anybookOff?.includes(key) ?? false;
   import { t } from '../i18n/index.ts';
 
   let { s }: { s: Picking } = $props();
 
-  let upload: HTMLInputElement;
+  /* Inside the fold, so it comes and goes with it. */
+  let upload: HTMLInputElement | undefined = $state();
   /** While a square is being chosen, everything else on the sheet goes away:
       a live grid of symbols under an open crop is a press that throws the crop
       away without saying so. */
@@ -131,24 +122,29 @@
   $effect(() => { if (cropping) s.cropper?.focus(); });
 
   function chose(): void {
-    const file = upload.files?.[0];
-    upload.value = '';
+    const file = upload?.files?.[0];
+    if (upload) upload.value = '';
     if (file) void s.beginCrop(file);
   }
 </script>
 
 <!--
-  The search, and the pictures it answers with. conventions.md §6.4.
+  Her pick „Karte" (2026-10-27): the picture large in the middle, as on the
+  card, the two things that change it beside it as small buttons, then the
+  words. The search is not shown while there is a picture — it folds open
+  under it when the picture is pressed, and choosing one is done, as before.
+  A field with nothing chosen yet opens with it.
+--><div class="picker__pic" hidden={cropping}><button type="button" class="word__pic picker__own-shown picker__tile{shown ? '' : ' picker__own-shown--empty'}" aria-expanded={s.searching} aria-label={t('ui.picker_change')} title={t('ui.picker_change')} onclick={() => { s.searching = !s.searching; }}>{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{:else}<span class="picker__tile-ask" aria-hidden="true">?</span>{/if}</button>{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<span class="picker__tools">{#if negate}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.negated} aria-label={t('ui.cross_out')} title={t('ui.cross_out')} onclick={() => { s.negated = !s.negated; negate(s.negated); }}>⊘</button>{/if}{#if mirror}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.mirrored} aria-label={t('ui.mirror')} title={t('ui.mirror')} onclick={() => { s.mirrored = !s.mirrored; mirror(s.mirrored); }}>⇆</button>{/if}</span>{/if}</div><!--
+  The search, folded open under the picture. conventions.md §6.4.
 
   The tiles carry no `aria-pressed` and the component draws none: these tiles do
   not come back. Pressing one closes the dialog with an answer, so an attribute
   announcing a state would be announcing one the control does not have. The mark
   on the stored choice is `picker__item--active`, which is a class either way.
-
-  The suggestions are not a block above the grid — they are the `suggestions`
-  prop and go into the same results list, declined by the component itself the
-  moment a word has been searched.
---><SymbolSearch
+  A picture of the user's own is the last tile — not one of the hits, so
+  nothing that picks a hit can open the file chooser; the crop takes the
+  fold's place.
+-->{#if s.searching || cropping}<div class="picker__fold"><SymbolSearch
   class="picker__search"
   provider={source}
   words={{ field: t('ui.search_symbol'), placeholder: s.isNew ? t('ui.search_word') : t('ui.search_other_word') }}
@@ -157,53 +153,15 @@
   suggestions={s.suggested}
   describe={captionOf}
   onpick={(candidate) => s.finish(() => s.handlers.onChoose(candidate))}
-><!--
-  Everything between the field and the pictures, in `between` — after the one,
-  before the other, inside neither. The picture the field shows with the
-  buttons that change it, and the crop that replaces them; the words and the
-  rest went under the pictures (her pick „D").
-
-  It takes no argument. `between` is handed the answer the way every snippet
-  here is, and nothing in it is a function of that answer: an own picture is a
-  property of the slot, the same whether the grid below shows four hits or none.
--->{#snippet between()}<!--
-  The picture the field is actually showing.
-
-  It was the one thing this dialog would not show. Nothing here is marked while
-  an own picture is up — the suggestions below are what the slot would fall back
-  to, not what it holds — so opening a field that had a photograph in it
-  presented a search for a word and no photograph anywhere, and read as having
-  lost it. It is shown where the buttons that change it are, because "keep,
-  replace, remove" is one decision and needs the picture in front of it.
-
-  The same square for a symbol, and an empty one for a field the „+" just
-  made, so the dialog looks the same wherever it opens. It is drawn with the
-  cross and the mirror as they are ticked below, which is how a tick is seen
-  before the dialog closes.
---><div class="picker__own" hidden={cropping}><span class="word__pic picker__own-shown{shown ? '' : ' picker__own-shown--empty'}">{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{/if}</span><label class="btn sm" style="cursor:pointer">{t('ui.own_picture_choose')}<!--
+>{#snippet between()}<div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
+  No buttons of its own: Fertig keeps the square — so does Enter — and the ✕
+  drops it, which is what all three mean everywhere else here.
+--><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet trailing()}<span class="picker__own"><label class="picker__own-add">{t('ui.own_picture_choose')}<!--
   A file of the user's own. bildhaft keeps the bytes rather than a path, so
   moving or deleting the original afterwards changes nothing here.
---><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(clear)}>{t('ui.own_picture_remove')}</button>{/if}</div><!--
---><div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
-  No buttons of its own, and it had two. Both went the same way and for the same
-  reason: this dialog already has a footer, the footer already says what it
-  does, and a control repeating that an inch higher is a question about which of
-  them is the real one rather than a choice. Fertig keeps the square — so does
-  Enter — and the ✕ drops it, which is what all three mean everywhere else here.
---><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch><!--
-  What is on the card and what the pen says, under the pictures (her pick
-  „D", 2026-10-27): the pictures are what the dialog is opened for, the words
-  are what is left to set once one is chosen. Side by side where the material
-  prints Anybook codes, the caption alone where it does not.
-
-  The caption: a field of its own rather than a rewrite of the source word, so
-  a correction stays remembered under the word that was typed. The
-  placeholder is what would print without it, which is what makes an empty
-  field readable as "unchanged" — and clearing it is therefore the reset.
--->{#if s.handlers.onLabel || s.handlers.anybook}<div class="picker__card{s.handlers.onLabel && s.handlers.anybook ? ' picker__card--two' : ''}" hidden={cropping}>{#if s.handlers.onLabel}<label class="picker__caption"><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept || t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if s.handlers.anybook}<AnyStift code={s.handlers.anybook} mode="field" />{/if}</div>{/if}<!--
-  The rest, folded under „Mehr …": crossing out and mirroring are properties
-  of the field, not a different symbol, so they do not settle the dialog —
-  tick, see it, carry on. Taking the field's code off sits with them. Open
-  when one of them is already on, so nothing set is out of sight. A place
-  that can do none of it passes no handler, and the line is not drawn.
--->{#if s.handlers.onNegate || s.handlers.onMirror || s.handlers.anybook}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}{@const code = s.handlers.anybook}<details class="picker__more" hidden={cropping} open={s.negated || s.mirrored || (code ? anyOff(code.key) : false)}><summary class="small">{t('ui.picker_more')}</summary><div class="picker__negate">{#if negate}<label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; negate(s.negated); }} />{t('ui.cross_out')}</label>{/if}{#if mirror}<label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; mirror(s.mirrored); }} />{t('ui.mirror')}</label>{/if}{#if code}{@const gone = anyOff(code.key)}<button class="btn sm{gone ? '' : ' destructive'}" type="button" onclick={() => writeAnybook(code.key, materialPrint()?.settings.anybookSay?.[code.key] ?? null, !gone, code.standing)}>{gone ? t('ui.anybook_back') : t('ui.anybook_remove')}</button>{/if}</div></details>{/if}{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}
+--><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(clear)}>{t('ui.own_picture_remove')}</button>{/if}</span>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch></div>{/if}<!--
+  The words. The caption is a field of its own rather than a rewrite of the
+  source word, so a correction stays remembered under the word that was typed;
+  its placeholder is what would print without it, so clearing it is the reset.
+  What the pen says under it, where the material prints Anybook codes.
+-->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept || t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if s.handlers.anybook}<div class="picker__say" hidden={cropping}><AnyStift code={s.handlers.anybook} mode="field" /></div>{/if}

@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { translate } from './helpers.ts';
+import { openSymbolSearch, translate } from './helpers.ts';
 
 /**
  * Cutting a picture of the user's own down to a square before it is stored.
@@ -39,6 +39,8 @@ const RED = [214, 40, 40];
 const GREEN = [40, 160, 60];
 
 async function attach(page: Page, data: string, name = 'Bente.png'): Promise<void> {
+  // An own picture is the search's last tile, under the picture.
+  await openSymbolSearch(page);
   await page.locator('.picker__own input[type=file]').setInputFiles({
     name, mimeType: 'image/png', buffer: Buffer.from(data, 'base64'),
   });

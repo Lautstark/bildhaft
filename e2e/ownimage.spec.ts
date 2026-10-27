@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { rowFor, translate } from './helpers.ts';
+import { openSymbolSearch, rowFor, translate } from './helpers.ts';
 
 /**
  * A picture of the user's own, in place of a symbol.
@@ -16,6 +16,8 @@ import { rowFor, translate } from './helpers.ts';
 const PHOTO = 'iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAD0lEQVR4nGNg+M8ARVhYAIaXCPjDmz7KAAAAAElFTkSuQmCC';
 
 async function attachPhoto(page: Page, name = 'Bente.png'): Promise<void> {
+  // An own picture is the search's last tile, under the picture.
+  await openSymbolSearch(page);
   await page.locator('.picker__own input[type=file]').setInputFiles({
     name, mimeType: 'image/png', buffer: Buffer.from(PHOTO, 'base64'),
   });
@@ -63,15 +65,15 @@ test('the picker shows the picture the field is already holding', async ({ page 
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 
   await slot.click();
-  await expect(page.locator('.picker__grid')).toBeVisible();
+  // The search stays folded while there is a picture (her pick „Karte“): the picture is what is shown.
+  await expect(page.locator('.picker__grid')).toHaveCount(0);
 
   /*
    * The picture itself, not a placeholder: 3 is the fixture and 1 is the
-   * ARASAAC mock, so the width says which of them arrived. Beside the buttons
-   * that change it, because keep, replace and remove are one decision and it
-   * needs the picture in front of it.
+   * ARASAAC mock, so the width says which of them arrived. Large, as on the
+   * card, and pressed it opens the search that replaces it.
    */
-  const shown = page.locator('.picker__own img');
+  const shown = page.locator('.picker__tile img');
   await expect(shown).toHaveCount(1);
   await expect(shown).toHaveJSProperty('naturalWidth', 3);
 
@@ -79,9 +81,10 @@ test('the picker shows the picture the field is already holding', async ({ page 
   // dialog looks the same whatever the field holds. 1 is the ARASAAC mock.
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
   await page.locator('.row').first().locator('.slot').nth(1).click();
-  await expect(page.locator('.picker__grid')).toBeVisible();
+  await expect(page.locator('.picker__grid')).toHaveCount(0);
   await expect(shown).toHaveCount(1);
   await expect(shown).toHaveJSProperty('naturalWidth', 1);
+  await openSymbolSearch(page);
   await expect(page.getByRole('button', { name: 'Eigenes Bild entfernen' })).toHaveCount(0);
 });
 
@@ -93,6 +96,7 @@ test('leaves the symbol underneath, and uncovers it again on removal', async ({ 
   await expect.poll(() => widths(page)).toEqual([1, 1, 3, 1]);
 
   await slot.click();
+  await openSymbolSearch(page);
   await page.getByRole('button', { name: 'Eigenes Bild entfernen' }).click();
   // The ARASAAC symbol was never discarded, so the slot is not left empty.
   await expect.poll(() => widths(page)).toEqual([1, 1, 1, 1]);

@@ -1974,7 +1974,7 @@ footer.footer {
 /* ---------------------------------------------------------- anybook codes */
 
 /* A field's code in Bearbeiten (AnyMark): a small ring in the card's top left
-   corner, away from its ×; orange for words of its own, struck through
+   corner, away from its ×; orange for words of its own, struck through in red
    when it is off. Changed in the Symbol dialog's „Anybook-Stift“ (AnyStift),
    or in the small code sheet where there is no such dialog. The print
    preview only shows the codes as they print. */
@@ -1995,7 +1995,7 @@ footer.footer {
 .any-mark--inline:hover { border-color: var(--accent); }
 /* Words of its own: the whole ring in the accent (her call), not a dot beside it. */
 .any-mark--own { border-color: var(--accent); background: var(--surface) radial-gradient(circle, var(--accent) 0 2.5px, transparent 3px); }
-.any-mark--off { opacity: .55; background: var(--surface) linear-gradient(135deg, transparent calc(50% - 1px), var(--text) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
+.any-mark--off { border-color: var(--danger); background: var(--surface) linear-gradient(135deg, transparent calc(50% - 1px), var(--danger) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
 .any-mark--still { display: inline-block; vertical-align: -3px; margin-right: 6px; }
 .row__head > .any-mark--inline { margin-right: 4px; }
 
@@ -2005,18 +2005,33 @@ footer.footer {
 .any-stift__say { display: flex; gap: 6px; align-items: center; }
 .any-stift__say .field { flex: 1; min-width: 0; }
 .any-stift__say--off .field { text-decoration: line-through; opacity: .55; }
+/* In the Symbol dialog ▶ and ✕ sit inside the field, so it is as wide as the text above it. */
+.any-stift__say--in { position: relative; }
+.any-stift__say--in .field { padding-right: 76px; }
+.any-stift__say--in > .btn { position: absolute; top: 50%; translate: 0 -50%; right: 6px; }
+.any-stift__say--in > .btn:not(:last-child) { right: 40px; }
 
-/* The Symbol dialog's foot of words (her pick „D"): the card's text and what
-   the pen says side by side, „Mehr …" under them. */
-.picker__card { margin-top: 14px; }
-.picker__card--two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; align-items: start; }
-.picker__card .picker__caption { margin-top: 0; }
+/* The Symbol dialog as a card (her pick „Karte", 2026-10-27): the picture
+   large in the middle with its two buttons beside it, the search folded open
+   under it on demand, then the words, all one width. */
+.picker__pic { display: grid; justify-items: center; gap: 8px; }
+.word__pic.picker__own-shown.picker__tile { width: 120px; height: 120px; padding: 8px; border: 0; border-radius: var(--radius-sm); outline: 1px solid var(--line); cursor: pointer; }
+.word__pic.picker__own-shown--empty.picker__tile { outline-style: dashed; }
+.picker__tile[aria-expanded="true"] { outline: 2px solid var(--accent); }
+.picker__tile-ask { font-size: 32px; color: var(--text-faint); }
+.picker__tools { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.picker__tool { width: 34px; height: 34px; border: 0; background: transparent; color: var(--text-dim); font: inherit; font-size: 15px; cursor: pointer; }
+.picker__tool + .picker__tool { border-left: 1px solid var(--line); }
+.picker__tool[aria-checked="true"] { background: var(--accent); color: #fff; }
+.picker__fold { margin-top: 12px; padding: 12px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.picker__own { display: contents; }
+.picker__own-add { display: grid; place-items: center; min-height: 96px; padding: 8px 6px; box-sizing: border-box; text-align: center; font-size: 12.5px; color: var(--text-dim); border: 1.5px dashed var(--line); border-radius: var(--radius-sm); cursor: pointer; }
+.picker__own-add:hover { color: var(--text); border-color: var(--text-faint); }
+.picker__pic + .picker__caption, .picker__fold + .picker__caption { margin-top: 14px; }
+.picker__say { margin-top: 10px; }
 .any-field { display: grid; gap: 4px; min-width: 0; }
 .any-field > label { display: flex; align-items: center; }
-.any-field .any-mark--still { width: 13px; height: 13px; vertical-align: 0; margin-right: 5px; }
-.picker__more { margin-top: 10px; }
-.picker__more > summary { cursor: pointer; color: var(--text-dim); width: fit-content; }
-.picker__more .picker__negate { margin-top: 8px; }
-.picker__card[hidden], .picker__more[hidden] { display: none; }
+.any-field .any-mark--still { width: 13px; height: 13px; margin-right: 5px; border-width: 1.5px; background-size: auto; }
+.picker__pic[hidden], .picker__say[hidden] { display: none; }
 .any-stift__error, .any-error { color: var(--danger); }
 .any-voice { display: flex; align-items: center; gap: 10px; }

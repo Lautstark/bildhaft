@@ -145,3 +145,9 @@ export async function untilKept(page: Page, key: string, value: unknown): Promis
     return rows.some((row) => row.print?.[k as string] === v);
   }, [key, value] as const)).toBe(true);
 }
+
+/** The Symbol dialog keeps its search folded under the picture while one is chosen (her pick „Karte“): opens it. */
+export async function openSymbolSearch(page: Page): Promise<void> {
+  const tile = page.locator('dialog.sheet .picker__tile');
+  if (await tile.getAttribute('aria-expanded') !== 'true') await tile.click();
+}

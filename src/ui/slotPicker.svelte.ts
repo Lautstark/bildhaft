@@ -1,4 +1,5 @@
 import type { Candidate, ProviderId, Slot } from '../core/types.ts';
+import { symbolIdFor } from '../core/types.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { openSheet, type Handle } from '@lautstark/design/svelte/sheet';
 import { CLOSE } from './dialog.ts';
@@ -70,6 +71,8 @@ export class Picking {
    *  Cleared by the next crop, so it is never left standing over a fresh one. */
   cropFailed = $state('');
   caption = $state('');
+  /** Whether the search is open under the picture: closed while there is one (her pick „Karte"), open on an empty field. */
+  searching = $state(false);
   negated = $state(false);
   mirrored = $state(false);
   /** A picture waiting to be cut, and then nothing else on the sheet is shown.
@@ -117,6 +120,7 @@ export class Picking {
     this.isNew = !slot.concept;
     this.suggested = this.stored;
     this.caption = slot.label ?? '';
+    this.searching = !symbolIdFor(slot, provider);
     this.negated = slot.negated ?? false;
     this.mirrored = slot.mirrored ?? false;
   }
