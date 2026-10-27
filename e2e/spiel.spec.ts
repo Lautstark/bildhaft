@@ -141,7 +141,7 @@ test('das Spiel-Menü zeigt das Maß und hält die zwei Farben', async ({ page }
   // The symbol's size is the sheet's own answer, shown as a fact.
   const chip = page.locator('.ding__chip[aria-label="Symbol"]');
   await chip.click();
-  await expect(page.getByText(/folgt dem Blatt/)).toBeVisible();
+  await expect(page.getByText(/^Symbol \d+ mm$/)).toBeVisible();
   await expect(page.getByLabel('Symbolgröße')).toHaveCount(0);
 
   // The Spiel menu holds the board's ground and the accent that frames the
