@@ -1030,13 +1030,15 @@
 
 /* A Spiel's and a Plauderbuch's box is the symbol's own size, with the
    card's air round it: with the circle it is the card's, as a Tafel's is, so
-   the circle is in the card's corner, and the picture keeps the sheet's
-   size, which left it the room (cardSymbol() in printSheet.ts). */
+   the circle is in the card's corner, and the picture, at the bottom as on
+   every card, keeps the sheet's size, which gave up the room (cardSymbol()
+   in printSheet.ts). */
 .ps-sheet--anybook :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic:has(img) {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   height: auto;
+  align-items: end;
 }
 .ps-sheet--anybook :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic img {
   max-width: var(--sym);

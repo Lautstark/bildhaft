@@ -807,26 +807,22 @@ export const GAME_FIELD_MM = 30;
 type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt' | 'punch'>;
 type AnybookSettings = Partial<Pick<PrintSettings, 'anybookCircle'>>;
 
-/**
- * What a Spiel's or Plauderbuch's card keeps clear a side for an Anybook
- * circle over its corner: twice print.css's --any-side, its symbol being
- * centred in the card rather than set to the bottom of its box.
- */
-const ANYBOOK_SIDE_MM = 5;
+/** What a symbol gives up a side for an Anybook circle over its corner; print.css's --any-side. */
+const ANYBOOK_SIDE_MM = 2.5;
 /** The circle itself, as print.css draws it: no symbol under it is smaller. */
 const ANYBOOK_CIRCLE_MM = 9.5;
 /**
  * A Spiel's and a Plauderbuch's symbol: as big as the smaller card, the
  * Kartenbogen's, leaves it room, and never under 8 mm. With an Anybook circle
- * (over the corner: there is no room above) the card keeps up to 5 mm a side
- * clear and the symbol gives up what the card is short of — at the circle's
+ * (over the corner: there is no room above) the symbol gives up 2.5 mm a side,
+ * as on every card, and sits at the bottom of its box — at the circle's
  * own size it gives up no more, and the circle lies further over it. The one
  * size on sheet and card.
  */
 function cardSymbol(settings: AnybookSettings, room: { width: number; height: number }): number {
   const full = Math.max(8, Math.min(room.width, room.height));
   if (!settings.anybookCircle) return full;
-  return Math.min(full, Math.max(ANYBOOK_CIRCLE_MM, room.width - 2 * ANYBOOK_SIDE_MM));
+  return Math.min(full, Math.max(ANYBOOK_CIRCLE_MM, full - 2 * ANYBOOK_SIDE_MM));
 }
 type GameShape = { units: number; zellen: number; platz: number };
 
