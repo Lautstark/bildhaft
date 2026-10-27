@@ -21,7 +21,7 @@
    * what the preview draws as paper and the PDF is drawn from.
    */
   import type { PrintSettings, ProviderId } from '../core/types.ts';
-  import { sentenceCaption, slotCaption } from '../core/types.ts';
+  import { PRINT_FONTS, sentenceCaption, slotCaption } from '../core/types.ts';
   import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
   import PrintCard from './PrintCard.svelte';
   import PrintPicture from './PrintPicture.svelte';
@@ -237,6 +237,7 @@
 
 <div
   class="ps-sheet{two ? ' ps-sheet--two' : ''}{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}` : ''}"
+  style:--print-font={PRINT_FONTS[settings.font]?.family ?? PRINT_FONTS.andika.family}
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"
   style:--card-w="{settings.cardWidthMm}mm"

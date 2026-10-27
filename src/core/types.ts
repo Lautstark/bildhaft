@@ -717,6 +717,19 @@ export type SheetFit = 'size' | 'card' | 'grid';
 /** Where an Anybook sticker's circle goes against a card's symbol. */
 export type AnybookPlace = 'above' | 'over';
 
+/**
+ * The one font a sheet prints in, title to copyright line (her choice,
+ * 2026-10-27): Andika, made for children learning to read — its „a“ and „g“
+ * as they are taught to write them — or Atkinson Hyperlegible, made for low
+ * vision. Both come with the app (@fontsource), so a sheet looks the same on
+ * every computer and the same in its PDF.
+ */
+export type PrintFont = 'andika' | 'atkinson';
+export const PRINT_FONTS: Record<PrintFont, { name: string; family: string }> = {
+  andika: { name: 'Andika', family: "'Andika'" },
+  atkinson: { name: 'Atkinson', family: "'Atkinson Hyperlegible'" },
+};
+
 /** Where a sheet is punched: the long side of a portrait sheet, or the top of a landscape one. */
 export type PunchEdge = 'left' | 'top';
 
@@ -764,6 +777,8 @@ export interface PrintSettings {
    * given size gives its symbol's top up; over, neither moves much.
    */
   anybookPlace: AnybookPlace;
+  /** Everything on the sheet in it, nothing in another. */
+  font: PrintFont;
     showCutLines: boolean;
   onePerPage: boolean;
   showSentenceText: boolean;
@@ -912,6 +927,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   showCutLines: true,
   anybookCircle: false,
   anybookPlace: 'above',
+  font: 'andika',
   onePerPage: false,
   showSentenceText: true,
   sentencePosition: 'above',

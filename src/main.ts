@@ -7,6 +7,7 @@ import '@lautstark/design/tokens/bildhaft.css';
 import '@lautstark/design/components.css';
 import './styles/app.css';
 import './styles/print.css';
+import './styles/fonts.css';
 
 // After the token import above, so getComputedStyle can read the --bg this
 // paints the address bar from; the attribute itself is already set by the

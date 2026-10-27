@@ -554,6 +554,30 @@ test('the Zeile is one base in one order, then what only the template has', asyn
 });
 
 /*
+ * One font for the whole sheet, chosen in Seite: Andika until another is
+ * picked, title to copyright line in it, on screen and in the printable copy,
+ * and the font really there rather than the browser's fallback.
+ */
+test('the sheet prints in one font, Andika until Atkinson is picked', async ({ page }) => {
+  const font = (where: string) => page.locator(where).first().evaluate((el) => getComputedStyle(el).fontFamily);
+  await expect.poll(() => font('.preview-frame .ps-card__label')).toMatch(/^Andika\b/);
+  expect(await font('.preview-frame .ps-attribution__text')).toMatch(/^Andika\b/);
+  await expect.poll(() => page.evaluate(() => document.fonts.check("11pt 'Andika'"))).toBe(true);
+
+  await openDing(page, 'Seite');
+  const choice = page.getByRole('group', { name: 'Schrift' });
+  await expect(choice.getByRole('button', { name: 'Andika' })).toHaveAttribute('aria-pressed', 'true');
+  await choice.getByRole('button', { name: 'Atkinson' }).click();
+  await expect(choice.getByRole('button', { name: 'Atkinson' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => font('.preview-frame .ps-card__label')).toMatch(/^"Atkinson Hyperlegible"/);
+  await expect.poll(() => page.evaluate(() => document.fonts.check("11pt 'Atkinson Hyperlegible'"))).toBe(true);
+  // The printable copy is hidden on screen: asked as the printer sees it.
+  await page.emulateMedia({ media: 'print' });
+  await expect.poll(() => font('#print-root .ps-card__label')).toMatch(/^"Atkinson Hyperlegible"/);
+  await page.emulateMedia({ media: 'screen' });
+});
+
+/*
  * A Sammlung's print is its own: a new one starts from its template, not from
  * the size the last one was printed at.
  */

@@ -8,8 +8,8 @@
  * Pure data, no DOM: the sheet itself is the app's, drawn by `Printing` and
  * `PrintSheet.svelte` exactly as the preview draws it.
  */
-import type { CollectionKind, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
-import { DEFAULT_PRINT_SETTINGS } from '../core/types.ts';
+import type { CollectionKind, PrintFont, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
+import { DEFAULT_PRINT_SETTINGS, PRINT_FONTS } from '../core/types.ts';
 import { openPrint, settle, TEMPLATES } from '../app/templates.ts';
 import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printSheet.ts';
 
@@ -241,6 +241,7 @@ export function achsen(which: CollectionKind, m: Material = testdaten(which)): A
     out.push({ key, menu, name, art: 'zahl', setting, min, max, step, unit });
 
   /* Seite */
+  wahl('schriftart', 'Seite', 'Schrift', (Object.keys(PRINT_FONTS) as PrintFont[]).map((font) => ({ name: PRINT_FONTS[font].name, set: { font } })));
   if (offer.paper === true || offer.paper === 'size') wahl('papier', 'Seite', 'Papier', [{ name: 'A4', set: { paper: 'a4' } }, { name: 'A5', set: { paper: 'a5' } }]);
   if (offer.paper === true || offer.paper === 'side') wahl('seite', 'Seite', 'Ausrichtung', [{ name: 'hoch', set: { orientation: 'portrait' } }, { name: 'quer', set: { orientation: 'landscape' } }]);
   if (offer.title === 'pages') {
@@ -427,6 +428,8 @@ export function faelleFor(which: CollectionKind, m: Material = testdaten(which))
   const pairs: Record<string, string[]> = {
     anybook: ['beschriftung', 'papier', 'seite', 'groesse', 'symbolgroesse', 'rand', 'rahmen'],
     beschriftung: ['papier', 'seite', 'groesse', 'symbolgroesse'],
+    /* A word's width is its font's: the other font with the word and the paper. */
+    schriftart: ['beschriftung', 'papier'],
   };
   for (const [a, with_] of Object.entries(pairs)) {
     for (const b of with_) for (const x of werte(a)) for (const y of werte(b)) add({ ...std, [a]: x, [b]: y });
@@ -452,6 +455,7 @@ export function standardLines(which: CollectionKind): { name: string; value: str
   const line = (name: string, keys: (keyof PrintSettings)[], value: string) =>
     ({ name, value, own: keys.some((key) => std[key] !== plain[key]) });
   const lines = [
+    line('Schrift', ['font'], PRINT_FONTS[std.font].name),
     line('Papier', ['paper', 'orientation'], `${std.paper.toUpperCase()} ${std.orientation === 'landscape' ? 'quer' : 'hoch'}`),
   ];
   if (offer.size?.kind === 'symbol' || which === 'einkaufsliste') lines.push(line('Symbol', ['symbolSizeMm'], mm(std.symbolSizeMm)));

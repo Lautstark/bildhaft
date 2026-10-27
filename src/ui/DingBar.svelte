@@ -11,7 +11,7 @@
    * (2026-10-22); the others follow one by one, and until they do their
    * settings stay in the print preview's column.
    */
-  import type { CollectionKind } from '../core/types.ts';
+  import { PRINT_FONTS, type CollectionKind, type PrintFont } from '../core/types.ts';
   import type { Measures } from './printDialog.svelte.ts';
   import { materialPrint } from '../app/print.ts';
   import { kind, providerId } from '../app/state.svelte.ts';
@@ -75,6 +75,12 @@
 
 {#if mp && offer}<div class="ding-bar" bind:this={host}>
   <span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_page')} aria-expanded={open === 'page'} onclick={() => show('page')}>{t('ui.ding_page')}{#if mp.settings.pageColour}<span class="ding__dot" style:--c={mp.settings.pageColour}></span>{/if}{@render dd()}</button>{#if open === 'page'}<div class="ding__pop" role="group" aria-label={t('ui.ding_page')}>
+    <!--
+      Die Schrift des ganzen Bogens, vom Titel bis zur Copyright-Zeile (2026-10-27,
+      ihr Wunsch, Mock): eine für alles, keine zweite für den Titel. Jede steht
+      in sich selbst geschrieben.
+    -->
+    <div class="palette-row" role="group" aria-label={t('ui.print_font')}><span class="palette-row__name small faint">{t('ui.print_font')}</span><span class="segmented">{#each Object.keys(PRINT_FONTS) as PrintFont[] as font (font)}<button type="button" style:font-family={PRINT_FONTS[font].family} aria-pressed={mp.settings.font === font} onclick={() => mp?.set('font', font)}>{PRINT_FONTS[font].name}</button>{/each}</span></div>
     {#if offer.page}<PaletteRow label={t('ui.page_colour')} value={mp.settings.pageColour} strength="fill" none ownStart="#d9ebd3" onPick={(next) => mp?.set('pageColour', next)} />{/if}
     {#if offer.title}<!--
       Der Titel steht oben auf der Seite, also wohnt er hier (2026-10-23, ihr

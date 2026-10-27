@@ -30,7 +30,9 @@
   box-sizing: border-box;
   background: #fff;
   color: #000;
-  font-family: var(--font);
+  /* The sheet's one font (PRINT_FONTS, chosen in Seite); the app's own only
+     while it loads. */
+  font-family: var(--print-font, 'Andika'), var(--font);
   /* Symbols are the product. Never let the browser drop their colour. */
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
@@ -406,13 +408,13 @@
   color: #666;
   /* Never two lines to a credit: the type gives way instead, by the width
      the foot leaves it and the longest line's characters (--credit-chars) at
-     0.55 em each: the system font is set wider at this size than large
-     (0.53 em at 4.4 pt, 0.43 at 75 pt), the others need 0.46 at most. */
+     0.5 em each: the sheet's fonts need 0.49 (Andika) and 0.45 (Atkinson)
+     at every size, which the system font did not — it is set wider small. */
   container-type: inline-size;
   white-space: nowrap;
 }
 .ps-attribution__text {
-  font-size: min(6.5pt, 100cqi / (var(--credit-chars, 1) * 0.55));
+  font-size: min(6.5pt, 100cqi / (var(--credit-chars, 1) * 0.5));
 }
 
 /*
@@ -805,7 +807,6 @@
   flex-direction: column;
   justify-content: space-between;
   height: var(--talk-page);
-  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -868,7 +869,6 @@
   grid-template-columns: repeat(var(--cols), calc(var(--talk-w) + 2 * var(--talk-air)));
   grid-auto-rows: calc(var(--talk-h) + 2 * var(--talk-air));
   align-content: start;
-  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -1036,7 +1036,6 @@
      fixed step after its last column, the game the same step after the fence.
      What the sheet has left over stays on the right, as it would after text. */
   align-items: stretch;
-  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }

@@ -41,6 +41,9 @@ async function addPages(pdf: PDFDocument, pages: HTMLElement[], settings: PrintS
   /* The printer's sheet: on A5, an A4 with two pages on it. */
   const sheetPaper = printerPaper(settings);
   const paper = paperSize(sheetPaper.paper, sheetPaper.orientation);
+  /* The sheet's font comes with the app but loads when first used: drawn
+     before it is in, a page came out in the fallback. */
+  await document.fonts.ready;
   for (const page of pages) {
     const canvas = await domToCanvas(page, {
       /* Its own size, not the size on screen: the preview is scaled down to
