@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { piperVendor } from '@lautstark/stimmquelle/vite';
 import { copyFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -10,6 +11,11 @@ export default defineConfig({
   base,
   plugins: [
     svelte(),
+    /* What the Anybook export speaks with: piper's phonemizer and onnxruntime,
+       served from this origin (dist/wasm/, in dev out of node_modules) — the
+       same four files and the same directory as mitreden's, so a voice sounds
+       the same from both. Fetched only when a code is first recorded. */
+    piperVendor({ dir: 'wasm' }),
     {
       // GitHub Pages has no rewrite rules. Serving the SPA shell as 404.html
       // makes deep links resolve to the app instead of a Pages error page.

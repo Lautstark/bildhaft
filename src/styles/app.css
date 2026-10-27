@@ -1970,3 +1970,80 @@ footer.footer {
 }
 .print-view__panel--bare { align-self: flex-start; }
 .ding__meta { color: var(--muted); font-size: 12.5px; }
+
+/* ---------------------------------------------------------- anybook codes */
+
+/* A code on the sheet in the preview is a thing to tap (AnyCodeEdit): what
+   it says on hover, other words or off on a tap. One taken off stays in
+   view faintly, with a „+“ to bring it back; one with words of its own has
+   a dot. Neither reaches paper: #print-root never shows them, and the PDF
+   is drawn with .ps-capturing on the preview. */
+.print-view .ps-sheet--anybook .ps-any { cursor: pointer; pointer-events: auto; }
+.print-view .ps-sheet--anybook .ps-any:hover { --any-ring: var(--accent); --any-line: solid; }
+.print-view .ps-sheet--anybook .ps-any--off { visibility: visible; --any-ring: #ddd6d3; }
+.print-view .ps-sheet--anybook .ps-any--off::after {
+  content: '+';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 600 5mm/1 var(--font);
+  color: #c9c2c0;
+}
+.print-view .ps-sheet--anybook .ps-any--own::before {
+  content: '';
+  position: absolute;
+  top: -0.6mm;
+  right: -0.6mm;
+  width: 2.4mm;
+  height: 2.4mm;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.ps-capturing .ps-sheet--anybook .ps-any--off { visibility: hidden; }
+.ps-capturing .ps-sheet--anybook .ps-any--off::after,
+.ps-capturing .ps-sheet--anybook .ps-any--own::before { content: none; }
+.ps-sheet--anybook .ps-any--title { position: relative; }
+
+.any-tip {
+  position: fixed;
+  z-index: 90;
+  max-width: 240px;
+  padding: 5px 9px;
+  border-radius: var(--radius-item);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+.any-tip__cap { opacity: .7; }
+.any-back { position: fixed; inset: 0; z-index: 90; }
+.any-pop {
+  position: fixed;
+  z-index: 91;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.any-pop__cap { margin: 0; font-weight: 600; font-size: 14px; }
+.any-pop p { margin: 0; }
+.any-pop__foot { display: flex; justify-content: space-between; gap: 8px; }
+.any-list__head { margin: 4px 0 0; font-weight: 600; }
+.any-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 46vh; overflow-y: auto; }
+.any-list__row { display: grid; grid-template-columns: 22px 34px minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+.any-voice { display: flex; align-items: center; gap: 10px; }
+.any-list__n { font-size: 12px; color: var(--text-faint); text-align: right; font-variant-numeric: tabular-nums; }
+.any-list__pic { width: 32px; height: 32px; object-fit: contain; background: #fff; border-radius: 6px; }
+.any-list__pic--title { display: grid; place-items: center; font-size: 9px; color: #665b58; }
+.any-list__row--off .field { text-decoration: line-through; opacity: .55; }
+.any-list__error { color: var(--danger); }
+.any-pop__say { display: flex; gap: 6px; align-items: center; }
+.any-pop__say .field { flex: 1; min-width: 0; }

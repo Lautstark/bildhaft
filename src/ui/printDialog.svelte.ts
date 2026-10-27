@@ -439,12 +439,32 @@ async function keep(state: Printing): Promise<void> {
   try {
     await ready(state);
     const pages = [...(state.holder?.querySelectorAll<HTMLElement>('.ps-paper') ?? [])];
-    const pdf = await previewToPdf(pages, state.settings);
+    const pdf = await capturing(state, () => previewToPdf(pages, state.settings));
     await state.options.onPdf(pdf, state.settings, pages.length);
   } finally {
     state.saving = false;
   }
 }
+
+/**
+ * The preview drawn as paper: what shows only on screen — an Anybook code
+ * taken off, the dot on one with words of its own — is left out while `make`
+ * draws it. `studio` draws the codes as discs for Anybook Studio to print
+ * into instead of circles for stickers.
+ */
+export async function capturing<T>(state: Printing, make: () => Promise<T>, studio = false): Promise<T> {
+  const holder = state.holder;
+  holder?.classList.add('ps-capturing');
+  if (studio) holder?.classList.add('ps-studio');
+  try {
+    return await make();
+  } finally {
+    holder?.classList.remove('ps-capturing', 'ps-studio');
+  }
+}
+
+/** Ready to be drawn as paper, the way the printer's copy is made ready. */
+export const readyToDraw = (state: Printing): Promise<void> => ready(state);
 
 /**
  * Makes a preview live: its printable copy in #print-root, its print and PDF

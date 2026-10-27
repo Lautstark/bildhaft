@@ -964,21 +964,64 @@
 .ps-sheet--anybook :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) {
   position: relative;
 }
-.ps-sheet--anybook :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
-  content: '';
+.ps-any { display: none; }
+.ps-sheet--anybook :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any {
+  display: block;
   position: absolute;
   top: 0;
   right: 0;
   width: 9.5mm;
   height: 9.5mm;
   box-sizing: border-box;
-  border: 0.25mm dashed #cfc8c1;
+  border: 0.25mm var(--any-line, dashed) var(--any-ring, #cfc8c1);
   border-radius: 50%;
+  background: var(--any-fill, transparent);
 }
-.ps-sheet--any-above :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+.ps-sheet--any-above :is(.ps-card:not(.ps-place .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any {
   right: auto;
   left: calc(50% - 4.75mm);
 }
+
+/* The title's code stands before it (her call, 2026-10-27): the title has
+   no symbol box to hang on, and a pen finds the start of a line first. */
+.ps-sheet--anybook .ps-title:has(> .ps-any--title) {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+.ps-sheet--anybook .ps-title > .ps-any--title {
+  display: block;
+  flex: none;
+  width: 9.5mm;
+  height: 9.5mm;
+  box-sizing: border-box;
+  border: 0.25mm var(--any-line, dashed) var(--any-ring, #cfc8c1);
+  border-radius: 50%;
+  background: var(--any-fill, transparent);
+}
+
+/* The activation code at the title line's right end, on the first page only
+   (her call, 2026-10-27: not on a page of its own). One place in every
+   template, wherever its title stands. */
+.ps-sheet--anybook .ps-title > .ps-any--start { margin-left: auto; }
+/* As quiet as it can be, and told apart from the codes that speak: a thin
+   ring in the material's colour, grey where it has none (her call). */
+.ps-sheet--anybook .ps-any--start { --any-line: solid; --any-ring: var(--any-start, #b9b2b0); }
+
+/* A code taken off: its place stays as it was, nothing is printed there. The
+   preview shows it faintly with a „+“, so it can be put back (PrintView). */
+.ps-sheet--anybook .ps-any--off { visibility: hidden; }
+
+/* The sheet handed to Anybook Studio: a white disc and no ring (her call,
+   2026-10-27) — Studio prints the code into it with a frame of its own; the
+   white keeps a picture's corner away from the code, so the pen reads the
+   code alone. The activation code too: no ring on this sheet either. */
+.ps-studio .ps-sheet--anybook {
+  --any-line: solid;
+  --any-ring: transparent;
+  --any-fill: #fff;
+}
+.ps-studio .ps-sheet--anybook .ps-any--start { --any-ring: transparent; }
 
 /* The room, said once: on top for above, a side each for over.
    ANYBOOK_SIDE_MM in printSheet.ts keeps the same on a Spiel's card. */

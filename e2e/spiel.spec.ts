@@ -250,22 +250,24 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   await expect(page.getByRole('button', { name: 'darüber' })).toHaveCount(0);
   await showSheet(page);
 
-  /* The circle is the symbol box's ::after, at its top right; what is
-     measured is the circle against the card and the picture against it. */
+  /* The circle is the code element in the symbol box, at its top right; what
+     is measured is the circle against the card and the picture against it. */
   const measure = (selector: string) => page.evaluate((sel) => {
     const mm = 96 / 25.4;
     return [...document.querySelectorAll(`.preview-frame ${sel}`)].map((card) => {
       const host = card.querySelector('.ps-title__pic') ?? card;
-      const circle = getComputedStyle(host, '::after');
+      const code = host.querySelector(':scope > .ps-any') as HTMLElement | null;
+      const circle = code ? getComputedStyle(code) : null;
       const box = card.getBoundingClientRect();
       const at = host.getBoundingClientRect();
       const img = card.querySelector('img')?.getBoundingClientRect();
       const scale = box.width / (card as HTMLElement).offsetWidth;
-      const right = at.right - parseFloat(circle.right || '0') * scale;
+      const ring = code?.getBoundingClientRect();
+      const right = ring ? ring.right : at.right;
       const left = right - scale * 9.5 * mm;
       return {
-        circle: circle.content !== 'none' && circle.content !== 'normal',
-        size: Math.round(parseFloat(circle.width) * 10 / mm) / 10,
+        circle: circle !== null && circle.display !== 'none',
+        size: circle ? Math.round(parseFloat(circle.width) * 10 / mm) / 10 : 0,
         // The circle on the card, not over its edge.
         inside: right <= box.right + 0.05 * mm * scale && at.top >= box.top - 0.05 * mm * scale,
         // How far the picture's right edge stays left of the circle's left, in mm: half of it may lie over the corner.

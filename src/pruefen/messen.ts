@@ -97,16 +97,11 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
   };
   /* The circle is the symbol box's ::after, which has no box of its own to
      ask: its place is read off its computed style, in the host's padding box. */
+  /* The code's circle is its own element in the symbol box (AnyCode.svelte). */
   const circle = (host: Element | null): Rect | null => {
-    if (!(host instanceof HTMLElement)) return null;
-    const style = getComputedStyle(host, '::after');
-    if (style.content === 'none' || style.position !== 'absolute' || style.borderRadius !== '50%') return null;
-    const at = host.getBoundingClientRect();
-    const px = (value: string) => parseFloat(value) || 0;
-    const left = (at.left - origin.left) / scale + host.clientLeft + px(style.left);
-    const top = (at.top - origin.top) / scale + host.clientTop + px(style.top);
-    const size = px(style.width);
-    return { x: left / PX_PER_MM, y: top / PX_PER_MM, w: size / PX_PER_MM, h: px(style.height) / PX_PER_MM };
+    const code = host?.querySelector(':scope > .ps-any');
+    if (!(code instanceof HTMLElement) || getComputedStyle(code).display === 'none') return null;
+    return mm(code.getBoundingClientRect());
   };
 
   const stuecke: Stueck[] = [];

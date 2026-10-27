@@ -793,6 +793,22 @@ export interface PrintSettings {
    * given size gives its symbol's top up; over, neither moves much.
    */
   anybookPlace: AnybookPlace;
+  /**
+   * What a code says where it is not what stands there, by its key — a card's
+   * slot id, ANYBOOK_TITLE for the title. Absent, every code says its card's
+   * word or the title. Kept with the material's print, because it is about
+   * this sheet and nothing else.
+   */
+  anybookSay?: Record<string, string>;
+  /** Codes taken off the sheet, by the same keys: their place stays free. */
+  anybookOff?: string[];
+  /**
+   * Whether the activation code stands at the right end of the title on the
+   * first page. Absent is yes; it makes the sheet work with any pen.
+   */
+  anybookActivation?: boolean;
+  /** The voice this material's codes speak in, where it is not the household's. */
+  anybookVoice?: string;
   /** Everything on the sheet in it, nothing in another. */
   font: PrintFont;
     showCutLines: boolean;
@@ -1005,6 +1021,13 @@ export interface AppSettings {
   printVersion?: number;
   /** What `printVersion: 1` was called the day it was written. Read, never written. */
   printOnMaterial?: boolean;
+  /**
+   * The voice Anybook codes speak in (a stimmquelle id), unless a material
+   * chose its own. Absent: the first German voice on offer.
+   */
+  voice?: string;
+  /** An Azure Speech key, for Azure's voices. Kept in this browser only. */
+  azure?: { key: string; region: string };
   lastCollectionId: string | null;
   /** Collapsed by default; the choice is remembered. */
   sidebarOpen: boolean;

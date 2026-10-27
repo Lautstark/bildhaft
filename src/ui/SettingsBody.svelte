@@ -10,6 +10,10 @@
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
   import Panel from '@lautstark/design/svelte/Panel';
+  import VoicePicker from '@lautstark/stimmquelle/svelte/VoicePicker';
+  import AzurePanel from '@lautstark/stimmquelle/svelte/AzurePanel';
+  import type { AzureWords } from '@lautstark/stimmquelle/svelte/AzurePanel';
+  import { defaultVoice, forgetAzure, hear, keepAzure, knownVoices, loadVoices, pickDefaultVoice, probeAzure, voiceLabel } from './voices.svelte.ts';
   import Dropdown from '@lautstark/design/svelte/Dropdown';
   import ThemePicker from '@lautstark/design/svelte/ThemePicker';
   import { sourceFacts } from './symbolSources.ts';
@@ -409,11 +413,26 @@
    * Sprache is the one that starts open, which is the column's own comment
    * below and §3.11.
    */
+  /* Die Stimme der Anybook-Codes, und Azure dazu: dieselben zwei Bausteine wie
+     in mitreden (stimmquelle), mit mitredens Worten. */
+  $effect(() => { if (open.voice || open.azure) void loadVoices(); });
+  /* Her region (2026-10-27): the Speech resource lives in Frankfurt. stimmquelle's own default is still westeurope. */
+  const AZURE_REGION = 'germanywestcentral';
+  const azureWords: AzureWords = {
+    key: t('ui.key_field'), region: t('ui.region_field'), save: t('ui.key_save'), saving: t('ui.key_checking'),
+    forget: t('ui.key_forget'), asking: t('ui.azure_asking'), typeFirst: t('ui.type_first'),
+    answers: (n) => t(n === 1 ? 'ui.azure_answers_one' : 'ui.azure_answers', { n }),
+    saved: (n) => t('ui.key_saved', { n }), unreachable: t('ui.azure_unreachable'), refused: t('ui.azure_refused'),
+    refusedOnSave: t('ui.azure_bad_pair'), failed: (words) => t('ui.azure_no_answer', { error: words }),
+  };
+
   let open = $state({
     language: true,
     arasaac: false,
     metacom: false,
     words: false,
+    voice: false,
+    azure: false,
     appearance: false,
     data: false,
     danger: false,
@@ -475,7 +494,7 @@
   `field` because this stands in a column of full-width fields and a trigger as
   wide as the word on it would leave them reading as different kinds of thing;
   `start` because the list hangs off a control at the left of the panel.
---><div class="opt" style="margin-top:14px"><span class="opt__label" id="opt-rendering-label">{t('ui.rendering')}</span><Dropdown id="opt-rendering" field start labelledBy="opt-rendering-label" label={renderingLabel} build={(add) => { add(t('ui.no_preference'), () => prefer(null), { checked: settings.metacomRendering === null }); for (const rendering of renderings) add(`${rendering.segment} · ${t('ui.n_symbols', { n: rendering.count })}`, () => prefer(rendering.segment), { checked: settings.metacomRendering === rendering.segment }); }} /><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
+--><div class="opt" style="margin-top:14px"><span class="opt__label" id="opt-rendering-label">{t('ui.rendering')}</span><Dropdown id="opt-rendering" field start labelledBy="opt-rendering-label" label={renderingLabel} build={(add) => { add(t('ui.no_preference'), () => prefer(null), { checked: settings.metacomRendering === null }); for (const rendering of renderings) add(`${rendering.segment} · ${t('ui.n_symbols', { n: rendering.count })}`, () => prefer(rendering.segment), { checked: settings.metacomRendering === rendering.segment }); }} /><span class="small faint">{t('ui.rendering_note')}</span></div>{/if}</Panel><Panel section={t('ui.set_function_words')} state={t('ui.n_words', { n: wordCount })} bind:open={open.words}><p class="small muted" style="margin-top:0">{@html t('ui.function_words_note')}</p><textarea bind:this={area} class="field stopword-area" spellcheck="false" aria-label={t('ui.set_function_words')}></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm" type="button" onclick={saveWords}>{t('ui.save')}</button><span class="small faint" style="align-self:center">{t('ui.applies_to_new')}</span></div></Panel><Panel section={t('ui.set_voice')} state={knownVoices().length ? voiceLabel(defaultVoice()) : ''} bind:open={open.voice}><p class="small faint" style="margin-top:0">{t('ui.voice_note')}</p><div id="voices"><VoicePicker voices={knownVoices} current={defaultVoice} pick={pickDefaultVoice} hear={(voice) => hear(t('ui.voice_sample'), voice.id)} lang="de" /></div></Panel><Panel section="Azure Speech" state={settings.azure ? t('ui.key_hint', { hint: settings.azure.key.slice(-4) }) : t('ui.key_none')} bind:open={open.azure}><AzurePanel id="cloud" fieldId="azurekey" regionId="azureregion" hasKey={settings.azure !== undefined} placeholder={settings.azure ? `••••${settings.azure.key.slice(-4)}` : ''} region={settings.azure?.region ?? AZURE_REGION} stored={() => settings.azure?.key} probe={(access) => probeAzure({ key: access.key ?? settings.azure?.key ?? '', region: access.region })} save={keepAzure} forget={forgetAzure} words={azureWords}><p class="small faint" style="margin-top:0">{t('ui.azure_body')}</p></AzurePanel></Panel><Panel section={t('ui.set_appearance')} state={THEME_LABELS[theme]} bind:open={open.appearance}><div class="opt"><!--
   The three buttons are the package's. The argument for role=group over
   radiogroup — .segmented marks its choice with aria-pressed, which is the
   vocabulary the print dialog already uses, and a radiogroup whose children are
