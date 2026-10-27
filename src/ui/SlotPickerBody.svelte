@@ -192,7 +192,7 @@
   neither handler, and the line is not drawn.
 -->{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<div class="picker__negate" hidden={cropping}>{#if negate}<label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; negate(s.negated); }} />{t('ui.cross_out')}</label>{/if}{#if mirror}<label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; mirror(s.mirrored); }} />{t('ui.mirror')}</label>{/if}</div>{/if}<!--
   What the Anybook pen says for this field, where the material prints codes.
--->{#if s.handlers.anybook}<div hidden={cropping}><AnyStift code={s.handlers.anybook} none={t('ui.anybook_none_card')} /></div>{/if}<!--
+-->{#if s.handlers.anybook}<div hidden={cropping}><AnyStift code={s.handlers.anybook} /></div>{/if}<!--
 --><div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own, and it had two. Both went the same way and for the same
   reason: this dialog already has a footer, the footer already says what it

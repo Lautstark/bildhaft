@@ -5,4 +5,4 @@
   let { s }: { s: CodeSheet } = $props();
 </script>
 
-<AnyStift code={s.code} none={s.none} />
+<AnyStift code={s.code} />

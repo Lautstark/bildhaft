@@ -902,8 +902,8 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
  * The codes are set where the material is edited, not on the sheet (her
  * call, 2026-10-27): with Anybook on, a card in Bearbeiten wears a ring, its
  * Symbol dialog says what the pen says, and a Schritt's code has a small sheet
- * of its own. What is typed there is what the sheet's code says; ticked off,
- * the sheet prints none there. Without Anybook nothing of it shows.
+ * of its own. What is typed there is what the sheet's code says; taken off
+ * with ✕, the sheet prints none there. Without Anybook nothing of it shows.
  */
 test('a Rezept’s Anybook codes are set in Bearbeiten: a card’s in its Symbol dialog, a Schritt’s in a sheet of its own', async ({ page }) => {
   await pickTemplate(page, /^Rezept/);
@@ -938,7 +938,8 @@ test('a Rezept’s Anybook codes are set in Bearbeiten: a card’s in its Symbol
   await schritte.locator('.row__head .any-mark').click();
   const step = page.getByRole('dialog', { name: 'Code für Schritt 1' });
   await expect(step.getByLabel('Stift sagt')).toHaveValue('Eier in die Schüssel');
-  await step.getByLabel('Kein Code für diesen Schritt').check();
+  await step.getByRole('button', { name: 'Code entfernen' }).click();
+  await expect(step.getByRole('button', { name: 'Code wieder drucken' })).toBeVisible();
   await step.getByRole('button', { name: 'Fertig' }).click();
   await expect(sheet.locator('.ps-recipe-step__n > .ps-any')).toHaveClass(/ps-any--off/);
   await expect(schritte.locator('.row__head .any-mark--off')).toHaveCount(1);

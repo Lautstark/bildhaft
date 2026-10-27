@@ -1974,7 +1974,7 @@ footer.footer {
 /* ---------------------------------------------------------- anybook codes */
 
 /* A field's code in Bearbeiten (AnyMark): a small ring in the card's corner,
-   as the sticker sits on paper; a dot for words of its own, dashed and pale
+   as the sticker sits on paper; a dot for words of its own, struck through
    when it is off. Changed in the Symbol dialog's „Anybook-Stift“ (AnyStift),
    or in the small code sheet where there is no such dialog. The print
    preview only shows the codes as they print. */
@@ -2002,7 +2002,7 @@ footer.footer {
   border-radius: 50%;
   background: var(--accent);
 }
-.any-mark--off { border-style: dashed; opacity: .45; background: var(--surface); }
+.any-mark--off { opacity: .55; background: var(--surface) linear-gradient(135deg, transparent calc(50% - 1px), var(--text) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
 .any-mark--still { display: inline-block; vertical-align: -3px; margin-right: 6px; }
 .row__head > .any-mark--inline { margin-right: 4px; }
 
@@ -2011,5 +2011,6 @@ footer.footer {
 .any-stift p { margin: 0; }
 .any-stift__say { display: flex; gap: 6px; align-items: center; }
 .any-stift__say .field { flex: 1; min-width: 0; }
+.any-stift__say--off .field { text-decoration: line-through; opacity: .55; }
 .any-stift__error, .any-error { color: var(--danger); }
 .any-voice { display: flex; align-items: center; gap: 10px; }

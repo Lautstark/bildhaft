@@ -12,11 +12,11 @@ import AnyCodeFoot from './AnyCodeFoot.svelte';
 
 export class CodeSheet {
   close: () => void = () => undefined;
-  constructor(readonly code: CodeHere, readonly none: string) {}
+  constructor(readonly code: CodeHere) {}
 }
 
-export function openCodeSheet(code: CodeHere, title: string, none: string): void {
-  const state = new CodeSheet(code, none);
+export function openCodeSheet(code: CodeHere, title: string): void {
+  const state = new CodeSheet(code);
   const sheet = openSheet({ title, closeLabel: CLOSE, state, body: AnyCodeBody, foot: AnyCodeFoot });
   state.close = sheet.close;
 }

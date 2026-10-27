@@ -2,7 +2,7 @@
   /**
    * A field's Anybook code, as Bearbeiten shows it: a small ring in its corner,
    * as the sticker sits on paper, saying on hover what the pen says. A dot when
-   * the words are its own; dashed and pale when the code is off.
+   * the words are its own; struck through when the code is off.
    *
    * On a card it is only a mark — the card's own press opens the Symbol dialog,
    * which holds the code. Where there is no such dialog (a title, a Schritt, a
