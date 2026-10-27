@@ -1,17 +1,18 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * The Prüfseite (`?pruefen`): every template's print in its variants, drawn
- * by the app's own sheet and measured. It needs neither network nor stored
- * data — its symbols are drawn into data URLs — so nothing is mocked here,
- * and any request leaving the page would be a mistake.
+ * The Prüfseite (`?pruefen`): one template, one combination, one sheet as it
+ * prints — chosen with the app's own words, the Standard marked — and the
+ * problems found over the measured combinations. It needs neither network nor
+ * stored data, its symbols being drawn into data URLs, so nothing is mocked
+ * here and any request leaving the page would be a mistake.
  *
- * What is held here is that the page works and measures, and the one finding
- * that is fixed for good (0f25025): a Spiel's symbol is the one size on its
- * Spielblatt and on its Kartenbogen. The open findings are the page's to show,
- * not this suite's to fail on.
+ * Held here: the page draws, measures and switches, and the one finding fixed
+ * for good (0f25025) — a Spiel's symbol is the one size on its Spielblatt and
+ * its Kartenbogen. The open findings are the page's to show, not this suite's
+ * to fail on.
  */
-test('the Prüfseite draws and measures every case, offline', async ({ page }) => {
+test('the Prüfseite shows a sheet per combination, offline', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const outside: string[] = [];
@@ -23,25 +24,27 @@ test('the Prüfseite draws and measures every case, offline', async ({ page }) =
   await page.goto('/?pruefen');
   await expect(page.locator('main.pruef[data-fertig]')).toBeVisible({ timeout: 90_000 });
 
-  const tiles = page.locator('.kachel');
-  const count = await tiles.count();
-  expect(count).toBeGreaterThan(100);
-  await expect(page.locator('.kachel[data-gemessen]')).toHaveCount(count);
-  /* One Standard per template, highlighted, and its defaults written out. */
-  await expect(page.locator('.kachel--standard')).toHaveCount(8);
-  await expect(page.locator('.vorlage__std')).toHaveCount(8);
-  await expect(page.locator('#vorlage-spiel .vorlage__eigen', { hasText: 'A4 quer' })).toBeVisible();
+  /* The Spiel opens on its Standard, and its symbol is one size on both sheets. */
+  const sheet = page.getByRole('region', { name: 'Bogen' });
+  await expect(sheet.getByRole('heading', { name: 'Spiel · Standard' })).toBeVisible();
+  await expect(sheet.locator('.ps-spiel')).toBeVisible();
+  await expect(sheet.locator('.ps-spiel-cut')).toBeVisible();
+  await expect(sheet.getByText('Symbol auf Spielbogen und Kartenbogen gleich')).toBeVisible();
 
-  /* Every card a Spiel cuts has its measured size on it. */
-  const spiel = page.locator('#spiel-standard');
-  await expect(spiel.locator('.kachel__arten')).toContainText('Spielkarte');
-  await expect(spiel.locator('.kachel__mass').first()).toBeVisible();
-  await expect(spiel.locator('.kachel__ok', { hasText: 'Spielbogen und Kartenbogen gleich' })).toBeVisible();
+  /* A switch moved: the sheet follows, and says so in its heading. */
+  const anybook = page.locator('.pruef__achse', { hasText: 'Anybook' });
+  await anybook.getByRole('button', { name: 'darüber' }).click();
+  await expect(sheet.getByRole('heading', { name: 'Spiel · Anybook darüber' })).toBeVisible();
+  await expect(sheet.locator('.ps-sheet--any-above')).toBeVisible();
+  await expect(sheet.getByText('Spielkarte: Symbol mit Anybook gleich groß')).toBeVisible();
+  await page.getByRole('button', { name: 'Zurück zum Standard' }).click();
+  await expect(sheet.getByRole('heading', { name: 'Spiel · Standard' })).toBeVisible();
 
-  /* Question 1, over every Spiel case: answered, and answered yes. */
-  const spielColumn = await page.locator('.pruef__fragen thead th').allInnerTexts();
-  const at = spielColumn.indexOf('Spiel');
-  await expect(page.locator('.pruef__fragen tbody tr').first().locator('td').nth(at - 1)).toHaveClass(/\bok\b/);
+  /* Another template brings its own switches: Wortkarten print on A4 only. */
+  await page.getByRole('navigation', { name: 'Vorlage' }).getByRole('button', { name: 'Wortkarten' }).click();
+  await expect(sheet.getByRole('heading', { name: 'Wortkarten · Standard' })).toBeVisible();
+  await expect(page.locator('.pruef__achse', { hasText: 'Größe' })).toBeVisible();
+  await expect(page.locator('.pruef__achse', { hasText: 'Papier' })).toHaveCount(0);
 
   expect(errors).toEqual([]);
   expect(outside).toEqual([]);

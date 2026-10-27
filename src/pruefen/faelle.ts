@@ -8,7 +8,7 @@
  * Pure data, no DOM: the sheet itself is the app's, drawn by `Printing` and
  * `PrintSheet.svelte` exactly as the preview draws it.
  */
-import type { CollectionKind, PrintSettings, Sentence, Slot } from '../core/types.ts';
+import type { AnybookPlace, CollectionKind, Orientation, PaperSize, PrintSettings, PunchEdge, Sentence, SheetFit, Slot } from '../core/types.ts';
 import { COLLECTION_KINDS, DEFAULT_PRINT_SETTINGS } from '../core/types.ts';
 import { openPrint, settle, TEMPLATES } from '../app/templates.ts';
 import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printSheet.ts';
@@ -21,19 +21,23 @@ export const VORLAGE: Record<CollectionKind, string> = {
 /* ------------------------------------------------------------ symbols -- */
 
 /**
- * A test symbol: a square that fills its picture box to the edge — a dark
- * line round it, its diagonals, its word's first letter — so a ruler finds
- * the box exactly, which a real pictogram with air round it would hide.
+ * A test symbol: a small drawing in a pictogram's manner — black outline,
+ * flat colours, reaching nearly to the edge of its square as an ARASAAC or
+ * METACOM picture does — so the sheet looks as it will in print.
  */
-const FARBEN = ['#f6d6c8', '#d7e8f7', '#dcefd2', '#f4e7b8', '#e8d9f2', '#f7d4e2', '#d3efeb', '#efe0cf'];
-function testSymbol(word: string, at: number): string {
-  const fill = FARBEN[at % FARBEN.length]!;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">`
-    + `<rect x="6" y="6" width="488" height="488" rx="10" fill="${fill}" stroke="#2b2522" stroke-width="12"/>`
-    + `<path d="M6 6 494 494M494 6 6 494" stroke="#2b2522" stroke-opacity=".18" stroke-width="6"/>`
-    + `<circle cx="250" cy="250" r="120" fill="#fff" stroke="#2b2522" stroke-width="8"/>`
-    + `<text x="250" y="300" text-anchor="middle" font-family="sans-serif" font-size="150" font-weight="700" fill="#2b2522">${word.charAt(0).toUpperCase()}</text>`
-    + `</svg>`;
+const O = 'stroke="#1d1918" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"';
+const BILDER = [
+  /* sun */ `<g ${O}><path d="M250 20v70M250 410v70M20 250h70M410 250h70M88 88l50 50M362 362l50 50M412 88l-50 50M138 362l-50 50"/><circle cx="250" cy="250" r="130" fill="#ffd23f"/></g>`,
+  /* house */ `<g ${O}><path d="M60 230 250 50l190 180" fill="#e2553f"/><path d="M95 220v250h310V220" fill="#f5e6c8"/><path d="M215 470V350h70v120" fill="#8a5a3b"/><rect x="140" y="270" width="60" height="55" fill="#9fd3f2"/><rect x="300" y="270" width="60" height="55" fill="#9fd3f2"/></g>`,
+  /* ball */ `<g ${O}><circle cx="250" cy="250" r="225" fill="#4f8fe0"/><path d="M25 250h450M250 25c-90 70-90 380 0 450M250 25c90 70 90 380 0 450" fill="none"/></g>`,
+  /* tree */ `<g ${O}><path d="M215 470V320h70v150z" fill="#8a5a3b"/><circle cx="250" cy="190" r="165" fill="#5cae4b"/></g>`,
+  /* cup */ `<g ${O}><path d="M70 120h290v230a80 80 0 0 1-80 80H150a80 80 0 0 1-80-80z" fill="#f08a4b"/><path d="M360 170h40a55 55 0 0 1 0 110h-40" fill="none"/><path d="M40 470h360" /></g>`,
+  /* flower */ `<g ${O}><path d="M250 470V270" fill="none"/><path d="M250 400c-60-10-100-50-110-90 50 0 95 30 110 90zM250 380c50-10 90-45 100-85-50 0-90 30-100 85z" fill="#5cae4b"/><g fill="#e95a9b"><circle cx="250" cy="90" r="65"/><circle cx="170" cy="160" r="65"/><circle cx="330" cy="160" r="65"/><circle cx="200" cy="245" r="60"/><circle cx="300" cy="245" r="60"/></g><circle cx="250" cy="175" r="48" fill="#ffd23f"/></g>`,
+  /* car */ `<g ${O}><path d="M30 330v-80l60-10 60-90h170l70 90 60 10v80z" fill="#e2553f"/><path d="M175 175h60v70h-95zM265 175h45l50 70h-95z" fill="#9fd3f2"/><circle cx="130" cy="340" r="55" fill="#4a4442"/><circle cx="370" cy="340" r="55" fill="#4a4442"/></g>`,
+  /* star */ `<g ${O}><path d="M250 25l66 150 160 15-121 106 36 158-141-83-141 83 36-158L24 190l160-15z" fill="#ffd23f"/></g>`,
+];
+function testSymbol(at: number): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">${BILDER[at % BILDER.length]}</svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
@@ -44,7 +48,7 @@ let next = 0;
 function slot(word: string): Slot {
   if (!SYMBOLE.has(word)) {
     const at = SYMBOLE.size;
-    SYMBOLE.set(word, { id: `pruef-${at}`, url: testSymbol(word, at) });
+    SYMBOLE.set(word, { id: `pruef-${at}`, url: testSymbol(at) });
   }
   next += 1;
   return {
@@ -127,6 +131,30 @@ function material(which: CollectionKind): Material {
 
 /* -------------------------------------------------------------- cases -- */
 
+/**
+ * A combination, said the way the app's menus say it: which paper, the word
+ * (off, under, over), the Anybook circle (off, above, over), the frame,
+ * punching — and where a template has them, a Wortkarten size and a strip's
+ * sentence. A case is a template and one of these.
+ */
+export interface Wahl {
+  papier: PaperSize;
+  seite: Orientation;
+  wort: 'aus' | 'below' | 'above';
+  anybook: 'aus' | AnybookPlace;
+  rahmen: boolean;
+  lochen: PunchEdge | null;
+  groesse: SheetFit;
+  satz: 'aus' | 'above' | 'below';
+}
+
+/** One switch on the Prüfseite: what it is called, and its values in the app's words. */
+export interface Achse<K extends keyof Wahl = keyof Wahl> {
+  key: K;
+  name: string;
+  werte: { wert: Wahl[K]; name: string }[];
+}
+
 /** What a case is compared with, and by which rule. */
 export interface Vergleich {
   mit: string;
@@ -137,7 +165,8 @@ export interface Vergleich {
 export interface Fall {
   id: string;
   vorlage: CollectionKind;
-  /** What is set against the Standard, in words. Empty for the Standard itself. */
+  wahl: Wahl;
+  /** What differs from the Standard, in words. Empty for the Standard itself. */
   name: string;
   standard: boolean;
   settings: PrintSettings;
@@ -153,116 +182,120 @@ export interface Fall {
 /** Each template's grid, where it has one: a Tafel's is its own. */
 const gridOf = (which: CollectionKind, m: Material) => (which === 'tafel' && m.board ? { cols: m.board.cols, rows: m.board.rows } : null);
 
+const materials = new Map<CollectionKind, Material>();
+const materialOf = (which: CollectionKind): Material => {
+  if (!materials.has(which)) materials.set(which, material(which));
+  return materials.get(which)!;
+};
+
 /** The settings a template opens on, as a new material of it would. */
-export function standardOf(which: CollectionKind, m: Material): PrintSettings {
+export function standardOf(which: CollectionKind, m: Material = materialOf(which)): PrintSettings {
   return openPrint(which, DEFAULT_PRINT_SETTINGS, {}, gridOf(which, m));
 }
 
-function faelleFor(which: CollectionKind): Fall[] {
-  const m = material(which);
-  const std = standardOf(which, m);
-  const offer = TEMPLATES[which].offers(std);
-  const out: Fall[] = [];
-  const add = (key: string, name: string, over: Partial<PrintSettings>, vergleiche: Vergleich[] = []): string => {
-    const id = `${which}-${key}`;
-    const settings = settle(which, { ...std, ...over }, gridOf(which, m));
-    out.push({
-      id, vorlage: which, name, standard: key === 'standard', material: m, vergleiche, settings,
-      gegeben: which === 'tafel' || (which === 'wortkarten' && settings.sheetFit !== 'size'),
-    });
-    return id;
+/** The Standard, as a combination. */
+export function standardWahl(which: CollectionKind): Wahl {
+  const std = standardOf(which);
+  return {
+    papier: std.paper, seite: std.orientation,
+    wort: std.showLabel ? std.labelPosition : 'aus',
+    anybook: std.anybookCircle ? std.anybookPlace : 'aus',
+    rahmen: std.cardBorderMm > 0, lochen: std.punch, groesse: std.sheetFit,
+    satz: std.showSentenceText ? std.sentencePosition : 'aus',
   };
+}
 
-  const standard = add('standard', '', {});
-
-  /* Beschriftung × Anybook: every state of the word, each with the circle
-     off, above and over. The circle is compared with its state's „aus", the
-     word with the state without it, circle for circle. */
-  const words: { key: string; name: string; labelled: boolean; over: Partial<PrintSettings> }[] = [
-    { key: 'std', name: '', labelled: std.showLabel, over: {} },
-  ];
-  if (offer.label && std.showLabel) {
-    words.push({ key: 'wort-aus', name: 'ohne Wort', labelled: false, over: { showLabel: false } });
-    const flip = std.labelPosition === 'above' ? 'below' : 'above';
-    words.push({ key: 'wort-oben', name: flip === 'above' ? 'Wort oben' : 'Wort unten', labelled: true, over: { labelPosition: flip } });
-  } else if (offer.label) {
-    words.push({ key: 'wort-unten', name: 'mit Wort unten', labelled: true, over: { showLabel: true, labelPosition: 'below' } });
-    words.push({ key: 'wort-oben', name: 'mit Wort oben', labelled: true, over: { showLabel: true, labelPosition: 'above' } });
-  }
-  const idOf = (word: string, any: 'above' | 'over' | null): string =>
-    any ? `${which}-${word}-any-${any}` : word === 'std' ? standard : `${which}-${word}`;
-  for (const word of words) {
-    if (word.key !== 'std') add(word.key, word.name, word.over);
-    for (const place of ['above', 'over'] as const) {
-      const name = [word.name, place === 'above' ? 'Anybook darüber' : 'Anybook überlappend'].filter(Boolean).join(' · ');
-      add(`${word.key}-any-${place}`, name, { ...word.over, anybookCircle: true, anybookPlace: place },
-        [{ mit: idOf(word.key, null), regel: 'anybook' }]);
-    }
-  }
-  const bare = words.find((word) => !word.labelled);
-  if (bare) {
-    for (const word of words.filter((one) => one.labelled)) {
-      for (const any of [null, 'above', 'over'] as const) {
-        out.find((fall) => fall.id === idOf(word.key, any))!.vergleiche.push({ mit: idOf(bare.key, any), regel: 'wort' });
-      }
-    }
-  }
-
-  /* Rahmen, and the circle on a framed card, which has rules of its own. */
-  if (offer.frames) {
-    const framed = std.cardBorderMm > 0;
-    const over = { cardBorderMm: framed ? 0 : 0.5 };
-    const base = add('rahmen', framed ? 'ohne Rahmen' : 'Rahmen 0,5 mm', over);
-    for (const place of ['above', 'over'] as const) {
-      add(`rahmen-any-${place}`, `${framed ? 'ohne Rahmen' : 'Rahmen'} · Anybook ${place === 'above' ? 'darüber' : 'überlappend'}`,
-        { ...over, anybookCircle: true, anybookPlace: place }, [{ mit: base, regel: 'anybook' }]);
-    }
-  }
-
-  /* Wortkarten: the card's size given, and the grid — both „given" cards,
-     where the circle takes room from the symbol rather than growing the card. */
-  if (offer.size?.kind === 'cards') {
-    for (const [key, name, over] of [
-      ['karte', 'Karte 50 mm', { sheetFit: 'card', cardWidthMm: 50, cardHeightMm: null }],
-      ['raster', 'Raster 4 × 3', { sheetFit: 'grid', gridCols: 4, gridRows: 3 }],
-    ] as const) {
-      const base = add(key, name, over);
-      add(`${key}-wort-aus`, `${name} · ohne Wort`, { ...over, showLabel: false });
-      out.find((fall) => fall.id === base)!.vergleiche.push({ mit: `${which}-${key}-wort-aus`, regel: 'wort' });
-      for (const place of ['above', 'over'] as const) {
-        add(`${key}-any-${place}`, `${name} · Anybook ${place === 'above' ? 'darüber' : 'überlappend'}`,
-          { ...over, anybookCircle: true, anybookPlace: place }, [{ mit: base, regel: 'anybook' }]);
-      }
-    }
-  }
-
-  /* Template-own axes that change a card's place or shape. */
-  if (offer.sentence) {
-    add('satz-aus', std.showSentenceText ? 'ohne Satz' : 'mit Satz', { showSentenceText: !std.showSentenceText });
-    add('satz-unten', 'Satz unten', { showSentenceText: true, sentencePosition: 'below' });
-  }
-  if (offer.stripFrame) add('streifenrahmen', 'Streifenrahmen', { stripFrame: true });
-
-  /* Lochen: 2 cm off the punched edge. */
-  add('lochen-links', 'Lochen links', { punch: 'left' });
-  add('lochen-oben', 'Lochen oben', { punch: 'top' });
-
-  /* The paper the template offers. */
-  const otherPaper = std.paper === 'a4' ? 'a5' : 'a4';
-  const otherSide = std.orientation === 'landscape' ? 'portrait' : 'landscape';
-  const sideName = (side: string) => (side === 'landscape' ? 'quer' : 'hoch');
-  if (offer.paper === true || offer.paper === 'size') {
-    const base = add('papier', otherPaper.toUpperCase(), { paper: otherPaper });
-    /* On the other paper the word is compared again: the Spiel's geometry scales. */
-    if (offer.label && std.showLabel) {
-      add('papier-wort-aus', `${otherPaper.toUpperCase()} · ohne Wort`, { paper: otherPaper, showLabel: false });
-      out.find((fall) => fall.id === base)!.vergleiche.push({ mit: `${which}-papier-wort-aus`, regel: 'wort' });
-    }
-  }
-  if (offer.paper === true || offer.paper === 'side') add('seite', sideName(otherSide), { orientation: otherSide });
-  if (offer.paper === true) add('papier-seite', `${otherPaper.toUpperCase()} ${sideName(otherSide)}`, { paper: otherPaper, orientation: otherSide });
-
+/** The switches a template has, in the order its menus have them. */
+export function achsen(which: CollectionKind): Achse[] {
+  const offer = TEMPLATES[which].offers(standardOf(which));
+  const out: Achse[] = [];
+  const add = <K extends keyof Wahl>(key: K, name: string, werte: { wert: Wahl[K]; name: string }[]) => out.push({ key, name, werte } as unknown as Achse);
+  if (offer.paper === true || offer.paper === 'size') add('papier', 'Papier', [{ wert: 'a4', name: 'A4' }, { wert: 'a5', name: 'A5' }]);
+  if (offer.paper === true || offer.paper === 'side') add('seite', 'Ausrichtung', [{ wert: 'portrait', name: 'hoch' }, { wert: 'landscape', name: 'quer' }]);
+  if (offer.size?.kind === 'cards') add('groesse', 'Größe', [{ wert: 'size', name: 'nach Symbol' }, { wert: 'card', name: 'Karte 50 mm' }, { wert: 'grid', name: 'Raster 4 × 3' }]);
+  if (offer.label) add('wort', 'Wort', [{ wert: 'aus', name: 'aus' }, { wert: 'below', name: 'unten' }, { wert: 'above', name: 'oben' }]);
+  add('anybook', 'Anybook', [{ wert: 'aus', name: 'aus' }, { wert: 'above', name: 'darüber' }, { wert: 'over', name: 'überlappend' }]);
+  if (offer.frames) add('rahmen', 'Rahmen', [{ wert: false, name: 'aus' }, { wert: true, name: 'an' }]);
+  if (offer.sentence) add('satz', 'Satz', [{ wert: 'aus', name: 'aus' }, { wert: 'above', name: 'oben' }, { wert: 'below', name: 'unten' }]);
+  add('lochen', 'Lochen', [{ wert: null, name: 'aus' }, { wert: 'left', name: 'links' }, { wert: 'top', name: 'oben' }]);
   return out;
+}
+
+const idOf = (which: CollectionKind, w: Wahl): string =>
+  [which, w.papier, w.seite, w.wort, w.anybook, w.rahmen ? 'rahmen' : 'ohne', w.lochen ?? 'nicht', w.groesse, w.satz].join('-');
+
+/** The combination in words, against the Standard: „Wort oben · Anybook darüber". */
+export function nameOf(which: CollectionKind, w: Wahl): string {
+  const std = standardWahl(which);
+  return achsen(which).filter((achse) => w[achse.key] !== std[achse.key]).map((achse) => {
+    const wert = achse.werte.find((one) => one.wert === w[achse.key])?.name ?? '';
+    return `${achse.name} ${wert}`;
+  }).join(' · ');
+}
+
+const faelle = new Map<string, Fall>();
+
+/** The case of a template in a combination — made once, so its sheet is measured once. */
+export function fallFor(which: CollectionKind, w: Wahl): Fall {
+  const id = idOf(which, w);
+  const known = faelle.get(id);
+  if (known) return known;
+  const m = materialOf(which);
+  const std = standardOf(which, m);
+  const settings = settle(which, {
+    ...std,
+    paper: w.papier, orientation: w.seite,
+    showLabel: w.wort !== 'aus', labelPosition: w.wort === 'aus' ? std.labelPosition : w.wort,
+    anybookCircle: w.anybook !== 'aus', anybookPlace: w.anybook === 'aus' ? std.anybookPlace : w.anybook,
+    cardBorderMm: w.rahmen ? (std.cardBorderMm || 0.5) : 0,
+    punch: w.lochen,
+    sheetFit: w.groesse,
+    ...(w.groesse === 'card' && std.sheetFit !== 'card' ? { cardWidthMm: 50, cardHeightMm: null } : {}),
+    ...(w.groesse === 'grid' && std.sheetFit !== 'grid' ? { gridCols: 4, gridRows: 3 } : {}),
+    showSentenceText: w.satz !== 'aus', sentencePosition: w.satz === 'aus' ? std.sentencePosition : w.satz,
+  }, gridOf(which, m));
+  const name = nameOf(which, w);
+  const offered = new Set(achsen(which).map((achse) => achse.key));
+  const vergleiche: Vergleich[] = [];
+  /* The circle against the same sheet without it; the word against the same sheet without it. */
+  if (w.anybook !== 'aus') vergleiche.push({ mit: idOf(which, { ...w, anybook: 'aus' }), regel: 'anybook' });
+  if (offered.has('wort') && w.wort !== 'aus') vergleiche.push({ mit: idOf(which, { ...w, wort: 'aus' }), regel: 'wort' });
+  const fall: Fall = {
+    id, vorlage: which, wahl: w, name, standard: name === '', settings, material: m, vergleiche,
+    gegeben: which === 'tafel' || (which === 'wortkarten' && settings.sheetFit !== 'size'),
+  };
+  faelle.set(id, fall);
+  return fall;
+}
+
+/** What a case is compared with, as cases: what has to be measured beside it. */
+export const zwillinge = (fall: Fall): Fall[] => fall.vergleiche.map((v) => faelle.get(v.mit) ?? twinOf(fall, v));
+function twinOf(fall: Fall, v: Vergleich): Fall {
+  return fallFor(fall.vorlage, { ...fall.wahl, ...(v.regel === 'anybook' ? { anybook: 'aus' as const } : { wort: 'aus' as const }) });
+}
+
+/**
+ * The cases measured for the problem list: the Standard, every switch moved
+ * on its own, and the switches that act on each other moved together — the
+ * word with the circle, the frame with the circle, a Wortkarten size with the
+ * word and the circle, the paper with the word. Each with what it is compared
+ * with, so every comparison has both sides.
+ */
+function faelleFor(which: CollectionKind): Fall[] {
+  const std = standardWahl(which);
+  const axes = achsen(which);
+  const werte = (key: keyof Wahl) => axes.find((achse) => achse.key === key)?.werte.map((one) => one.wert) ?? [std[key]];
+  const out = new Map<string, Fall>();
+  const add = (w: Wahl) => {
+    const fall = fallFor(which, w);
+    out.set(fall.id, fall);
+    for (const twin of zwillinge(fall)) out.set(twin.id, twin);
+  };
+  add(std);
+  for (const achse of axes) for (const { wert } of achse.werte) add({ ...std, [achse.key]: wert });
+  const pairs: [keyof Wahl, keyof Wahl][] = [['wort', 'anybook'], ['rahmen', 'anybook'], ['groesse', 'anybook'], ['groesse', 'wort'], ['papier', 'wort'], ['seite', 'wort']];
+  for (const [a, b] of pairs) for (const x of werte(a)) for (const y of werte(b)) add({ ...std, [a]: x, [b]: y });
+  return [...out.values()];
 }
 
 export const FAELLE: Fall[] = COLLECTION_KINDS.flatMap(faelleFor);
@@ -278,8 +311,7 @@ const mm = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} 
  * what every material starts from).
  */
 export function standardLines(which: CollectionKind): { name: string; value: string; own: boolean }[] {
-  const m = material(which);
-  const std = standardOf(which, m);
+  const std = standardOf(which);
   const offer = TEMPLATES[which].offers(std);
   const plain = DEFAULT_PRINT_SETTINGS;
   const line = (name: string, keys: (keyof PrintSettings)[], value: string) =>
