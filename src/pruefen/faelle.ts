@@ -293,7 +293,7 @@ export function achsen(which: CollectionKind, m: Material = testdaten(which)): A
   if (offer.background) wahl('hintergrund', 'Symbol', 'Karten (Hintergrund)', [{ ...aus, set: { cardBackground: null } }, { name: 'gelb', set: { cardBackground: '#fff1b3' } }]);
   if (offer.cutLines) wahl('schnitt', 'Symbol', 'Schnittlinien anzeigen', flag('showCutLines'));
   const places = offer.anybookPlaces ?? ANYBOOK_PLACES;
-  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', places.length === 1
+  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', places.length <= 1
     ? [{ ...aus, set: { anybookCircle: false } }, { ...an, set: { anybookCircle: true } }]
     : [{ ...aus, set: { anybookCircle: false } }, ...places.map((place) => ({ name: PLATZ[place], set: { anybookCircle: true, anybookPlace: place } }))]);
 

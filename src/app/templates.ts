@@ -46,7 +46,8 @@ export interface PrintOffer {
   stripFrame?: boolean;
   /**
    * Where the Anybook circle may go, when not everywhere: a Spiel's and a
-   * Plauderbuch's cards have no room above or beside their symbol, only over it.
+   * Plauderbuch's cards have no room above or beside their symbol, only over
+   * it; a Lied's circle is its line's, nothing to choose.
    */
   anybookPlaces?: readonly AnybookPlace[];
   /** Why this sheet has no Anybook circle (a text key): the box stays, greyed, with this under it. */
@@ -279,7 +280,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     fixed: () => ({ layout: 'lied' }),
     offers: () => ({
       ...BASE, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false }, margin: 'symbol',
-      colour: true, sentence: true, songChecks: true,
+      colour: true, sentence: true, songChecks: true, anybookPlaces: [],
     }),
   },
 

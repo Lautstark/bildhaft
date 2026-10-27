@@ -897,6 +897,41 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   expect(ring).toBeGreaterThan(n);
 });
 
+/*
+ * A Lied's line is sung as one, as a Schritt is read: one Anybook circle at
+ * its start, none on its pictures, which keep their size — and no place to
+ * choose for it.
+ */
+test('a Lied gives each line one Anybook circle, at its start', async ({ page }) => {
+  await pickTemplate(page, /^Lied/);
+  await page.getByLabel('Liedtext einfügen').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
+  await page.getByRole('button', { name: 'Übersetzen' }).click();
+  await showSheet(page);
+
+  const sheet = page.locator('.preview-frame');
+  const pictures = () => sheet.locator('.ps-song-line .ps-card__img').evaluateAll((all) =>
+    all.map((el) => (el as HTMLElement).offsetHeight));
+  const before = await pictures();
+  expect(before.length).toBeGreaterThan(2);
+
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  await expect(page.getByRole('button', { name: 'überlappend' })).toHaveCount(0);
+  const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
+    all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
+  await expect.poll(() => circles('.ps-song-line')).toEqual([true, true]);
+  expect(await circles('.ps-song-line .ps-card__img')).toEqual(before.map(() => false));
+  expect(await pictures()).toEqual(before);
+  // At the line's start: left of its first picture.
+  const [ring, first] = await sheet.locator('.ps-song-line').first().evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const scale = box.width / (el as HTMLElement).offsetWidth;
+    const after = getComputedStyle(el, '::after');
+    return [box.left + (parseFloat(after.left) + parseFloat(after.width)) * scale, el.querySelector('.ps-card')!.getBoundingClientRect().left];
+  });
+  expect(ring).toBeLessThanOrEqual(first + 0.5);
+});
+
 /**
  * A Tafel can have a picture beside its name and a colour behind its page —
  * what tells a household's boards apart. The picture is chosen as a Rezept's

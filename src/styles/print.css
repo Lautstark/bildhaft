@@ -948,7 +948,7 @@
  * the word. Only where there is a picture: an empty field, a Platzhalter, a
  * blank slot and an Einkaufsliste's places get none. A Rezept's Schritt is
  * read as one: one circle under its number, none on its pictures (her call,
- * 2026-10-27).
+ * 2026-10-27); a Lied's line likewise, one at its start.
  *
  * Where it goes against the symbol is the material's choice (her calls,
  * 2026-10-26/27): above it, beside it or over its top right corner — a
@@ -962,12 +962,13 @@
  * growing card before, it hid the picture. The circle never makes a symbol
  * bigger. One host for all since 2026-10-27.
  */
-.ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
-.ps-sheet--anybook .ps-recipe-step__n {
+.ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
+.ps-sheet--anybook :is(.ps-recipe-step__n, .ps-song-line:has(img)) {
   position: relative;
 }
-.ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after,
-.ps-sheet--anybook .ps-recipe-step__n::after {
+.ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after,
+.ps-sheet--anybook .ps-recipe-step__n::after,
+.ps-sheet--anybook .ps-song-line:has(img)::after {
   content: '';
   position: absolute;
   top: 0;
@@ -978,12 +979,12 @@
   border: 0.25mm dashed #cfc8c1;
   border-radius: 50%;
 }
-.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
   right: auto;
   left: calc(50% - 4.75mm);
 }
 /* Beside: right of the symbol, at its middle. */
-.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img)::after {
+.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img)::after {
   top: calc(50% - 4.75mm);
 }
 
@@ -998,20 +999,32 @@
   left: calc(50% - 4.75mm);
 }
 
+/* A Lied's line is sung as one, as a Schritt is read (her call,
+   2026-10-27): one circle at its start, at its middle, none on its
+   pictures — they keep their size. */
+.ps-sheet--anybook .ps-song-line:has(img) {
+  padding-left: 11.5mm;
+}
+.ps-sheet--anybook .ps-song-line:has(img)::after {
+  top: calc(50% - 4.75mm);
+  right: auto;
+  left: 0;
+}
+
 /* The room, said once: on top for above, on the right for beside. */
 .ps-sheet--any-above { --any-top: 10.5mm; }
 .ps-sheet--any-beside { --any-right: 10.5mm; }
 /* A card that gets no circle gets no room: a Schritt's pictures, a place. */
-:is(.ps-place, .ps-recipe-step) .ps-card { --any-right: 0mm; }
+:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card { --any-right: 0mm; }
 
 /* Above and beside — growing: the room comes on top of the symbol. Given: it comes off it. */
-.ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
+.ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
   box-sizing: content-box;
 }
 .ps-sheet--anybook :is(.ps-card--fill, .ps-card--exact, .ps-cut .ps-card) .ps-card__img:has(img) {
   box-sizing: border-box;
 }
-.ps-sheet--anybook .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
+.ps-sheet--anybook .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) {
   padding: var(--any-top, 0mm) var(--any-right, 0mm) 0 0;
 }
 
@@ -1050,7 +1063,7 @@
 :is(.ps-talk__card, .ps-spiel__bild) { --any-pad: calc(1mm * var(--talk-k)); }
 :is(.ps-card--label-above, .ps-spiel--above .ps-spiel__bild, .ps-talk-cut--above .ps-talk__card) { --any-pad-top: 1mm; }
 
-.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
+.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) {
   container-type: size;
   --any-s0: min(100cqw, 100cqh);
   --any-s: min(var(--any-s0), (50cqw + (100cqh + var(--any-s0)) / 2 + 2 * var(--any-pad) - 11.5mm) / 1.5);
@@ -1059,11 +1072,11 @@
   --any-s0: var(--sym);
   --any-s: var(--any-sym);
 }
-.ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+.ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
   top: calc(1mm - var(--any-pad-top, var(--any-pad)));
   right: calc(1mm - var(--any-pad));
 }
-.ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic) img {
+.ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic) img {
   max-width: var(--any-s);
   max-height: var(--any-s);
   translate: 0 calc((var(--any-s0) - var(--any-s)) / 2);
