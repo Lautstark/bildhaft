@@ -263,9 +263,6 @@ export const picturesOf = (sentence: Pick<Sentence, 'slots'> | null | undefined)
 export const titlePictures = (sentences: readonly Sentence[]): Slot[] =>
   picturesOf(sentences.find((sentence) => sentence.part === 'titel'));
 
-/** The first of them: a Rezept's or a Tafel's title picture, as the head shows it. */
-export const titlePicture = (sentences: readonly Sentence[]): Slot | null => titlePictures(sentences)[0] ?? null;
-
 /** What a material holds, without its title: its rows, cards or entries. */
 export const contentOf = (sentences: readonly Sentence[]): Sentence[] =>
   sentences.filter((sentence) => sentence.part !== 'titel');

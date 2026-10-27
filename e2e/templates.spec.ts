@@ -812,25 +812,30 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
 });
 
 /**
- * A Rezept's name can have a picture, set beside it in Bearbeiten and printed
- * with it: the sheet shows the name as it stands there, and „Titel auf der
- * ersten Seite" prints both or neither. Each part is printed under a band in
- * the Rezept's colour. The picture is not one of the entries.
+ * A Rezept has the title line the other templates have: its name is the file,
+ * the title is what the paper says, with symbols of its own. „Titel drucken"
+ * prints both or neither. Each part is printed under a band in the Rezept's
+ * colour. The title's symbols are not entries.
  */
-test('a Rezept prints its name with the picture it was given, and its parts under bands', async ({ page }) => {
+test('a Rezept prints the title from its title line, and its parts under bands', async ({ page }) => {
   await pickTemplate(page, /^Rezept/);
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Bananenpfannkuchen Gruppe Igel');
   await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
   await expect(page.getByRole('region', { name: 'Zutaten' }).locator('.recipe__entry')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Bild zum Titel wählen' }).click();
+  await page.getByLabel('Titel auf dem Papier').fill('Bananenpfannkuchen');
+  await page.getByLabel('Titel auf dem Papier').press('Enter');
+  await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
-  await expect(page.getByRole('button', { name: 'Bild zum Titel ändern' }).locator('img')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
   await expect(page.locator('.collection-head')).toContainText('1 Eintrag');
+  await expect(page.getByLabel('Name des Materials', { exact: true })).toHaveValue('Bananenpfannkuchen Gruppe Igel');
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect(sheet.locator('.ps-title .ps-title__pic img')).toBeVisible();
+  await expect(sheet.locator('.ps-title')).toHaveText('Bananenpfannkuchen');
   await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten']);
   expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
     .toBe('rgb(255, 255, 255)');
@@ -840,15 +845,17 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
   await expect(sheet.locator('.ps-title')).toHaveCount(0);
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
 
-  // Taken out again in the picker, the name prints alone.
+  // Symbol taken out and words emptied, the name prints alone.
   await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
-  await page.getByRole('button', { name: 'Bild zum Titel ändern' }).click();
+  await page.getByRole('button', { name: 'Symbol im Titel ändern' }).click();
   await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Bild zum Titel wählen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' })).toHaveCount(0);
+  await page.getByLabel('Titel auf dem Papier').fill('');
+  await page.getByLabel('Titel auf dem Papier').press('Enter');
   await showSheet(page);
-  await expect(sheet.locator('.ps-title')).toBeVisible();
+  await expect(sheet.locator('.ps-title')).toHaveText('Bananenpfannkuchen Gruppe Igel');
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
 });
 

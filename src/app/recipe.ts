@@ -1,7 +1,7 @@
 import type { RecipePart, Sentence } from '../core/types.ts';
 import { partOf, sentenceCaption, slotCaption } from '../core/types.ts';
 import { deleteSentence, newId, putSentence } from '../db/repo.ts';
-import { emptySlot, handleAddSlot, openPicker } from './editing.ts';
+import { emptySlot, openPicker } from './editing.ts';
 import { addLines } from './composing.ts';
 import { s } from './state.svelte.ts';
 
@@ -112,29 +112,4 @@ export async function rewritePart(part: RecipePart, text: string): Promise<strin
   const goneIds = new Set(pool.map((sentence) => sentence.id));
   s.sentences = s.sentences.filter((sentence) => !goneIds.has(sentence.id)).map((sentence) => byId.get(sentence.id) ?? sentence);
   return '';
-}
-
-/**
- * The picture beside a Rezept's or a Tafel's name, chosen in the picker every
- * field has. Its sentence is made the first time it is asked for, with one
- * empty field; a field left empty is taken out again when the picker closes,
- * as any field added by hand is, and the Sammlung then has no picture. Here
- * with the Rezept, where it came first; a Tafel's is the same sentence.
- */
-export async function chooseTitlePicture(): Promise<void> {
-  const collectionId = s.activeId;
-  if (!collectionId) return;
-  let sentence = s.sentences.find((one) => one.part === 'titel');
-  if (!sentence) {
-    const now = Date.now();
-    sentence = {
-      id: newId(), normalizedInput: '', rawInput: '', slots: [], collectionId,
-      createdAt: now, updatedAt: now, part: 'titel',
-    };
-    await putSentence(sentence);
-    s.sentences = [...s.sentences, sentence];
-  }
-  const field = sentence.slots[0];
-  if (field) { openPicker(sentence.id, field.id); return; }
-  await handleAddSlot(sentence.id);
 }
