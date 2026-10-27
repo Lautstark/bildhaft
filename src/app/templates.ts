@@ -285,7 +285,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     cards: false,
     defaults: () => ({
       paper: 'a4', orientation: 'landscape', cutMarginMm: 3,
-      showLabel: true, labelPosition: 'below', labelSizePt: 11,
+      /* Without the word: a game is read off its pictures, and a word makes
+         every card taller, so the sheet holds five rows instead of four. */
+      showLabel: false, labelPosition: 'below', labelSizePt: 11,
       cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56',
       cardBackground: '#ffffff',
       accentColour: '#e0558c', gameGroundColour: '#fdeef3',

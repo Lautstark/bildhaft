@@ -75,6 +75,12 @@ test('ein Spiel baut sich Zeile für Zeile, und druckt Blatt und Kartenbogen', a
   await second.dragTo(rows.first());
   await expect(rows.first().locator('.word__name')).toHaveText(['Regen', 'Banane']);
 
+  // A new Spiel prints without its words; asked for, they print under the pictures.
+  await expect(page.locator('.print-view .ps-spiel__wort')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await page.getByLabel('Beschriftung drucken').check();
+  await page.keyboard.press('Escape');
+
   // One sheet, A4 across: the Ablage holds one dot per card of the game,
   // the fence stands between the zones, and the rows print their cells in
   // the order they were put — the Platzhalter at the front included.

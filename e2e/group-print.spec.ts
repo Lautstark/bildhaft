@@ -52,6 +52,10 @@ async function newGame(page: Page, name: string, bild: string, karte: string): P
   await newMaterial(page, /^Spiel/, name);
   await pick(page, '+ Bild', bild);
   await pick(page, '+ Platzhalter', karte);
+  /* With its words, so the cards can be told apart on the shared Bogen. */
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Beschriftung drucken').check();
+  await page.keyboard.press('Escape');
 }
 
 test('der Gruppendruck druckt die Spiele zusammen, die Karten geteilt auf einem Bogen', async ({ page }) => {

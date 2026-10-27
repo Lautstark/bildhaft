@@ -95,6 +95,9 @@ const PRINT_STEPS: PrintStep[] = [
     const { pageColour: _unseen, ...rest } = own;
     return rest;
   },
+  /* 2026-10-27: a Spiel starts without its word. One that printed with it
+     because that was the template's answer keeps printing with it. */
+  (which, own) => (which === 'spiel' && !('showLabel' in own) ? { ...own, showLabel: true } : own),
 ];
 
 /** The steps not yet run in this browser, over every Sammlung. */
