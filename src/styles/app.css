@@ -1973,8 +1973,8 @@ footer.footer {
 
 /* ---------------------------------------------------------- anybook codes */
 
-/* A field's code in Bearbeiten (AnyMark): a small ring in the card's corner,
-   as the sticker sits on paper; a dot for words of its own, struck through
+/* A field's code in Bearbeiten (AnyMark): a small ring in the card's top left
+   corner, away from its ×; a dot for words of its own, struck through
    when it is off. Changed in the Symbol dialog's „Anybook-Stift“ (AnyStift),
    or in the small code sheet where there is no such dialog. The print
    preview only shows the codes as they print. */
@@ -1989,7 +1989,8 @@ footer.footer {
   background: var(--surface) radial-gradient(circle, var(--text) 0 2.5px, transparent 3px);
   flex: none;
 }
-.any-mark--corner { position: absolute; top: -6px; right: -6px; z-index: 1; }
+/* Top left: the card's × sits top right (her call). */
+.any-mark--corner { position: absolute; top: -6px; left: -6px; z-index: 1; }
 .any-mark--inline { position: relative; cursor: pointer; }
 .any-mark--inline:hover { border-color: var(--accent); }
 .any-mark--own::after {
