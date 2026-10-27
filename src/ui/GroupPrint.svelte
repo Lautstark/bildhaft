@@ -15,7 +15,7 @@
    * change none of them, and the tick lives only in this overlay.
    */
   import { untrack } from 'svelte';
-  import type { CollectionKind } from '../core/types.ts';
+  import type { GroupPrintWhich } from '../core/ordner.ts';
   import PrintSheet from './PrintSheet.svelte';
   import { attachGroupPrinting, groupPdf, Printing } from './printDialog.svelte.ts';
   import { printerPaper } from './printSheet.ts';
@@ -23,7 +23,11 @@
   import { download } from '@lautstark/werkzeuge/download';
   import { t } from '../i18n/index.ts';
 
-  let { which, onClose }: { which: CollectionKind; onClose: () => void } = $props();
+  let { which, onClose }: { which: GroupPrintWhich; onClose: () => void } = $props();
+  /* „Alle Tafeln drucken", or the Ordner by its name. */
+  let caption = $derived(which.ordner === undefined
+    ? t('ui.group_print_of', { group: t(`ui.group_${which.kind}`) })
+    : t('ui.ordner_print_of', { name: which.ordner }));
 
   let loaded = $state.raw<GroupLoaded[] | null>(null);
   let chosen = $state.raw<ReadonlySet<string>>(new Set());
@@ -76,7 +80,7 @@
     saving = true;
     try {
       const pdf = await groupPdf(previews);
-      download(pdf, `${t(`ui.group_${which}`)} ${pdfStem(new Date(), previews[0]!.settings)}.pdf`);
+      download(pdf, `${which.ordner ?? t(`ui.group_${which.kind}`)} ${pdfStem(new Date(), previews[0]!.settings)}.pdf`);
     } finally {
       saving = false;
     }
@@ -86,10 +90,10 @@
 <svelte:window onkeydown={(event) => { if (event.key === 'Escape') onClose(); }} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-<div class="print-dock print-dock--big" aria-label={t('ui.group_print_of', { group: t(`ui.group_${which}`) })} onclick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+<div class="print-dock print-dock--big" aria-label={caption} onclick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
   <div class="print-view group-print">
     <div class="print-view__caprow">
-      <span class="print-view__cap">{t('ui.group_print_of', { group: t(`ui.group_${which}`) })}</span>
+      <span class="print-view__cap">{caption}</span>
       <span class="small faint">{t(pageCount === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pageCount })}</span>
       <span class="print-view__sp"></span>
       <button class="print-view__tool" type="button" aria-label={t('ui.preview_close')} title={t('ui.preview_close')} onclick={onClose}>✕</button>

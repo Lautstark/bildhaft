@@ -29,6 +29,11 @@
   import { editedLabel } from '../core/edited.ts';
   import { drawCollections } from '@lautstark/design/collections';
   import Icon from '../pieces/Icon.svelte';
+  import Overflow from '@lautstark/design/svelte/Overflow';
+  import { ordnerKey, sameOrdner } from '../core/ordner.ts';
+  import {
+    deleteOrdner, dropInOrdner, dropOnMaterial, handleNewOrdner, ordnerIn, renameOrdner,
+  } from '../app/ordner.ts';
   import Logo from '../pieces/Logo.svelte';
   import { s } from '../app/state.svelte.ts';
   import { handleNewCollection, scheduleSearch, setActive } from '../app/collections.ts';
@@ -106,6 +111,13 @@
     if (id === 'collections') return showingKind !== null;
     /* „Zuletzt" waits to be asked: the open one is already lit in its group. */
     if (id === 'recent') return false;
+    if (id.startsWith('ordner:')) {
+      const open = s.collections.find((c) => c.id === s.activeId);
+      const naming = s.renamingOrdner;
+      return (!s.wortschatz && open !== undefined && id === ordnerId(kindOf(open), open.ordner ?? ''))
+        || (naming !== null && id === ordnerId(naming.kind, naming.name));
+    }
+    if (s.renamingOrdner && id === groupId(s.renamingOrdner.kind)) return true;
     return id === groupId(showingKind ?? 'satzstreifen') && showingKind !== null;
   };
   let pressed = $state<Record<string, boolean>>({});
@@ -117,6 +129,7 @@
   const isOpen = (id: string): boolean => pressed[id] ?? holds(id);
   const toggle = (id: string): void => { pressed = { ...pressed, [id]: !isOpen(id) }; };
   const groupId = (kind: CollectionKind) => `kind:${kind}`;
+  const ordnerId = (kind: CollectionKind, name: string) => `ordner:${kind}:${ordnerKey(name)}`;
   const groupOpen = (kind: CollectionKind) => isOpen(groupId(kind));
   const toggleGroup = (kind: CollectionKind) => toggle(groupId(kind));
 
@@ -157,7 +170,62 @@
       open: openTag === undefined && s.activeId ? [s.activeId] : [],
       onPick: (id: string) => { s.wortschatz = null; setActive(id); s.query = ''; onNavigated(); },
     });
+    /* Inside the groups a row can be dragged onto another or onto an Ordner.
+       drawCollections draws one button per row, in order, and knows nothing
+       of dragging, so the id is put on each here. */
+    if (!grouped) return;
+    [...node.querySelectorAll<HTMLElement>(':scope > .collections__item')].forEach((row, i) => {
+      row.draggable = true;
+      row.dataset.id = list[i]!.id;
+    });
   };
+
+  /*
+   * Dragging a material in the sidebar (her pick „O3"): onto another of its
+   * template makes an Ordner of the two — or puts it into the other's —, onto
+   * an Ordner puts it in, onto its template's heading takes it out. Native
+   * drag and drop, as the Tafel's fields have; the ⋯ beside the name does the
+   * same without a mouse.
+   */
+  let dragging: string | null = null;
+  const dropTarget = (event: DragEvent): HTMLElement | null =>
+    (event.target as HTMLElement).closest<HTMLElement>('.collections__item[data-id], [data-drop-ordner], [data-drop-kind]');
+  const clearDrop = (root: HTMLElement) => root.querySelectorAll('.drop-target').forEach((n) => n.classList.remove('drop-target'));
+  function dragStart(event: DragEvent): void {
+    const row = (event.target as HTMLElement).closest<HTMLElement>('.collections__item[data-id]');
+    if (!row || !event.dataTransfer) return;
+    dragging = row.dataset.id!;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', dragging);
+  }
+  function dragOver(event: DragEvent): void {
+    if (!dragging) return;
+    clearDrop(event.currentTarget as HTMLElement);
+    const target = dropTarget(event);
+    if (!target || target.dataset.id === dragging) return;
+    event.preventDefault();
+    target.classList.add('drop-target');
+  }
+  function drop(event: DragEvent): void {
+    clearDrop(event.currentTarget as HTMLElement);
+    const moved = dragging;
+    dragging = null;
+    const target = dropTarget(event);
+    if (!moved || !target) return;
+    event.preventDefault();
+    if (target.dataset.id) void dropOnMaterial(moved, target.dataset.id);
+    else if (target.dataset.dropOrdner !== undefined) void dropInOrdner(moved, target.dataset.kind as CollectionKind, target.dataset.dropOrdner);
+    else void dropInOrdner(moved, target.dataset.dropKind as CollectionKind, null);
+  }
+
+  /* The name of a new or renamed Ordner, typed in place: Enter or leaving
+     the field keeps it, Escape keeps the old one. */
+  function naming(node: HTMLInputElement): void { node.focus(); node.select(); }
+  function nameKeys(event: KeyboardEvent, kind: CollectionKind, from: string): void {
+    const field = event.currentTarget as HTMLInputElement;
+    if (event.key === 'Enter') { event.preventDefault(); void renameOrdner(kind, from, field.value); }
+    if (event.key === 'Escape') { event.preventDefault(); void renameOrdner(kind, from, from); }
+  }
 
   function openWords(tag: string | null): void {
     s.wortschatz = { tag };
@@ -206,11 +274,18 @@
   do anything, so it waits until there is a word to sort.
 
   Every heading is a button that folds what is under it.
--->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<div class="sidebar__section sidebar__section--collections"><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<div class="sidebar__grouprow"><button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.group_${group.kind}`)}</span></button><!--
+-->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="sidebar__section sidebar__section--collections" ondragstart={dragStart} ondragover={dragOver} ondrop={drop} ondragend={(event) => { dragging = null; clearDrop(event.currentTarget); }}><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<div class="sidebar__grouprow" data-drop-kind={group.kind}><button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.group_${group.kind}`)}</span></button><!--
   Der Gruppendruck: alles dieser Vorlage auf einmal, abwählbar in der
   Vorschau. Er steht links neben der Zahl, die bündig rechts bleibt wie bei
   „Materialien" — und zeigt sich erst dem Zeiger.
---><button class="sidebar__groupprint" type="button" aria-label={t('ui.group_print_of', { group: t(`ui.group_${group.kind}`) })} title={t('ui.group_print_of', { group: t(`ui.group_${group.kind}`) })} onclick={() => { s.groupPrint = group.kind; onNavigated(); }}><Icon name="printer" /></button><span class="sidebar__count">{group.rows.length}</span></div>{#if groupOpen(group.kind)}<div class="collections sidebar__group-rows" {@attach materialRows(group.rows, false)}></div>{/if}{/each}{:else}<div class="collections" {@attach materialRows(s.collections, true)}></div>{/if}{/if}</div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
+--><button class="sidebar__groupprint" type="button" aria-label={t('ui.group_print_of', { group: t(`ui.group_${group.kind}`) })} title={t('ui.group_print_of', { group: t(`ui.group_${group.kind}`) })} onclick={() => { s.groupPrint = { kind: group.kind }; onNavigated(); }}><Icon name="printer" /></button><span class="sidebar__count">{group.rows.length}</span></div>{#if groupOpen(group.kind)}{@const inside = ordnerIn(group.kind)}<div class="sidebar__group-rows"><!--
+  Die Ordner der Vorlage oben, jeder wie eine Gruppe: aufklappen, drucken,
+  sein ⋯ zum Umbenennen und Löschen. Darunter, was lose liegt, und zuletzt
+  „+ Neuer Ordner" wie „+ Neuer Tag" unter dem Wortschatz.
+-->{#each inside.ordner as ordner (ordnerKey(ordner.name))}{@const id = ordnerId(group.kind, ordner.name)}<div class="sidebar__grouprow sidebar__ordner" data-drop-ordner={ordner.name} data-kind={group.kind}>{#if s.renamingOrdner && s.renamingOrdner.kind === group.kind && sameOrdner(s.renamingOrdner.name, ordner.name)}<input class="field sidebar__ordnername" type="text" value={ordner.name} aria-label={t('ui.ordner_name')} use:naming onkeydown={(event) => nameKeys(event, group.kind, ordner.name)} onblur={(event) => void renameOrdner(group.kind, ordner.name, event.currentTarget.value)} />{:else}<button class="sidebar__group" type="button" aria-expanded={isOpen(id)} onclick={() => toggle(id)}><Icon name="chevronRight" /><span class="sidebar__ordner-ico"><Icon name="folder" /></span><span>{ordner.name}</span></button><Overflow class="btn quiet icon sidebar__ordnermenu" label={t('ui.ordner_actions', { name: ordner.name })} build={(add) => {
+  add(t('ui.ordner_rename'), () => { s.renamingOrdner = { kind: group.kind, name: ordner.name }; });
+  add(t('ui.ordner_delete'), () => void deleteOrdner(group.kind, ordner.name), { danger: true });
+}}><Icon name="dots" /></Overflow><button class="sidebar__groupprint" type="button" aria-label={t('ui.ordner_print_of', { name: ordner.name })} title={t('ui.ordner_print_of', { name: ordner.name })} disabled={ordner.rows.length === 0} onclick={() => { s.groupPrint = { kind: group.kind, ordner: ordner.name }; onNavigated(); }}><Icon name="printer" /></button><span class="sidebar__count">{ordner.rows.length}</span>{/if}</div>{#if isOpen(id) && ordner.rows.length > 0}<div class="collections sidebar__group-rows" {@attach materialRows(ordner.rows, false)}></div>{/if}{/each}<div class="collections" {@attach materialRows(inside.loose, false)}></div><button class="btn quiet sm sidebar__new-ordner" type="button" onclick={() => handleNewOrdner(group.kind)}>{t('ui.new_ordner')}</button></div>{/if}{/each}{:else}<div class="collections" {@attach materialRows(s.collections, true)}></div>{/if}{/if}</div>{/if}{/snippet}{#snippet foot()}<button class="btn quiet sm" type="button" onclick={() => { openAppSettings(); onNavigated(); }}>{t('ui.settings')}</button>{/snippet}</SharedSidebar
 ><!--
   A section's heading, which is also what folds it.
 -->{#snippet fold(id: string, label: string, count?: number)}<button class="sidebar__fold" type="button" aria-expanded={isOpen(id)} onclick={() => toggle(id)}><Icon name="chevronRight" /><span>{label}</span>{#if count !== undefined}<span class="sidebar__count">{count}</span>{/if}</button>{/snippet}

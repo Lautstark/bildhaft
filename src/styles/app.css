@@ -203,6 +203,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .sidebar__group .sidebar__count { color: var(--text-faint); font-size: 12px; }
 .sidebar__group-rows { margin: 0 0 4px 13px; padding-left: 6px; border-left: 1px solid var(--surface-3); }
+/* An Ordner in its template's group: a folder before the name, which does
+   not turn with the chevron, its ⋯ beside the printer and shown like it on
+   hover, and the name typed in place when it is new or renamed. */
+.sidebar__ordner-ico { display: inline-grid; place-items: center; color: var(--text-faint); }
+.sidebar__group[aria-expanded="true"] .sidebar__ordner-ico svg { transform: none; }
+.sidebar__group > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar__grouprow .sidebar__ordnermenu { opacity: 0; padding: 4px 6px; }
+.sidebar__grouprow:hover .sidebar__ordnermenu,
+.sidebar__grouprow:focus-within .sidebar__ordnermenu,
+.sidebar__ordnermenu[aria-expanded="true"] { opacity: 1; }
+.sidebar__ordnername { flex: 1; min-width: 0; margin: 2px 0; padding: 4px 8px; font-size: 13px; }
+.sidebar__new-ordner { margin: 2px 0 4px; }
+/* Where a dragged material would land. */
+.sidebar .drop-target { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); border-radius: var(--radius-sm); }
+.sidebar .collections__item[draggable="true"] { cursor: grab; }
 
 .list { display: flex; flex-direction: column; gap: 1px; }
 
@@ -507,6 +522,8 @@ img.mirrored { transform: scaleX(-1); }
    of every ring cut off along all three edges. */
 .sheet > .body { overflow-y: auto; padding: 4px; }
 .sheet > .foot .spacer { flex: 1; }
+.copy__label { display: block; margin: 14px 0 6px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.copy__label:first-child { margin-top: 0; }
 
 /* ---------------------------------------------------------------- picker */
 

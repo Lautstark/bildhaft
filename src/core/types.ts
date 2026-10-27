@@ -400,6 +400,22 @@ export interface Collection {
   title?: string;
 
   /**
+   * The Ordner it lies in, by name, or absent for none. An Ordner is a set
+   * of materials of one template that belong together — the three
+   * Mahlzeiten, the Tafeln to „Meine ersten Spiele" — and is drawn inside its
+   * template's group in the sidebar (her pick „B", 2026-10-27).
+   *
+   * A name on the material, so a filled Ordner travels wherever its
+   * materials do: the Ablage folder, a backup. Only an empty one needs a
+   * place of its own, and has it in `AppSettings.ordner`. Compared
+   * case-insensitively, like a word's tags.
+   *
+   * Not in a shared file: `importCollectionFile` builds its record field by
+   * field and leaves it behind, because somebody else's Ordner are theirs.
+   */
+  ordner?: string;
+
+  /**
    * A Lied: which lines make up each of its parts, and the order the parts
    * are sung in. Only a `lied` has one, and one without it is a Lied nothing
    * has been pasted into yet.
@@ -1009,6 +1025,23 @@ export interface AppSettings {
    * arrived. Making a tag is therefore the same act as pinning one.
    */
   pinnedTags: string[];
+  /**
+   * The Ordner made here, empty or not, each in its template's group.
+   *
+   * The materials say which Ordner they lie in (`Collection.ordner`); this is
+   * what keeps one standing while nothing lies in it yet — „+ Neuer Ordner"
+   * makes an empty one, and taking the last material out does not delete it.
+   * The job `pinnedTags` does for a tag with no words. An Ordner a material
+   * names but this list does not (from a backup, from another browser on the
+   * same folder) is shown all the same.
+   */
+  ordner: OrdnerEntry[];
+}
+
+/** An Ordner by its template and name. */
+export interface OrdnerEntry {
+  kind: CollectionKind;
+  name: string;
 }
 
 /* --------------------------------------------------------------- export --- */

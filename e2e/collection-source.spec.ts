@@ -78,14 +78,16 @@ test('the ⋯ holds what this Sammlung is set to, under the export and above the
   await menu(page).click();
 
   // conventions.md §3.6's order: the exports first, the settings under them,
-  // the delete last. The middle item is not an act on the Sammlung, which is
+  // the delete last. The copy goes with the export, and where it lies with
+  // what it is set to; neither of those is an act on the Sammlung, which is
   // the amendment that section carries.
   //
   // Pouring the Wortschatz in would sit above all three — it is the only item
   // that puts something *into* the Sammlung — and is not here at all, because
   // this page has no Wortschatz to pour.
   await expect(page.locator('.menu button')).toHaveText([
-    'Material exportieren', 'Einstellungen dieses Materials …', 'Material löschen',
+    'Material exportieren', 'Kopieren …', 'In Ordner legen …',
+    'Einstellungen dieses Materials …', 'Material löschen',
   ]);
 });
 

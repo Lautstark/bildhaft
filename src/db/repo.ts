@@ -122,6 +122,7 @@ export function defaultSettings(): AppSettings {
     sidebarOpen: true,
     metacomRendering: null,
     pinnedTags: [],
+    ordner: [],
   };
 }
 
@@ -263,6 +264,11 @@ export async function saveCollectionProvider(
   id: string, provider: ProviderId | null,
 ): Promise<void> {
   await patchCollection(id, { provider: provider ?? undefined });
+}
+
+/** Which Ordner a material lies in, or `null` for none, which takes the field off. */
+export async function saveCollectionOrdner(id: string, ordner: string | null): Promise<void> {
+  await patchCollection(id, { ordner: ordner?.trim() || undefined });
 }
 
 /** Deletes a collection AND its sentences. Only ever called behind a named confirm. */

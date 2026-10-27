@@ -23,6 +23,7 @@
    * the controller to the field it is asking of.
    */
   import Overflow from '@lautstark/design/svelte/Overflow';
+  import { openCopy, openOrdnerChoice } from './ordner.ts';
   import TitleField from '@lautstark/design/svelte/TitleField';
   import { renameCollection } from '../db/repo.ts';
   import Icon from '../pieces/Icon.svelte';
@@ -117,6 +118,10 @@
      menu to. Nothing to pour is nothing to offer. */
   if (s.wordCount > 0) add(t('ui.add_wortschatz'), () => void openWortschatzSheet());
   add(t('ui.export_collection'), () => void handleExport(), { disabled: s.sentences.length === 0 });
+  /* After the export, the other way out of it — a copy —, then where it
+     lies, beside what it is set to. */
+  add(t('ui.copy_menu'), () => openCopy());
+  add(t('ui.ordner_menu'), () => openOrdnerChoice());
   add(t('ui.symbol_source_menu'), () => openSourceSheet());
   add(t('ui.delete_collection'), () => void confirmDeleteCollection(), { danger: true });
 }}><Icon name="dots" /></Overflow></div>

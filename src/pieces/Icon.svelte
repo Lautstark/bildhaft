@@ -4,7 +4,7 @@
    *  One component with a name rather than one per glyph: they differ in a path
    *  and a size and in nothing else, and a file each would be six files that
    *  each say `stroke="currentColor"`. */
-  type Name = 'menu' | 'menuMobile' | 'chevronLeft' | 'chevronRight' | 'printer' | 'trash' | 'arrow' | 'dots' | 'link';
+  type Name = 'menu' | 'menuMobile' | 'chevronLeft' | 'chevronRight' | 'printer' | 'trash' | 'arrow' | 'dots' | 'link' | 'folder';
   let { name }: { name: Name } = $props();
 
   const PATHS: Record<Exclude<Name, 'dots'>, { size: number; d: string }> = {
@@ -15,6 +15,7 @@
     printer: { size: 15, d: 'M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z' },
     trash: { size: 15, d: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3' },
     arrow: { size: 20, d: 'M5 12h13M12 5l7 7-7 7' },
+    folder: { size: 14, d: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
     link: { size: 13, d: 'M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1' },
   };
 </script>

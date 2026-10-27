@@ -1,6 +1,7 @@
 import { NARROW } from '@lautstark/design/svelte/sidebar';
 import type { AppSettings, Collection, ProviderId, Sentence } from '../core/types.ts';
-import type { CollectionKind } from '../core/types.ts';
+import type { CollectionKind, OrdnerEntry } from '../core/types.ts';
+import type { GroupPrintWhich } from '../core/ordner.ts';
 import { kindOf } from '../core/types.ts';
 import { TEMPLATES } from './templates.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
@@ -56,8 +57,10 @@ export class AppState {
   /* How many pages each Sammlung came to the last time its sheet was laid
      out, by id — what the head says beside the switch. This session only. */
   pagesSeen = $state.raw<Record<string, number>>({});
-  /** Which template group's „Alle drucken" is open, or none. */
-  groupPrint = $state.raw<CollectionKind | null>(null);
+  /** Which template group's „Alle drucken" is open — or one Ordner's in it — or none. */
+  groupPrint = $state.raw<GroupPrintWhich | null>(null);
+  /** The Ordner whose name is being typed in the sidebar, or none. */
+  renamingOrdner = $state.raw<OrdnerEntry | null>(null);
   /* How far a pasted text has got. Null for a single line, whose spinner in the
      composer is the whole story — see composing.ts. */
   batch = $state.raw<{ done: number; total: number } | null>(null);

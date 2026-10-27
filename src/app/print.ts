@@ -7,6 +7,7 @@ import {
   talkCapacity, type Titled,
 } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
+import { sameOrdner, type GroupPrintWhich } from '../core/ordner.ts';
 import { listSentences, patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
 import { download } from '@lautstark/werkzeuge/download';
@@ -277,8 +278,9 @@ export interface GroupPrintPart { collection: Collection | null; options: PrintO
  * Everything one template group holds, loaded once: the open material's rows
  * are the live ones, every other material's come from the store.
  */
-export async function groupPrintLoad(which: CollectionKind): Promise<GroupLoaded[]> {
-  const rows = s.collections.filter((c) => kindOf(c) === which);
+export async function groupPrintLoad(which: GroupPrintWhich): Promise<GroupLoaded[]> {
+  const rows = s.collections.filter((c) => kindOf(c) === which.kind
+    && (which.ordner === undefined || sameOrdner(c.ordner, which.ordner)));
   return Promise.all(rows.map(async (collection) => ({
     collection,
     sentences: collection.id === s.activeId ? s.sentences : await listSentences(collection.id),

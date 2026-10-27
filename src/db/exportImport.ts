@@ -370,6 +370,56 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   return { collection, collectionCount: 1, sentenceCount: sentences.length, overrideCount: added.length };
 }
 
+/**
+ * A copy of a material, beside the original: same template, same Mappe, same
+ * print and source, under a new name. `withContent` brings every card along
+ * under fresh ids, with the grid, the song's parts, the book's pages and the
+ * game's rows pointing at them; without it the copy is only the look — a
+ * Tafel's grid, groups and air with every field free, and none of the cards.
+ *
+ * The `title` stays behind either way: absent, the paper's title follows the
+ * name, and a copy is about to be renamed.
+ */
+export async function copyCollection(
+  source: Collection, name: string, withContent: boolean,
+): Promise<Collection> {
+  const now = Date.now();
+  const id = newId();
+  const sentenceIds = new Map<string, string>();
+  const sentences: Sentence[] = withContent
+    ? (await listSentences(source.id)).map((s) => {
+      const fresh = newId();
+      sentenceIds.set(s.id, fresh);
+      return { ...s, id: fresh, collectionId: id, createdAt: now, updatedAt: now };
+    })
+    : [];
+
+  const { title: _title, pdfs: _pdfs, board, song, talk, game, ...kept } = source;
+  const collection: Collection = {
+    ...kept,
+    id,
+    name: name.trim() || source.name,
+    ...(board ? {
+      board: withContent
+        ? remapBoard(board, sentenceIds)
+        : { ...board, cells: (board.cells ?? []).map(() => null) },
+    } : {}),
+    ...(withContent && song ? { song: remapSong(song, sentenceIds) } : {}),
+    ...(withContent && talk ? { talk: remapTalk(talk, sentenceIds) } : {}),
+    ...(withContent && game ? { game: remapGame(game, sentenceIds) } : {}),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const db = await getDB();
+  const tx = db.transaction(['collections', 'sentences'], 'readwrite');
+  await tx.objectStore('collections').put(collection);
+  for (const sentence of sentences) await tx.objectStore('sentences').put(sentence);
+  await tx.done;
+  await fileImported([collection], sentences, []);
+  return collection;
+}
+
 /** A board's fields pointing at the fresh ids its cards were given. */
 function remapBoard(board: Board, ids: Map<string, string>): Board {
   return {

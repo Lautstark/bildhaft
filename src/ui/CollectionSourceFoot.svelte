@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Choosing } from './collectionSource.svelte.ts';
   import { t } from '../i18n/index.ts';
 
-  let { s }: { s: Choosing } = $props();
+  /* Any sheet whose presses are written through: the source's, the Ordner's. */
+  let { s }: { s: { close(): void } } = $props();
 </script>
 
 <div class="spacer"></div><!--
