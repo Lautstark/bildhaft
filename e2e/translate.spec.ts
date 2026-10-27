@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { idForTerm, labelsForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { openSymbolSearch, showSheet, translate } from './helpers.ts';
+import { closePicker, openSymbolSearch, showSheet, translate } from './helpers.ts';
 
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
@@ -45,6 +45,27 @@ test('never silently drops a word it cannot match', async ({ page }) => {
   expect(unmatched?.chosen).toBeNull();
 });
 
+/*
+ * A picture chosen folds the search shut and leaves the dialog open (her call,
+ * 2026-10-27): the picture shows the new one at once, and the words can still
+ * be set before Fertig.
+ */
+test('choosing another symbol keeps the dialog open, with the new picture in it', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
+  await openSymbolSearch(page);
+  await expect(page.getByLabel('Symbol suchen')).toBeFocused();
+  const tile = page.locator('dialog.sheet .picker__tile img');
+  const before = await tile.getAttribute('src');
+  await page.locator('.picker__item', { hasText: labelsForTerm('Apfel')[1] }).first().click();
+  await expect(page.locator('dialog.sheet')).toHaveCount(1);
+  await expect(page.getByLabel('Symbol suchen')).toHaveCount(0);
+  await expect(tile).not.toHaveAttribute('src', before ?? '');
+  await page.getByLabel('Text zum Symbol').fill('der Apfel');
+  await closePicker(page);
+  await expect(page.locator('.row').first().locator('.word__name').nth(2)).toHaveText('der Apfel');
+});
+
 test('remembers a correction and applies it to later sentences', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
 
@@ -53,6 +74,7 @@ test('remembers a correction and applies it to later sentences', async ({ page }
   await openSymbolSearch(page);
   const alternative = labelsForTerm('Apfel')[1];
   await page.locator('.picker__item', { hasText: alternative }).first().click();
+  await closePicker(page);
   await expect(page.locator('dialog.sheet')).toHaveCount(0);
 
   const expectedId = String(idForTerm('Apfel') + 1);
@@ -79,6 +101,7 @@ test('supports adding, removing and reordering slots', async ({ page }) => {
   await row.locator('.slot-add').click();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await closePicker(page);
   await expect(row.locator('.slot')).toHaveCount(5);
   await expect(row.locator('.word__name').last()).toHaveText('Banane');
 
@@ -113,6 +136,7 @@ test('the „+" opens the same picker as a filled field, rows and all', async ({
   await page.getByLabel('Symbol durchstreichen').check();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await closePicker(page);
   await expect(sheet).toHaveCount(0);
   const added = row.locator('.slot').last();
   await expect(added.locator('.word__name')).toHaveText('Obst');
@@ -139,6 +163,7 @@ test('the Wortschatz picker draws only the rows it can act on', async ({ page })
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
   await openSymbolSearch(page);
   await page.locator('.picker__item').nth(1).click();
+  await closePicker(page);
   await expect(page.locator('dialog.sheet')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Wortschatz' }).click();

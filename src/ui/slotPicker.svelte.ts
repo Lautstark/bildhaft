@@ -49,6 +49,13 @@ export interface PickerHandlers {
   onClose?: () => void;
   /** The field's Anybook code, where the material prints codes and this field carries one: the „Anybook-Stift“ section. */
   anybook?: CodeHere;
+  /**
+   * The field as it stands now. Given, a picture chosen does not close the
+   * dialog — the search folds shut and the picture shows the new one, and the
+   * words can still be set (her call, 2026-10-27). Left out, a pick closes the
+   * dialog with its answer, as the Wortschatz's still does.
+   */
+  live?: () => Slot | undefined;
 }
 
 /** What the picker is looking at and what it has been told. */
@@ -61,7 +68,6 @@ export class Picking {
    * would claim the slot shows something it does not.
    */
   readonly chosen: string | null;
-  readonly isNew: boolean;
 
   /** The tiles to show while nothing has been searched. Handed to the search
    *  component, which declines them the moment a word has been searched — so
@@ -117,7 +123,6 @@ export class Picking {
   ) {
     this.stored = slot.candidates[provider] ?? [];
     this.chosen = slot.ownImage ? null : slot.choice[provider] ?? null;
-    this.isNew = !slot.concept;
     this.suggested = this.stored;
     this.caption = slot.label ?? '';
     this.searching = !symbolIdFor(slot, provider);
@@ -209,7 +214,7 @@ export class Picking {
      */
     this.cropFailed = '';
     const loaded = await loadSquare(file, file.name).catch(() => null);
-    if (!loaded) { this.finish(() => this.handlers.onOwnImage(file, file.name)); return; }
+    if (!loaded) { this.settle(() => this.handlers.onOwnImage(file, file.name)); return; }
     this.loaded = loaded;
   }
 
@@ -226,7 +231,7 @@ export class Picking {
     const cropper = this.cropper;
     if (!loaded || !cropper) return;
     void cropper.cut().then(
-      (square) => this.finish(() => this.handlers.onOwnImage(square, cropName(loaded.name, square.type))),
+      (square) => this.settle(() => this.handlers.onOwnImage(square, cropName(loaded.name, square.type))),
       () => { this.endCrop(); this.cropFailed = t('ui.crop_failed'); });
   }
 
@@ -239,6 +244,29 @@ export class Picking {
     this.loaded?.close();
     this.loaded = null;
     window.clearTimeout(this.labelTimer);
+  }
+
+  /** The field as it stands now: the live one where the dialog stays open after a pick. */
+  get current(): Slot {
+    return this.handlers.live?.() ?? this.slot;
+  }
+
+  /** A field the „+" has only just made, with nothing in it yet. */
+  get isNew(): boolean {
+    return !this.current.concept;
+  }
+
+  /**
+   * A picture chosen: a symbol, an own picture, or the own picture taken away.
+   * Where the dialog stays open, the search folds shut and the dialog goes on;
+   * elsewhere it closes with the answer, as it always did.
+   */
+  settle(outcome: () => void): void {
+    if (!this.handlers.live) { this.finish(outcome); return; }
+    this.flushLabel();
+    outcome();
+    this.endCrop();
+    this.searching = false;
   }
 
   /** Closes the dialog and then runs the outcome the pressed button stands for. */

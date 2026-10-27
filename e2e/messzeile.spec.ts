@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { openDing, pickTemplate, showSheet } from './helpers.ts';
+import { closePicker, openDing, pickTemplate, showSheet } from './helpers.ts';
 
 /**
  * The Messzeile: the Symbol menu's first line, in every template, says how big
@@ -29,6 +29,7 @@ async function pickCard(page: Page, label: string, term: string): Promise<void> 
   await search.fill(term);
   await search.press('Enter');
   await page.locator('.picker__item', { hasText: term }).first().click();
+  await closePicker(page);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 

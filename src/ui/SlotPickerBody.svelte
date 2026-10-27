@@ -13,7 +13,8 @@
    * in the middle with its two buttons beside it — they change the picture, so
    * they sit with it — and the words under it, one width. The search is not
    * shown while there is a picture: pressing the picture folds it open under it,
-   * an own picture is its last tile, and choosing is done, as it always was. The
+   * an own picture is its last tile, and choosing folds it shut again
+   * with the new picture in place — the dialog stays for the words (her call). The
    * crop takes the fold's place and everything else goes away while it is up.
    */
   import { tick } from 'svelte';
@@ -38,7 +39,7 @@
 
   let source = $derived(getProvider(s.provider));
   /** What the field shows now, or nothing for a field the „+" just made. */
-  let shown = $derived(symbolIdFor(s.slot, s.provider));
+  let shown = $derived(symbolIdFor(s.current, s.provider));
 
   /* Once, as the sheet opens: it is a background read that fills the
      suggestions out. It no longer has to ask what is in the field — the
@@ -144,7 +145,7 @@
   words. The search is not shown while there is a picture — it folds open
   under it when the picture is pressed, and choosing one is done, as before.
   A field with nothing chosen yet opens with it.
---><div class="picker__pic" hidden={cropping}><button type="button" class="word__pic picker__own-shown picker__tile{shown ? '' : ' picker__own-shown--empty'}" aria-expanded={s.searching} aria-label={t('ui.picker_change')} title={t('ui.picker_change')} onclick={toggleSearch}>{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{:else}<span class="picker__tile-ask" aria-hidden="true">?</span>{/if}</button>{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<span class="picker__tools">{#if negate}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.negated} aria-label={t('ui.cross_out')} title={t('ui.cross_out')} onclick={() => { s.negated = !s.negated; negate(s.negated); }}>⊘</button>{/if}{#if mirror}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.mirrored} aria-label={t('ui.mirror')} title={t('ui.mirror')} onclick={() => { s.mirrored = !s.mirrored; mirror(s.mirrored); }}>⇆</button>{/if}</span>{/if}</div><!--
+--><div class="picker__pic" hidden={cropping}><button type="button" class="word__pic picker__own-shown picker__tile{shown ? '' : ' picker__own-shown--empty'}" aria-expanded={s.searching} aria-label={t('ui.picker_change')} title={t('ui.picker_change')} onclick={toggleSearch}>{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.current.ownImage ? t('ui.own_picture') : s.current.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{:else}<span class="picker__tile-ask" aria-hidden="true">?</span>{/if}</button>{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<span class="picker__tools">{#if negate}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.negated} aria-label={t('ui.cross_out')} title={t('ui.cross_out')} onclick={() => { s.negated = !s.negated; negate(s.negated); }}>⊘</button>{/if}{#if mirror}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.mirrored} aria-label={t('ui.mirror')} title={t('ui.mirror')} onclick={() => { s.mirrored = !s.mirrored; mirror(s.mirrored); }}>⇆</button>{/if}</span>{/if}</div><!--
   The search, folded open under the picture. conventions.md §6.4.
 
   The tiles carry no `aria-pressed` and the component draws none: these tiles do
@@ -162,14 +163,14 @@
   busy={cropping}
   suggestions={s.suggested}
   describe={captionOf}
-  onpick={(candidate) => s.finish(() => s.handlers.onChoose(candidate))}
+  onpick={(candidate) => s.settle(() => s.handlers.onChoose(candidate))}
 >{#snippet between()}<div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own: Fertig keeps the square — so does Enter — and the ✕
   drops it, which is what all three mean everywhere else here.
 --><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet trailing()}<span class="picker__own"><label class="picker__own-add">{t('ui.own_picture_choose')}<!--
   A file of the user's own. bildhaft keeps the bytes rather than a path, so
   moving or deleting the original afterwards changes nothing here.
---><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(clear)}>{t('ui.own_picture_remove')}</button>{/if}</span>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch></div>{/if}<!--
+--><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.current.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.settle(clear)}>{t('ui.own_picture_remove')}</button>{/if}</span>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch></div>{/if}<!--
   The words. The caption is a field of its own rather than a rewrite of the
   source word, so a correction stays remembered under the word that was typed;
   its placeholder is what would print without it, so clearing it is the reset.

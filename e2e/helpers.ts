@@ -151,3 +151,10 @@ export async function openSymbolSearch(page: Page): Promise<void> {
   const tile = page.locator('dialog.sheet .picker__tile');
   if (await tile.getAttribute('aria-expanded') !== 'true') await tile.click();
 }
+
+/** A picture chosen leaves the Symbol dialog open for its words (her call, 2026-10-27): Fertig closes it. */
+export async function closePicker(page: Page): Promise<void> {
+  const sheet = page.locator('dialog.sheet');
+  if (await sheet.count()) await sheet.locator('.foot').getByRole('button', { name: 'Fertig' }).click();
+  await expect(sheet).toHaveCount(0);
+}

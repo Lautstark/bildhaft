@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { PDFDocument } from 'pdf-lib';
 import { mockArasaac } from './arasaac-mock.ts';
-import { backToPrint, cardSheet, openDing, openLook, pickPaper, pickTemplate, showMaterial, showSheet, translateAll, untilKept } from './helpers.ts';
+import { backToPrint, cardSheet, closePicker, openDing, openLook, pickPaper, pickTemplate, showMaterial, showSheet, translateAll, untilKept } from './helpers.ts';
 
 /** CSS reference resolution: 96px per inch. */
 const mm = (px: number) => +(px / (96 / 25.4)).toFixed(2);
@@ -687,6 +687,7 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
   await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
   await page.getByLabel('Symbol suchen').fill('Apfel');
   await page.locator('.picker__item').first().click();
+  await closePicker(page);
   await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
   await expect(page.locator('.rows .row')).toHaveCount(2);
   await expect(page.locator('.collection-head')).toContainText('2 Zeilen');

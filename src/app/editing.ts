@@ -89,16 +89,17 @@ export function openPicker(sentenceId: string, slotId: string): void {
     onLabel: (label) => void handleLabel(label),
     onRemove: () => void handleRemoveSlot(),
     onClose: () => void handleClosePicker(),
+    live: () => s.sentences.find((x) => x.id === sentenceId)?.slots.find((sl) => sl.id === slotId),
     anybook: cardCode(s.sentences.find((x) => x.id === sentenceId)!, slot) ?? undefined,
   });
 }
 
 async function handleChoose(candidate: Candidate): Promise<void> {
   if (!s.picker) return;
-  // The field is settled now; which field it was has to be taken now too,
-  // because the work below waits its turn behind any edit still in flight.
+  // Which field it was is taken now, because the work below waits its turn
+  // behind any edit still in flight. The dialog stays open on it (her call):
+  // the picker is left as it is, and its close settles it.
   const { sentenceId, slotId } = s.picker;
-  s.picker = null;
 
   await queued(async () => {
     const sentence = s.sentences.find((x) => x.id === sentenceId);
@@ -147,7 +148,6 @@ async function handleChoose(candidate: Candidate): Promise<void> {
 async function handleOwnImage(picture: Blob, name: string): Promise<void> {
   if (!s.picker) return;
   const { sentenceId, slotId } = s.picker;
-  s.picker = null;
 
   await queued(async () => {
     const sentence = s.sentences.find((x) => x.id === sentenceId);
@@ -177,7 +177,6 @@ async function handleOwnImage(picture: Blob, name: string): Promise<void> {
 async function handleClearOwnImage(): Promise<void> {
   if (!s.picker) return;
   const { sentenceId, slotId } = s.picker;
-  s.picker = null;
   await mutateSlots(sentenceId, (slots) =>
     slots.map((sl) => (sl.id === slotId ? { ...sl, ownImage: null } : sl)));
   // The picture itself only goes once nothing points at it any more.
@@ -273,6 +272,10 @@ export async function handleReorder(sentenceId: string, from: number, to: number
 
 /** Discard a hand-added slot the user never filled. */
 async function handleClosePicker(): Promise<void> {
+  if (!s.picker) return;
+  /* A picture chosen a moment ago may still be on its way in: an empty field
+     is only empty once every write before this one has landed. */
+  await queued(async () => undefined);
   if (!s.picker) return;
   const { sentenceId, slotId } = s.picker;
   const slot = s.sentences

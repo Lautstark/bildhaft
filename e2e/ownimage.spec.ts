@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { openSymbolSearch, rowFor, translate } from './helpers.ts';
+import { closePicker, openSymbolSearch, rowFor, translate } from './helpers.ts';
 
 /**
  * A picture of the user's own, in place of a symbol.
@@ -21,6 +21,8 @@ async function attachPhoto(page: Page, name = 'Bente.png'): Promise<void> {
   await page.locator('.picker__own input[type=file]').setInputFiles({
     name, mimeType: 'image/png', buffer: Buffer.from(PHOTO, 'base64'),
   });
+  // Square already, so it goes straight in; the dialog stays for the words.
+  await closePicker(page);
 }
 
 /** The width of each symbol in the first row; 3 marks an own picture. */

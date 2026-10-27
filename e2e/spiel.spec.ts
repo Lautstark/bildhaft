@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mockArasaac, readSentences } from './arasaac-mock.ts';
-import { pickTemplate, showMaterial, showSheet } from './helpers.ts';
+import { closePicker, pickTemplate, showMaterial, showSheet } from './helpers.ts';
 
 /**
  * Ein Spiel is built row by row, as it prints: the „+" tile takes a picture
@@ -33,6 +33,7 @@ async function pick(page: import('@playwright/test').Page, scope: ReturnType<imp
   await search.fill(term);
   await search.press('Enter');
   await page.locator('.picker__item', { hasText: term }).first().click();
+  await closePicker(page);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 

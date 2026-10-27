@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
+import { backToPrint, closePicker, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -658,6 +658,7 @@ async function addRecipeCard(page: Page, part: 'Zutat' | 'Hilfsmittel', word: st
   await page.getByRole('button', { name: `${part} hinzufügen` }).click();
   await page.getByLabel('Symbol suchen').fill(word);
   await page.locator('.picker__item', { hasText: word }).first().click();
+  await closePicker(page);
   if (!text) return;
   await page.getByRole('button', { name: `Bild für „${word}“ ändern` }).click();
   await page.getByLabel('Text zum Symbol').fill(text);
@@ -828,6 +829,7 @@ test('a Rezept prints the title from its title line, and its parts under bands',
   await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await closePicker(page);
   await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
   await expect(page.locator('.collection-head')).toContainText('1 Eintrag');
   await expect(page.getByLabel('Name des Materials', { exact: true })).toHaveValue('Bananenpfannkuchen Gruppe Igel');
@@ -1019,6 +1021,7 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
+  await closePicker(page);
   await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
   // No card: neither in the tray nor in the count.
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
@@ -1346,6 +1349,7 @@ async function pickCard(page: import('@playwright/test').Page, scope: import('@p
   await search.fill(term);
   await search.press('Enter');
   await page.locator('.picker__item', { hasText: term }).first().click();
+  await closePicker(page);
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
