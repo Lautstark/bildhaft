@@ -1503,5 +1503,27 @@ test('a card that grows round its symbol grows upwards for the Anybook placehold
   expect(Math.abs(after.off)).toBeLessThan(0.3);
   // Darüber means over the symbol's middle.
   expect(Math.abs(after.circleOff)).toBeLessThan(0.3);
+
+  // Überlappend: in the card's own corner, 1 mm in, the card as it was — not
+  // on the symbol's corner, where it covered half the picture.
+  await page.getByRole('button', { name: 'überlappend' }).click();
+  const corner = () => page.evaluate(() => {
+    const mm = 96 / 25.4;
+    const card = document.querySelector('.preview-frame .ps-card:has(img)') as HTMLElement;
+    const scale = card.getBoundingClientRect().width / card.offsetWidth;
+    const box = card.querySelector('.ps-card__img') as HTMLElement;
+    const ring = getComputedStyle(box, '::after');
+    const at = box.getBoundingClientRect();
+    const edge = card.getBoundingClientRect();
+    return {
+      right: Math.round(((edge.right - at.right) / scale + parseFloat(ring.right) - card.clientLeft) / mm * 10) / 10,
+      top: Math.round(((at.top - edge.top) / scale + parseFloat(ring.top) - card.clientTop) / mm * 10) / 10,
+      height: card.offsetHeight / mm,
+    };
+  });
+  // Within a quarter millimetre: the card's 0.2 mm border is counted in whole pixels.
+  await expect.poll(async () => Math.abs((await corner()).right - 1)).toBeLessThan(0.25);
+  expect(Math.abs((await corner()).top - 1)).toBeLessThan(0.25);
+  expect((await corner()).height).toBeCloseTo(before.height, 1);
 });
 

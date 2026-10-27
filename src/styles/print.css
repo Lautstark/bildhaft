@@ -983,6 +983,19 @@
   right: auto;
   left: calc(50% - 4.75mm);
 }
+/* Over: in the card's corner, 1 mm in from its edge or its frame's — out
+   from the box by the card's own padding, so a card that grows round its
+   symbol keeps the picture's corner as clear as a given one. With the word
+   on top it stays at the box's top, under the word. */
+.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); }
+.ps-card--framed { --any-pad: var(--frame-pad); }
+.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img)::after {
+  top: calc(1mm - var(--any-pad));
+  right: calc(1mm - var(--any-pad));
+}
+.ps-sheet--any-over .ps-card--label-above:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img)::after {
+  top: 0;
+}
 
 /* The Schritt's number stands over its circle, the column as wide as the
    circle, the row as tall as the two. */
