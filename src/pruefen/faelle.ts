@@ -127,7 +127,15 @@ function testMaterial(which: CollectionKind): Omit<Material, 'id' | 'provider' |
     }
     case 'plauderbuch': {
       const question = sentence(['spielen'], { rawInput: 'Was hast du gespielt?' });
-      const sayings = ['Ball', 'Garten', 'Blume', 'Topf', 'Zahnbürste', 'Gummistiefel'].map((word) => sentence([word]));
+      /* Answers as they are written in one: two to four words, one long word among them. */
+      const sayings = [
+        ['Ball', 'Ball gespielt'], ['Garten', 'im Garten'], ['Blume', 'Blumen gepflückt'],
+        ['Topf', 'mit Papa gekocht'], ['Zahnbürste', 'Zähne geputzt'], ['Gummistiefel', 'Gummistiefel angezogen'],
+      ].map(([word, said]) => {
+        const one = sentence([word!]);
+        one.slots[0]!.label = said;
+        return one;
+      });
       return { name: 'Kita', sentences: [question, ...sayings], talk: { pages: [{ question, sayings }] } };
     }
     case 'spiel': {
@@ -188,10 +196,17 @@ export interface Fall {
   titel: string;
   vergleiche: Vergleich[];
   /**
-   * The card's size is given (a Tafel's field, Wortkarten by card or grid):
-   * there the label can only take from the symbol, and that is no finding.
+   * The card's size is given (a Tafel's field, Wortkarten by card or grid, a
+   * Plauderbuch's field — 3:4 with room for two lines, her call 2026-10-27):
+   * there the label can only take from the symbol, and that is no fault.
    */
   gegeben: boolean;
+  /**
+   * A number was typed other than the Standard's — a font, a symbol, a margin.
+   * What then does not fit is the consequence of that choice, seen in the
+   * preview and changed back by whoever made it: a hint, not a fault.
+   */
+  eigeneMasse: boolean;
 }
 
 /** Each template's grid, where it has one: a Tafel's is its own. */
@@ -367,7 +382,8 @@ export function fallFor(which: CollectionKind, m: Material, w: Wahl): Fall {
   const fall: Fall = {
     id, vorlage: which, material: m, wahl: w, name, standard: name === '', settings, vergleiche,
     titel: typeof w.titeltext === 'string' ? w.titeltext : m.name,
-    gegeben: which === 'tafel' || (which === 'wortkarten' && settings.sheetFit !== 'size'),
+    gegeben: which === 'tafel' || which === 'plauderbuch' || (which === 'wortkarten' && settings.sheetFit !== 'size'),
+    eigeneMasse: achsen(which, m).some((achse) => achse.art === 'zahl' && w[achse.key] !== standardWahl(which, m)[achse.key]),
   };
   faelle.set(id, fall);
   return fall;

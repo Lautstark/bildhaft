@@ -24,6 +24,9 @@
   for (const which of COLLECTION_KINDS) testdaten(which);
   for (const { id, url } of SYMBOLE.values()) primeSymbolUrl('arasaac', id, url);
   document.title = 'bildhaft — Prüfseite Druck';
+  /* German, whatever the browser speaks: the words on the sheets are, and a
+     long one is hyphenated by the language the page says it is in. */
+  document.documentElement.lang = 'de';
 
   let vorlage = $state<CollectionKind>('spiel');
   /* Her materials, once the folder is open; and which one each template shows. */
@@ -141,7 +144,7 @@
       <label class="pruef__klein">Größe <input type="range" min="0.25" max="1" step="0.05" bind:value={scale} /> {Math.round(shown * 100)} %</label>
     </header>
     {#if m.id !== testdaten(vorlage).id}<p class="pruef__klein">Material: {m.quelle}</p>{/if}
-    {#if gemessen.has(fall.id)}<ul class="pruef__befunde">{#each hier.filter((b) => b.schwere === 'fehler') as b (b.text)}<li class="f">{b.text}</li>{/each}{#each hier.filter((b) => b.schwere === 'ok') as b (b.text)}<li class="ok">{b.text}</li>{/each}{#if hier.every((b) => b.schwere !== 'fehler')}<li class="ok">Kein Fehler gefunden.</li>{/if}</ul>{/if}
+    {#if gemessen.has(fall.id)}<ul class="pruef__befunde">{#each hier.filter((b) => b.schwere === 'fehler') as b (b.text)}<li class="f">{b.text}</li>{/each}{#each hier.filter((b) => b.schwere === 'hinweis') as b (b.text)}<li class="h">{b.text}</li>{/each}{#each hier.filter((b) => b.schwere === 'ok') as b (b.text)}<li class="ok">{b.text}</li>{/each}{#if hier.every((b) => b.schwere !== 'fehler')}<li class="ok">Kein Fehler gefunden.</li>{/if}</ul>{/if}
     <div class="pruef__buehne">{#key fall.id}<Kachel {fall} scale={shown} breite={platz || undefined} gezeigt {onGemessen} />{/key}</div>
   </section>
 
@@ -188,6 +191,8 @@
   .pruef__befunde { margin: 10px 0 16px; padding: 0; list-style: none; line-height: 1.6; }
   .pruef__befunde .f { color: #b71c1c; font-weight: 600; }
   .pruef__befunde .f::before { content: '✕ '; }
+  .pruef__befunde .h { color: var(--muted, #776e69); }
+  .pruef__befunde .h::before { content: 'Hinweis: '; }
   .pruef__befunde .ok { color: #2e7d32; }
   .pruef__befunde .ok::before { content: '✓ '; }
   .pruef__buehne { padding: 4px 0 20px; }

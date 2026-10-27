@@ -123,7 +123,11 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
       if (sym && wort && overlap(sym, wort)) befunde.push({ schwere: 'fehler', text: 'Symbol liegt über der Beschriftung', frage: any });
       if (kreis && wort && overlap(kreis, wort)) befunde.push({ schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
       if (sym && outside(sym, box)) befunde.push({ schwere: 'fehler', text: 'Symbol ragt aus der Karte', frage: any });
-      if (wort && outside(wort, box)) befunde.push({ schwere: 'fehler', text: 'Beschriftung ragt aus der Karte' });
+      if (wort && outside(wort, box)) {
+        befunde.push(fall.eigeneMasse
+          ? { schwere: 'hinweis', text: 'Beschriftung passt bei diesen Maßen nicht auf die Karte' }
+          : { schwere: 'fehler', text: 'Beschriftung ragt aus der Karte' });
+      }
       if (kreis && sym && fall.settings.anybookPlace === 'above' && overlap(kreis, sym)) {
         befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ berührt das Symbol' });
       }

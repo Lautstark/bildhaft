@@ -904,6 +904,11 @@
   font-size: calc(9pt * var(--talk-k));
   font-weight: 600;
   line-height: 1.15;
+  /* Never wider than its card: a long word breaks as on every other card
+     (.ps-card__label), with a hyphen, at the size that was set. */
+  max-width: 100%;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 /* The picture's own height, said in millimetres: in the grid box round it a
    percentage had no height to be a share of, and the picture stood out of
@@ -1127,5 +1132,5 @@
 }
 .ps-spiel__bild .ps-title__pic { width: var(--sym); height: var(--sym); padding: 0; border: 0; background: transparent; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 .ps-spiel__bild .ps-title__pic img { width: 100%; height: 100%; object-fit: contain; }
-.ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; }
+.ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
