@@ -109,6 +109,8 @@ test('the „+" opens the same picker as a filled field, rows and all', async ({
   // Wording and crossing out are set before the symbol is, and both survive
   // the pick that closes the dialog.
   await page.getByLabel('Text zum Symbol').fill('Obst');
+  // Crossing out is folded under „Mehr …“, below the pictures.
+  await page.getByText('Mehr …').click();
   await page.getByLabel('Symbol durchstreichen').check();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
@@ -351,6 +353,7 @@ test('crosses a symbol out for a negation, and keeps it crossed', async ({ page 
   await expect(slot.locator('.negate')).toHaveCount(0);
 
   await slot.click();
+  await page.getByText('Mehr …').click();
   await page.getByLabel('Symbol durchstreichen').check();
   // Crossing out is not a choice of symbol, so the dialog stays open for the
   // next thing the user wants to do to this field.
@@ -387,6 +390,7 @@ test('mirrors a symbol in its one field, and keeps it mirrored', async ({ page }
   await expect.poll(() => turned(slot.locator('img'))).toBe('none');
 
   await slot.click();
+  await page.getByText('Mehr …').click();
   await page.getByLabel('Symbol spiegeln').check();
   // Like crossing out, it is not a choice of symbol: the dialog stays open.
   await expect(page.locator('dialog.sheet')).toBeVisible();

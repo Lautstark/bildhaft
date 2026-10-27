@@ -29,6 +29,11 @@
   import NegationCross from '../pieces/NegationCross.svelte';
   import type { Picking } from './slotPicker.svelte.ts';
   import AnyStift from './AnyStift.svelte';
+  import { writeAnybook } from './anybookEdit.ts';
+  import { materialPrint } from '../app/print.ts';
+
+  /** Whether the field's code is taken off, as the material says now. */
+  const anyOff = (key: string): boolean => materialPrint()?.settings.anybookOff?.includes(key) ?? false;
   import { t } from '../i18n/index.ts';
 
   let { s }: { s: Picking } = $props();
@@ -154,13 +159,13 @@
   onpick={(candidate) => s.finish(() => s.handlers.onChoose(candidate))}
 ><!--
   Everything between the field and the pictures, in `between` — after the one,
-  before the other, inside neither. The three rows that are true of this field
-  whatever symbol ends up in it, and the crop that replaces them.
+  before the other, inside neither. The picture the field shows with the
+  buttons that change it, and the crop that replaces them; the words and the
+  rest went under the pictures (her pick „D").
 
   It takes no argument. `between` is handed the answer the way every snippet
-  here is, and nothing in it is a function of that answer: an own picture, a
-  printed caption and a crossing-out are properties of the slot, and are the
-  same whether the grid below is showing four hits or none.
+  here is, and nothing in it is a function of that answer: an own picture is a
+  property of the slot, the same whether the grid below shows four hits or none.
 -->{#snippet between()}<!--
   The picture the field is actually showing.
 
@@ -179,24 +184,26 @@
   A file of the user's own. bildhaft keeps the bytes rather than a path, so
   moving or deleting the original afterwards changes nothing here.
 --><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.slot.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.finish(clear)}>{t('ui.own_picture_remove')}</button>{/if}</div><!--
-  The words that get printed. A field of its own rather than a rewrite of the
-  source word, so a correction stays remembered under the word that was typed.
-  The placeholder is what would print without it, which is what makes an empty
-  field readable as "unchanged" — and clearing it is therefore the reset.
--->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept || t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}<!--
-  Negation is a property of the field, not a different symbol, so it does not
-  settle the dialog the way picking one does: cross it out, see it, carry on.
-  Shown on an empty field too, where it applies to the symbol about to be
-  picked — the dialog is the same wherever it opens. Mirroring is the same kind
-  of thing and sits on the same line. A place that cannot do either passes
-  neither handler, and the line is not drawn.
--->{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<div class="picker__negate" hidden={cropping}>{#if negate}<label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; negate(s.negated); }} />{t('ui.cross_out')}</label>{/if}{#if mirror}<label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; mirror(s.mirrored); }} />{t('ui.mirror')}</label>{/if}</div>{/if}<!--
-  What the Anybook pen says for this field, where the material prints codes.
--->{#if s.handlers.anybook}<div hidden={cropping}><AnyStift code={s.handlers.anybook} /></div>{/if}<!--
 --><div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own, and it had two. Both went the same way and for the same
   reason: this dialog already has a footer, the footer already says what it
   does, and a control repeating that an inch higher is a question about which of
   them is the real one rather than a choice. Fertig keeps the square — so does
   Enter — and the ✕ drops it, which is what all three mean everywhere else here.
---><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch>{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}
+--><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch><!--
+  What is on the card and what the pen says, under the pictures (her pick
+  „D", 2026-10-27): the pictures are what the dialog is opened for, the words
+  are what is left to set once one is chosen. Side by side where the material
+  prints Anybook codes, the caption alone where it does not.
+
+  The caption: a field of its own rather than a rewrite of the source word, so
+  a correction stays remembered under the word that was typed. The
+  placeholder is what would print without it, which is what makes an empty
+  field readable as "unchanged" — and clearing it is therefore the reset.
+-->{#if s.handlers.onLabel || s.handlers.anybook}<div class="picker__card{s.handlers.onLabel && s.handlers.anybook ? ' picker__card--two' : ''}" hidden={cropping}>{#if s.handlers.onLabel}<label class="picker__caption"><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept || t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if s.handlers.anybook}<AnyStift code={s.handlers.anybook} mode="field" />{/if}</div>{/if}<!--
+  The rest, folded under „Mehr …": crossing out and mirroring are properties
+  of the field, not a different symbol, so they do not settle the dialog —
+  tick, see it, carry on. Taking the field's code off sits with them. Open
+  when one of them is already on, so nothing set is out of sight. A place
+  that can do none of it passes no handler, and the line is not drawn.
+-->{#if s.handlers.onNegate || s.handlers.onMirror || s.handlers.anybook}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}{@const code = s.handlers.anybook}<details class="picker__more" hidden={cropping} open={s.negated || s.mirrored || (code ? anyOff(code.key) : false)}><summary class="small">{t('ui.picker_more')}</summary><div class="picker__negate">{#if negate}<label class="opt__check"><input type="checkbox" checked={s.negated} onchange={(event) => { s.negated = event.currentTarget.checked; negate(s.negated); }} />{t('ui.cross_out')}</label>{/if}{#if mirror}<label class="opt__check"><input type="checkbox" checked={s.mirrored} onchange={(event) => { s.mirrored = event.currentTarget.checked; mirror(s.mirrored); }} />{t('ui.mirror')}</label>{/if}{#if code}{@const gone = anyOff(code.key)}<button class="btn sm{gone ? '' : ' destructive'}" type="button" onclick={() => writeAnybook(code.key, materialPrint()?.settings.anybookSay?.[code.key] ?? null, !gone, code.standing)}>{gone ? t('ui.anybook_back') : t('ui.anybook_remove')}</button>{/if}</div></details>{/if}{#if !s.isNew}<p class="small faint" style="margin-top:14px;margin-bottom:0" hidden={cropping}>{t('ui.choice_remembered', { word: s.slot.sourceToken })}</p>{/if}

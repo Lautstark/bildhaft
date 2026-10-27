@@ -1974,7 +1974,7 @@ footer.footer {
 /* ---------------------------------------------------------- anybook codes */
 
 /* A field's code in Bearbeiten (AnyMark): a small ring in the card's top left
-   corner, away from its ×; a dot for words of its own, struck through
+   corner, away from its ×; orange for words of its own, struck through
    when it is off. Changed in the Symbol dialog's „Anybook-Stift“ (AnyStift),
    or in the small code sheet where there is no such dialog. The print
    preview only shows the codes as they print. */
@@ -1989,20 +1989,12 @@ footer.footer {
   background: var(--surface) radial-gradient(circle, var(--text) 0 2.5px, transparent 3px);
   flex: none;
 }
-/* Top left: the card's × sits top right (her call). */
-.any-mark--corner { position: absolute; top: -6px; left: -6px; z-index: 1; }
+/* Top left, the card's × mirrored: the same height, the same distance in (her calls). */
+.any-mark--corner { position: absolute; top: 6px; left: 6px; z-index: 1; }
 .any-mark--inline { position: relative; cursor: pointer; }
 .any-mark--inline:hover { border-color: var(--accent); }
-.any-mark--own::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-}
+/* Words of its own: the whole ring in the accent (her call), not a dot beside it. */
+.any-mark--own { border-color: var(--accent); background: var(--surface) radial-gradient(circle, var(--accent) 0 2.5px, transparent 3px); }
 .any-mark--off { opacity: .55; background: var(--surface) linear-gradient(135deg, transparent calc(50% - 1px), var(--text) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
 .any-mark--still { display: inline-block; vertical-align: -3px; margin-right: 6px; }
 .row__head > .any-mark--inline { margin-right: 4px; }
@@ -2013,5 +2005,18 @@ footer.footer {
 .any-stift__say { display: flex; gap: 6px; align-items: center; }
 .any-stift__say .field { flex: 1; min-width: 0; }
 .any-stift__say--off .field { text-decoration: line-through; opacity: .55; }
+
+/* The Symbol dialog's foot of words (her pick „D"): the card's text and what
+   the pen says side by side, „Mehr …" under them. */
+.picker__card { margin-top: 14px; }
+.picker__card--two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; align-items: start; }
+.picker__card .picker__caption { margin-top: 0; }
+.any-field { display: grid; gap: 4px; min-width: 0; }
+.any-field > label { display: flex; align-items: center; }
+.any-field .any-mark--still { width: 13px; height: 13px; vertical-align: 0; margin-right: 5px; }
+.picker__more { margin-top: 10px; }
+.picker__more > summary { cursor: pointer; color: var(--text-dim); width: fit-content; }
+.picker__more .picker__negate { margin-top: 8px; }
+.picker__card[hidden], .picker__more[hidden] { display: none; }
 .any-stift__error, .any-error { color: var(--danger); }
 .any-voice { display: flex; align-items: center; gap: 10px; }
