@@ -244,7 +244,7 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   await pick(page, rows.first(), '+ Bild', 'Apfel');
   await pick(page, rows.first(), '+ Platzhalter', 'Birne');
 
-  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   // A Spiel's cards have no room above their symbol: the circle only overlaps, nothing to choose.
   await expect(page.getByRole('button', { name: 'darüber' })).toHaveCount(0);
@@ -314,7 +314,7 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
 
 test('auf A5 bietet das Spiel kein Anybook an: ausgegraut, mit dem Grund darunter, und der Bogen hat keinen Kreis', async ({ page }) => {
   await pick(page, page.locator('.game__row').first(), '+ Bild', 'Apfel');
-  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
   const box = page.getByLabel('Platzhalter für Anybook-Sticker');
   await box.check();
   await showSheet(page);
@@ -324,7 +324,7 @@ test('auf A5 bietet das Spiel kein Anybook an: ausgegraut, mit dem Grund darunte
   await page.locator('.paper-pick__pop').getByRole('button', { name: 'A5', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.preview-frame .ps-sheet--anybook')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await page.getByRole('button', { name: 'Seite', exact: true }).click();
   await expect(box).toBeDisabled();
   await expect(box).not.toBeChecked();
   await expect(page.getByText('Auf A5 sind die Karten zu klein für einen Anybook-Sticker. Auf A4 geht es.')).toBeVisible();

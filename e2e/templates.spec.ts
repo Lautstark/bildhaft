@@ -882,7 +882,7 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
   expect(before.length).toBeGreaterThan(0);
 
-  await openDing(page, 'Symbol');
+  await openDing(page, 'Seite');
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
     all.map((el) => getComputedStyle(el.querySelector(':scope > .ps-any') ?? el).borderRadius === '50%'));
@@ -916,7 +916,7 @@ test('a Rezept’s Anybook codes are set in Bearbeiten: a card’s in its Symbol
   await showSheet(page);
   await expect(page.locator('main .any-mark')).toHaveCount(0);
 
-  await openDing(page, 'Symbol');
+  await openDing(page, 'Seite');
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   const zutaten = page.getByRole('region', { name: 'Zutaten' });
   await expect(zutaten.locator('.word .any-mark')).toHaveCount(1);
@@ -964,7 +964,7 @@ test('a Lied gives each line one Anybook circle, at its start', async ({ page })
   await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
   expect(before.length).toBeGreaterThan(2);
 
-  await openDing(page, 'Symbol');
+  await openDing(page, 'Seite');
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   await expect(page.getByRole('button', { name: 'überlappend' })).toHaveCount(0);
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
@@ -1585,7 +1585,7 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   const before = await sizes();
   expect(before.circle).toBe(false);
 
-  await openDing(page, 'Symbol');
+  await openDing(page, 'Seite');
   await page.getByLabel('Platzhalter für Anybook-Sticker').check();
   await expect.poll(async () => (await sizes()).circle).toBe(true);
   const after = await sizes();

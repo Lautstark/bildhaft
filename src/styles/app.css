@@ -1990,7 +1990,7 @@ footer.footer {
   flex: none;
 }
 /* Top left, the card's × mirrored: the same height, the same distance in (her calls). */
-.any-mark--corner { position: absolute; top: 6px; left: 6px; z-index: 1; }
+.any-mark--corner { position: absolute; top: 6px; left: 6px; }
 .any-mark--inline { position: relative; cursor: pointer; }
 .any-mark--inline:hover { border-color: var(--accent); }
 /* Words of its own: the whole ring in the accent (her call), not a dot beside it. */

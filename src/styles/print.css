@@ -1017,14 +1017,15 @@
   left: 0;
 }
 
-/* The title's code stands before it (her call, 2026-10-27): the title has
-   no symbol box to hang on, and a pen finds the start of a line first. */
+/* The title's code stands after it (her call, 2026-10-27, turned round
+   from before it): the title has no symbol box to hang on. */
 .ps-sheet--anybook .ps-title:has(> .ps-any--title) {
   display: flex;
   align-items: center;
   gap: 2mm;
 }
-.ps-sheet--anybook .ps-title > .ps-any--title {
+.ps-sheet--anybook .ps-title > .ps-any--title,
+.ps-sheet--anybook .ps-any--start {
   display: block;
   flex: none;
   width: 9.5mm;
@@ -1035,10 +1036,14 @@
   background: var(--any-fill, transparent);
 }
 
-/* The activation code at the title line's right end, on the first page only
-   (her call, 2026-10-27: not on a page of its own). One place in every
-   template, wherever its title stands. */
-.ps-sheet--anybook .ps-title > .ps-any--start { margin-left: auto; }
+/* The activation code in the first page's top right corner, as far out as a
+   printer still prints (her call, 2026-10-27): 4.5 mm from the paper's edges,
+   in the margin the preview draws round the page — so it needs no title and
+   stands in the same place in every template. Printed by the browser, the
+   page has no margin of its own to stand in, and it takes the content's corner. */
+.ps-sheet--anybook .ps-any--start { position: absolute; top: 0; right: 0; }
+.preview-scaler .ps-sheet--anybook .ps-page > .ps-any--start { top: 4.5mm; right: 4.5mm; }
+.ps-sheet--anybook:not(.ps-sheet--paged) { position: relative; }
 /* As quiet as it can be, and told apart from the codes that speak: a thin
    ring in the material's colour, grey where it has none (her call). */
 .ps-sheet--anybook .ps-any--start { --any-line: solid; --any-ring: var(--any-start, #b9b2b0); }

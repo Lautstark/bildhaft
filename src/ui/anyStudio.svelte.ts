@@ -59,19 +59,6 @@ export class StudioExport {
     void loadVoices().catch(() => { this.error = t('ui.anybook_no_voice'); });
   }
 
-  /** Whether the activation code goes out: the material's choice, absent is yes. */
-  get activation(): boolean {
-    return materialPrint()?.settings.anybookActivation !== false;
-  }
-  set activation(on: boolean) {
-    materialPrint()?.set('anybookActivation', on ? undefined : false);
-  }
-
-  /** Whether the sheet has a title for the activation code to stand beside. */
-  get titled(): boolean {
-    return Boolean(this.preview.holder?.querySelector('.ps-paper .ps-title'));
-  }
-
   /** The material's voice, or the household's. */
   get voice(): string {
     return voiceOf(materialPrint()?.settings);

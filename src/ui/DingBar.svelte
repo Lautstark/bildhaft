@@ -109,6 +109,12 @@
       <div class="ding__row"><span class="segmented">{#each ['left', 'top'] as const as edge (edge)}<button type="button" aria-pressed={mp.settings.punch === edge} onclick={() => mp?.set('punch', edge)}>{t(edge === 'left' ? 'ui.punch_left' : 'ui.punch_top')}</button>{/each}</span></div>
       {@render check(t('ui.punch_marks'), mp.settings.punchMarks, (next) => mp?.set('punchMarks', next))}
     </div>{/if}
+    <!-- Anybook (2026-10-26, ihr Wunsch): auf jeder Karte mit Symbol, am Titel und mit dem Aktivierungscode in der Ecke der Seite — darum im Seite-Menü (2026-10-27), vor der Fußzeile. -->
+    {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next), !!offer.anybookOff)}
+    {#if offer.anybookOff}<p class="ding-check__why small faint">{t(offer.anybookOff)}</p>{/if}
+    {#if mp.settings.anybookCircle && (offer.anybookPlaces ?? ANYBOOK_PLACES).length > 1}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each offer.anybookPlaces ?? ANYBOOK_PLACES as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(`ui.anybook_${place}`)}</button>{/each}</span></div></div>{/if}
+    <!-- Der Aktivierungscode oben rechts in der Ecke der ersten Seite (2026-10-27): eine Wahl des Materials, darum hier bei den Codes. -->
+    {#if mp.settings.anybookCircle}<div class="ding__dep">{@render check(t('ui.anybook_activation'), mp.settings.anybookActivation !== false, (next) => mp?.set('anybookActivation', next ? undefined : false))}</div>{/if}
     {#if offer.pageNumbers}{@render check(t('ui.page_numbers'), mp.settings.showPageNumbers, (next) => mp?.set('showPageNumbers', next))}{/if}
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>
@@ -143,10 +149,6 @@
       <PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} />
     </div>{/if}
     {#if offer.cutLines || kind() === 'einkaufsliste'}{@render check(t('ui.cut_lines'), mp.settings.showCutLines, (next) => mp?.set('showCutLines', next))}{/if}
-    <!-- Anybook (2026-10-26, ihr Wunsch): auf jeder Karte mit Symbol, in jeder Vorlage mit diesem Menü. -->
-    {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next), !!offer.anybookOff)}
-    {#if offer.anybookOff}<p class="ding-check__why small faint">{t(offer.anybookOff)}</p>{/if}
-    {#if mp.settings.anybookCircle && (offer.anybookPlaces ?? ANYBOOK_PLACES).length > 1}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each offer.anybookPlaces ?? ANYBOOK_PLACES as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(`ui.anybook_${place}`)}</button>{/each}</span></div></div>{/if}
   </div>{/if}</span>{/if}
   {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{#if offer.talk}{#if mp.settings.gameGroundColour}<span class="ding__dot" style:--c={mp.settings.gameGroundColour}></span>{/if}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
     {#if offer.sentence}{@render check(t('ui.print_sentence'), mp.settings.showSentenceText, (next) => mp?.set('showSentenceText', next))}{#if mp.settings.showSentenceText}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.sentencePosition === where} onclick={() => mp?.set('sentencePosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => mp?.set('sentenceSizePt', next), t('ui.sentence_size'))}</div></div>{/if}{/if}
