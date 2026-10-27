@@ -728,7 +728,8 @@ export type PaperSize = 'a5' | 'a4';
 export type SheetFit = 'size' | 'card' | 'grid';
 
 /** Where an Anybook sticker's circle goes against a card's symbol. */
-export type AnybookPlace = 'above' | 'over';
+export type AnybookPlace = 'above' | 'beside' | 'over';
+export const ANYBOOK_PLACES: readonly AnybookPlace[] = ['above', 'beside', 'over'];
 
 /**
  * The one font a sheet prints in, title to copyright line (her choice,

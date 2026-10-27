@@ -8,8 +8,11 @@
  * Pure data, no DOM: the sheet itself is the app's, drawn by `Printing` and
  * `PrintSheet.svelte` exactly as the preview draws it.
  */
-import type { CollectionKind, PrintFont, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
-import { DEFAULT_PRINT_SETTINGS, PRINT_FONTS } from '../core/types.ts';
+import type { AnybookPlace, CollectionKind, PrintFont, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
+import { ANYBOOK_PLACES, DEFAULT_PRINT_SETTINGS, PRINT_FONTS } from '../core/types.ts';
+
+/** The app's words for where the Anybook circle goes. */
+const PLATZ: Record<AnybookPlace, string> = { above: 'darüber', beside: 'daneben', over: 'überlappend' };
 import { openPrint, settle, TEMPLATES } from '../app/templates.ts';
 import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printSheet.ts';
 
@@ -289,13 +292,10 @@ export function achsen(which: CollectionKind, m: Material = testdaten(which)): A
   }
   if (offer.background) wahl('hintergrund', 'Symbol', 'Karten (Hintergrund)', [{ ...aus, set: { cardBackground: null } }, { name: 'gelb', set: { cardBackground: '#fff1b3' } }]);
   if (offer.cutLines) wahl('schnitt', 'Symbol', 'Schnittlinien anzeigen', flag('showCutLines'));
-  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', offer.anybookAbove === false
+  const places = offer.anybookPlaces ?? ANYBOOK_PLACES;
+  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', places.length === 1
     ? [{ ...aus, set: { anybookCircle: false } }, { ...an, set: { anybookCircle: true } }]
-    : [
-      { ...aus, set: { anybookCircle: false } },
-      { name: 'darüber', set: { anybookCircle: true, anybookPlace: 'above' } },
-      { name: 'überlappend', set: { anybookCircle: true, anybookPlace: 'over' } },
-    ]);
+    : [{ ...aus, set: { anybookCircle: false } }, ...places.map((place) => ({ name: PLATZ[place], set: { anybookCircle: true, anybookPlace: place } }))]);
 
   /* The template's own */
   const own = VORLAGE[which];
@@ -472,7 +472,7 @@ export function standardLines(which: CollectionKind): { name: string; value: str
   if (offer.background) lines.push(line('Hintergrund', ['cardBackground'], std.cardBackground ?? 'aus'));
   if (offer.cutLines || which === 'einkaufsliste') lines.push(line('Schnittlinien', ['showCutLines'], ja(std.showCutLines)));
   lines.push(line('Anybook', ['anybookCircle', 'anybookPlace'],
-    `${ja(std.anybookCircle)} (wenn an: ${std.anybookPlace === 'above' ? 'darüber' : 'überlappend'})`));
+    `${ja(std.anybookCircle)} (wenn an: ${PLATZ[std.anybookPlace]})`));
   lines.push(line('Lochen', ['punch'], std.punch ?? 'aus'));
   lines.push(line('Titel', ['showCollectionTitle', 'titleSizePt', 'titleLine'],
     std.showCollectionTitle ? `${std.titleSizePt} pt${std.titleLine ? ', Linie' : ''}` : 'aus'));

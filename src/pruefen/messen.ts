@@ -45,6 +45,25 @@ const outside = (inner: Rect, outer: Rect): boolean =>
   inner.x < outer.x - TOL || inner.y < outer.y - TOL
   || inner.x + inner.w > outer.x + outer.w + TOL || inner.y + inner.h > outer.y + outer.h + TOL;
 
+/** How much of a circle's disc lies on a rect, 0 to 1: counted on a fine grid. */
+const disc = (c: Rect, r: Rect): number => {
+  const n = 40;
+  let on = 0;
+  let all = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const u = (i + 0.5) / n - 0.5;
+      const v = (j + 0.5) / n - 0.5;
+      if (u * u + v * v > 0.25) continue;
+      all++;
+      const x = c.x + (u + 0.5) * c.w;
+      const y = c.y + (v + 0.5) * c.h;
+      if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) on++;
+    }
+  }
+  return all ? on / all : 0;
+};
+
 export const mmText = (n: number): string => n.toFixed(1).replace('.', ',');
 
 /** What kinds of things a sheet holds, and where their parts are. */
@@ -109,6 +128,8 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
     return { x: left / PX_PER_MM, y: top / PX_PER_MM, w: size / PX_PER_MM, h: px(style.height) / PX_PER_MM };
   };
 
+  /* Read off the sheet too: Spiel and Plauderbuch put it „überlappend“ whatever the setting says. */
+  const ueber = holder.querySelector('.ps-sheet--any-over') !== null;
   const stuecke: Stueck[] = [];
   for (const kind of ARTEN) {
     for (const el of holder.querySelectorAll(kind.sel)) {
@@ -128,8 +149,14 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
           ? { schwere: 'hinweis', text: 'Beschriftung passt bei diesen Maßen nicht auf die Karte' }
           : { schwere: 'fehler', text: 'Beschriftung ragt aus der Karte' });
       }
-      if (kreis && sym && fall.settings.anybookPlace === 'above' && overlap(kreis, sym)) {
-        befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ berührt das Symbol' });
+      if (kreis && sym && !ueber && overlap(kreis, sym)) {
+        befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ oder „daneben“ berührt das Symbol' });
+      }
+      /* „überlappend“ sits in the picture's corner: at most half the circle on it.
+         The test symbols fill their square, so this is what the sticker hides. */
+      const deckt = kreis && sym && ueber ? disc(kreis, sym) : 0;
+      if (deckt > 0.5) {
+        befunde.push({ schwere: 'fehler', text: `Anybook-Kreis liegt zu mehr als der Hälfte auf dem Symbol (${Math.round(deckt * 100)} %)`, frage: 2 });
       }
       stuecke.push({ art: kind.art(el), box, sym, wort, kreis, befunde });
     }

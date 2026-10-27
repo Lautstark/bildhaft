@@ -239,7 +239,7 @@
   align-items: center;
   justify-content: center;
   gap: 1mm;
-  width: calc(var(--sym) + 2 * var(--cut));
+  width: calc(var(--sym) + var(--any-right, 0mm) + 2 * var(--cut));
   /* The cut line is part of the margin rather than added to it. The width
      already holds the border (border-box); the height is the padding, the
      symbol and the border, so the border comes off the padding — otherwise
@@ -283,7 +283,7 @@
 }
 
 .ps-card__label {
-  width: calc(var(--sym) + 2 * var(--cut) - 1mm);
+  width: calc(var(--sym) + var(--any-right, 0mm) + 2 * var(--cut) - 1mm);
   font-size: var(--label);
   line-height: 1.15;
   text-align: center;
@@ -298,7 +298,7 @@
  * half, and a laminating pouch would seal onto ink instead of paper.
  */
 .ps-card--framed {
-  width: calc(var(--sym) + 2 * (var(--cut) + var(--frame-pad) + var(--frame-w)));
+  width: calc(var(--sym) + var(--any-right, 0mm) + 2 * (var(--cut) + var(--frame-pad) + var(--frame-w)));
 }
 .ps-card__frame {
   box-sizing: border-box;
@@ -951,17 +951,16 @@
  * 2026-10-27).
  *
  * Where it goes against the symbol is the material's choice (her calls,
- * 2026-10-26): above it, or over its top right corner — a Spiel's and a
- * Plauderbuch's cards have no room above, so only over (2026-10-27). Above,
- * the room is the top of the symbol's box: a card that grows round its
+ * 2026-10-26/27): above it, beside it or over its top right corner — a
+ * Spiel's and a Plauderbuch's cards have no room above or beside, so only
+ * over. Above and beside, the room is added to a card that grows round its
  * symbol — a Satzstreifen's, a Lied's, a Rezept's, Wortkarten by symbol size
- * — grows taller and keeps its symbol's size, and a box whose size is given
- * — a Tafel's, a grid's, a Kartenbogen's — gives its symbol's top up. Over, a
- * growing box stays as it is, and a given one gives up 5 mm a side, so the
- * circle lies over at most half of the picture's corner; a picture seldom
- * reaches its corner, and one kept wholly clear came out too small. The
- * circle never makes a symbol bigger. (Beside was tried and dropped: wide
- * cards, few uses. One host for all since 2026-10-27.)
+ * — which keeps its symbol's size, and taken off a box whose size is given —
+ * a Tafel's, a grid's, a Kartenbogen's. Over, every card keeps its size and
+ * its symbol gives up a little a side, so at most half the circle lies on
+ * the picture (the Prüfseite measures it): over the whole box, as on a
+ * growing card before, it hid the picture. The circle never makes a symbol
+ * bigger. One host for all since 2026-10-27.
  */
 .ps-sheet--anybook :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
 .ps-sheet--anybook .ps-recipe-step__n {
@@ -983,18 +982,9 @@
   right: auto;
   left: calc(50% - 4.75mm);
 }
-/* Over: in the card's corner, 1 mm in from its edge or its frame's — out
-   from the box by the card's own padding, so a card that grows round its
-   symbol keeps the picture's corner as clear as a given one. With the word
-   on top it stays at the box's top, under the word. */
-.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); }
-.ps-card--framed { --any-pad: var(--frame-pad); }
-.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img)::after {
-  top: calc(1mm - var(--any-pad));
-  right: calc(1mm - var(--any-pad));
-}
-.ps-sheet--any-over .ps-card--label-above:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img)::after {
-  top: 0;
+/* Beside: right of the symbol, at its middle. */
+.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img)::after {
+  top: calc(50% - 4.75mm);
 }
 
 /* The Schritt's number stands over its circle, the column as wide as the
@@ -1008,20 +998,36 @@
   left: calc(50% - 4.75mm);
 }
 
-/* The room, said once: on top for above, a side each for over.
-   ANYBOOK_SIDE_MM in printSheet.ts keeps the same on a Spiel's card. */
+/* The room, said once: on top for above, on the right for beside, a side
+   each for over. ANYBOOK_SIDE_MM in printSheet.ts keeps the same on a
+   Spiel's card. */
 .ps-sheet--any-above { --any-top: 10.5mm; }
-.ps-sheet--any-over { --any-side: 5mm; }
+.ps-sheet--any-beside { --any-right: 10.5mm; }
+/* A card that gets no circle gets no room: a Schritt's pictures, a place. */
+:is(.ps-place, .ps-recipe-step) .ps-card { --any-right: 0mm; }
+.ps-sheet--any-over { --any-side: 2.5mm; }
 
-/* Growing: the room comes on top of the symbol. Given: it comes off it. */
+/* Above and beside — growing: the room comes on top of the symbol. Given: it comes off it. */
 .ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
   box-sizing: content-box;
-  padding-top: var(--any-top, 0mm);
 }
 .ps-sheet--anybook :is(.ps-card--fill, .ps-card--exact, .ps-cut .ps-card) .ps-card__img:has(img) {
   box-sizing: border-box;
-  padding: var(--any-top, 0mm) var(--any-side, 0mm) 0;
 }
+.ps-sheet--anybook .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
+  padding: var(--any-top, 0mm) var(--any-right, 0mm) 0 0;
+}
+/* Over — growing or given, the card keeps its size: the symbol gives up a
+   side each and goes to the box's bottom, so the room it gave up is at the
+   top, where the circle is. */
+.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
+  align-items: flex-end;
+}
+.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img img {
+  max-width: calc(100% - 2 * var(--any-side));
+  max-height: calc(100% - 2 * var(--any-side));
+}
+
 /* A Spiel's and a Plauderbuch's box is the symbol's own size, with the
    card's air round it: with the circle it is the card's, as a Tafel's is, so
    the circle is in the card's corner, and the picture keeps the sheet's
@@ -1035,13 +1041,6 @@
 .ps-sheet--anybook :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic img {
   max-width: var(--sym);
   max-height: var(--sym);
-}
-
-/* A symbol that gave up its sides is narrower than its box is tall: it goes
-   to the box's bottom, so the room it gave up is at the top, where the
-   circle is. */
-.ps-sheet--any-over :is(.ps-card--fill, .ps-card--exact, .ps-cut .ps-card) .ps-card__img:has(img) {
-  align-items: flex-end;
 }
 
 /* ----------------------------------------------------------------- spiel */

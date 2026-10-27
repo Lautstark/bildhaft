@@ -807,7 +807,11 @@ export const GAME_FIELD_MM = 30;
 type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt' | 'punch'>;
 type AnybookSettings = Partial<Pick<PrintSettings, 'anybookCircle'>>;
 
-/** What the card keeps clear a side for an Anybook circle over its corner; print.css's --any-side. */
+/**
+ * What a Spiel's or Plauderbuch's card keeps clear a side for an Anybook
+ * circle over its corner: twice print.css's --any-side, its symbol being
+ * centred in the card rather than set to the bottom of its box.
+ */
 const ANYBOOK_SIDE_MM = 5;
 /** The circle itself, as print.css draws it: no symbol under it is smaller. */
 const ANYBOOK_CIRCLE_MM = 9.5;

@@ -1472,7 +1472,7 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await expect(page.locator('.tray .word__name')).toHaveText(['Kiwi']);
 });
 
-test('a card that grows round its symbol grows upwards for the Anybook placeholder, and keeps its symbol', async ({ page }) => {
+test('a card that grows round its symbol grows upwards or sideways for the Anybook placeholder and keeps its symbol, and gives a little up for überlappend', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await showSheet(page);
   const sizes = () => page.evaluate(() => {
@@ -1511,26 +1511,49 @@ test('a card that grows round its symbol grows upwards for the Anybook placehold
   // Darüber means over the symbol's middle.
   expect(Math.abs(after.circleOff)).toBeLessThan(0.3);
 
-  // Überlappend: in the card's own corner, 1 mm in, the card as it was — not
-  // on the symbol's corner, where it covered half the picture.
-  await page.getByRole('button', { name: 'überlappend' }).click();
-  const corner = () => page.evaluate(() => {
+  /* Daneben and überlappend: the circle against the picture, and the card. */
+  const against = () => page.evaluate(() => {
     const mm = 96 / 25.4;
     const card = document.querySelector('.preview-frame .ps-card:has(img)') as HTMLElement;
     const scale = card.getBoundingClientRect().width / card.offsetWidth;
     const box = card.querySelector('.ps-card__img') as HTMLElement;
     const ring = getComputedStyle(box, '::after');
     const at = box.getBoundingClientRect();
-    const edge = card.getBoundingClientRect();
+    // The mocked symbol is 1 px: asked to be big, it takes what room the box leaves it, as a real one does.
+    const img = box.querySelector('img') as HTMLElement;
+    img.style.width = img.style.height = '1000px';
+    const pic = img.getBoundingClientRect();
+    img.style.width = img.style.height = '';
+    const left = at.left / scale + box.clientLeft + parseFloat(ring.left);
+    const top = at.top / scale + box.clientTop + parseFloat(ring.top);
     return {
-      right: Math.round(((edge.right - at.right) / scale + parseFloat(ring.right) - card.clientLeft) / mm * 10) / 10,
-      top: Math.round(((at.top - edge.top) / scale + parseFloat(ring.top) - card.clientTop) / mm * 10) / 10,
+      width: card.offsetWidth / mm,
       height: card.offsetHeight / mm,
+      symbol: Math.min(pic.width, pic.height) / scale / mm,
+      // How far the circle stays off the picture, to its right and above it, in mm: below 0, it lies on it.
+      right: (left - pic.right / scale) / mm,
+      above: (pic.top / scale - (top + parseFloat(ring.height))) / mm,
     };
   });
-  // Within a quarter millimetre: the card's 0.2 mm border is counted in whole pixels.
-  await expect.poll(async () => Math.abs((await corner()).right - 1)).toBeLessThan(0.25);
-  expect(Math.abs((await corner()).top - 1)).toBeLessThan(0.25);
-  expect((await corner()).height).toBeCloseTo(before.height, 1);
+
+  // Daneben: the card grows to the right by the circle, the symbol keeps its size, the circle is off it.
+  await page.getByRole('button', { name: 'daneben' }).click();
+  await expect.poll(async () => (await against()).width).toBeGreaterThan(before.width + 10);
+  const beside = await against();
+  expect(beside.symbol).toBeCloseTo(before.symbol, 0);
+  expect(beside.height).toBeCloseTo(before.height, 1);
+  expect(beside.right).toBeGreaterThanOrEqual(-0.05);
+
+  // Überlappend: the card as it was, the symbol gives up 2.5 mm a side and
+  // goes down, so the circle lies on at most the picture's corner — over the
+  // whole box (391f546) it hid most of the picture.
+  await page.getByRole('button', { name: 'überlappend' }).click();
+  await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
+  const over = await against();
+  expect(over.height).toBeCloseTo(before.height, 1);
+  expect(over.symbol).toBeCloseTo(before.symbol - 5, 0);
+  // The circle (9.5 mm) on the picture's corner: 7 mm of its width, 4.5 mm of its height.
+  expect(over.right).toBeGreaterThan(-7.2);
+  expect(over.above).toBeGreaterThan(-4.7);
 });
 
