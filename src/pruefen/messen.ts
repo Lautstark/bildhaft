@@ -67,23 +67,24 @@ const disc = (c: Rect, r: Rect): number => {
 export const mmText = (n: number): string => n.toFixed(1).replace('.', ',');
 
 /** What kinds of things a sheet holds, and where their parts are. */
-const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: string | null; wort: string | null; kreis: (el: Element) => Element | null }[] = [
+/* Where a card's circle may hang: its symbol's box (darüber, daneben), or the card or its frame (überlappend). */
+const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: string | null; wort: string | null; kreis: (el: Element) => (Element | null)[] }[] = [
   {
     sel: '.ps-card:not(.ps-card--empty)',
     art: (el) => (el.closest('.ps-cut') ? 'Schnittkarte' : el.closest('.ps-place') ? 'Platz' : el.closest('.ps-tafel') ? 'Feld' : 'Karte'),
     sym: '.ps-card__img img', wort: '.ps-card__label',
-    kreis: (el) => el.querySelector('.ps-card__img'),
+    kreis: (el) => [el.querySelector('.ps-card__img'), el.querySelector(':scope > .ps-card__frame'), el],
   },
-  { sel: '.ps-spiel__bild', art: () => 'Spielbild', sym: 'img', wort: '.ps-spiel__wort', kreis: (el) => el.querySelector('.ps-title__pic') },
+  { sel: '.ps-spiel__bild', art: () => 'Spielbild', sym: 'img', wort: '.ps-spiel__wort', kreis: (el) => [el.querySelector('.ps-title__pic'), el] },
   {
     /* The card itself, not the cell with the air round it: laminated, it is the field. */
     sel: '.ps-talk-cut__cell', box: '.ps-talk__card',
     art: (el) => (el.closest('.ps-spiel-cut') ? 'Spielkarte' : 'Plauderkarte'),
-    sym: 'img', wort: '.ps-talk__word', kreis: (el) => el.querySelector('.ps-title__pic'),
+    sym: 'img', wort: '.ps-talk__word', kreis: (el) => [el.querySelector('.ps-title__pic'), el.querySelector('.ps-talk__card')],
   },
-  { sel: '.ps-spiel__rows .ps-talk__field', art: () => 'Klettfeld', sym: null, wort: null, kreis: () => null },
-  { sel: '.ps-spiel__lager .ps-talk__field', art: () => 'Ablagefeld', sym: null, wort: null, kreis: () => null },
-  { sel: '.ps-talk__fields .ps-talk__field', art: () => 'Antwortfeld', sym: null, wort: null, kreis: () => null },
+  { sel: '.ps-spiel__rows .ps-talk__field', art: () => 'Klettfeld', sym: null, wort: null, kreis: () => [] },
+  { sel: '.ps-spiel__lager .ps-talk__field', art: () => 'Ablagefeld', sym: null, wort: null, kreis: () => [] },
+  { sel: '.ps-talk__fields .ps-talk__field', art: () => 'Antwortfeld', sym: null, wort: null, kreis: () => [] },
 ];
 
 export function messen(holder: HTMLElement, fall: Fall): Messung {
@@ -138,11 +139,16 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
       const sym = img ? drawn(img) : null;
       const label = kind.wort ? el.querySelector(kind.wort) : null;
       const wort = label ? text(label) : null;
-      const kreis = circle(kind.kreis(el));
+      const kreis = kind.kreis(el).map(circle).find(Boolean) ?? null;
       const befunde: Befund[] = [];
       const any = fall.settings.anybookCircle ? 2 as const : undefined;
       if (sym && wort && overlap(sym, wort)) befunde.push({ schwere: 'fehler', text: 'Symbol liegt über der Beschriftung', frage: any });
-      if (kreis && wort && overlap(kreis, wort)) befunde.push({ schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
+      if (kreis && wort && overlap(kreis, wort)) {
+        /* Überlappend with the word on top: the corner is the word's too, and only a short word clears it (her call). */
+        befunde.push(ueber && fall.settings.labelPosition === 'above'
+          ? { schwere: 'hinweis', text: 'Anybook-Kreis liegt über der Beschriftung — oben und überlappend geht nur mit kurzen Wörtern' }
+          : { schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
+      }
       if (sym && outside(sym, box)) befunde.push({ schwere: 'fehler', text: 'Symbol ragt aus der Karte', frage: any });
       if (wort && outside(wort, box)) {
         befunde.push(fall.eigeneMasse

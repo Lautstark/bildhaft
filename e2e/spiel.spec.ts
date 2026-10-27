@@ -255,7 +255,8 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   const measure = (selector: string) => page.evaluate((sel) => {
     const mm = 96 / 25.4;
     return [...document.querySelectorAll(`.preview-frame ${sel}`)].map((card) => {
-      const host = card.querySelector('.ps-title__pic') ?? card;
+      // Überlappend: the circle is the card's own.
+      const host = card;
       const circle = getComputedStyle(host, '::after');
       const box = card.getBoundingClientRect();
       const at = host.getBoundingClientRect();

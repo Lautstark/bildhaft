@@ -889,12 +889,11 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   expect(await circles('.ps-recipe-step .ps-card__img')).toEqual(before.map(() => false));
   expect(await pictures()).toEqual(before);
   // Under the number, not beside it or over the row's pictures.
-  const [n, ring] = await sheet.locator('.ps-recipe-step__n').evaluate((el) => {
+  await expect.poll(() => sheet.locator('.ps-recipe-step__n').evaluate((el) => {
     const box = el.getBoundingClientRect();
     const after = getComputedStyle(el, '::after');
-    return [box.bottom, box.top + parseFloat(after.top) * (box.height / (el as HTMLElement).offsetHeight)];
-  });
-  expect(ring).toBeGreaterThan(n);
+    return box.top + parseFloat(after.top) * (box.height / (el as HTMLElement).offsetHeight) - box.bottom;
+  })).toBeGreaterThan(0);
 });
 
 /*
@@ -1552,15 +1551,18 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
     const card = document.querySelector('.preview-frame .ps-card:has(img)') as HTMLElement;
     const scale = card.getBoundingClientRect().width / card.offsetWidth;
     const box = card.querySelector('.ps-card__img') as HTMLElement;
-    const ring = getComputedStyle(box, '::after');
+    // Darüber and daneben hang the circle on the symbol's box, überlappend on the card.
+    const host = getComputedStyle(box, '::after').borderRadius === '50%' ? box : card;
+    const ring = getComputedStyle(host, '::after');
     const at = box.getBoundingClientRect();
+    const hostAt = host.getBoundingClientRect();
     // The mocked symbol is 1 px: asked to be big, it takes what room the box leaves it, as a real one does.
     const img = box.querySelector('img') as HTMLElement;
     img.style.width = img.style.height = '1000px';
     const pic = img.getBoundingClientRect();
     img.style.width = img.style.height = '';
-    const left = at.left / scale + box.clientLeft + parseFloat(ring.left);
-    const top = at.top / scale + box.clientTop + parseFloat(ring.top);
+    const left = hostAt.left / scale + host.clientLeft + parseFloat(ring.left);
+    const top = hostAt.top / scale + host.clientTop + parseFloat(ring.top);
     const edge = card.getBoundingClientRect();
     return {
       // The circle from the card's corner, inside its edge, in mm.
