@@ -250,12 +250,13 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   await expect(page.getByRole('button', { name: 'darüber' })).toHaveCount(0);
   await showSheet(page);
 
-  /* The circle is the code element in the symbol box, at its top right; what
+  /* The circle is the code element on the card, at its top right; what
      is measured is the circle against the card and the picture against it. */
   const measure = (selector: string) => page.evaluate((sel) => {
     const mm = 96 / 25.4;
     return [...document.querySelectorAll(`.preview-frame ${sel}`)].map((card) => {
-      const host = card.querySelector('.ps-title__pic') ?? card;
+      // Überlappend: the code is the card's own element (AnyCode.svelte).
+      const host = card;
       const code = host.querySelector(':scope > .ps-any') as HTMLElement | null;
       const circle = code ? getComputedStyle(code) : null;
       const box = card.getBoundingClientRect();
@@ -291,9 +292,11 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   }
   // A Platzhalter and the Ablage's dots carry no circle.
   for (const field of await measure('.ps-talk__field')) expect(field.circle).toBe(false);
-  // The circle never makes a symbol bigger than the sheet's measure, and it is the one size on both sheets.
+  // The symbol gives up what the circle needs, the sheet's one measure for it, the one size on both sheets.
   const symbols = await page.evaluate(() => {
-    const sym = parseFloat(getComputedStyle(document.querySelector('.preview-frame .ps-spiel') as HTMLElement).getPropertyValue('--sym'));
+    const style = getComputedStyle(document.querySelector('.preview-frame .ps-spiel') as HTMLElement);
+    const sym = parseFloat(style.getPropertyValue('--any-sym'));
+    if (!(sym < parseFloat(style.getPropertyValue('--sym')))) return [Infinity];
     return [...document.querySelectorAll<HTMLImageElement>('.preview-frame :is(.ps-spiel__bild, .ps-talk__card) img')]
       .map((img) => Math.min(img.offsetWidth, img.offsetHeight) / (96 / 25.4) - sym);
   });
@@ -302,4 +305,23 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
 
   // A Spiel's cards are given: no room beside a symbol in the middle, so no „daneben“.
   await expect(page.getByRole('button', { name: 'daneben' })).toHaveCount(0);
+});
+
+test('auf A5 bietet das Spiel kein Anybook an: ausgegraut, mit dem Grund darunter, und der Bogen hat keinen Kreis', async ({ page }) => {
+  await pick(page, page.locator('.game__row').first(), '+ Bild', 'Apfel');
+  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  const box = page.getByLabel('Platzhalter für Anybook-Sticker');
+  await box.check();
+  await showSheet(page);
+  await expect(page.locator('.preview-frame .ps-sheet--anybook').first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Papier wählen' }).click();
+  await page.locator('.paper-pick__pop').getByRole('button', { name: 'A5', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.preview-frame .ps-sheet--anybook')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Symbol', exact: true }).click();
+  await expect(box).toBeDisabled();
+  await expect(box).not.toBeChecked();
+  await expect(page.getByText('Auf A5 sind die Karten zu klein für einen Anybook-Sticker. Auf A4 geht es.')).toBeVisible();
+  if (process.env.OUT) await page.locator('.ding__pop').screenshot({ path: `${process.env.OUT}/menu-a5.png` });
 });

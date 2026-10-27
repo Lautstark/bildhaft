@@ -1,4 +1,4 @@
-import type { Board, CollectionKind, PrintSettings } from '../core/types.ts';
+import type { AnybookPlace, Board, CollectionKind, PrintSettings } from '../core/types.ts';
 import { boardOf, defaultAirMm } from '../core/board.ts';
 import { printableArea, SHOPPING_SCALE } from '../ui/printSheet.ts';
 
@@ -45,10 +45,13 @@ export interface PrintOffer {
   /** A frame around a whole strip, as well as around each card. */
   stripFrame?: boolean;
   /**
-   * `false`: the Anybook circle only over the symbol's corner, no „darüber“ —
-   * a Spiel's and a Plauderbuch's cards have no room above their symbol.
+   * Where the Anybook circle may go, when not everywhere: a Spiel's and a
+   * Plauderbuch's cards have no room above or beside their symbol, only over
+   * it; a Lied's circle is its line's, nothing to choose.
    */
-  anybookAbove?: false;
+  anybookPlaces?: readonly AnybookPlace[];
+  /** Why this sheet has no Anybook circle (a text key): the box stays, greyed, with this under it. */
+  anybookOff?: string;
   cutLines?: boolean;
   /** The line as written, over or under its pictures, and how big: a strip's, a Lied's. */
   sentence?: boolean;
@@ -277,7 +280,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     fixed: () => ({ layout: 'lied' }),
     offers: () => ({
       ...BASE, size: { kind: 'symbol', max: 60, fallback: 16, note: null, cut: false }, margin: 'symbol',
-      colour: true, sentence: true, songChecks: true,
+      colour: true, sentence: true, songChecks: true, anybookPlaces: [],
     }),
   },
 
@@ -299,11 +302,15 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
     }),
     // Its cards have no room above their symbol: the Anybook circle lies over its corner.
-    fixed: () => ({ layout: 'spiel', anybookPlace: 'over' }),
+    // On A5 a card is too small for the sticker at all (her call, 2026-10-27).
+    fixed: (settings) => ({ layout: 'spiel', anybookPlace: 'over', ...(settings.paper === 'a5' ? { anybookCircle: false } : {}) }),
     zeileInEdit: true,
     /* The symbol's size is the sheet's own answer — the menu shows it and
        asks only for the margin round the cut cards. */
-    offers: () => ({ ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookAbove: false }),
+    offers: (settings) => ({
+      ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookPlaces: ['over'],
+      anybookOff: settings.paper === 'a5' ? 'ui.anybook_off_a5' : undefined,
+    }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
@@ -330,6 +337,6 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
     // As a Spiel's: no room above the symbol, the Anybook circle lies over its corner.
     fixed: () => ({ layout: 'plauderbuch', anybookPlace: 'over' }),
-    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true, anybookAbove: false }),
+    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true, anybookPlaces: ['over'] }),
   },
 };

@@ -812,25 +812,30 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
 });
 
 /**
- * A Rezept's name can have a picture, set beside it in Bearbeiten and printed
- * with it: the sheet shows the name as it stands there, and „Titel auf der
- * ersten Seite" prints both or neither. Each part is printed under a band in
- * the Rezept's colour. The picture is not one of the entries.
+ * A Rezept has the title line the other templates have: its name is the file,
+ * the title is what the paper says, with symbols of its own. „Titel drucken"
+ * prints both or neither. Each part is printed under a band in the Rezept's
+ * colour. The title's symbols are not entries.
  */
-test('a Rezept prints its name with the picture it was given, and its parts under bands', async ({ page }) => {
+test('a Rezept prints the title from its title line, and its parts under bands', async ({ page }) => {
   await pickTemplate(page, /^Rezept/);
+  await page.getByLabel('Name des Materials', { exact: true }).fill('Bananenpfannkuchen Gruppe Igel');
   await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
   await expect(page.getByRole('region', { name: 'Zutaten' }).locator('.recipe__entry')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Bild zum Titel wählen' }).click();
+  await page.getByLabel('Titel auf dem Papier').fill('Bananenpfannkuchen');
+  await page.getByLabel('Titel auf dem Papier').press('Enter');
+  await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
   await page.getByLabel('Symbol suchen').fill('Banane');
   await page.locator('.picker__item', { hasText: 'Banane' }).first().click();
-  await expect(page.getByRole('button', { name: 'Bild zum Titel ändern' }).locator('img')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' }).locator('img')).toBeVisible();
   await expect(page.locator('.collection-head')).toContainText('1 Eintrag');
+  await expect(page.getByLabel('Name des Materials', { exact: true })).toHaveValue('Bananenpfannkuchen Gruppe Igel');
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
   await expect(sheet.locator('.ps-title .ps-title__pic img')).toBeVisible();
+  await expect(sheet.locator('.ps-title')).toHaveText('Bananenpfannkuchen');
   await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten']);
   expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
     .toBe('rgb(255, 255, 255)');
@@ -840,16 +845,94 @@ test('a Rezept prints its name with the picture it was given, and its parts unde
   await expect(sheet.locator('.ps-title')).toHaveCount(0);
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
 
-  // Taken out again in the picker, the name prints alone.
+  // Symbol taken out and words emptied, the name prints alone.
   await openDing(page, 'Seite');
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
-  await page.getByRole('button', { name: 'Bild zum Titel ändern' }).click();
+  await page.getByRole('button', { name: 'Symbol im Titel ändern' }).click();
   await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Bild zum Titel wählen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Symbol im Titel ändern' })).toHaveCount(0);
+  await page.getByLabel('Titel auf dem Papier').fill('');
+  await page.getByLabel('Titel auf dem Papier').press('Enter');
   await showSheet(page);
-  await expect(sheet.locator('.ps-title')).toBeVisible();
+  await expect(sheet.locator('.ps-title')).toHaveText('Bananenpfannkuchen Gruppe Igel');
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
+});
+
+/*
+ * A Rezept with the Anybook placeholder: a Zutat keeps its circle on its
+ * card, and a Schritt is read as one — one circle under its number, none on
+ * its pictures, so they keep their size and the row is no taller for them.
+ */
+test('a Rezept gives each Schritt one Anybook circle, under its number', async ({ page }) => {
+  await pickTemplate(page, /^Rezept/);
+  await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
+  const schritte = page.getByRole('region', { name: 'Schritte' });
+  await schritte.getByRole('button', { name: '+ Schritt' }).click();
+  await page.getByLabel('Neuer Schritt').fill('Eier in die Schüssel');
+  await page.getByLabel('Neuer Schritt').press('Enter');
+  await expect(schritte.locator('.row')).toHaveCount(1);
+  await showSheet(page);
+
+  const sheet = page.locator('.preview-frame');
+  const pictures = () => sheet.locator('.ps-recipe-step .ps-card__img').evaluateAll((all) =>
+    all.map((el) => (el as HTMLElement).offsetHeight));
+  /* Measured once the sheet has settled: two readings alike. */
+  let before = await pictures();
+  await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
+  expect(before.length).toBeGreaterThan(0);
+
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
+    all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
+  await expect.poll(() => circles('.ps-recipe-cards .ps-card__img')).toEqual([true]);
+  await expect.poll(() => circles('.ps-recipe-step__n')).toEqual([true]);
+  expect(await circles('.ps-recipe-step .ps-card__img')).toEqual(before.map(() => false));
+  await expect.poll(pictures).toEqual(before);
+  // Under the number, not beside it or over the row's pictures.
+  await expect.poll(() => sheet.locator('.ps-recipe-step__n').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const after = getComputedStyle(el, '::after');
+    return box.top + parseFloat(after.top) * (box.height / (el as HTMLElement).offsetHeight) - box.bottom;
+  })).toBeGreaterThan(0);
+});
+
+/*
+ * A Lied's line is sung as one, as a Schritt is read: one Anybook circle at
+ * its start, none on its pictures, which keep their size — and no place to
+ * choose for it.
+ */
+test('a Lied gives each line one Anybook circle, at its start', async ({ page }) => {
+  await pickTemplate(page, /^Lied/);
+  await page.getByLabel('Liedtext einfügen').fill('Ich geh mit meiner Laterne\nUnd meine Laterne mit mir');
+  await page.getByRole('button', { name: 'Übersetzen' }).click();
+  await showSheet(page);
+
+  const sheet = page.locator('.preview-frame');
+  const pictures = () => sheet.locator('.ps-song-line .ps-card__img').evaluateAll((all) =>
+    all.map((el) => (el as HTMLElement).offsetHeight));
+  /* Measured once the sheet has settled: two readings alike. */
+  let before = await pictures();
+  await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
+  expect(before.length).toBeGreaterThan(2);
+
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  await expect(page.getByRole('button', { name: 'überlappend' })).toHaveCount(0);
+  const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
+    all.map((el) => getComputedStyle(el, '::after').borderRadius === '50%'));
+  await expect.poll(() => circles('.ps-song-line')).toEqual([true, true]);
+  expect(await circles('.ps-song-line .ps-card__img')).toEqual(before.map(() => false));
+  await expect.poll(pictures).toEqual(before);
+  // At the line's start: left of its first picture.
+  const [ring, first] = await sheet.locator('.ps-song-line').first().evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const scale = box.width / (el as HTMLElement).offsetWidth;
+    const after = getComputedStyle(el, '::after');
+    return [box.left + (parseFloat(after.left) + parseFloat(after.width)) * scale, el.querySelector('.ps-card')!.getBoundingClientRect().left];
+  });
+  expect(ring).toBeLessThanOrEqual(first + 0.5);
 });
 
 /**
@@ -1427,7 +1510,7 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await expect(page.locator('.tray .word__name')).toHaveText(['Kiwi']);
 });
 
-test('a card that grows round its symbol grows upwards for the Anybook placeholder, and keeps its symbol', async ({ page }) => {
+test('a card that grows round its symbol grows upwards or sideways for the Anybook placeholder and keeps its symbol, and gives a little up for überlappend', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await showSheet(page);
   const sizes = () => page.evaluate(() => {
@@ -1466,5 +1549,61 @@ test('a card that grows round its symbol grows upwards for the Anybook placehold
   expect(Math.abs(after.off)).toBeLessThan(0.3);
   // Darüber means over the symbol's middle.
   expect(Math.abs(after.circleOff)).toBeLessThan(0.3);
+
+  /* Daneben and überlappend: the circle against the picture, and the card. */
+  const against = () => page.evaluate(() => {
+    const mm = 96 / 25.4;
+    const card = document.querySelector('.preview-frame .ps-card:has(img)') as HTMLElement;
+    const scale = card.getBoundingClientRect().width / card.offsetWidth;
+    const box = card.querySelector('.ps-card__img') as HTMLElement;
+    // Darüber and daneben hang the circle on the symbol's box, überlappend on the card.
+    const host = getComputedStyle(box, '::after').borderRadius === '50%' ? box : card;
+    const ring = getComputedStyle(host, '::after');
+    const at = box.getBoundingClientRect();
+    const hostAt = host.getBoundingClientRect();
+    // The mocked symbol is 1 px: asked to be big, it takes what room the box leaves it, as a real one does.
+    const img = box.querySelector('img') as HTMLElement;
+    img.style.width = img.style.height = '1000px';
+    const pic = img.getBoundingClientRect();
+    img.style.width = img.style.height = '';
+    const left = hostAt.left / scale + host.clientLeft + parseFloat(ring.left);
+    const top = hostAt.top / scale + host.clientTop + parseFloat(ring.top);
+    const edge = card.getBoundingClientRect();
+    return {
+      // The circle from the card's corner, inside its edge, in mm.
+      fromRight: (edge.right / scale - card.clientLeft - (left + parseFloat(ring.width))) / mm,
+      fromTop: (top - edge.top / scale - card.clientTop) / mm,
+      // The picture's bottom line against its box's, in mm.
+      bottom: (at.bottom - pic.bottom) / scale / mm,
+      width: card.offsetWidth / mm,
+      height: card.offsetHeight / mm,
+      symbol: Math.min(pic.width, pic.height) / scale / mm,
+      // How far the circle stays off the picture, to its right and above it, in mm: below 0, it lies on it.
+      right: (left - pic.right / scale) / mm,
+      above: (pic.top / scale - (top + parseFloat(ring.height))) / mm,
+    };
+  });
+
+  // Daneben: the card grows to the right by the circle, the symbol keeps its size, the circle is off it.
+  await page.getByRole('button', { name: 'daneben' }).click();
+  await expect.poll(async () => (await against()).width).toBeGreaterThan(before.width + 10);
+  const beside = await against();
+  expect(beside.symbol).toBeCloseTo(before.symbol, 0);
+  expect(beside.height).toBeCloseTo(before.height, 1);
+  expect(beside.right).toBeGreaterThanOrEqual(-0.05);
+
+  // Überlappend: 1 mm in from the card's corner, the card as it was; the
+  // symbol gives up only what it must, on its bottom line, so the circle lies
+  // on the picture's corner by no more than its diameter, width and height
+  // together — over the whole box (391f546) it hid most of the picture.
+  await page.getByRole('button', { name: 'überlappend' }).click();
+  await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
+  const over = await against();
+  expect(over.height).toBeCloseTo(before.height, 1);
+  expect(Math.abs(over.fromRight - 1)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromTop - 1)).toBeLessThan(0.25);
+  expect(over.symbol).toBeLessThan(before.symbol - 1);
+  expect(Math.abs(over.bottom)).toBeLessThan(0.2);
+  expect(-Math.min(0, over.right) - Math.min(0, over.above)).toBeLessThan(9.6);
 });
 

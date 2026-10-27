@@ -27,12 +27,9 @@
   import TitleField from '@lautstark/design/svelte/TitleField';
   import { renameCollection } from '../db/repo.ts';
   import Icon from '../pieces/Icon.svelte';
-  import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
-  import { symbolIdFor, titlePicture } from '../core/types.ts';
+  import { activeCollection, holdsWords, kind, s } from './state.svelte.ts';
   import { pagesOf } from '../core/talk.ts';
   import { rowsOfGame } from '../core/game.ts';
-  import SymbolPicture from '../pieces/Symbol.svelte';
-  import { chooseTitlePicture } from './recipe.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
   import { openWortschatzSheet } from './words.ts';
   import { t } from '../i18n/index.ts';
@@ -72,11 +69,6 @@
   /* A Spiel's cards are the ones that are cut out and laid: its fixed
      pictures stay on the Spielblatt and are not counted. */
   let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.zellen.filter((zelle) => zelle.platz).length, 0));
-  /* A Rezept's title picture, beside its name, until a Rezept has the title
-     line the others have (TitleLine.svelte), where its symbols are chosen. */
-  let pictured = $derived(kind() === 'rezept');
-  let picture = $derived(pictured ? titlePicture(s.sentences) : null);
-  let pictureId = $derived(picture ? symbolIdFor(picture, providerId()) : null);
   let count = $derived(kind() === 'rezept'
     ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
     : kind() === 'plauderbuch'
@@ -92,10 +84,7 @@
 
 </script>
 
-<div class="collection-head">{#if pictured}<!--
-  The picture beside a Rezept's name: chosen here, in the picker
-  every field has, and printed with the name when the name is printed.
---><button class="collection-head__pic{pictureId ? '' : ' collection-head__pic--empty'}" type="button" aria-label={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} title={pictureId ? t('ui.title_picture_change') : t('ui.title_picture_add')} onclick={() => void chooseTitlePicture()}>{#if pictureId}<SymbolPicture provider={providerId()} id={pictureId} alt={t('ui.title_picture')} mirrored={picture?.mirrored} />{:else}{t('ui.title_picture_empty')}{/if}</button>{/if}<TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
+<div class="collection-head"><TitleField value={activeCollection()?.name ?? ''} {write} oninput={echo} label={t('ui.collection_name')} placeholder={t('ui.collection_name')} /><span class="small faint" style="white-space:nowrap">{count}</span><!--
   The two views of a Sammlung: its material to work on, its sheet to print.
   Beside them, small, what the sheet came to the last time it was laid out —
   what the material means on paper, without switching to see it.

@@ -45,26 +45,46 @@ const outside = (inner: Rect, outer: Rect): boolean =>
   inner.x < outer.x - TOL || inner.y < outer.y - TOL
   || inner.x + inner.w > outer.x + outer.w + TOL || inner.y + inner.h > outer.y + outer.h + TOL;
 
+/** How much of a circle's disc lies on a rect, 0 to 1: counted on a fine grid. */
+const disc = (c: Rect, r: Rect): number => {
+  const n = 40;
+  let on = 0;
+  let all = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const u = (i + 0.5) / n - 0.5;
+      const v = (j + 0.5) / n - 0.5;
+      if (u * u + v * v > 0.25) continue;
+      all++;
+      const x = c.x + (u + 0.5) * c.w;
+      const y = c.y + (v + 0.5) * c.h;
+      if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) on++;
+    }
+  }
+  return all ? on / all : 0;
+};
+
 export const mmText = (n: number): string => n.toFixed(1).replace('.', ',');
 
 /** What kinds of things a sheet holds, and where their parts are. */
-const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: string | null; wort: string | null; kreis: (el: Element) => Element | null }[] = [
+/* Where a card's circle may hang: its symbol's box (darüber, daneben), or the card or its frame (überlappend). */
+const ARTEN: { sel: string; box?: string; art: (el: Element) => string; sym: string | null; wort: string | null; kreis: (el: Element) => (Element | null)[] }[] = [
   {
     sel: '.ps-card:not(.ps-card--empty)',
     art: (el) => (el.closest('.ps-cut') ? 'Schnittkarte' : el.closest('.ps-place') ? 'Platz' : el.closest('.ps-tafel') ? 'Feld' : 'Karte'),
     sym: '.ps-card__img img', wort: '.ps-card__label',
-    kreis: (el) => el.querySelector('.ps-card__img'),
+    kreis: (el) => [el.querySelector('.ps-card__img'), el.querySelector(':scope > .ps-card__frame'), el],
   },
-  { sel: '.ps-spiel__bild', art: () => 'Spielbild', sym: 'img', wort: '.ps-spiel__wort', kreis: (el) => el.querySelector('.ps-title__pic') },
+  { sel: '.ps-spiel__bild', art: () => 'Spielbild', sym: 'img', wort: '.ps-spiel__wort', kreis: (el) => [el.querySelector('.ps-title__pic'), el] },
   {
     /* The card itself, not the cell with the air round it: laminated, it is the field. */
     sel: '.ps-talk-cut__cell', box: '.ps-talk__card',
     art: (el) => (el.closest('.ps-spiel-cut') ? 'Spielkarte' : 'Plauderkarte'),
-    sym: 'img', wort: '.ps-talk__word', kreis: (el) => el.querySelector('.ps-title__pic'),
+    sym: 'img', wort: '.ps-talk__word', kreis: (el) => [el.querySelector('.ps-title__pic'), el.querySelector('.ps-talk__card')],
   },
-  { sel: '.ps-spiel__rows .ps-talk__field', art: () => 'Klettfeld', sym: null, wort: null, kreis: () => null },
-  { sel: '.ps-spiel__lager .ps-talk__field', art: () => 'Ablagefeld', sym: null, wort: null, kreis: () => null },
-  { sel: '.ps-talk__fields .ps-talk__field', art: () => 'Antwortfeld', sym: null, wort: null, kreis: () => null },
+  { sel: '.ps-spiel__rows .ps-talk__field', art: () => 'Klettfeld', sym: null, wort: null, kreis: () => [] },
+  { sel: '.ps-spiel__lager .ps-talk__field', art: () => 'Ablagefeld', sym: null, wort: null, kreis: () => [] },
+  { sel: '.ps-talk__fields .ps-talk__field', art: () => 'Antwortfeld', sym: null, wort: null, kreis: () => [] },
 ];
 
 export function messen(holder: HTMLElement, fall: Fall): Messung {
@@ -95,8 +115,6 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
     const bottom = Math.max(...rects.map((r) => r.bottom));
     return mm(new DOMRect(left, top, right - left, bottom - top));
   };
-  /* The circle is the symbol box's ::after, which has no box of its own to
-     ask: its place is read off its computed style, in the host's padding box. */
   /* The code's circle is its own element in the symbol box (AnyCode.svelte). */
   const circle = (host: Element | null): Rect | null => {
     const code = host?.querySelector(':scope > .ps-any');
@@ -104,6 +122,8 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
     return mm(code.getBoundingClientRect());
   };
 
+  /* Read off the sheet too: Spiel and Plauderbuch put it „überlappend“ whatever the setting says. */
+  const ueber = holder.querySelector('.ps-sheet--any-over') !== null;
   const stuecke: Stueck[] = [];
   for (const kind of ARTEN) {
     for (const el of holder.querySelectorAll(kind.sel)) {
@@ -112,19 +132,31 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
       const sym = img ? drawn(img) : null;
       const label = kind.wort ? el.querySelector(kind.wort) : null;
       const wort = label ? text(label) : null;
-      const kreis = circle(kind.kreis(el));
+      const kreis = kind.kreis(el).map(circle).find(Boolean) ?? null;
       const befunde: Befund[] = [];
       const any = fall.settings.anybookCircle ? 2 as const : undefined;
       if (sym && wort && overlap(sym, wort)) befunde.push({ schwere: 'fehler', text: 'Symbol liegt über der Beschriftung', frage: any });
-      if (kreis && wort && overlap(kreis, wort)) befunde.push({ schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
+      if (kreis && wort && overlap(kreis, wort)) {
+        /* Überlappend with the word on top: the corner is the word's too, and only a short word clears it (her call). */
+        befunde.push(ueber && fall.settings.labelPosition === 'above'
+          ? { schwere: 'hinweis', text: 'Anybook-Kreis liegt über der Beschriftung — oben und überlappend geht nur mit kurzen Wörtern' }
+          : { schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
+      }
       if (sym && outside(sym, box)) befunde.push({ schwere: 'fehler', text: 'Symbol ragt aus der Karte', frage: any });
       if (wort && outside(wort, box)) {
         befunde.push(fall.eigeneMasse
           ? { schwere: 'hinweis', text: 'Beschriftung passt bei diesen Maßen nicht auf die Karte' }
           : { schwere: 'fehler', text: 'Beschriftung ragt aus der Karte' });
       }
-      if (kreis && sym && fall.settings.anybookPlace === 'above' && overlap(kreis, sym)) {
-        befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ berührt das Symbol' });
+      if (kreis && sym && !ueber && overlap(kreis, sym)) {
+        befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ oder „daneben“ berührt das Symbol' });
+      }
+      /* „überlappend“ sits in the picture's corner: at most a quarter of the
+         circle on it (print.css, anybook), give or take the grid it is counted
+         on. The test symbols fill their square, so this is what the sticker hides. */
+      const deckt = kreis && sym && ueber ? disc(kreis, sym) : 0;
+      if (deckt > 0.27) {
+        befunde.push({ schwere: 'fehler', text: `Anybook-Kreis liegt zu mehr als einem Viertel auf dem Symbol (${Math.round(deckt * 100)} %)`, frage: 2 });
       }
       stuecke.push({ art: kind.art(el), box, sym, wort, kreis, befunde });
     }

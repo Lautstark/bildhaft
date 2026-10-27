@@ -4,14 +4,11 @@
    * picture, beside its name. Resolved as a card resolves its picture, from the
    * one cache the preview and the printable copy share.
    */
-  import type { PrintSettings, ProviderId, Slot } from '../core/types.ts';
-  import { slotCaption, symbolIdFor } from '../core/types.ts';
-  import AnyCode from './AnyCode.svelte';
+  import type { ProviderId, Slot } from '../core/types.ts';
+  import { symbolIdFor } from '../core/types.ts';
   import { followSymbolUrl, type FollowedSymbol } from './symbols.ts';
 
-  /* `settings` only where the picture is a card of its own — a Spiel's, a
-     Plauderbuch's — and so carries an Anybook code like any card. */
-  let { slot, provider, settings }: { slot: Slot; provider: ProviderId; settings?: PrintSettings } = $props();
+  let { slot, provider }: { slot: Slot; provider: ProviderId } = $props();
 
   let id = $derived(symbolIdFor(slot, provider));
   let url = $state<string | null>(null);
@@ -26,4 +23,4 @@
   const broke = () => { if (url) followed?.broke(url); };
 </script>
 
-<span class="ps-title__pic">{#if url}<img src={url} alt="" onerror={broke} style:transform={slot.mirrored ? 'scaleX(-1)' : null} />{/if}{#if settings?.anybookCircle}<AnyCode {settings} key={slot.id} standing={slotCaption(slot)} />{/if}</span>
+<span class="ps-title__pic">{#if url}<img src={url} alt="" onerror={broke} style:transform={slot.mirrored ? 'scaleX(-1)' : null} />{/if}</span>

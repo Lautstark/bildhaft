@@ -34,7 +34,8 @@ function listed(state: Printing): ListedCode[] {
     const key = el.dataset.any;
     if (!key || seen.has(key) || el.classList.contains('ps-any--start') || getComputedStyle(el).display === 'none') continue;
     seen.add(key);
-    const picture = el.parentElement?.querySelector('img')?.getAttribute('src') ?? null;
+    /* A Schritt's code stands under its number: its first picture shows which. */
+    const picture = (el.closest('.ps-recipe-step__row') ?? el.parentElement)?.querySelector('img')?.getAttribute('src') ?? null;
     out.push({ key, standing: el.dataset.standing ?? '', picture: el.classList.contains('ps-any--title') ? null : picture });
   }
   return out;

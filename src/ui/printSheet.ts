@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, PunchEdge, Sentence, Slot, SongPartKind, ZoneStyle,
 } from '../core/types.ts';
-import { partOf, picturesOf, slotCaption, symbolIdFor } from '../core/types.ts';
+import { partOf, picturesOf, sentenceCaption, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
@@ -692,7 +692,7 @@ export type Block =
      name, and the rest go on. `last` ends the places' sheet. */
   | { kind: 'store'; slots: Slot[]; last: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
-  | { kind: 'recipe-step'; n: number; slots: Slot[]; first: boolean }
+  | { kind: 'recipe-step'; id: string; text: string; n: number; slots: Slot[]; first: boolean }
   /* `more`: a piece of a part too tall for a page after its first, named as
      going on. */
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[]; more: boolean }
@@ -736,6 +736,8 @@ export interface TalkGeometry {
   cutH: number;
   /** The picture inside a cut card, capped so the word keeps its lines. */
   symW: number;
+  /** The same with an Anybook circle over the card's corner. */
+  anySymW: number;
 }
 
 /**
@@ -791,6 +793,8 @@ export interface GameGeometry {
   cutH: number;
   /** The picture inside a printed card, capped so the word keeps its line. */
   symW: number;
+  /** The same with an Anybook circle over the card's corner. */
+  anySymW: number;
 }
 
 /*
@@ -805,24 +809,22 @@ export const GAME_SCALE: Record<PaperSize, number> = { a5: 0.62, a4: 1 };
 export const GAME_FIELD_MM = 30;
 
 type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 'labelSizePt' | 'punch'>;
-type AnybookSettings = Partial<Pick<PrintSettings, 'anybookCircle'>>;
-
-/** What the card keeps clear a side for an Anybook circle over its corner; print.css's --any-side. */
-const ANYBOOK_SIDE_MM = 5;
-/** The circle itself, as print.css draws it: no symbol under it is smaller. */
-const ANYBOOK_CIRCLE_MM = 9.5;
 /**
  * A Spiel's and a Plauderbuch's symbol: as big as the smaller card, the
- * Kartenbogen's, leaves it room, and never under 8 mm. With an Anybook circle
- * (over the corner: there is no room above) the card keeps up to 5 mm a side
- * clear and the symbol gives up what the card is short of — at the circle's
- * own size it gives up no more, and the circle lies further over it. The one
- * size on sheet and card.
+ * Kartenbogen's, leaves it room, and never under 8 mm — the one size on
+ * sheet and card. An Anybook circle takes what it needs off it in print.css.
  */
-function cardSymbol(settings: AnybookSettings, room: { width: number; height: number }): number {
-  const full = Math.max(8, Math.min(room.width, room.height));
-  if (!settings.anybookCircle) return full;
-  return Math.min(full, Math.max(ANYBOOK_CIRCLE_MM, room.width - 2 * ANYBOOK_SIDE_MM));
+function cardSymbol(room: { width: number; height: number }): number {
+  return Math.max(8, Math.min(room.width, room.height));
+}
+/**
+ * The symbol with an Anybook circle over the corner of its card: print.css's
+ * rule (anybook, „Over"), said here for a Spiel's and a Plauderbuch's, whose
+ * symbol has to be the one size on sheet and card — so it is worked out
+ * once, from the card, the smaller of the two.
+ */
+function anybookSymbol(box: { width: number; height: number }, symbol: number, pad: number): number {
+  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad - 11.5) / 1.5);
 }
 type GameShape = { units: number; zellen: number; platz: number };
 
@@ -917,7 +919,7 @@ export function gameFits(
 }
 
 export function gameGeometry(
-  settings: GameSettings & AnybookSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
+  settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
 ): GameGeometry {
   const { k, gap, height, reihen, lagerCols, fieldW } = gameRaster(settings, page, reserve, shape);
   /* The air round a cut card is the margin, as everywhere. */
@@ -932,14 +934,15 @@ export function gameGeometry(
   /* The picture takes what the smaller of the two boxes leaves it — the cut
      card's — so a symbol is the one size on the sheet and on the card, and
      the sheet says how big that is; nobody is asked. */
-  const symW = cardSymbol(settings, { width: cutW - 2 * k, height: cutH - label - 3 * k });
+  const room = { width: cutW - 2 * k, height: cutH - label - 3 * k };
+  const symW = cardSymbol(room);
   return {
     fieldW, fieldH, gap, air, k, height,
     lagerW: lagerCols * fieldW + (lagerCols - 1) * gap,
     lagerCols,
     units: reihen,
     cutW, cutH,
-    symW,
+    symW, anySymW: anybookSymbol(room, symW, k),
   };
 }
 
@@ -947,7 +950,7 @@ export function gameGeometry(
 const LAMINATE_MM = 2;
 
 export function talkGeometry(
-  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel' | 'labelSizePt' | 'cutMarginMm'> & AnybookSettings,
+  settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel' | 'labelSizePt' | 'cutMarginMm'>,
   page: { width: number; height: number }, reserve: number,
 ): TalkGeometry {
   const k = TALK_SCALE[settings.paper];
@@ -966,8 +969,9 @@ export function talkGeometry(
   const cutH = Math.max(10, cardH - 2 * LAMINATE_MM);
   /* Two lines for the word: an Antwort is often more than one. */
   const label = settings.showLabel ? 2 * settings.labelSizePt * 0.3528 * 1.15 + k : 0;
-  const symW = cardSymbol(settings, { width: cutW - 2 * k, height: cutH - label - 3 * k });
-  return { cols, rows, cardW, cardH, gap, air: settings.cutMarginMm * k, k, height, cutW, cutH, symW };
+  const room = { width: cutW - 2 * k, height: cutH - label - 3 * k };
+  const symW = cardSymbol(room);
+  return { cols, rows, cardW, cardH, gap, air: settings.cutMarginMm * k, k, height, cutW, cutH, symW, anySymW: anybookSymbol(room, symW, k) };
 }
 
 /**
@@ -1111,7 +1115,7 @@ export function sheetBlocks(
       if (slots.length > 0) blocks.push({ kind: 'recipe-part', part, slots });
     }
     sentences.filter((sentence) => partOf(sentence) === 'schritt').forEach((sentence, at) => {
-      blocks.push({ kind: 'recipe-step', n: at + 1, slots: sentence.slots, first: at === 0 });
+      blocks.push({ kind: 'recipe-step', id: sentence.id, text: sentenceCaption(sentence), n: at + 1, slots: sentence.slots, first: at === 0 });
     });
   } else if (settings.layout === 'lied') {
     /*
