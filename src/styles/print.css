@@ -1057,6 +1057,13 @@
   --any-fill: #fff;
 }
 .ps-studio .ps-sheet--anybook .ps-any--start { --any-ring: transparent; }
+/* Studio's code comes with a ring of its own, about 10.7 mm across — wider
+   than the sticker's 9.5 mm. On a card's corner it touched the cut line (her
+   test print, 2026-10-27): on this sheet its middle sits 1.5 mm further in,
+   so close to 2 mm stay between ring and edge. */
+.ps-studio .ps-sheet--any-over .ps-any:not(.ps-any--title, .ps-any--start) {
+  translate: -1.5mm 1.5mm;
+}
 
 /* The room, said once: on top for above, on the right for beside. */
 .ps-sheet--any-above { --any-top: 10.5mm; }
