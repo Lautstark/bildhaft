@@ -16,6 +16,7 @@
    * an own picture is its last tile, and choosing is done, as it always was. The
    * crop takes the fold's place and everything else goes away while it is up.
    */
+  import { tick } from 'svelte';
   import SymbolSearch, { type SearchAnswer } from '@lautstark/bildquelle/svelte/SymbolSearch';
   import { getProvider, type Candidate } from '@lautstark/bildquelle';
   import Crop from '@lautstark/design/svelte/Crop';
@@ -121,6 +122,15 @@
   /* The square takes the keyboard as it opens, the way the file button had it. */
   $effect(() => { if (cropping) s.cropper?.focus(); });
 
+  /* Pressed, the picture folds the search open with the field ready to type in (her call). */
+  let fold: HTMLElement | undefined = $state();
+  async function toggleSearch(): Promise<void> {
+    s.searching = !s.searching;
+    if (!s.searching) return;
+    await tick();
+    fold?.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
+  }
+
   function chose(): void {
     const file = upload?.files?.[0];
     if (upload) upload.value = '';
@@ -134,7 +144,7 @@
   words. The search is not shown while there is a picture — it folds open
   under it when the picture is pressed, and choosing one is done, as before.
   A field with nothing chosen yet opens with it.
---><div class="picker__pic" hidden={cropping}><button type="button" class="word__pic picker__own-shown picker__tile{shown ? '' : ' picker__own-shown--empty'}" aria-expanded={s.searching} aria-label={t('ui.picker_change')} title={t('ui.picker_change')} onclick={() => { s.searching = !s.searching; }}>{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{:else}<span class="picker__tile-ask" aria-hidden="true">?</span>{/if}</button>{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<span class="picker__tools">{#if negate}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.negated} aria-label={t('ui.cross_out')} title={t('ui.cross_out')} onclick={() => { s.negated = !s.negated; negate(s.negated); }}>⊘</button>{/if}{#if mirror}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.mirrored} aria-label={t('ui.mirror')} title={t('ui.mirror')} onclick={() => { s.mirrored = !s.mirrored; mirror(s.mirrored); }}>⇆</button>{/if}</span>{/if}</div><!--
+--><div class="picker__pic" hidden={cropping}><button type="button" class="word__pic picker__own-shown picker__tile{shown ? '' : ' picker__own-shown--empty'}" aria-expanded={s.searching} aria-label={t('ui.picker_change')} title={t('ui.picker_change')} onclick={toggleSearch}>{#if shown}<SymbolPicture provider={s.provider} id={shown} alt={s.slot.ownImage ? t('ui.own_picture') : s.slot.sourceToken} mirrored={s.mirrored} />{#if s.negated}<NegationCross />{/if}{:else}<span class="picker__tile-ask" aria-hidden="true">?</span>{/if}</button>{#if s.handlers.onNegate || s.handlers.onMirror}{@const negate = s.handlers.onNegate}{@const mirror = s.handlers.onMirror}<span class="picker__tools">{#if negate}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.negated} aria-label={t('ui.cross_out')} title={t('ui.cross_out')} onclick={() => { s.negated = !s.negated; negate(s.negated); }}>⊘</button>{/if}{#if mirror}<button type="button" role="checkbox" class="picker__tool" aria-checked={s.mirrored} aria-label={t('ui.mirror')} title={t('ui.mirror')} onclick={() => { s.mirrored = !s.mirrored; mirror(s.mirrored); }}>⇆</button>{/if}</span>{/if}</div><!--
   The search, folded open under the picture. conventions.md §6.4.
 
   The tiles carry no `aria-pressed` and the component draws none: these tiles do
@@ -144,7 +154,7 @@
   A picture of the user's own is the last tile — not one of the hits, so
   nothing that picks a hit can open the file chooser; the crop takes the
   fold's place.
--->{#if s.searching || cropping}<div class="picker__fold"><SymbolSearch
+-->{#if s.searching || cropping}<div class="picker__fold" bind:this={fold}><SymbolSearch
   class="picker__search"
   provider={source}
   words={{ field: t('ui.search_symbol'), placeholder: s.isNew ? t('ui.search_word') : t('ui.search_other_word') }}

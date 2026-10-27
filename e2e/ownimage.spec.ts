@@ -67,6 +67,10 @@ test('the picker shows the picture the field is already holding', async ({ page 
   await slot.click();
   // The search stays folded while there is a picture (her pick „Karte“): the picture is what is shown.
   await expect(page.locator('.picker__grid')).toHaveCount(0);
+  // Pressed, the picture opens the search with its field ready to type in.
+  await page.locator('.picker__tile').click();
+  await expect(page.getByLabel('Symbol suchen')).toBeFocused();
+  await page.locator('.picker__tile').click();
 
   /*
    * The picture itself, not a placeholder: 3 is the fixture and 1 is the
