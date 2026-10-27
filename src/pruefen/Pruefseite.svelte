@@ -66,19 +66,19 @@
   const fehlerOf = (one: Fall) => befundeOf(one).filter((b) => b.schwere === 'fehler');
   let hier = $derived(befundeOf(fall));
 
-  /* The problems of a template: each kind of fault once, with the combinations it shows in. */
-  let probleme = $derived.by(() => {
-    const by = new Map<string, Fall[]>();
-    for (const one of hierAlle) {
-      for (const b of fehlerOf(one)) {
-        /* Without the card's kind and the numbers, which differ from case to case. */
+  /* The problems of a template: each combination that has any, once, with
+     all of its faults — the one with most first. */
+  let probleme = $derived.by(() => hierAlle
+    .map((one) => ({
+      one,
+      /* Without the card's kind and the numbers, which differ from card to card. */
+      texte: [...new Set(fehlerOf(one).map((b) => {
         const plain = b.text.replace(/^[^:]+: /, '').replace(/\s*\(.*?\)/g, '').replace(/,.*$/, '');
-        const kind = plain.charAt(0).toUpperCase() + plain.slice(1);
-        if (!by.get(kind)?.includes(one)) by.set(kind, [...(by.get(kind) ?? []), one]);
-      }
-    }
-    return [...by.entries()];
-  });
+        return plain.charAt(0).toUpperCase() + plain.slice(1);
+      }))],
+    }))
+    .filter((p) => p.texte.length > 0)
+    .sort((a, b) => b.texte.length - a.texte.length));
   const zahl = (which: CollectionKind) => {
     const all = alle.get(which) ?? [];
     return all.every((one) => gemessen.has(one.id)) ? all.filter((one) => fehlerOf(one).length > 0).length : 0;
@@ -131,7 +131,7 @@
       <h2>Probleme in {VORLAGE[vorlage]}</h2>
       {#if !fertig}<p class="pruef__klein">wird gemessen … {hierAlle.filter((one) => gemessen.has(one.id)).length} / {hierAlle.length}</p>
       {:else if probleme.length === 0}<p class="pruef__ok">Keine gefunden.</p>
-      {:else}<ul class="pruef__probleme">{#each probleme as [text, wo] (text)}<li><p>{text} <span class="pruef__anzahl">in {wo.length === 1 ? '1 Kombination' : `${wo.length} Kombinationen`}</span></p><span class="pruef__wo">{#each wo.slice(0, 4) as one (one.id)}{@render knopf(one)}{/each}</span>{#if wo.length > 4}<details class="pruef__mehr"><summary>alle {wo.length} zeigen</summary><span class="pruef__wo">{#each wo.slice(4) as one (one.id)}{@render knopf(one)}{/each}</span></details>{/if}</li>{/each}</ul>{/if}
+      {:else}<p class="pruef__anzahl">{probleme.length === 1 ? '1 Kombination' : `${probleme.length} Kombinationen`}</p><ul class="pruef__probleme">{#each probleme as { one, texte } (one.id)}<li><span class="pruef__wo">{@render knopf(one)}</span><ul class="pruef__texte">{#each texte as text (text)}<li>✕ {text}</li>{/each}</ul></li>{/each}</ul>{/if}
     </section>
   </aside>
 
@@ -177,12 +177,11 @@
   .pruef__ok { color: #2e7d32; margin: 8px 0 0; }
   .pruef__probleme { margin: 8px 0 0; padding: 0; list-style: none; }
   .pruef__probleme li { padding: 8px 0; border-top: 1px solid var(--border, #e2ddd9); }
-  .pruef__probleme p { margin: 0 0 6px; color: #b71c1c; font-weight: 600; font-size: 13px; }
-  .pruef__anzahl { font-weight: 400; color: var(--muted, #776e69); }
+  .pruef__texte { margin: 6px 0 0; padding: 0; list-style: none; color: #b71c1c; font-size: 13px; }
+  .pruef__texte li { padding: 1px 0 1px 10px; border: 0; }
+  .pruef__anzahl { margin: 0; font-size: 13px; color: var(--muted, #776e69); }
   .pruef__wo { display: flex; flex-wrap: wrap; gap: 4px; }
   .pruef__wo button { font-size: 12px; padding: 2px 8px; }
-  .pruef__mehr { margin-top: 6px; font-size: 12px; }
-  .pruef__mehr summary { cursor: pointer; color: var(--muted, #776e69); margin-bottom: 4px; }
   .pruef__rechts { padding: 18px 24px 60px; min-width: 0; overflow-x: hidden; }
   .pruef__titel { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .pruef__titel h2 { font-size: 18px; }
