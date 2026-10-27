@@ -12,15 +12,17 @@
    * settings stay in the print preview's column.
    */
   import type { CollectionKind } from '../core/types.ts';
-  import { gameSymbol, materialPrint, talkPrint } from '../app/print.ts';
+  import type { Measures } from './printDialog.svelte.ts';
+  import { materialPrint } from '../app/print.ts';
   import { kind, providerId } from '../app/state.svelte.ts';
   import { TEMPLATES } from '../app/templates.ts';
   import PaletteRow from './PaletteRow.svelte';
-  import { t } from '../i18n/index.ts';
+  import { LOCALE, t } from '../i18n/index.ts';
+
+  /* How big things come out, measured off the sheet beside this row. */
+  let { measures = null }: { measures?: Measures | null } = $props();
 
   let open = $state<'page' | 'symbol' | 'own' | null>(null);
-  /* Which ⓘ is unfolded: the menus stay lean, the words wait behind it. */
-  let info = $state<string | null>(null);
   let host: HTMLElement | undefined = $state();
 
   let mp = $derived(materialPrint());
@@ -47,8 +49,11 @@
   const away = (event: PointerEvent) => {
     if (open && host && !host.contains(event.target as Node)) open = null;
   };
-  const show = (which: 'page' | 'symbol' | 'own') => { open = open === which ? null : which; info = null; };
+  const show = (which: 'page' | 'symbol' | 'own') => { open = open === which ? null : which; };
   const POSITIONS = ['above', 'below'] as const;
+
+  const mm = (value: number): string => value.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
+  const pt = (value: number): string => (Math.round(value * 2) / 2).toLocaleString(LOCALE, { maximumFractionDigits: 1 });
 
   function clamp(value: number, min: number, max: number, fallback: number): number {
     if (!Number.isFinite(value)) return fallback;
@@ -57,8 +62,6 @@
 </script>
 
 <svelte:window onpointerdown={away} onkeydown={(event) => { if (event.key === 'Escape') open = null; }} />
-
-{#snippet tip(id: string)}<button class="ding__info" type="button" aria-label={t('ui.info_show')} title={t('ui.info_show')} aria-expanded={info === id} onclick={() => { info = info === id ? null : id; }}>i</button>{/snippet}
 
 {#snippet dd()}<span class="ding__dd"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></span>{/snippet}
 
@@ -104,6 +107,11 @@
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>
   {#if symbolish}<span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_symbol')} aria-expanded={open === 'symbol'} onclick={() => show('symbol')}>{t('ui.ding_symbol')}{@render dd()}</button>{#if open === 'symbol'}<div class="ding__pop" role="group" aria-label={t('ui.ding_symbol')}>
+    {#if measures}<!--
+      Die Messzeile (2026-10-27, ihr Mock): in jeder Vorlage hier zuoberst und
+      gleich — wie groß Symbol, Karte und Wort aus dem Drucker kommen,
+      gemessen am Blatt nebenan, gleich wer die Größe bestimmt.
+    --><p class="ding__mess{measures.tooBig ? ' ding__mess--warn' : ''}" aria-live="polite">{#if measures.tooBig}{t('ui.card_too_big')}{:else}{#if measures.symbolMm !== null}<span>{t('ui.measure_symbol', { mm: mm(measures.symbolMm) })}</span>{/if}{#if measures.card}<span>{t('ui.measure_card', { w: mm(measures.card.w), h: mm(measures.card.h) })}</span>{/if}{#if measures.labelPt !== null}<span>{t('ui.measure_label', { pt: pt(measures.labelPt) })}</span>{/if}{/if}</p>{/if}
     {#if offer.background || kind() === 'einkaufsliste'}<PaletteRow label={t('ui.cards_fill')} value={mp.settings.cardBackground} strength="fill" none ownStart="#fff1b3" onPick={(next) => mp?.set('cardBackground', next)} />{/if}
     {#if offer.size?.kind === 'cards'}
       <div class="ding__row"><span class="segmented">
@@ -120,15 +128,6 @@
       {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}
     {:else if offer.size?.kind === 'board'}
       {@render num(t('ui.margin'), mp.settings.cutMarginMm, 0, 20, 0.5, 3, 'mm', (next) => mp?.set('cutMarginMm', next))}
-      {#if kind() === 'spiel'}{@const sym = gameSymbol()}{#if sym !== null}<!--
-        Das Maß als Fakt, wie bei der Einkaufsliste: das Blatt rechnet die
-        Symbolgröße selbst, das Menü zeigt sie nur.
-      --><div class="ding__row"><span class="small faint">{t('ui.game_symbol', { size: Math.round(sym) })}</span></div>{/if}{/if}
-      {#if kind() === 'plauderbuch'}{@const talk = talkPrint()}{#if talk}<!--
-        Ebenso beim Plauderbuch: die Karte, die das Blatt schneidet — 2 mm
-        kleiner als ihr Feld, laminiert passt sie hinein — und wie viele
-        Antworten eine Seite fasst. Beides folgt aus Papier und Beschriftung.
-      --><div class="ding__row"><span class="small faint">{t('ui.talk_card', { w: Math.round(talk.cutW), h: Math.round(talk.cutH), n: talk.room })}</span></div>{/if}{/if}
     {/if}
     {#if offer.label}{@render check(t('ui.print_label'), mp.settings.showLabel, (next) => mp?.set('showLabel', next))}{#if mp.settings.showLabel}<div class="ding__sub"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.labelPosition === where} onclick={() => mp?.set('labelPosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.labelSizePt, 5, 40, 0.5, 11, 'pt', (next) => mp?.set('labelSizePt', next), t('ui.label_size'))}</div>{/if}
     {/if}
@@ -141,10 +140,6 @@
     <!-- Anybook (2026-10-26, ihr Wunsch): auf jeder Karte mit Symbol, in jeder Vorlage mit diesem Menü. -->
     {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next))}
     {#if mp.settings.anybookCircle}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each ['above', 'over'] as const as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(place === 'above' ? 'ui.anybook_above' : 'ui.anybook_over')}</button>{/each}</span></div></div>{/if}
-    {#if kind() === 'einkaufsliste'}<!-- Das Maß als Fußnote: ein Fakt, keine Stellschraube. -->
-      <div class="ding__row"><span class="small faint">{t('ui.symbol_from_paper', { size: mp.settings.symbolSizeMm, margin: mp.settings.cutMarginMm })}</span>{@render tip('brett')}</div>
-      {#if info === 'brett'}<p class="small faint ding__hint">{t('ui.shop_geometry_info')}</p>{/if}
-    {/if}
   </div>{/if}</span>{/if}
   {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{#if offer.talk}{#if mp.settings.gameGroundColour}<span class="ding__dot" style:--c={mp.settings.gameGroundColour}></span>{/if}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
     {#if offer.sentence}{@render check(t('ui.print_sentence'), mp.settings.showSentenceText, (next) => mp?.set('showSentenceText', next))}{#if mp.settings.showSentenceText}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={mp.settings.sentencePosition === where} onclick={() => mp?.set('sentencePosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => mp?.set('sentenceSizePt', next), t('ui.sentence_size'))}</div></div>{/if}{/if}

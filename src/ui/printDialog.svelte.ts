@@ -9,7 +9,6 @@ import {
 } from './printSheet.ts';
 import { warmSymbols } from './symbols.ts';
 import { previewsToPdf, previewToPdf } from './pdf.ts';
-import { LOCALE, t } from '../i18n/index.ts';
 import { settle } from '../app/templates.ts';
 
 export interface PrintOptions {
@@ -55,18 +54,6 @@ export interface PrintOptions {
 
 const PREVIEW_PADDING = 28;
 
-/**
- * A millimetre as this app's reader writes one, whole: „36 × 36 mm“. A ruler
- * on a card does not find tenths, and a 0.3 read off a measured preview
- * looked like a card that had come out crooked.
- *
- * The locale follows the page rather than being `de-DE`: a decimal comma in an
- * English sentence is not a smaller mistake than a German word in one, and this
- * readout is a measurement somebody is about to cut paper by.
- */
-const mmText = (value: number): string =>
-  value.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
-
 /*
  * An element's border box, in CSS pixels.
  *
@@ -90,6 +77,43 @@ function borderBox(node: HTMLElement): { width: number; height: number } {
     height: sum(style.height, style.paddingTop, style.paddingBottom,
       style.borderTopWidth, style.borderBottomWidth),
   };
+}
+
+/** How big things come out of the printer, in millimetres and points. */
+export interface Measures {
+  /** The symbol's edge, or null where no card shows one. */
+  symbolMm: number | null;
+  /** The card a person handles — see `measure()`. */
+  card: { w: number; h: number } | null;
+  /** The word's type size, or null where no word is printed. */
+  labelPt: number | null;
+  /** A card of the size typed does not fit the paper at all. */
+  tooBig: boolean;
+}
+
+/* The boxes `measure()` reads, the same for every template: cards to cut out
+   first, then cards printed on the page (a Tafel's field included), and in
+   each the box its picture is given and the word under or over it. */
+const CUT_CARDS = '.ps-talk-cut .ps-talk__card, .ps-cut .ps-card';
+const PRINTED_CARDS = '.ps-card:not(.ps-card--empty, .ps-place .ps-card), .ps-spiel__bild';
+const PICTURE_BOX = '.ps-card__img, .ps-title__pic';
+const WORD = '.ps-card__label, .ps-talk__word, .ps-spiel__wort';
+
+/** The shorter side of a box's content, in CSS pixels: what is left for a square picture inside it. */
+function contentEdge(node: HTMLElement): number {
+  const style = getComputedStyle(node);
+  const box = borderBox(node);
+  const across = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+    - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+  const down = box.height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+    - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth);
+  return Math.min(across, down);
+}
+
+/** Whether a card of the size typed fits the paper at least once. */
+function cardFitsPaper(settings: PrintSettings): boolean {
+  const page = printableArea(settings.paper, settings.orientation, settings.punch);
+  return settings.cardWidthMm <= page.width && (settings.cardHeightMm ?? settings.cardWidthMm) <= page.height;
 }
 
 /**
@@ -131,17 +155,11 @@ export class Printing {
   fit: { kind: 'frame' } | { kind: 'width'; maxHeight: number } | { kind: 'flow' } = { kind: 'frame' };
   preparing = $state(false);
   /**
-   * What the scissors will leave, said where the size is set.
-   *
-   * "Symbolgröße" is the picture; the cut margin and any frame sit outside it,
-   * so 50mm symbols come off the printer as 56mm cards — and a card is what an
-   * existing communication board is specified in. Where the card is what was
-   * typed the sentence turns round: the card is not news, the symbol left
-   * inside it is, and so is how many of them the paper takes.
+   * How big things come out of the printer: the symbol, the card and the
+   * word, measured off the preview — the one place every template's sizes
+   * meet, whichever of them set them. Null while there is nothing to measure.
    */
-  cardSize = $state('');
-  /** Whether that line is reporting or warning — a card the paper cannot hold. */
-  cardWarn = $state(false);
+  measures = $state.raw<Measures | null>(null);
 
   /** The boxes the preview is built out of, bound by the body component. */
   holder: HTMLElement | undefined = $state();
@@ -250,7 +268,7 @@ export class Printing {
     flushSync();
     /* Sheets of paper, which on A5 is not the pages: two to a sheet. */
     this.pageCount = sheetsOf(pagesOf(this.blocks, this.pages), this.settings).length;
-    this.measureCard();
+    this.measure();
     /* Now, and again once the frame has its size: a preview made while its
        frame is still being laid out measures it a frame late. */
     this.rescale();
@@ -258,68 +276,47 @@ export class Printing {
   }
 
   /*
-   * Measured off the preview rather than worked out from the settings. The
-   * height cannot be worked out: a word that wraps to a second line makes its
-   * card taller, and that taller card is the one the deck has to be cut to — so
-   * the largest card is what gets reported, not the first.
+   * Measured off the preview rather than worked out from the settings, and the
+   * same way for every template. The height of a card cannot be worked out: a
+   * word that wraps to a second line makes its card taller, and that taller
+   * card is the one the deck has to be cut to — so the largest is reported.
+   *
+   * The card is the one a person handles: where the sheet has cards to cut
+   * out, one of those; elsewhere a printed card or a Tafel's field. The symbol
+   * is the shorter side of the box its picture is given, inside that card —
+   * symbols are square, so that is the edge a ruler finds. The word is the
+   * size its type is set in.
    */
-  measureCard(): void {
-    const cards = this.holder?.querySelectorAll<HTMLElement>('.ps-card') ?? [];
-    this.cardWarn = false;
-    if (cards.length === 0) { this.cardSize = ''; return; }
-    if (this.settings.layout === 'sheet' && this.settings.sheetFit === 'card') {
-      this.measureSymbolLeft();
+  measure(): void {
+    const sheet = this.holder;
+    if (!sheet) { this.measures = null; return; }
+    if (this.settings.layout === 'sheet' && this.settings.sheetFit === 'card' && !cardFitsPaper(this.settings)) {
+      this.measures = { symbolMm: null, card: null, labelPt: null, tooBig: true };
       return;
     }
+    const cut = [...sheet.querySelectorAll<HTMLElement>(CUT_CARDS)];
+    const printed = [...sheet.querySelectorAll<HTMLElement>(PRINTED_CARDS)];
+    const empty = [...sheet.querySelectorAll<HTMLElement>('.ps-card--empty')];
+    const cards = cut.length > 0 ? cut : printed.length > 0 ? printed : empty;
+    if (cards.length === 0) { this.measures = null; return; }
 
     let width = 0;
     let height = 0;
-    for (const node of cards) {
-      const box = borderBox(node);
+    let symbol = 0;
+    for (const card of cards) {
+      const box = borderBox(card);
       width = Math.max(width, box.width);
       height = Math.max(height, box.height);
+      const pic = card.querySelector<HTMLElement>(PICTURE_BOX);
+      if (pic) symbol = Math.max(symbol, contentEdge(pic));
     }
-    /* On a Tafel nothing is cut and in a strip the symbols stand side by
-       side: what is measured there is a field, not a card. */
-    this.cardSize = t(this.options.board || this.options.kind === 'satzstreifen' ? 'ui.field_size' : 'ui.card_to_cut')
-      + `${mmText(width / PX_PER_MM)} × ${mmText(height / PX_PER_MM)} mm`;
-  }
-
-  /**
-   * What a card of the size somebody typed leaves for the symbol, and how many
-   * such cards this paper takes.
-   *
-   * The symbol is measured, and it is the shorter side of the box the picture
-   * is given: symbols are square, so that is the edge a ruler will find on the
-   * printed one.
-   *
-   * How many fit is the paper's answer rather than this printout's — the paper
-   * divided by the card, not the cards that happen to exist today. It is asked
-   * while a deck is being planned, and "2 per page" because the Sammlung holds
-   * two words would be a fact about the wrong thing. A collection title takes
-   * its room off the first page only, and is not counted here for the same
-   * reason.
-   */
-  measureSymbolLeft(): void {
-    const page = printableArea(this.settings.paper, this.settings.orientation, this.settings.punch);
-    const height = this.settings.cardHeightMm ?? this.settings.cardWidthMm;
-    const cols = Math.floor(page.width / this.settings.cardWidthMm);
-    const rows = Math.floor(page.height / height);
-    if (cols < 1 || rows < 1) {
-      this.cardWarn = true;
-      this.cardSize = t('ui.card_too_big');
-      return;
-    }
-
-    let symbol = 0;
-    for (const node of this.holder?.querySelectorAll<HTMLElement>('.ps-card__img') ?? []) {
-      const box = borderBox(node);
-      symbol = Math.max(symbol, Math.min(box.width, box.height));
-    }
-
-    this.cardSize = t('ui.card_readout', {
-      mm: mmText(symbol / PX_PER_MM), cols, rows, n: cols * rows,
-    });
+    const word = cards.map((card) => card.querySelector<HTMLElement>(WORD)).find(Boolean);
+    this.measures = {
+      symbolMm: symbol > 0 ? symbol / PX_PER_MM : null,
+      card: { w: width / PX_PER_MM, h: height / PX_PER_MM },
+      labelPt: word ? parseFloat(getComputedStyle(word).fontSize) * 0.75 : null,
+      tooBig: false,
+    };
   }
 
   /*

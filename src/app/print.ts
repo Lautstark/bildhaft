@@ -3,8 +3,8 @@ import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } fro
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { rowsOfGame } from '../core/game.ts';
 import {
-  copyrightFor, creditLines, cutGeometry, gameFits, gameGeometry, gameReserveMm, printableArea, reserveMm, tafelFieldMm,
-  talkCapacity, talkGeometry, type Titled,
+  copyrightFor, creditLines, cutGeometry, gameFits, gameReserveMm, printableArea, tafelFieldMm,
+  talkCapacity, type Titled,
 } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
 import { listSentences, patchCollection } from '../db/repo.ts';
@@ -396,8 +396,6 @@ export function paperOf(): Pick<PrintSettings, 'paper' | 'orientation'> | null {
   return { paper: print.paper, orientation: print.orientation };
 }
 
-
-
 /**
  * One field of the open Tafel on its paper, in millimetres — what the sheet
  * will make of it, asked the same way the sheet asks: the same credits under
@@ -428,17 +426,12 @@ function gameSheet() {
 
 /**
  * The open Plauderbuch as Bearbeiten needs it: how many Antworten a page
- * prints — the rest wait under it, as cards beside a Tafel do — and the
- * card the sheet cuts for a field, as the sheet measures both.
+ * prints — the rest wait under it, as cards beside a Tafel do.
  */
-export function talkPrint(): { room: number; cutW: number; cutH: number } | null {
+export function talkPrint(): { room: number } | null {
   const open = activeCollection();
   if (!open || kind() !== 'plauderbuch' || !s.settings) return null;
-  const print = printFor(printBase(), 'plauderbuch', null, open.print ?? {});
-  const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
-  const titled: Titled = !print.showCollectionTitle || !titleOf(open).trim() ? false : 'text';
-  const geo = talkGeometry(print, printableArea(print.paper, print.orientation, print.punch), reserveMm(print, credits, titled));
-  return { room: talkCapacity(print), cutW: geo.cutW, cutH: geo.cutH };
+  return { room: talkCapacity(printFor(printBase(), 'plauderbuch', null, open.print ?? {})) };
 }
 
 /** A game's rows as the geometry counts them: how many, the longest, and
@@ -449,19 +442,6 @@ function shapeOf(rows: GameRow[]) {
     zellen: Math.max(1, ...rows.map((row) => row.zellen.length)),
     platz: Math.max(1, rows.reduce((n, row) => n + row.zellen.filter((zelle) => zelle.platz).length, 0)),
   };
-}
-
-/**
- * How big the open Spiel's symbols print, in millimetres — the sheet's own
- * answer, asked the same way the sheet asks (the same credits, the same name
- * over it), so the menu can show it as a fact. Null for anything that is not
- * a Spiel.
- */
-export function gameSymbol(): number | null {
-  const sheet = gameSheet();
-  if (!sheet) return null;
-  const rows = rowsOfGame(activeCollection()?.game ?? { rows: [] });
-  return gameGeometry(sheet.print, sheet.page, sheet.reserve, shapeOf(rows)).symW;
 }
 
 /**

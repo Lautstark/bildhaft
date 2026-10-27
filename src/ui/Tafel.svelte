@@ -33,11 +33,11 @@
   } from '../core/board.ts';
   import { dissolveZone, leaveZone, setZone } from '../core/board.ts';
   import WordCard from './WordCard.svelte';
+  import { tafelField } from '../app/print.ts';
   import AddTile from './AddTile.svelte';
   import TitleLine from './TitleLine.svelte';
   import { activeCollection, s } from '../app/state.svelte.ts';
   import { addIntoFields, handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
-  import { tafelField } from '../app/print.ts';
   import { t } from '../i18n/index.ts';
 
   let { provider }: { provider: ProviderId } = $props();
@@ -60,9 +60,8 @@
   let waiting = $derived(s.sentences.filter((one) => !placed.has(one.id) && one.part !== 'titel'));
   let free = $derived(firstFree(board));
   /* A field's shape on its paper: a Tafel of four by three on A4 upright has
-     fields twice as tall as wide, and is filled that way here. */
+     fields twice as tall as wide, and its columns here are narrowed by it. */
   let field = $derived(tafelField());
-  const mm = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 1 });
 
   /* The grid's counters. Refreshed rather than bound, so a number being typed
      is not put back under the finger by the write it causes. */
@@ -396,7 +395,7 @@
   How many fields across and down, under the Tafel (2026-10-23, ihr Wunsch):
   the grid speaks for itself, its counters follow it. Beside them, how big a
   field comes out on the paper chosen in the panel.
---><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}{#if field}<span class="board-head__size small faint">{t('ui.board_size', { w: mm(field.width), h: mm(field.height) })}</span>{/if}</div>
+--><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}</div>
 <!--
   Only once words wait: a board with room for everything has no tray, and
   the way onto the board is the board itself (2026-10-23, ihr Wunsch).

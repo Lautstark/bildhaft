@@ -1273,7 +1273,6 @@ footer.footer {
 /* The number between the two buttons, typed into as well: no spinner of its own beside them. */
 .board-step__n { width: 3em; padding: 4px 6px; text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .board-step__n::-webkit-inner-spin-button, .board-step__n::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.board-head__size { font-variant-numeric: tabular-nums; }
 /* The group panel, held at the foot of the window while fields are marked.
    It lies over what is under it rather than pushing the Tafel: marking a
    field must not move the field. */
@@ -1784,8 +1783,6 @@ footer.footer {
 .ding__dd { display: inline-flex; color: var(--muted); margin: 1px -2px 0 0; }
 .ding__chip:hover { border-color: var(--muted); }
 .ding__chip:hover .ding__dd { color: var(--text); }
-.ding__info { width: 17px; height: 17px; flex: none; margin-left: auto; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); font-size: 11px; font-weight: 600; font-style: italic; line-height: 1; cursor: pointer; display: inline-grid; place-items: center; padding: 0 2px 1px 0; }
-.ding__info:hover, .ding__info[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
 .ding__row--snug { gap: 6px; flex-wrap: nowrap; }
 .slot .word__pic { width: 76px; }
 /* Ein Segment ist ein Wort, auch ein zweiteiliges. */
@@ -1803,6 +1800,10 @@ footer.footer {
 .ding-num__unit { color: var(--muted); font-size: 12.5px; }
 /* Gestreckt, damit ein ⓘ am Zeilenende überall dasselbe Ende meint — und
    mit einer Linie am Haken entlang, die sagt, was zu ihm gehört. */
+/* Die Messzeile: zuoberst im Symbol-Menü jeder Vorlage, wie groß Symbol,
+   Karte und Wort gedruckt werden. Eine leise Fläche, keine Stellschraube. */
+.ding__mess { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 7px 10px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: 13px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.ding__mess--warn { color: var(--danger); }
 .ding__dep { display: flex; flex-direction: column; align-items: stretch; gap: 9px; border-left: 2px solid var(--line); margin: -2px 0 2px 7px; padding-left: 16px; }
 .ding__pop {
   position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 360px;
@@ -1812,7 +1813,6 @@ footer.footer {
 }
 .ding__row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 /* Der aufgeklappte ⓘ-Text: volle Menübreite, dicht an seiner Zeile. */
-.ding__hint { margin: -4px 0 2px; max-width: none; line-height: 1.45; }
 .ding-check { display: flex; gap: 7px; align-items: center; font-size: 14px; cursor: pointer; }
 .palette-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .palette-row__name { min-width: 48px; }

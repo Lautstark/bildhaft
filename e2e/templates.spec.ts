@@ -297,8 +297,10 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await expect(cells).toHaveCount(6);
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
   // A field has its paper's shape: three across and two down on A4 upright
-  // is a field taller than wide, here as on the sheet.
-  await expect(page.locator('.board-head')).toContainText('Feld 63,3 × 135,8 mm');
+  // is a field taller than wide, as the Symbol menu's line says.
+  await openDing(page, 'Symbol');
+  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 136 mm');
+  await page.keyboard.press('Escape');
   /* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
      quadratisch, die Proportionen stehen im Readout und auf dem Papier. */
   // Marking a field does not move the Tafel: the panel is held at the foot of the window.
@@ -335,8 +337,9 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect(free!.height).toBe(full!.height);
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.locator('.print-dock').getByLabel('Spalten')).toHaveCount(0);
-  await expect(page.getByText('Feld 63 × 136 mm').first()).toBeVisible();
-  await expect(page.getByText('Karte zum Ausschneiden:')).toHaveCount(0);
+  await openDing(page, 'Symbol');
+  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 136 mm');
+  await page.keyboard.press('Escape');
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every
      template, so an answer given on a card sheet used to reach this paper
@@ -873,8 +876,14 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   await page.getByLabel('Titel drucken').check();
   await expect(page.getByRole('button', { name: 'Jede Seite', exact: true })).toHaveCount(0);
   await showMaterial(page);
-  const size = page.locator('.board-head__size');
-  const plain = await size.innerText();
+  /* The field as the Symbol menu's line measures it off the sheet. */
+  const field = async () => {
+    await openDing(page, 'Symbol');
+    const text = await page.locator('.ding__mess').innerText();
+    await page.keyboard.press('Escape');
+    return text;
+  };
+  const plain = await field();
 
   // Chosen in the title line under the head, as on every template with one.
   await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
@@ -886,9 +895,9 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   await expect(page.locator('.collection-head')).toContainText('1 Karte');
   // The fields are as wide as before and shorter by the picture.
   const mmOf = (text: string) => text.match(/([\d,]+) × ([\d,]+)/)!.slice(1).map((n) => Number(n.replace(',', '.')));
-  await expect(size).not.toHaveText(plain);
+  await expect.poll(field).not.toBe(plain);
   const [w0, h0] = mmOf(plain);
-  const [w1, h1] = mmOf(await size.innerText());
+  const [w1, h1] = mmOf(await field());
   expect(w1).toBe(w0);
   expect(h1).toBeLessThan(h0);
 

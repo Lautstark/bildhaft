@@ -50,18 +50,20 @@ test('millimetre controls change the printed geometry', async ({ page }) => {
  * drawn rather than against a second copy of the same arithmetic.
  */
 test('names the field a ruler will find, not just the symbol', async ({ page }) => {
-  /* The readout lives in the panel's foot now. */
-  const hint = page.locator('.print-view__meta');
+  /* The readout is the Symbol menu's first line. */
+  const hint = page.locator('.ding__mess');
   const card = page.locator('.preview-frame .ps-card').first();
   const box = async () => card.evaluate((el: HTMLElement) => ({ w: el.offsetWidth, h: el.offsetHeight }));
 
-  await expect(hint).toHaveText('Feld 46 × 52 mm');
+  await openDing(page, 'Symbol');
+  await expect(hint).toContainText('Karte 46 × 52 mm');
   expect(mm((await box()).w)).toBeCloseTo(46, 0);
   expect(mm((await box()).h)).toBeCloseTo(52, 0);
 
   await openDing(page, 'Symbol');
   await page.getByLabel('Symbolgröße').fill('50');
-  await expect(hint).toHaveText('Feld 56 × 62 mm');
+  await expect(hint).toContainText('Symbol 50 mm');
+  await expect(hint).toContainText('Karte 56 × 62 mm');
 
   // A frame grows the card, so both figures have to grow with it. Checked to
   // the millimetre and no finer, as the readout is: offsetWidth is whole
@@ -71,7 +73,8 @@ test('names the field a ruler will find, not just the symbol', async ({ page }) 
   await openDing(page, 'Symbol');
   await page.getByLabel('Rahmen um jede Karte').check();
   await backToPrint(page);
-  await expect(hint).toHaveText('Feld 60 × 65 mm');
+  await openDing(page, 'Symbol');
+  await expect(hint).toContainText('Karte 60 × 65 mm');
   expect(mm((await box()).w)).toBeCloseTo(60.3, 0);
   expect(mm((await box()).h)).toBeCloseTo(65.4, 0);
 });
@@ -88,8 +91,8 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Zeilen' }).fill('2');
   await showSheet(page);
 
-  const hint = page.getByText('Karte 63');
-  await expect(hint).toHaveText('Karte 63 × 136 mm');
+  await openDing(page, 'Symbol');
+  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 136 mm');
 });
 
 /*
