@@ -873,8 +873,11 @@ export function gameReserveMm(
  * nothing.
  */
 const GAME_ASPECT = 42 / 50;
+/* The word's line. Its size is the A4 one times the paper's factor, as every
+   other length of a Spiel is (print.css, .ps-spiel__wort): on A5 the field
+   is smaller and the word with it, so a word that fits on A4 fits on A5. */
 const gameLabelMm = (settings: GameSettings, k: number): number =>
-  settings.showLabel ? settings.labelSizePt * 0.3528 * 1.4 + k : 0;
+  settings.showLabel ? settings.labelSizePt * k * 0.3528 * 1.4 + k : 0;
 
 function gameRaster(settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape) {
   const k = GAME_SCALE[settings.paper];

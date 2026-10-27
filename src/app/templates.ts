@@ -321,7 +321,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     zeileInEdit: true,
     defaults: () => ({
       paper: 'a5', orientation: 'landscape', cutMarginMm: 3, showCutLines: true,
-      showLabel: false, labelPosition: 'below', labelSizePt: 9,
+      /* 7 pt: an Antwort of two to four words keeps to the two lines its card
+         has room for, lying on its side too (2026-10-27, measured on the Prüfseite). */
+      showLabel: false, labelPosition: 'below', labelSizePt: 7,
       cardBorderMm: 0, cardRadiusMm: 2, cardBorderColor: '#655b56', cardBackground: '#ffffff',
       gameGroundColour: '#d8e9fc', accentColour: '#3f88e0',
       showPageNumbers: false, ...HEADED,

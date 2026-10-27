@@ -1131,5 +1131,6 @@
 }
 .ps-spiel__bild .ps-title__pic { width: var(--sym); height: var(--sym); padding: 0; border: 0; background: transparent; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 .ps-spiel__bild .ps-title__pic img { width: 100%; height: 100%; object-fit: contain; }
-.ps-spiel__wort { font-size: var(--label); font-weight: 600; line-height: 1.15; max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
+/* Times the paper's factor, as every other length of a Spiel: gameLabelMm(). */
+.ps-spiel__wort { font-size: calc(var(--label) * var(--talk-k)); font-weight: 600; line-height: 1.15; max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
