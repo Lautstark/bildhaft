@@ -899,6 +899,52 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
 });
 
 /*
+ * The codes are set where the material is edited, not on the sheet (her
+ * call, 2026-10-27): with Anybook on, a card in Bearbeiten wears a ring, its
+ * Symbol dialog says what the pen says, and a Schritt's code has a small sheet
+ * of its own. What is typed there is what the sheet's code says; ticked off,
+ * the sheet prints none there. Without Anybook nothing of it shows.
+ */
+test('a Rezept’s Anybook codes are set in Bearbeiten: a card’s in its Symbol dialog, a Schritt’s in a sheet of its own', async ({ page }) => {
+  await pickTemplate(page, /^Rezept/);
+  await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
+  const schritte = page.getByRole('region', { name: 'Schritte' });
+  await schritte.getByRole('button', { name: '+ Schritt' }).click();
+  await page.getByLabel('Neuer Schritt').fill('Eier in die Schüssel');
+  await page.getByLabel('Neuer Schritt').press('Enter');
+  await expect(schritte.locator('.row')).toHaveCount(1);
+  await showSheet(page);
+  await expect(page.locator('main .any-mark')).toHaveCount(0);
+
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  const zutaten = page.getByRole('region', { name: 'Zutaten' });
+  await expect(zutaten.locator('.word .any-mark')).toHaveCount(1);
+  await expect(schritte.locator('.row__head .any-mark')).toHaveCount(1);
+  // A Schritt's pictures carry no code of their own: the Schritt has one.
+  await expect(schritte.locator('.slot .any-mark')).toHaveCount(0);
+
+  const sheet = page.locator('.preview-frame');
+  const card = zutaten.locator('.word').first();
+  await card.click();
+  const dialog = page.getByRole('dialog');
+  const says = dialog.getByLabel('Stift sagt');
+  await expect(says).toHaveValue('2 Eier');
+  await says.fill('zwei Eier');
+  await dialog.getByRole('button', { name: 'Fertig' }).click();
+  await expect(sheet.locator('.ps-recipe-cards .ps-any').first()).toHaveAttribute('data-said', 'zwei Eier');
+  await expect(card.locator('.any-mark--own')).toHaveCount(1);
+
+  await schritte.locator('.row__head .any-mark').click();
+  const step = page.getByRole('dialog', { name: 'Code für Schritt 1' });
+  await expect(step.getByLabel('Stift sagt')).toHaveValue('Eier in die Schüssel');
+  await step.getByLabel('Kein Code für diesen Schritt').check();
+  await step.getByRole('button', { name: 'Fertig' }).click();
+  await expect(sheet.locator('.ps-recipe-step__n > .ps-any')).toHaveClass(/ps-any--off/);
+  await expect(schritte.locator('.row__head .any-mark--off')).toHaveCount(1);
+});
+
+/*
  * A Lied's line is sung as one, as a Schritt is read: one Anybook circle at
  * its start, none on its pictures, which keep their size — and no place to
  * choose for it.

@@ -7,6 +7,7 @@ import SlotPickerFoot from './SlotPickerFoot.svelte';
 import { cropName, loadSquare, type Loaded } from '@lautstark/design/crop';
 import type Crop from '@lautstark/design/svelte/Crop';
 import { t } from '../i18n/index.ts';
+import type { CodeHere } from './anybookEdit.ts';
 
 /**
  * What the place opening the picker can do with a field.
@@ -45,6 +46,8 @@ export interface PickerHandlers {
    */
   onRemove?: () => void;
   onClose?: () => void;
+  /** The field's Anybook code, where the material prints codes and this field carries one: the „Anybook-Stift“ section. */
+  anybook?: CodeHere;
 }
 
 /** What the picker is looking at and what it has been told. */

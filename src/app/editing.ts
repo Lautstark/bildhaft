@@ -8,6 +8,7 @@ import {
 import { t } from '../i18n/index.ts';
 import { confirmDialog } from '../ui/dialog.ts';
 import { openSlotPicker } from '../ui/slotPicker.svelte.ts';
+import { cardCode } from '../ui/anybookEdit.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
 import { kind, providerId, s } from './state.svelte.ts';
 import { writeBoard } from './board.ts';
@@ -88,6 +89,7 @@ export function openPicker(sentenceId: string, slotId: string): void {
     onLabel: (label) => void handleLabel(label),
     onRemove: () => void handleRemoveSlot(),
     onClose: () => void handleClosePicker(),
+    anybook: cardCode(s.sentences.find((x) => x.id === sentenceId)!, slot) ?? undefined,
   });
 }
 

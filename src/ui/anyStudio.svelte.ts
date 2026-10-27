@@ -23,8 +23,8 @@ import AnyStudioBody from './AnyStudioBody.svelte';
 import AnyStudioFoot from './AnyStudioFoot.svelte';
 import { t } from '../i18n/index.ts';
 
-/** A code as it stands on the sheet: its key, what stands there, its picture. */
-export interface ListedCode { key: string; standing: string; picture: string | null }
+/** A code as it stands on the sheet: its key, and what stands there. */
+export interface ListedCode { key: string; standing: string }
 
 /** Every code on the preview's sheets, in reading order, each key once. */
 function listed(state: Printing): ListedCode[] {
@@ -34,9 +34,7 @@ function listed(state: Printing): ListedCode[] {
     const key = el.dataset.any;
     if (!key || seen.has(key) || el.classList.contains('ps-any--start') || getComputedStyle(el).display === 'none') continue;
     seen.add(key);
-    /* A Schritt's code stands under its number: its first picture shows which. */
-    const picture = (el.closest('.ps-recipe-step__row') ?? el.parentElement)?.querySelector('img')?.getAttribute('src') ?? null;
-    out.push({ key, standing: el.dataset.standing ?? '', picture: el.classList.contains('ps-any--title') ? null : picture });
+    out.push({ key, standing: el.dataset.standing ?? '' });
   }
   return out;
 }
