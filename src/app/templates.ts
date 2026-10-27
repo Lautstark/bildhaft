@@ -49,6 +49,8 @@ export interface PrintOffer {
    * Plauderbuch's cards have no room above or beside their symbol, only over it.
    */
   anybookPlaces?: readonly AnybookPlace[];
+  /** Why this sheet has no Anybook circle (a text key): the box stays, greyed, with this under it. */
+  anybookOff?: string;
   cutLines?: boolean;
   /** The line as written, over or under its pictures, and how big: a strip's, a Lied's. */
   sentence?: boolean;
@@ -299,11 +301,15 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
     }),
     // Its cards have no room above their symbol: the Anybook circle lies over its corner.
-    fixed: () => ({ layout: 'spiel', anybookPlace: 'over' }),
+    // On A5 a card is too small for the sticker at all (her call, 2026-10-27).
+    fixed: (settings) => ({ layout: 'spiel', anybookPlace: 'over', ...(settings.paper === 'a5' ? { anybookCircle: false } : {}) }),
     zeileInEdit: true,
     /* The symbol's size is the sheet's own answer — the menu shows it and
        asks only for the margin round the cut cards. */
-    offers: () => ({ ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookPlaces: ['over'] }),
+    offers: (settings) => ({
+      ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookPlaces: ['over'],
+      anybookOff: settings.paper === 'a5' ? 'ui.anybook_off_a5' : undefined,
+    }),
   },
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes

@@ -152,11 +152,12 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
       if (kreis && sym && !ueber && overlap(kreis, sym)) {
         befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ oder „daneben“ berührt das Symbol' });
       }
-      /* „überlappend“ sits in the picture's corner: at most half the circle on it.
-         The test symbols fill their square, so this is what the sticker hides. */
+      /* „überlappend“ sits in the picture's corner: at most a quarter of the
+         circle on it (print.css, anybook), give or take the grid it is counted
+         on. The test symbols fill their square, so this is what the sticker hides. */
       const deckt = kreis && sym && ueber ? disc(kreis, sym) : 0;
-      if (deckt > 0.5) {
-        befunde.push({ schwere: 'fehler', text: `Anybook-Kreis liegt zu mehr als der Hälfte auf dem Symbol (${Math.round(deckt * 100)} %)`, frage: 2 });
+      if (deckt > 0.27) {
+        befunde.push({ schwere: 'fehler', text: `Anybook-Kreis liegt zu mehr als einem Viertel auf dem Symbol (${Math.round(deckt * 100)} %)`, frage: 2 });
       }
       stuecke.push({ art: kind.art(el), box, sym, wort, kreis, befunde });
     }

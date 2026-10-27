@@ -998,14 +998,11 @@
   left: calc(50% - 4.75mm);
 }
 
-/* The room, said once: on top for above, on the right for beside, a side
-   each for over. ANYBOOK_SIDE_MM in printSheet.ts keeps the same on a
-   Spiel's card. */
+/* The room, said once: on top for above, on the right for beside. */
 .ps-sheet--any-above { --any-top: 10.5mm; }
 .ps-sheet--any-beside { --any-right: 10.5mm; }
 /* A card that gets no circle gets no room: a Schritt's pictures, a place. */
 :is(.ps-place, .ps-recipe-step) .ps-card { --any-right: 0mm; }
-.ps-sheet--any-over { --any-side: 2.5mm; }
 
 /* Above and beside — growing: the room comes on top of the symbol. Given: it comes off it. */
 .ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
@@ -1017,32 +1014,59 @@
 .ps-sheet--anybook .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
   padding: var(--any-top, 0mm) var(--any-right, 0mm) 0 0;
 }
-/* Over — growing or given, the card keeps its size: the symbol gives up a
-   side each and goes to the box's bottom, so the room it gave up is at the
-   top, where the circle is. */
-.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
-  align-items: flex-end;
-}
-.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img img {
-  max-width: calc(100% - 2 * var(--any-side));
-  max-height: calc(100% - 2 * var(--any-side));
-}
 
 /* A Spiel's and a Plauderbuch's box is the symbol's own size, with the
-   card's air round it: with the circle it is the card's, as a Tafel's is, so
-   the circle is in the card's corner, and the picture, at the bottom as on
-   every card, keeps the sheet's size, which gave up the room (cardSymbol()
-   in printSheet.ts). */
+   card's air round it: with the circle it is the card's, as a Tafel's is,
+   so the circle can go to the card's corner. */
 .ps-sheet--anybook :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic:has(img) {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   height: auto;
-  align-items: end;
 }
-.ps-sheet--anybook :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic img {
-  max-width: var(--sym);
-  max-height: var(--sym);
+
+/*
+ * Over (her call, 2026-10-27): the circle 1 mm in from the card's corner —
+ * its edge, or its frame's — on every card alike, under the word when the
+ * word is on top. --any-pad is how far the symbol's box stands in from
+ * there: the card's padding.
+ *
+ * The card keeps its size; the symbol gives up only what it must, keeps its
+ * bottom line and stays centred. What it must: the circle may lie on the
+ * symbol's square by a quarter of the circle at most: it does when the
+ * square's corner is no further right of the circle's middle than it is
+ * below it. With the box W by H, the symbol s0 (its size without the
+ * circle) and the circle's 9.5 mm 1 mm in, that is
+ *   s ≤ (W/2 + (H + s0)/2 + 2 pad − 11.5 mm) / 1.5,
+ * read off the box itself (a size container), so a grid's field and a
+ * growing card follow it alike. Worked out as if the word were below: a word
+ * on top moves the circle under it, never makes the symbol smaller. Where
+ * the corner is free already — a Tafel's field with its air — the symbol
+ * keeps its size. A Spiel's and a Plauderbuch's symbol is the one size on
+ * sheet and card: printSheet.ts works it out once (anybookSymbol, --any-sym).
+ */
+.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); }
+.ps-card--framed { --any-pad: var(--frame-pad); }
+:is(.ps-talk__card, .ps-spiel__bild) { --any-pad: calc(1mm * var(--talk-k)); }
+:is(.ps-card--label-above, .ps-spiel--above .ps-spiel__bild, .ps-talk-cut--above .ps-talk__card) { --any-pad-top: 1mm; }
+
+.ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img:has(img) {
+  container-type: size;
+  --any-s0: min(100cqw, 100cqh);
+  --any-s: min(var(--any-s0), (50cqw + (100cqh + var(--any-s0)) / 2 + 2 * var(--any-pad) - 11.5mm) / 1.5);
+}
+.ps-sheet--any-over :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic:has(img) {
+  --any-s0: var(--sym);
+  --any-s: var(--any-sym);
+}
+.ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img)::after {
+  top: calc(1mm - var(--any-pad-top, var(--any-pad)));
+  right: calc(1mm - var(--any-pad));
+}
+.ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic) img {
+  max-width: var(--any-s);
+  max-height: var(--any-s);
+  translate: 0 calc((var(--any-s0) - var(--any-s)) / 2);
 }
 
 /* ----------------------------------------------------------------- spiel */

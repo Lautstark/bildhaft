@@ -65,7 +65,7 @@
 
 {#snippet dd()}<span class="ding__dd"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></span>{/snippet}
 
-{#snippet check(label: string, checked: boolean, onToggle: (next: boolean) => void)}<label class="ding-check"><input type="checkbox" {checked} onchange={(event) => onToggle(event.currentTarget.checked)} />{label}</label>{/snippet}
+{#snippet check(label: string, checked: boolean, onToggle: (next: boolean) => void, disabled = false)}<label class="ding-check"><input type="checkbox" {checked} {disabled} onchange={(event) => onToggle(event.currentTarget.checked)} />{label}</label>{/snippet}
 
 {#snippet num(label: string, value: number, min: number, max: number, step: number, fallback: number, unit: string, onInput: (next: number) => void, aria?: string)}<!--
   Taken while it is typed once it is a number the field can hold — „1" on the
@@ -144,7 +144,8 @@
     </div>{/if}
     {#if offer.cutLines || kind() === 'einkaufsliste'}{@render check(t('ui.cut_lines'), mp.settings.showCutLines, (next) => mp?.set('showCutLines', next))}{/if}
     <!-- Anybook (2026-10-26, ihr Wunsch): auf jeder Karte mit Symbol, in jeder Vorlage mit diesem Menü. -->
-    {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next))}
+    {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next), !!offer.anybookOff)}
+    {#if offer.anybookOff}<p class="ding-check__why small faint">{t(offer.anybookOff)}</p>{/if}
     {#if mp.settings.anybookCircle && (offer.anybookPlaces ?? ANYBOOK_PLACES).length > 1}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each offer.anybookPlaces ?? ANYBOOK_PLACES as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(`ui.anybook_${place}`)}</button>{/each}</span></div></div>{/if}
   </div>{/if}</span>{/if}
   {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{#if offer.talk}{#if mp.settings.gameGroundColour}<span class="ding__dot" style:--c={mp.settings.gameGroundColour}></span>{/if}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>

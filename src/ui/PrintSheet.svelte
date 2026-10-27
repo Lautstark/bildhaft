@@ -117,17 +117,17 @@
   const numberOf = (at: number): number => pages!.slice(0, at + 1).filter((held) => !bare(held)).length;
 
   /* The millimetres of a Plauderbuch page, for its own rules in print.css. */
-  const talkVars = (geo: { cardW: number; cardH: number; gap: number; air: number; k: number; height: number; symW: number }, cols: number): string =>
+  const talkVars = (geo: { cardW: number; cardH: number; gap: number; air: number; k: number; height: number; symW: number; anySymW: number }, cols: number): string =>
     `--talk-w:${geo.cardW.toFixed(3)}mm;--talk-h:${geo.cardH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
-    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--sym:${geo.symW.toFixed(3)}mm;--cols:${cols}`;
+    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--talk-page:${geo.height.toFixed(3)}mm;--sym:${geo.symW.toFixed(3)}mm;--any-sym:${geo.anySymW.toFixed(3)}mm;--cols:${cols}`;
   /* Its fields are the band's colour, paler; with no band, a quiet grey. */
   let talkSoft = $derived(settings.gameGroundColour ? `color-mix(in srgb, ${settings.gameGroundColour} 45%, #fff)` : '#f2efee');
 
   /* And of a Spiel's sheets, for theirs — said in the Plauderbuch's own
      variables, so its field, card and cutting rules apply as they are. */
-  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; units: number; symW: number }, cols: number): string =>
+  const gameVars = (geo: { fieldW: number; fieldH: number; gap: number; air: number; k: number; lagerW: number; lagerCols: number; units: number; symW: number; anySymW: number }, cols: number): string =>
     `--talk-w:${geo.fieldW.toFixed(3)}mm;--talk-h:${geo.fieldH.toFixed(3)}mm;--talk-gap:${geo.gap.toFixed(3)}mm;`
-    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--sym:${geo.symW.toFixed(3)}mm;`
+    + `--talk-air:${geo.air.toFixed(3)}mm;--talk-k:${geo.k.toFixed(4)};--sym:${geo.symW.toFixed(3)}mm;--any-sym:${geo.anySymW.toFixed(3)}mm;`
     + `--spiel-lager:${geo.lagerW.toFixed(3)}mm;--lager-cols:${geo.lagerCols};--spiel-units:${geo.units};--cols:${cols}`;
 
 </script>

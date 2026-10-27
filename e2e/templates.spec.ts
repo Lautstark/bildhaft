@@ -1526,7 +1526,13 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
     img.style.width = img.style.height = '';
     const left = at.left / scale + box.clientLeft + parseFloat(ring.left);
     const top = at.top / scale + box.clientTop + parseFloat(ring.top);
+    const edge = card.getBoundingClientRect();
     return {
+      // The circle from the card's corner, inside its edge, in mm.
+      fromRight: (edge.right / scale - card.clientLeft - (left + parseFloat(ring.width))) / mm,
+      fromTop: (top - edge.top / scale - card.clientTop) / mm,
+      // The picture's bottom line against its box's, in mm.
+      bottom: (at.bottom - pic.bottom) / scale / mm,
       width: card.offsetWidth / mm,
       height: card.offsetHeight / mm,
       symbol: Math.min(pic.width, pic.height) / scale / mm,
@@ -1544,16 +1550,18 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   expect(beside.height).toBeCloseTo(before.height, 1);
   expect(beside.right).toBeGreaterThanOrEqual(-0.05);
 
-  // Überlappend: the card as it was, the symbol gives up 2.5 mm a side and
-  // goes down, so the circle lies on at most the picture's corner — over the
-  // whole box (391f546) it hid most of the picture.
+  // Überlappend: 1 mm in from the card's corner, the card as it was; the
+  // symbol gives up only what it must, on its bottom line, so the circle lies
+  // on the picture's corner by no more than its diameter, width and height
+  // together — over the whole box (391f546) it hid most of the picture.
   await page.getByRole('button', { name: 'überlappend' }).click();
   await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
   const over = await against();
   expect(over.height).toBeCloseTo(before.height, 1);
-  expect(over.symbol).toBeCloseTo(before.symbol - 5, 0);
-  // The circle (9.5 mm) on the picture's corner: 7 mm of its width, 4.5 mm of its height.
-  expect(over.right).toBeGreaterThan(-7.2);
-  expect(over.above).toBeGreaterThan(-4.7);
+  expect(Math.abs(over.fromRight - 1)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromTop - 1)).toBeLessThan(0.25);
+  expect(over.symbol).toBeLessThan(before.symbol - 1);
+  expect(Math.abs(over.bottom)).toBeLessThan(0.2);
+  expect(-Math.min(0, over.right) - Math.min(0, over.above)).toBeLessThan(9.6);
 });
 
