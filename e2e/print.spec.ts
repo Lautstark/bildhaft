@@ -92,7 +92,7 @@ test('a grid says what size its cells came out', async ({ page }) => {
   await showSheet(page);
 
   await openDing(page, 'Symbol');
-  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 136 mm');
+  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 137 mm');
 });
 
 /*
@@ -318,7 +318,7 @@ test('a card grid fills the page with exactly the asked-for cells', async ({ pag
   const card = grid.locator('.ps-card').first();
   await expect.poll(async () => mm(await card.evaluate((el: HTMLElement) => el.offsetWidth)))
     .toBeCloseTo(63.3, 0);
-  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(135.7, 0);
+  expect(mm(await card.evaluate((el: HTMLElement) => el.offsetHeight))).toBeCloseTo(137.3, 0);
 
   // Five distinct symbols across the two sentences fit on one page of six.
   expect(await page.locator('.preview-frame .ps-grid').count()).toBe(1);

@@ -230,10 +230,10 @@
   whoever is handed them without the person who printed them.
 --><section class="ps-guide ps-break"><h2 class="ps-guide__head">{t('ui.shop_guide')}</h2><p>{t('ui.shop_guide_intro')}</p><h3>{t('ui.shop_guide_need')}</h3><p>{t('ui.shop_guide_need_text')}</p><div class="ps-guide__cols"><div><h3>{t('ui.shop_guide_make')}</h3><ol><li>{t('ui.shop_guide_make_1')}</li><li>{t('ui.shop_guide_make_2')}</li><li>{t('ui.shop_guide_make_3')}</li><li>{t('ui.shop_guide_make_4')}</li></ol><p class="ps-guide__tip">{t('ui.shop_guide_tip')}</p></div><div><h3>{t('ui.shop_guide_use')}</h3><ol><li>{t('ui.shop_guide_use_1')}</li><li>{t('ui.shop_guide_use_2')}</li><li>{t('ui.shop_guide_use_3')}</li></ol></div></div></section>{:else if block.kind === 'credit'}<!--
   The notice and where the sheet came from, and nothing else: the collection's
-  name is the title's job, and on a credit line it only repeated it. The tail
-  is held together, so on a narrow page it moves to a line of its own whole
-  rather than leaving half an address behind.
---><p class="ps-attribution">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}<span class="ps-made">, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
+  name is the title's job, and on a credit line it only repeated it. Each
+  credit is one line, the tail riding on the last: the longest one's
+  characters set how small the type goes to keep it so (print.css).
+-->{@const tail = `, ${t('ui.made_with')} ${BILDHAFT_URL}`}<p class="ps-attribution" style:--credit-chars={Math.max(...block.lines.map((line, at) => line.length + (at === block.lines.length - 1 ? tail.length : 0)))}><span class="ps-attribution__text">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
   class="ps-sheet{two ? ' ps-sheet--two' : ''}{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}` : ''}"

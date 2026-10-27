@@ -183,36 +183,20 @@ export const BILDHAFT_URL = 'https://bildhaft.lautstark.tech';
  * page and an obviously wrong printout. Reserved on every page rather than only
  * the last, because the alternative is cards of two different sizes in one deck.
  *
- * Sized from the credits themselves: the block's padding plus the lines its
- * text comes to at this paper's width. It used to allow two lines per credit
- * and one more on every paper, which ARASAAC's sentence needs on a narrow page
- * but METACOM's one short line never does — on an A4 Tafel that was a centimetre
- * of empty paper over the notice, taken from every field. A line is counted
- * from its characters at a generous average width, so the estimate errs long.
- * „, erstellt mit https://bildhaft.lautstark.tech" rides on the last credit's
- * line and is kept whole, so it counts as a line of its own wherever it would
- * not fit beside it. e2e asserts the block actually fits inside this, on the
+ * Sized from the credits themselves: the block's padding and one line per
+ * credit, „, erstellt mit https://bildhaft.lautstark.tech" riding on the
+ * last. A credit is never two lines — where a page is too narrow for it its
+ * type gives way (print.css, .ps-attribution) — so the paper's width does not
+ * come into it. e2e asserts the block actually fits inside this, on the
  * narrowest paper.
  */
 /** 6.5pt of type at 1.4 line-height, in millimetres. */
 const CREDIT_LINE_MM = 3.2;
 /** The block's padding-top and a little air over it. */
 const CREDIT_CHROME_MM = 3;
-/** One character of 6.5pt type, on the wide side of average. */
-const CREDIT_CHAR_MM = 1.3;
-/** „, erstellt mit https://bildhaft.lautstark.tech", the longer of its languages. */
-const CREDIT_TAIL_CHARS = 47;
 
-function creditAllowanceMm(credits: string[], widthMm: number): number {
-  const perLine = Math.max(1, Math.floor(widthMm / CREDIT_CHAR_MM));
-  let lines = 0;
-  let left = 0;
-  for (const credit of credits) {
-    lines += Math.max(1, Math.ceil(credit.length / perLine));
-    left = perLine - (credit.length % perLine || perLine);
-  }
-  if (CREDIT_TAIL_CHARS > left) lines += 1;
-  return CREDIT_CHROME_MM + CREDIT_LINE_MM * lines;
+function creditAllowanceMm(credits: string[]): number {
+  return CREDIT_CHROME_MM + CREDIT_LINE_MM * credits.length;
 }
 
 /*
@@ -659,7 +643,7 @@ export function reserveMm(
   settings: Pick<PrintSettings, 'paper' | 'orientation' | 'punch' | 'titleSizePt' | 'titleLine' | 'showPageNumbers'>,
   credits: string[], titled: Titled,
 ): number {
-  return (credits.length > 0 ? creditAllowanceMm(credits, printableArea(settings.paper, settings.orientation, settings.punch).width) : 0)
+  return (credits.length > 0 ? creditAllowanceMm(credits) : 0)
     + (titled ? titleAllowanceMm(settings, titled) : 0)
     + (settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
@@ -859,7 +843,7 @@ export function gameReserveMm(
   const title = !titled ? 0 : TITLE_GAP_MM + GAME_TITLE_AIR_MM
     + (titled === 'pictured' ? Math.max(line, titlePictureMm(settings.titleSizePt)) : line)
     + (settings.titleLine ? TITLE_RULE_GAP_MM + TITLE_RULE_MM : 0);
-  const credit = credits.length > 0 ? creditAllowanceMm(credits, printableArea(settings.paper, settings.orientation, settings.punch).width) : 0;
+  const credit = credits.length > 0 ? creditAllowanceMm(credits) : 0;
   return title + Math.max(credit, settings.showPageNumbers ? PAGE_NUMBER_MM : 0);
 }
 

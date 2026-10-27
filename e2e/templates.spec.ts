@@ -299,7 +299,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // A field has its paper's shape: three across and two down on A4 upright
   // is a field taller than wide, as the Symbol menu's line says.
   await openDing(page, 'Symbol');
-  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 136 mm');
+  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 137 mm');
   await page.keyboard.press('Escape');
   /* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
      quadratisch, die Proportionen stehen im Readout und auf dem Papier. */
@@ -338,7 +338,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // The grid is the Tafel's, so the sheet only says how big a field comes out — nothing on it is cut.
   await expect(page.locator('.print-dock').getByLabel('Spalten')).toHaveCount(0);
   await openDing(page, 'Symbol');
-  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 136 mm');
+  await expect(page.locator('.ding__mess')).toContainText('Karte 63 × 137 mm');
   await page.keyboard.press('Escape');
   /* And nothing on it is cut. The switch is not offered here — a Tafel is
      laminated whole — but the setting is one remembered list shared by every

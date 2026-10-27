@@ -404,6 +404,15 @@
   font-size: 6.5pt;
   line-height: 1.4;
   color: #666;
+  /* Never two lines to a credit: the type gives way instead, by the width
+     the foot leaves it and the longest line's characters (--credit-chars) at
+     0.55 em each: the system font is set wider at this size than large
+     (0.53 em at 4.4 pt, 0.43 at 75 pt), the others need 0.46 at most. */
+  container-type: inline-size;
+  white-space: nowrap;
+}
+.ps-attribution__text {
+  font-size: min(6.5pt, 100cqi / (var(--credit-chars, 1) * 0.55));
 }
 
 /*
@@ -415,11 +424,6 @@
 .ps-url {
   color: inherit;
   text-decoration: none;
-}
-
-/* „, erstellt mit …": wraps as one piece or not at all. */
-.ps-made {
-  white-space: nowrap;
 }
 
 /*
