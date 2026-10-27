@@ -31,10 +31,13 @@ document.documentElement.lang = LANG;
  * that watches the request paths is what caught it happening again here. */
 setSymbolLanguage(LANG);
 
-/* `?pruefen`: the Prüfseite, every template's print in its variants side by
- * side, on test symbols and nothing of anybody's data. Not linked from the app;
- * loaded only when asked for, so the app's own bundle carries none of it. */
-if (new URLSearchParams(location.search).has('pruefen')) {
+/* `?pruefen`: the Prüfseite, every template's print in its combinations, on
+ * test data or on the materials of a folder picked on this machine. A tool for
+ * whoever works on bildhaft, so it opens on this machine only — on the public
+ * site the parameter does nothing. Not linked from the app, and loaded only
+ * when asked for, so the app's own bundle carries none of it. */
+const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+if (local && new URLSearchParams(location.search).has('pruefen')) {
   void import('./pruefen/Pruefseite.svelte').then(({ default: Pruefseite }) => {
     mount(Pruefseite, { target: document.getElementById('root')! });
   });

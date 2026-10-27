@@ -11,6 +11,7 @@
    */
   import { COLLECTION_KINDS, type CollectionKind } from '../core/types.ts';
   import { primeSymbolUrl } from '../ui/symbols.ts';
+  import Dropdown from '@lautstark/design/svelte/Dropdown';
   import Kachel from './Kachel.svelte';
   import {
     achsen, faelleFor, fallFor, standardWahl, SYMBOLE, testdaten, VORLAGE, zahlText, zwillinge,
@@ -111,10 +112,8 @@
     <section class="pruef__block" aria-label="Material">
       <h2>Material</h2>
       <div class="pruef__material">
-        <select aria-label="Material" value={m.id} onchange={(event) => nimm(event.currentTarget.value)}>
-          <option value={testdaten(vorlage).id}>Testdaten</option>
-          {#each ihre.get(vorlage) ?? [] as one (one.id)}<option value={one.id}>{one.quelle}</option>{/each}
-        </select>
+        <span class="pruef__sr" id="pruef-material-label">Material</span>
+        <Dropdown id="pruef-material" field start labelledBy="pruef-material-label" label={m.id === testdaten(vorlage).id ? 'Testdaten' : m.quelle} build={(add) => { add('Testdaten', () => nimm(testdaten(vorlage).id), { checked: m.id === testdaten(vorlage).id }); for (const one of ihre.get(vorlage) ?? []) add(one.quelle, () => nimm(one.id), { checked: one.id === m.id }); }} />
         {#if ordner !== 'offen'}<button class="pruef__std-knopf" type="button" onclick={oeffnen} disabled={ordner === 'liest'}>{ordner === 'liest' ? 'liest …' : 'Meine Sammlung öffnen'}</button>{/if}
       </div>
       {#if ordner === 'offen'}<p class="pruef__klein">{anzahlIhre} Materialien aus deiner Sammlung geladen.</p>
@@ -161,7 +160,8 @@
   .pruef__block { margin-top: 22px; }
   .pruef__kopf { display: flex; align-items: center; justify-content: space-between; }
   .pruef__material { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-  .pruef__material select { flex: 1; min-width: 0; font: inherit; padding: 4px 6px; }
+  .pruef__material :global(.dropdown) { flex: 1; min-width: 0; }
+  .pruef__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .pruef__menu { margin: 14px 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted, #776e69); }
   .pruef__achse { display: grid; grid-template-columns: 150px auto; justify-content: start; align-items: center; gap: 8px; margin-top: 8px; padding-left: 6px; border-left: 3px solid transparent; }
   .pruef__achse--anders { border-left-color: var(--accent, #ff6b35); }
