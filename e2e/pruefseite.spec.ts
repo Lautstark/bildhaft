@@ -34,16 +34,28 @@ test('the Prüfseite shows a sheet per combination, offline', async ({ page }) =
   /* A switch moved: the sheet follows, and says so in its heading. */
   const anybook = page.locator('.pruef__achse', { hasText: 'Anybook' });
   await anybook.getByRole('button', { name: 'darüber' }).click();
-  await expect(sheet.getByRole('heading', { name: 'Spiel · Anybook darüber' })).toBeVisible();
+  await expect(sheet.getByRole('heading', { name: 'Spiel · Anybook: darüber' })).toBeVisible();
   await expect(sheet.locator('.ps-sheet--any-above')).toBeVisible();
   await expect(sheet.getByText('Spielkarte: Symbol mit Anybook gleich groß')).toBeVisible();
+
+  /* Numbers and the title are typed, as in the app. */
+  await page.getByRole('textbox', { name: 'Titel', exact: true }).fill('Omas Spiel');
+  await page.getByRole('textbox', { name: 'Titel', exact: true }).press('Enter');
+  await expect(sheet.locator('.ps-title')).toHaveText('Omas Spiel');
+  await page.getByRole('spinbutton', { name: 'Rand' }).fill('7');
+  await page.getByRole('spinbutton', { name: 'Rand' }).press('Enter');
+  await expect(sheet.getByRole('heading', { name: /Rand: 7 mm/ })).toBeVisible();
+
+  /* No page runs off to the side. */
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
   await page.getByRole('button', { name: 'Zurück zum Standard' }).click();
   await expect(sheet.getByRole('heading', { name: 'Spiel · Standard' })).toBeVisible();
 
   /* Another template brings its own switches: Wortkarten print on A4 only. */
   await page.getByRole('navigation', { name: 'Vorlage' }).getByRole('button', { name: 'Wortkarten' }).click();
   await expect(sheet.getByRole('heading', { name: 'Wortkarten · Standard' })).toBeVisible();
-  await expect(page.locator('.pruef__achse', { hasText: 'Größe' })).toBeVisible();
+  await expect(page.locator('.pruef__achse', { hasText: 'Größe nach' })).toBeVisible();
   await expect(page.locator('.pruef__achse', { hasText: 'Papier' })).toHaveCount(0);
 
   expect(errors).toEqual([]);

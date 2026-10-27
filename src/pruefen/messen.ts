@@ -122,10 +122,10 @@ export function messen(holder: HTMLElement, fall: Fall, anzeige: string): Messun
       const kreis = circle(kind.kreis(el));
       const befunde: Befund[] = [];
       const any = fall.settings.anybookCircle ? 2 as const : undefined;
-      if (sym && wort && overlap(sym, wort)) befunde.push({ schwere: 'fehler', text: 'Symbol liegt über dem Wort', frage: any });
-      if (kreis && wort && overlap(kreis, wort)) befunde.push({ schwere: 'fehler', text: 'Anybook-Kreis liegt über dem Wort', frage: 2 });
+      if (sym && wort && overlap(sym, wort)) befunde.push({ schwere: 'fehler', text: 'Symbol liegt über der Beschriftung', frage: any });
+      if (kreis && wort && overlap(kreis, wort)) befunde.push({ schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
       if (sym && outside(sym, box)) befunde.push({ schwere: 'fehler', text: 'Symbol ragt aus der Karte', frage: any });
-      if (wort && outside(wort, box)) befunde.push({ schwere: 'fehler', text: 'Wort ragt aus der Karte' });
+      if (wort && outside(wort, box)) befunde.push({ schwere: 'fehler', text: 'Beschriftung ragt aus der Karte' });
       if (kreis && sym && fall.settings.anybookPlace === 'above' && overlap(kreis, sym)) {
         befunde.push({ schwere: 'hinweis', text: 'Kreis „darüber“ berührt das Symbol' });
       }
@@ -205,16 +205,16 @@ export function vergleichen(fall: Fall, mine: Messung, all: Map<string, Messung>
         if (d < -TOL) {
           out.push({
             schwere: fall.gegeben ? 'hinweis' : 'fehler', frage: 3,
-            text: `${a.art}: mit Wort schrumpft das Symbol (${mmText(b.sym)} → ${mmText(a.sym)} mm)`
+            text: `${a.art}: mit Beschriftung schrumpft das Symbol (${mmText(b.sym)} → ${mmText(a.sym)} mm)`
               + (grew > TOL ? `, Karte ${mmText(grew)} mm höher` : ', die Karte wird nicht höher')
               + (fall.gegeben ? ' — Kartengröße ist vorgegeben' : ''),
           });
         } else if (d > TOL) {
-          out.push({ schwere: 'hinweis', text: `${a.art}: mit Wort ist das Symbol größer (${mmText(b.sym)} → ${mmText(a.sym)} mm)`, frage: 3 });
+          out.push({ schwere: 'hinweis', text: `${a.art}: mit Beschriftung ist das Symbol größer (${mmText(b.sym)} → ${mmText(a.sym)} mm)`, frage: 3 });
         } else {
           out.push({
             schwere: 'ok', frage: 3,
-            text: `${a.art}: Symbol mit Wort gleich groß (${mmText(a.sym)} mm)${grew > TOL ? `, Karte ${mmText(grew)} mm höher` : ''}`,
+            text: `${a.art}: Symbol mit Beschriftung gleich groß (${mmText(a.sym)} mm)${grew > TOL ? `, Karte ${mmText(grew)} mm höher` : ''}`,
           });
         }
       }

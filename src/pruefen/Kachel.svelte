@@ -27,22 +27,25 @@
   import type { Fall } from './faelle.ts';
   import { messen, type Messung } from './messen.ts';
 
-  let { fall, scale = 0.25, gezeigt = false, onGemessen }: {
-    fall: Fall; scale?: number; gezeigt?: boolean;
+  let { fall, scale = 0.25, breite, gezeigt = false, onGemessen }: {
+    fall: Fall; scale?: number;
+    /** The room the pages have, in pixels on screen: they wrap into it rather than run off to the side. */
+    breite?: number;
+    gezeigt?: boolean;
     onGemessen: (id: string, messung: Messung) => void;
   } = $props();
 
   const noop = () => undefined;
   /* Made once: the parent keys a tile by its case. */
   // svelte-ignore state_referenced_locally
-  const { material: m, vorlage, settings } = fall;
+  const { material: m, vorlage, settings, titel } = fall;
   const preview = new Printing({
-    sentences: m.board ? m.board.cells.filter((cell) => cell !== null) : m.sentences,
+    sentences: m.sentences,
     kind: vorlage,
     board: m.board ?? null, song: m.song ?? null, talk: m.talk ?? null, game: m.game ?? null,
-    collectionName: m.name, pictures: [], settings,
+    collectionName: titel, pictures: m.pictures ?? [], settings,
     onChange: noop, onClose: noop,
-    provider: 'arasaac', attribution: getProvider('arasaac').attribution,
+    provider: m.provider, attribution: getProvider(m.provider).attribution,
   });
 
   let size = $state({ w: 0, h: 0 });
@@ -54,6 +57,7 @@
 
   onMount(() => {
     let gone = false;
+    let stop = () => undefined as void;
     const run = async () => {
       await yieldTask();
       if (gone) return;
@@ -66,14 +70,20 @@
       if (gone || !sheet || !preview.holder) return;
       size = { w: sheet.offsetWidth, h: sheet.offsetHeight };
       onGemessen(fall.id, messen(preview.holder, fall, preview.cardSize));
+      /* Wrapped to another width, the sheet is another size. */
+      if (gezeigt) {
+        const watching = new ResizeObserver(() => { size = { w: sheet.offsetWidth, h: sheet.offsetHeight }; });
+        watching.observe(sheet);
+        stop = () => watching.disconnect();
+      }
     };
     if (gezeigt) vorn = vorn.then(run); else reihe = reihe.then(run);
-    return () => { gone = true; };
+    return () => { gone = true; stop(); };
   });
 </script>
 
-<div class="bogen" data-fall={fall.id} style:width={size.w ? `${size.w * scale}px` : undefined} style:height={size.h ? `${size.h * scale}px` : '120px'}>
-  <div class="preview-scaler bogen__scaler" style:transform="scale({scale})"><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider="arasaac" /></div></div>
+<div class="bogen" class:bogen--reihe={breite !== undefined} data-fall={fall.id} style:--reihe={breite ? `${breite / scale}px` : undefined} style:width={size.w ? `${size.w * scale}px` : undefined} style:height={size.h ? `${size.h * scale}px` : '120px'}>
+  <div class="preview-scaler bogen__scaler" style:transform="scale({scale})"><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={m.provider} /></div></div>
 </div>
 
 <style>
@@ -81,5 +91,11 @@
   .bogen__scaler { position: absolute; top: 0; left: 0; }
   /* The pages side by side, all at one scale: a sheet is as big beside another as it is in print. */
   .bogen :global(.ps-sheet--paged) { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 12mm; width: max-content; }
+  /* Shown, they wrap into the room there is: never a page off to the side. */
+  .bogen--reihe :global(.ps-sheet--paged) { flex-wrap: wrap; width: var(--reihe); max-width: var(--reihe); }
   .bogen :global(.ps-paper + .ps-paper) { margin-top: 0; }
+  /* Stacked, a page takes the sheet's width; side by side it has to be told its
+     own, or it shrinks to what is on it and a landscape page stands upright. */
+  .bogen :global(.ps-sheet--paged > *) { flex: none; }
+  .bogen :global(.ps-sheet--paged > .ps-page) { width: var(--page-w); }
 </style>

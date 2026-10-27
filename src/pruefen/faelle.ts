@@ -1,15 +1,15 @@
 /**
- * The Prüfseite's cases: every template, opened as it opens (its Standard),
- * and then one axis at a time against that Standard — Beschriftung, Anybook,
- * Rahmen, Lochen, Papier — plus the pairs that act on each other
- * (Beschriftung × Anybook, Rahmen × Anybook, a Wortkarten card size × Anybook).
- * Not the full product: what is wanted is every difference that shows, once.
+ * The Prüfseite's cases: a template, a material (test data, or one of hers),
+ * and a combination of the switches its menus have, starting from the
+ * template's Standard. For the problem list the Standard, every switch moved
+ * on its own and the switches that act on each other moved together are
+ * measured — not the full product, every difference that shows, once.
  *
  * Pure data, no DOM: the sheet itself is the app's, drawn by `Printing` and
  * `PrintSheet.svelte` exactly as the preview draws it.
  */
-import type { AnybookPlace, CollectionKind, Orientation, PaperSize, PrintSettings, PunchEdge, Sentence, SheetFit, Slot } from '../core/types.ts';
-import { COLLECTION_KINDS, DEFAULT_PRINT_SETTINGS } from '../core/types.ts';
+import type { CollectionKind, PrintSettings, ProviderId, Sentence, Slot } from '../core/types.ts';
+import { DEFAULT_PRINT_SETTINGS } from '../core/types.ts';
 import { openPrint, settle, TEMPLATES } from '../app/templates.ts';
 import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printSheet.ts';
 
@@ -67,9 +67,17 @@ function sentence(words: string[], extra: Partial<Sentence> = {}): Sentence {
 
 /* ----------------------------------------------------------- material -- */
 
+/** What a sheet is printed of: the test data, or one of her materials. */
 export interface Material {
+  /** `test:<kind>` or the Sammlung's id. */
+  id: string;
+  /** What the material is called where one is chosen. */
+  quelle: string;
   name: string;
+  provider: ProviderId;
   sentences: Sentence[];
+  /** The title's symbols. */
+  pictures?: Slot[];
   board?: PrintBoard;
   song?: PrintSong;
   talk?: PrintTalk;
@@ -78,7 +86,8 @@ export interface Material {
 
 const KOERPER = ['Fuß', 'Kopf', 'Hand', 'Haare', 'Blume', 'Topf', 'Zahnbürste', 'Gummistiefel'];
 
-function material(which: CollectionKind): Material {
+
+function testMaterial(which: CollectionKind): Omit<Material, 'id' | 'provider' | 'quelle'> {
   switch (which) {
     case 'satzstreifen':
       return { name: 'Morgens', sentences: [sentence(['ich', 'putzen', 'Zahnbürste']), sentence(['wir', 'gehen', 'Garten', 'Blume'])] };
@@ -129,52 +138,58 @@ function material(which: CollectionKind): Material {
   }
 }
 
+
+const tests = new Map<CollectionKind, Material>();
+/** The test data of a template: made once, so its cases are the same cases on every look. */
+export function testdaten(which: CollectionKind): Material {
+  if (!tests.has(which)) tests.set(which, { id: `test:${which}`, quelle: 'Testdaten', provider: 'arasaac', ...testMaterial(which) });
+  return tests.get(which)!;
+}
+
 /* -------------------------------------------------------------- cases -- */
 
 /**
- * A combination, said the way the app's menus say it: which paper, the word
- * (off, under, over), the Anybook circle (off, above, over), the frame,
- * punching — and where a template has them, a Wortkarten size and a strip's
- * sentence. A case is a template and one of these.
+ * One switch, as the app's menus have it (DingBar.svelte): its menu, its
+ * name, and either its values — each the settings it stands for — or a
+ * number typed in, as the menu's field takes it. Offered where the template
+ * offers it (`TEMPLATES[...].offers`), nowhere else.
  */
-export interface Wahl {
-  papier: PaperSize;
-  seite: Orientation;
-  wort: 'aus' | 'below' | 'above';
-  anybook: 'aus' | AnybookPlace;
-  rahmen: boolean;
-  lochen: PunchEdge | null;
-  groesse: SheetFit;
-  satz: 'aus' | 'above' | 'below';
-}
-
-/** One switch on the Prüfseite: what it is called, and its values in the app's words. */
-export interface Achse<K extends keyof Wahl = keyof Wahl> {
-  key: K;
+export type Achse = {
+  key: string;
+  menu: string;
   name: string;
-  werte: { wert: Wahl[K]; name: string }[];
-}
+} & (
+  | { art: 'wahl'; werte: { name: string; set: Partial<PrintSettings> }[] }
+  | { art: 'zahl'; setting: NumericSetting; min: number; max: number; step: number; unit: string }
+  | { art: 'text' }
+);
+type NumericSetting = 'symbolSizeMm' | 'cutMarginMm' | 'labelSizePt' | 'titleSizePt' | 'cardWidthMm' | 'cardBorderMm' | 'sentenceSizePt';
+
+/** A combination: for each switch the chosen value's place, the number typed, or the title's words. */
+export type Wahl = Record<string, number | string>;
 
 /** What a case is compared with, and by which rule. */
 export interface Vergleich {
   mit: string;
-  /** `anybook`: the circle never makes a symbol bigger. `wort`: with the word the card grows, the symbol does not shrink. */
+  /** `anybook`: the circle never makes a symbol bigger. `wort`: with the label the card grows, the symbol does not shrink. */
   regel: 'anybook' | 'wort';
 }
 
 export interface Fall {
   id: string;
   vorlage: CollectionKind;
+  material: Material;
   wahl: Wahl;
   /** What differs from the Standard, in words. Empty for the Standard itself. */
   name: string;
   standard: boolean;
   settings: PrintSettings;
-  material: Material;
+  /** The name over the sheet: the material's, or the words typed for it. */
+  titel: string;
   vergleiche: Vergleich[];
   /**
    * The card's size is given (a Tafel's field, Wortkarten by card or grid):
-   * there the word can only take from the symbol, and that is no finding.
+   * there the label can only take from the symbol, and that is no finding.
    */
   gegeben: boolean;
 }
@@ -182,86 +197,174 @@ export interface Fall {
 /** Each template's grid, where it has one: a Tafel's is its own. */
 const gridOf = (which: CollectionKind, m: Material) => (which === 'tafel' && m.board ? { cols: m.board.cols, rows: m.board.rows } : null);
 
-const materials = new Map<CollectionKind, Material>();
-const materialOf = (which: CollectionKind): Material => {
-  if (!materials.has(which)) materials.set(which, material(which));
-  return materials.get(which)!;
-};
-
 /** The settings a template opens on, as a new material of it would. */
-export function standardOf(which: CollectionKind, m: Material = materialOf(which)): PrintSettings {
+export function standardOf(which: CollectionKind, m: Material = testdaten(which)): PrintSettings {
   return openPrint(which, DEFAULT_PRINT_SETTINGS, {}, gridOf(which, m));
 }
 
-/** The Standard, as a combination. */
-export function standardWahl(which: CollectionKind): Wahl {
-  const std = standardOf(which);
-  return {
-    papier: std.paper, seite: std.orientation,
-    wort: std.showLabel ? std.labelPosition : 'aus',
-    anybook: std.anybookCircle ? std.anybookPlace : 'aus',
-    rahmen: std.cardBorderMm > 0, lochen: std.punch, groesse: std.sheetFit,
-    satz: std.showSentenceText ? std.sentencePosition : 'aus',
-  };
-}
+const aus = { name: 'aus' };
+const an = { name: 'an' };
+const flag = (key: keyof PrintSettings) => [{ ...aus, set: { [key]: false } }, { ...an, set: { [key]: true } }];
+export const zahlText = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
-/** The switches a template has, in the order its menus have them. */
-export function achsen(which: CollectionKind): Achse[] {
-  const offer = TEMPLATES[which].offers(standardOf(which));
+/** Whether these settings are what a value stands for. */
+const is = (settings: PrintSettings, set: Partial<PrintSettings>): boolean =>
+  Object.entries(set).every(([key, value]) => settings[key as keyof PrintSettings] === value);
+
+const achsenCache = new WeakMap<Material, Achse[]>();
+
+/** The switches a template has, menu by menu, in the order the menus have them. */
+export function achsen(which: CollectionKind, m: Material = testdaten(which)): Achse[] {
+  const known = achsenCache.get(m);
+  if (known) return known;
+  const std = standardOf(which, m);
+  const offer = TEMPLATES[which].offers(std);
   const out: Achse[] = [];
-  const add = <K extends keyof Wahl>(key: K, name: string, werte: { wert: Wahl[K]; name: string }[]) => out.push({ key, name, werte } as unknown as Achse);
-  if (offer.paper === true || offer.paper === 'size') add('papier', 'Papier', [{ wert: 'a4', name: 'A4' }, { wert: 'a5', name: 'A5' }]);
-  if (offer.paper === true || offer.paper === 'side') add('seite', 'Ausrichtung', [{ wert: 'portrait', name: 'hoch' }, { wert: 'landscape', name: 'quer' }]);
-  if (offer.size?.kind === 'cards') add('groesse', 'Größe', [{ wert: 'size', name: 'nach Symbol' }, { wert: 'card', name: 'Karte 50 mm' }, { wert: 'grid', name: 'Raster 4 × 3' }]);
-  if (offer.label) add('wort', 'Wort', [{ wert: 'aus', name: 'aus' }, { wert: 'below', name: 'unten' }, { wert: 'above', name: 'oben' }]);
-  add('anybook', 'Anybook', [{ wert: 'aus', name: 'aus' }, { wert: 'above', name: 'darüber' }, { wert: 'over', name: 'überlappend' }]);
-  if (offer.frames) add('rahmen', 'Rahmen', [{ wert: false, name: 'aus' }, { wert: true, name: 'an' }]);
-  if (offer.sentence) add('satz', 'Satz', [{ wert: 'aus', name: 'aus' }, { wert: 'above', name: 'oben' }, { wert: 'below', name: 'unten' }]);
-  add('lochen', 'Lochen', [{ wert: null, name: 'aus' }, { wert: 'left', name: 'links' }, { wert: 'top', name: 'oben' }]);
+  const wahl = (key: string, menu: string, name: string, werte: { name: string; set: Partial<PrintSettings> }[]) =>
+    out.push({ key, menu, name, art: 'wahl', werte });
+  const zahl = (key: string, menu: string, name: string, setting: NumericSetting, min: number, max: number, step: number, unit: string) =>
+    out.push({ key, menu, name, art: 'zahl', setting, min, max, step, unit });
+
+  /* Seite */
+  if (offer.paper === true || offer.paper === 'size') wahl('papier', 'Seite', 'Papier', [{ name: 'A4', set: { paper: 'a4' } }, { name: 'A5', set: { paper: 'a5' } }]);
+  if (offer.paper === true || offer.paper === 'side') wahl('seite', 'Seite', 'Ausrichtung', [{ name: 'hoch', set: { orientation: 'portrait' } }, { name: 'quer', set: { orientation: 'landscape' } }]);
+  if (offer.title === 'pages') {
+    wahl('titel', 'Seite', 'Titel drucken', [
+      { ...aus, set: { showCollectionTitle: false } },
+      { name: 'Erste Seite', set: { showCollectionTitle: true, titleEvery: false } },
+      { name: 'Jede Seite', set: { showCollectionTitle: true, titleEvery: true } },
+    ]);
+  } else if (offer.title) {
+    wahl('titel', 'Seite', 'Titel drucken', [{ ...aus, set: { showCollectionTitle: false } }, { ...an, set: { showCollectionTitle: true } }]);
+  }
+  if (offer.title) {
+    out.push({ key: 'titeltext', menu: 'Seite', name: 'Titel', art: 'text' });
+    zahl('titelgroesse', 'Seite', 'Titel-Schriftgröße', 'titleSizePt', 8, 40, 1, 'pt');
+    wahl('titellinie', 'Seite', 'Linie darunter', flag('titleLine'));
+  }
+  if (offer.onePerPage) wahl('proSeite', 'Seite', 'Ein Satz pro Seite', flag('onePerPage'));
+  if (offer.guide) wahl('anleitung', 'Seite', 'Anleitung drucken', flag('showGuide'));
+  wahl('lochen', 'Seite', 'Zum Lochen', [{ ...aus, set: { punch: null } }, { name: 'links', set: { punch: 'left' } }, { name: 'oben', set: { punch: 'top' } }]);
+  if (offer.pageNumbers) wahl('seitenzahlen', 'Seite', 'Seitenzahlen drucken', flag('showPageNumbers'));
+
+  /* Symbol */
+  if (offer.size?.kind === 'cards') {
+    wahl('groesse', 'Symbol', 'Größe nach', [
+      { name: 'Symbol', set: { sheetFit: 'size' } },
+      { name: 'Karte', set: { sheetFit: 'card' } },
+      { name: 'Raster 4 × 3', set: { sheetFit: 'grid', gridCols: 4, gridRows: 3 } },
+    ]);
+    zahl('kartenbreite', 'Symbol', 'Kartenbreite', 'cardWidthMm', 15, 300, 1, 'mm');
+  }
+  if (offer.size?.kind === 'symbol' || offer.size?.kind === 'cards') {
+    zahl('symbolgroesse', 'Symbol', 'Symbolgröße', 'symbolSizeMm', 10, offer.size.kind === 'symbol' ? offer.size.max : 120, 1, 'mm');
+  }
+  if (offer.margin) zahl('rand', 'Symbol', 'Rand', 'cutMarginMm', 0, 20, 0.5, 'mm');
+  if (offer.label) {
+    wahl('beschriftung', 'Symbol', 'Beschriftung drucken', [
+      { ...aus, set: { showLabel: false } },
+      { name: 'unten', set: { showLabel: true, labelPosition: 'below' } },
+      { name: 'oben', set: { showLabel: true, labelPosition: 'above' } },
+    ]);
+    zahl('schrift', 'Symbol', 'Schriftgröße', 'labelSizePt', 5, 40, 0.5, 'pt');
+  }
+  if (offer.frames) {
+    wahl('rahmen', 'Symbol', 'Rahmen um jede Karte', [{ ...aus, set: { cardBorderMm: 0 } }, { ...an, set: { cardBorderMm: std.cardBorderMm || 0.5 } }]);
+  }
+  if (offer.background) wahl('hintergrund', 'Symbol', 'Karten (Hintergrund)', [{ ...aus, set: { cardBackground: null } }, { name: 'gelb', set: { cardBackground: '#fff1b3' } }]);
+  if (offer.cutLines) wahl('schnitt', 'Symbol', 'Schnittlinien anzeigen', flag('showCutLines'));
+  wahl('anybook', 'Symbol', 'Platzhalter für Anybook-Sticker', [
+    { ...aus, set: { anybookCircle: false } },
+    { name: 'darüber', set: { anybookCircle: true, anybookPlace: 'above' } },
+    { name: 'überlappend', set: { anybookCircle: true, anybookPlace: 'over' } },
+  ]);
+
+  /* The template's own */
+  const own = VORLAGE[which];
+  if (offer.sentence) {
+    wahl('satz', own, 'Satztext drucken', [
+      { ...aus, set: { showSentenceText: false } },
+      { name: 'oben', set: { showSentenceText: true, sentencePosition: 'above' } },
+      { name: 'unten', set: { showSentenceText: true, sentencePosition: 'below' } },
+    ]);
+    zahl('satzschrift', own, 'Satztext-Schriftgröße', 'sentenceSizePt', 5, 40, 0.5, 'pt');
+  }
+  if (offer.stripFrame) wahl('streifenrahmen', own, 'Rahmen um den ganzen Streifen', flag('stripFrame'));
+  if (offer.songChecks) {
+    wahl('ueberschriften', own, 'Überschriften drucken', flag('songHeadings'));
+    wahl('wiederholt', own, 'Wiederholte Zeilen nur einmal', flag('songRepeats'));
+    wahl('refrain', own, 'Refrain nur einmal ausschreiben', flag('songRefrainOnce'));
+  }
+  if (offer.freeFields) wahl('leer', own, 'Leere Felder gestrichelt drucken', flag('markFreeFields'));
+
+  /* A Standard none of the values stands for — a Plauderbuch's white card
+     ground — is a value of its own, so the Standard can be switched back to. */
+  for (const achse of out) {
+    if (achse.art !== 'wahl' || achse.werte.some((w) => is(std, w.set))) continue;
+    const keys = Object.keys(achse.werte[0]!.set) as (keyof PrintSettings)[];
+    const set = Object.fromEntries(keys.map((key) => [key, std[key]])) as Partial<PrintSettings>;
+    achse.werte.splice(1, 0, { name: std.cardBackground === '#ffffff' && keys.includes('cardBackground') ? 'weiß' : 'wie Standard', set });
+  }
+
+  achsenCache.set(m, out);
   return out;
 }
 
-const idOf = (which: CollectionKind, w: Wahl): string =>
-  [which, w.papier, w.seite, w.wort, w.anybook, w.rahmen ? 'rahmen' : 'ohne', w.lochen ?? 'nicht', w.groesse, w.satz].join('-');
+/** The Standard, as a combination: for each switch what the template's settings are. */
+export function standardWahl(which: CollectionKind, m: Material = testdaten(which)): Wahl {
+  const std = standardOf(which, m);
+  return Object.fromEntries(achsen(which, m).map((achse) => [achse.key,
+    achse.art === 'wahl' ? Math.max(0, achse.werte.findIndex((w) => is(std, w.set)))
+    : achse.art === 'zahl' ? std[achse.setting]
+    : m.name]));
+}
 
-/** The combination in words, against the Standard: „Wort oben · Anybook darüber". */
-export function nameOf(which: CollectionKind, w: Wahl): string {
-  const std = standardWahl(which);
-  return achsen(which).filter((achse) => w[achse.key] !== std[achse.key]).map((achse) => {
-    const wert = achse.werte.find((one) => one.wert === w[achse.key])?.name ?? '';
-    return `${achse.name} ${wert}`;
-  }).join(' · ');
+const idOf = (which: CollectionKind, m: Material, w: Wahl): string =>
+  [which, m.id, ...achsen(which, m).map((achse) => `${achse.key}=${w[achse.key] ?? ''}`)].join('|');
+
+/* A switch's name, short enough to stand in a list of combinations. */
+const KURZ: Record<string, string> = {
+  'Platzhalter für Anybook-Sticker': 'Anybook', 'Rahmen um jede Karte': 'Rahmen', 'Schnittlinien anzeigen': 'Schnittlinien',
+  'Rahmen um den ganzen Streifen': 'Streifenrahmen', 'Karten (Hintergrund)': 'Hintergrund',
+};
+const kurz = (name: string): string => KURZ[name] ?? name.replace(' drucken', '');
+
+/** What a switch is set to, in words. */
+export function wertText(achse: Achse, value: number | string | undefined): string {
+  if (achse.art === 'wahl') return achse.werte[Number(value ?? 0)]?.name ?? '';
+  if (achse.art === 'zahl') return `${zahlText(Number(value))} ${achse.unit}`;
+  return `„${String(value ?? '')}“`;
+}
+
+/** The combination in words, against the Standard: „Beschriftung: oben · Anybook: darüber". */
+export function nameOf(which: CollectionKind, m: Material, w: Wahl): string {
+  const std = standardWahl(which, m);
+  return achsen(which, m).filter((achse) => w[achse.key] !== std[achse.key])
+    .map((achse) => `${kurz(achse.name)}: ${wertText(achse, w[achse.key])}`).join(' · ');
 }
 
 const faelle = new Map<string, Fall>();
 
-/** The case of a template in a combination — made once, so its sheet is measured once. */
-export function fallFor(which: CollectionKind, w: Wahl): Fall {
-  const id = idOf(which, w);
+/** The case of a template, a material and a combination — made once, so its sheet is measured once. */
+export function fallFor(which: CollectionKind, m: Material, w: Wahl): Fall {
+  const id = idOf(which, m, w);
   const known = faelle.get(id);
   if (known) return known;
-  const m = materialOf(which);
-  const std = standardOf(which, m);
-  const settings = settle(which, {
-    ...std,
-    paper: w.papier, orientation: w.seite,
-    showLabel: w.wort !== 'aus', labelPosition: w.wort === 'aus' ? std.labelPosition : w.wort,
-    anybookCircle: w.anybook !== 'aus', anybookPlace: w.anybook === 'aus' ? std.anybookPlace : w.anybook,
-    cardBorderMm: w.rahmen ? (std.cardBorderMm || 0.5) : 0,
-    punch: w.lochen,
-    sheetFit: w.groesse,
-    ...(w.groesse === 'card' && std.sheetFit !== 'card' ? { cardWidthMm: 50, cardHeightMm: null } : {}),
-    ...(w.groesse === 'grid' && std.sheetFit !== 'grid' ? { gridCols: 4, gridRows: 3 } : {}),
-    showSentenceText: w.satz !== 'aus', sentencePosition: w.satz === 'aus' ? std.sentencePosition : w.satz,
-  }, gridOf(which, m));
-  const name = nameOf(which, w);
-  const offered = new Set(achsen(which).map((achse) => achse.key));
+  let settings = standardOf(which, m);
+  for (const achse of achsen(which, m)) {
+    const value = w[achse.key];
+    if (achse.art === 'wahl') settings = { ...settings, ...achse.werte[Number(value ?? 0)]!.set };
+    else if (achse.art === 'zahl' && Number.isFinite(Number(value))) settings = { ...settings, [achse.setting]: Number(value) };
+  }
+  settings = settle(which, settings, gridOf(which, m));
+  const name = nameOf(which, m, w);
   const vergleiche: Vergleich[] = [];
-  /* The circle against the same sheet without it; the word against the same sheet without it. */
-  if (w.anybook !== 'aus') vergleiche.push({ mit: idOf(which, { ...w, anybook: 'aus' }), regel: 'anybook' });
-  if (offered.has('wort') && w.wort !== 'aus') vergleiche.push({ mit: idOf(which, { ...w, wort: 'aus' }), regel: 'wort' });
+  /* The circle against the same sheet without it; the label against the same sheet without it. */
+  if (w.anybook) vergleiche.push({ mit: idOf(which, m, { ...w, anybook: 0 }), regel: 'anybook' });
+  if (w.beschriftung) vergleiche.push({ mit: idOf(which, m, { ...w, beschriftung: 0 }), regel: 'wort' });
   const fall: Fall = {
-    id, vorlage: which, wahl: w, name, standard: name === '', settings, material: m, vergleiche,
+    id, vorlage: which, material: m, wahl: w, name, standard: name === '', settings, vergleiche,
+    titel: typeof w.titeltext === 'string' ? w.titeltext : m.name,
     gegeben: which === 'tafel' || (which === 'wortkarten' && settings.sheetFit !== 'size'),
   };
   faelle.set(id, fall);
@@ -269,38 +372,52 @@ export function fallFor(which: CollectionKind, w: Wahl): Fall {
 }
 
 /** What a case is compared with, as cases: what has to be measured beside it. */
-export const zwillinge = (fall: Fall): Fall[] => fall.vergleiche.map((v) => faelle.get(v.mit) ?? twinOf(fall, v));
-function twinOf(fall: Fall, v: Vergleich): Fall {
-  return fallFor(fall.vorlage, { ...fall.wahl, ...(v.regel === 'anybook' ? { anybook: 'aus' as const } : { wort: 'aus' as const }) });
-}
+export const zwillinge = (fall: Fall): Fall[] => fall.vergleiche.map((v) =>
+  fallFor(fall.vorlage, fall.material, { ...fall.wahl, ...(v.regel === 'anybook' ? { anybook: 0 } : { beschriftung: 0 }) }));
+
+/* Three numbers round the Standard's, as a field in the menu would be turned. */
+const proben = (achse: Achse & { art: 'zahl' }, std: number): number[] => {
+  const round = (n: number) => Math.min(achse.max, Math.max(achse.min, Math.round(n / achse.step) * achse.step));
+  return [...new Set([round(std * 0.5), std, round(std * 1.6)])];
+};
 
 /**
  * The cases measured for the problem list: the Standard, every switch moved
- * on its own, and the switches that act on each other moved together — the
- * word with the circle, the frame with the circle, a Wortkarten size with the
- * word and the circle, the paper with the word. Each with what it is compared
- * with, so every comparison has both sides.
+ * on its own (a number to a smaller and a bigger one), and the switches that
+ * act on a card's shape moved together with the circle and with the label.
+ * Each with what it is compared with, so every comparison has both sides.
  */
-function faelleFor(which: CollectionKind): Fall[] {
-  const std = standardWahl(which);
-  const axes = achsen(which);
-  const werte = (key: keyof Wahl) => axes.find((achse) => achse.key === key)?.werte.map((one) => one.wert) ?? [std[key]];
+export function faelleFor(which: CollectionKind, m: Material = testdaten(which)): Fall[] {
+  const std = standardWahl(which, m);
+  const axes = achsen(which, m);
+  const werte = (key: string): (number | string)[] => {
+    const achse = axes.find((one) => one.key === key);
+    if (!achse) return [];
+    if (achse.art === 'wahl') return achse.werte.map((_, at) => at);
+    if (achse.art === 'zahl') return proben(achse, Number(std[key]));
+    return [];
+  };
   const out = new Map<string, Fall>();
   const add = (w: Wahl) => {
-    const fall = fallFor(which, w);
+    const fall = fallFor(which, m, w);
     out.set(fall.id, fall);
     for (const twin of zwillinge(fall)) out.set(twin.id, twin);
   };
   add(std);
-  for (const achse of axes) for (const { wert } of achse.werte) add({ ...std, [achse.key]: wert });
-  const pairs: [keyof Wahl, keyof Wahl][] = [['wort', 'anybook'], ['rahmen', 'anybook'], ['groesse', 'anybook'], ['groesse', 'wort'], ['papier', 'wort'], ['seite', 'wort']];
-  for (const [a, b] of pairs) for (const x of werte(a)) for (const y of werte(b)) add({ ...std, [a]: x, [b]: y });
+  for (const achse of axes) for (const value of werte(achse.key)) add({ ...std, [achse.key]: value });
+  /* The circle with whatever shapes a card; the label with what decides how much room the card has. */
+  const pairs: Record<string, string[]> = {
+    anybook: ['beschriftung', 'papier', 'seite', 'groesse', 'symbolgroesse', 'rand', 'rahmen'],
+    beschriftung: ['papier', 'seite', 'groesse', 'symbolgroesse'],
+  };
+  for (const [a, with_] of Object.entries(pairs)) {
+    for (const b of with_) for (const x of werte(a)) for (const y of werte(b)) add({ ...std, [a]: x, [b]: y });
+  }
   return [...out.values()];
 }
 
-export const FAELLE: Fall[] = COLLECTION_KINDS.flatMap(faelleFor);
-
 /* ----------------------------------------------------- the Standard, said -- */
+
 
 const ja = (on: boolean) => (on ? 'an' : 'aus');
 const mm = (n: number) => `${String(Math.round(n * 10) / 10).replace('.', ',')} mm`;
@@ -325,7 +442,7 @@ export function standardLines(which: CollectionKind): { name: string; value: str
   }
   if (offer.size?.kind === 'board') lines.push(line('Symbol', [], which === 'tafel' ? 'aus dem Feld' : 'rechnet das Blatt'));
   lines.push(line('Rand', ['cutMarginMm'], mm(std.cutMarginMm)));
-  lines.push(line('Wort', ['showLabel', 'labelPosition', 'labelSizePt'],
+  lines.push(line('Beschriftung', ['showLabel', 'labelPosition', 'labelSizePt'],
     std.showLabel ? `${std.labelPosition === 'above' ? 'oben' : 'unten'}, ${std.labelSizePt} pt` : 'aus'));
   if (offer.frames || which === 'einkaufsliste') {
     lines.push(line('Rahmen', ['cardBorderMm', 'cardRadiusMm'], std.cardBorderMm > 0 ? `${mm(std.cardBorderMm)}, Ecken ${mm(std.cardRadiusMm)}` : 'aus'));
