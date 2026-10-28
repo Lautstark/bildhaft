@@ -28,9 +28,9 @@ const on = (): boolean => materialPrint()?.settings.anybookCircle === true;
 /*
  * Which field carries a code of its own, the same rule the sheet prints by
  * (PrintSheet.svelte): every card with a picture, but a Rezept's Schritt and
- * a Lied's line are read as one and carry one code for the line (lineCode), so
- * does a Plauderbuch's question (questionCode), a title's pictures go with the
- * title, and a card
+ * a Lied's line are read as one and carry one code for the line (lineCode), a
+ * Plauderbuch's question carries none — only its cards do (her call,
+ * 2026-10-28) —, a title's pictures go with the title, and a card
  * that is one field — Wortkarten, Spiel, a Rezept's Zutat — is its first symbol.
  */
 export function cardCode(sentence: Sentence, slot: Slot): CodeHere | null {
@@ -57,14 +57,6 @@ export function lineCode(sentence: Sentence): CodeHere | null {
 export function titleCode(): CodeHere | null {
   const open = activeCollection();
   return on() && open ? { key: ANYBOOK_TITLE, standing: titleOf(open) } : null;
-}
-
-/**
- * A Plauderbuch's question: one code for its band, read as one, as a
- * Schritt's (her call, 2026-10-28). Filed under the question's line.
- */
-export function questionCode(question: Sentence | null, said: string): CodeHere | null {
-  return on() && question && said.trim() ? { key: question.id, standing: said } : null;
 }
 
 /* A card's code pressed in Bearbeiten opens the card's Symbol dialog with the

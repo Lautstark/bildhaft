@@ -1519,6 +1519,17 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await expect.poll(() => sheet.locator('.ps-talk__band').first().evaluate((node) => getComputedStyle(node).backgroundColor))
     .toBe('rgb(216, 242, 210)');
 
+  // With Anybook only the cards carry a code: the question none, on paper
+  // or in Bearbeiten, so its words keep their room on the band.
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
+  await expect(cut.locator('.ps-any')).not.toHaveCount(0);
+  await expect(sheet.locator('.ps-talk__band .ps-any')).toHaveCount(0);
+  await expect(asked.locator('.talk__sayings .any-mark')).not.toHaveCount(0);
+  await expect(asked.locator('.talk__head .any-mark')).toHaveCount(0);
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).uncheck();
+
   // The footer as everywhere — on the book's pages only.
   await openDing(page, 'Seite');
   await page.getByLabel('Seitenzahlen drucken').check();

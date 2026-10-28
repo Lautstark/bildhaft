@@ -27,8 +27,6 @@
   import WordCard from './WordCard.svelte';
   import AddTile from './AddTile.svelte';
   import SymbolLine from './SymbolLine.svelte';
-  import AnyStift from './AnyStift.svelte';
-  import { questionCode } from './anybookEdit.ts';
   import Icon from '../pieces/Icon.svelte';
   import { confirmDialog } from './dialog.ts';
   import { openPicker } from '../app/editing.ts';
@@ -98,7 +96,7 @@
 
 </script>
 
-{#snippet head(page: TalkPage, at: number)}{@const held = questionOf(page)}<div class="talk__head"><SymbolLine pictures={picturesOf(held)} {provider} value={questionText(held)} placeholder={t('ui.talk_question_placeholder')} textLabel={t('ui.talk_question_of', { page: nameOf(page, at) })} pictureLabel={t('ui.talk_question_picture', { page: nameOf(page, at) })} addLabel={t('ui.talk_question_symbol', { page: nameOf(page, at) })} focus={!page.id} onPick={(slot) => { if (held) openPicker(held.id, slot.id); }} onAdd={() => void addQuestionSymbol(page.id || null)} onText={(text) => void writeQuestion(page.id || null, text)}>{#snippet trail()}{@const code = questionCode(held, questionText(held))}{#if code}<AnyStift {code} mode="line" />{/if}{/snippet}</SymbolLine>{#if page.id}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.talk_delete_page', { page: nameOf(page, at) })} aria-label={t('ui.talk_delete_page', { page: nameOf(page, at) })} onclick={() => void take(page, at)}><Icon name="trash" /></button></span>{/if}</div>{/snippet}
+{#snippet head(page: TalkPage, at: number)}{@const held = questionOf(page)}<div class="talk__head"><SymbolLine pictures={picturesOf(held)} {provider} value={questionText(held)} placeholder={t('ui.talk_question_placeholder')} textLabel={t('ui.talk_question_of', { page: nameOf(page, at) })} pictureLabel={t('ui.talk_question_picture', { page: nameOf(page, at) })} addLabel={t('ui.talk_question_symbol', { page: nameOf(page, at) })} focus={!page.id} onPick={(slot) => { if (held) openPicker(held.id, slot.id); }} onAdd={() => void addQuestionSymbol(page.id || null)} onText={(text) => void writeQuestion(page.id || null, text)} />{#if page.id}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.talk_delete_page', { page: nameOf(page, at) })} aria-label={t('ui.talk_delete_page', { page: nameOf(page, at) })} onclick={() => void take(page, at)}><Icon name="trash" /></button></span>{/if}</div>{/snippet}
 
 {#snippet card(page: TalkPage, id: string)}{@const sentence = byId.get(id)}{#if sentence}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === id} class:board-card--over={target === id} draggable="true" ondragstart={(event) => dragStart(event, id)} ondragend={() => { carrying = null; target = null; }} ondragover={(event) => over(event, id)} ondragleave={() => { if (target === id) target = null; }} ondrop={(event) => dropOn(event, page, id)}><WordCard {sentence} {provider} /></div>{/if}{/snippet}
 

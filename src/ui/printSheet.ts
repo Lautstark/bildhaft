@@ -704,7 +704,7 @@ export type Block =
      going on. */
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[]; more: boolean }
   | { kind: 'song-again' }
-  | { kind: 'talk-page'; id: string | null; pictures: Slot[]; text: string; count: number; geo: TalkGeometry }
+  | { kind: 'talk-page'; pictures: Slot[]; text: string; count: number; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
   /* One sheet of a Spiel: each row its free cells' Ablage fields, then its
      cells in their own order — a printed card, or the field where one is
@@ -1175,7 +1175,7 @@ export function sheetBlocks(
          its caption. */
       const first = one.question?.slots[0];
       const text = one.question?.rawInput || (first ? slotCaption(first) : '');
-      blocks.push({ kind: 'talk-page', id: one.question?.id ?? null, pictures: picturesOf(one.question), text, count: room, geo });
+      blocks.push({ kind: 'talk-page', pictures: picturesOf(one.question), text, count: room, geo });
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0 && cut !== 'none') {
