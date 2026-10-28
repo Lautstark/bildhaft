@@ -1,4 +1,5 @@
 import type { AnybookPlace, Board, CollectionKind, PrintSettings } from '../core/types.ts';
+import { ANYBOOK_CORNERS, anybookOver } from '../core/types.ts';
 import { boardOf, defaultAirMm } from '../core/board.ts';
 import { printableArea, SHOPPING_SCALE } from '../ui/printSheet.ts';
 
@@ -303,12 +304,12 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
     // Its cards have no room above their symbol: the Anybook circle lies over its corner.
     // On A5 a card is too small for the sticker at all (her call, 2026-10-27).
-    fixed: (settings) => ({ layout: 'spiel', anybookPlace: 'over', ...(settings.paper === 'a5' ? { anybookCircle: false } : {}) }),
+    fixed: (settings) => ({ layout: 'spiel', ...(anybookOver(settings.anybookPlace) ? {} : { anybookPlace: 'over' as const }), ...(settings.paper === 'a5' ? { anybookCircle: false } : {}) }),
     zeileInEdit: true,
     /* The symbol's size is the sheet's own answer — the menu shows it and
        asks only for the margin round the cut cards. */
     offers: (settings) => ({
-      ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookPlaces: ['over'],
+      ...BASE, size: { kind: 'board' }, margin: 'cut', game: true, anybookPlaces: ANYBOOK_CORNERS,
       anybookOff: settings.paper === 'a5' ? 'ui.anybook_off_a5' : undefined,
     }),
   },
@@ -336,7 +337,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       showPageNumbers: false, ...HEADED,
     }),
     // As a Spiel's: no room above the symbol, the Anybook circle lies over its corner.
-    fixed: () => ({ layout: 'plauderbuch', anybookPlace: 'over' }),
-    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true, anybookPlaces: ['over'] }),
+    fixed: (settings) => ({ layout: 'plauderbuch', ...(anybookOver(settings.anybookPlace) ? {} : { anybookPlace: 'over' as const }) }),
+    offers: () => ({ ...BASE, title: 'once', size: { kind: 'board' }, margin: 'cut', cutLines: true, talk: true, anybookPlaces: ANYBOOK_CORNERS }),
   },
 };

@@ -33,8 +33,8 @@ test('the Prüfseite shows a sheet per combination, offline', async ({ page }) =
 
   /* A switch moved: the sheet follows, and says so in its heading. */
   const anybook = page.locator('.pruef__achse', { hasText: 'Anybook' });
-  await anybook.getByRole('button', { name: 'an', exact: true }).click();
-  await expect(sheet.getByRole('heading', { name: 'Spiel · Anybook: an' })).toBeVisible();
+  await anybook.getByRole('button', { name: 'Ecke rechts oben', exact: true }).click();
+  await expect(sheet.getByRole('heading', { name: 'Spiel · Anybook: Ecke rechts oben' })).toBeVisible();
   await expect(sheet.locator('.ps-sheet--any-over')).toBeVisible();
   await expect(sheet.getByText('Symbol auf Spielbogen und Kartenbogen gleich')).toBeVisible();
 

@@ -8,7 +8,7 @@
    * card exactly the size it has always been.
    */
   import type { PrintSettings, ProviderId, Slot } from '../core/types.ts';
-  import { slotCaption, symbolIdFor } from '../core/types.ts';
+  import { anybookOver, slotCaption, symbolIdFor } from '../core/types.ts';
   import NegationCross from '../pieces/NegationCross.svelte';
   import AnyCode from './AnyCode.svelte';
   import { followSymbolUrl, type FollowedSymbol } from './symbols.ts';
@@ -54,8 +54,9 @@
   const broke = () => { if (url) followed?.broke(url); };
 
   let framed = $derived(settings.cardBorderMm > 0 || settings.cardBackground !== null);
-  /* „Überlappend“ hangs the code on the card, or its frame, not on the symbol's box (print.css). */
-  let over = $derived(settings.anybookPlace === 'over');
+  /* On a corner the code hangs on the card, or its frame, not on the symbol's
+     box (print.css); under the word too, so the word stays with its picture. */
+  let over = $derived(anybookOver(settings.anybookPlace) || settings.anybookPlace === 'below');
 
   /* A record of CSS, written out: the joints' two gradients and their sizes are
      more than the `style:` directive can carry one property at a time. */

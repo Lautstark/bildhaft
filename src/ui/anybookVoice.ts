@@ -8,10 +8,14 @@
  * mitreden. Loaded the first time a voice is needed and not before: a piper
  * voice is many megabytes, and most sheets never go to Studio.
  *
- * A recording made to be listened to is kept for the export, so a sheet whose
- * codes were heard one by one goes out without speaking them again.
+ * A recording is kept, across reloads, under the name stimmquelle gives it
+ * (`remember`, the same name mitreden and vorlaut-editor use): a code heard
+ * once is not asked of Azure again, and a sheet whose codes were heard one by
+ * one goes out to Studio without speaking them again. Kept in stimmquelle's
+ * own cache (`cacheStore`, since 2.13.0), not in the Sicherung: what can be
+ * spoken again is not the user's to back up, and the browser may clear it.
  */
-import type { AzureOptions, Offered, OnnxModule } from '@lautstark/stimmquelle/browser';
+import type { AzureOptions, CacheStore, Offered, OnnxModule } from '@lautstark/stimmquelle/browser';
 
 const PEN = { sampleRate: 24000, bitrate: 48 } as const;
 const OFFERING = { ownsInference: true } as const;
@@ -46,22 +50,39 @@ export async function offeredVoices(azure?: AzureOptions): Promise<readonly Offe
   return list;
 }
 
-const kept = new Map<string, Promise<Uint8Array<ArrayBuffer>>>();
+/* The finished WAVs, by their stimmquelle name, in a database of their own —
+   apart from the material's (db.ts), so a wiped cache cannot touch a
+   Sammlung. Made with the engine, which is loaded on first use. */
+const CACHE_DB = 'bildhaft-stimme';
+let store: CacheStore | null = null;
 
-/** One code's recording, as the pen wants it. Made once per voice and words. */
+/* The same recording asked for twice at once — ▶ and the export — is made once. */
+const making = new Map<string, Promise<Uint8Array<ArrayBuffer>>>();
+
+/** One code's recording, as the pen wants it. Made once per voice and words, and kept. */
 export function recordForPen(text: string, voice: string, azure?: AzureOptions): Promise<Uint8Array<ArrayBuffer>> {
   const key = `${voice}\u0000${text}`;
-  let made = kept.get(key);
+  let made = making.get(key);
   if (!made) {
     made = (async () => {
       const browser = await loadVoiceEngine();
-      const spoken = await browser.speak(text, voice, { ...OFFERING, rate: PEN.sampleRate, azure });
-      return new Uint8Array(await browser.encodeMp3(spoken.samples, spoken.rate, PEN.bitrate));
+      store ??= browser.cacheStore(CACHE_DB);
+      const { wav } = await browser.remember(store, text, voice, { ...OFFERING, rate: PEN.sampleRate, azure });
+      const { samples, rate } = browser.decodeWav(wav);
+      return new Uint8Array(await browser.encodeMp3(samples, rate, PEN.bitrate));
     })();
-    made.catch(() => kept.delete(key));
-    kept.set(key, made);
+    made.catch(() => making.delete(key));
+    making.set(key, made);
   }
   return made;
+}
+
+/** Every kept recording forgotten, for „Alles löschen": nothing of the library stays behind. */
+export async function forgetPenRecordings(): Promise<void> {
+  making.clear();
+  const browser = await loadVoiceEngine();
+  store ??= browser.cacheStore(CACHE_DB);
+  await store.clear();
 }
 
 /** What the pen will say, out loud now. Resolves when it has been said. */

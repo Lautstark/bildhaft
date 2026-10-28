@@ -131,7 +131,8 @@ export class Picking {
   }
 
   idleMessage(): string {
-    if (this.isNew) return t('ui.search_to_fill');
+    /* A field the „+" just made needs no telling that it wants a word (her call). */
+    if (this.isNew) return '';
     return this.suggested.length > 0
       ? t('ui.suggestions_for', { word: this.slot.concept })
       : t('ui.no_suggestions_for', { word: this.slot.concept });

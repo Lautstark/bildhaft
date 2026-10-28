@@ -12,7 +12,7 @@ import type { AnybookPlace, CollectionKind, PrintFont, PrintSettings, ProviderId
 import { ANYBOOK_PLACES, DEFAULT_PRINT_SETTINGS, PRINT_FONTS } from '../core/types.ts';
 
 /** The app's words for where the Anybook circle goes. */
-const PLATZ: Record<AnybookPlace, string> = { above: 'darüber', beside: 'daneben', over: 'überlappend' };
+const PLATZ: Record<AnybookPlace, string> = { above: 'oben', below: 'unten', left: 'links', beside: 'rechts', 'over-tl': 'Ecke links oben', over: 'Ecke rechts oben', 'over-bl': 'Ecke links unten', 'over-br': 'Ecke rechts unten' };
 import { openPrint, settle, TEMPLATES } from '../app/templates.ts';
 import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printSheet.ts';
 
@@ -354,7 +354,7 @@ export function wertText(achse: Achse, value: number | string | undefined): stri
   return `„${String(value ?? '')}“`;
 }
 
-/** The combination in words, against the Standard: „Beschriftung: oben · Anybook: darüber". */
+/** The combination in words, against the Standard: „Beschriftung: oben · Anybook: oben". */
 export function nameOf(which: CollectionKind, m: Material, w: Wahl): string {
   const std = standardWahl(which, m);
   return achsen(which, m).filter((achse) => w[achse.key] !== std[achse.key])

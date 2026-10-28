@@ -21,7 +21,7 @@
    * what the preview draws as paper and the PDF is drawn from.
    */
   import type { PrintSettings, ProviderId } from '../core/types.ts';
-  import { PRINT_FONTS, sentenceCaption, slotCaption } from '../core/types.ts';
+  import { PRINT_FONTS, anybookOver, sentenceCaption, slotCaption } from '../core/types.ts';
   import { labelColour, labelField, zoneBorder, zoneBox, zoneJoint } from '../core/board.ts';
   import PrintCard from './PrintCard.svelte';
   import PrintPicture from './PrintPicture.svelte';
@@ -46,7 +46,7 @@
   /* Two A5 pages to an A4: the sheet they share, and the whole one a page of cards gets. */
   let two = $derived(twoUp(settings));
   /* The activation code, once, in the first page's top right corner (her call, 2026-10-27). */
-  let activation = $derived(settings.anybookCircle && settings.anybookActivation !== false);
+  let activation = $derived(settings.anybookCircle && settings.anybookActivation === true);
   let paper = $derived.by(() => { const sheet = printerPaper(settings); return paperSize(sheet.paper, sheet.orientation); });
   let whole = $derived(cutArea(settings));
   /* The colour behind every page — but an Einkaufsliste's, which is behind
@@ -219,7 +219,7 @@
 --><p class="ps-song-again"><span class="ps-song-again__loop" aria-hidden="true">↻</span>{t('ui.song_refrain')}</p>{:else if block.kind === 'talk-page'}<!--
   A page of a Plauderbuch: the question on its band, the free field the
   answer is put into beside it, then every field the page holds.
---><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#each block.pictures as picture (picture.id)}<PrintPicture slot={picture} {provider} />{/each}<p class="ps-talk__question">{block.text}</p><span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span></div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
+--><section class="ps-grid ps-grid--page ps-talk" style={talkVars(block.geo, block.geo.cols)}><div class="ps-talk__band">{#each block.pictures as picture (picture.id)}<PrintPicture slot={picture} {provider} />{/each}<p class="ps-talk__question">{block.text}</p>{#if settings.anybookCircle && block.id && block.text.trim()}<AnyCode {settings} key={block.id} standing={block.text} />{/if}<span class="ps-talk__field ps-talk__field--free"><span class="ps-talk__dot"></span></span></div><div class="ps-talk__fields">{#each Array.from({ length: block.count }) as _, at (at)}<span class="ps-talk__field"><span class="ps-talk__dot"></span></span>{/each}</div></section>{:else if block.kind === 'talk-cut'}<!--
   The cards for the fields, the laminate's seam smaller than a field, with
   the Rand round each for the scissors; the cut lines where they are asked for.
 --><section class="ps-grid ps-grid--page ps-talk-cut{settings.showLabel && settings.labelPosition === 'above' ? ' ps-talk-cut--above' : ''}" style="{talkVars(block.geo, block.cols)};--talk-w:{block.geo.cutW.toFixed(3)}mm;--talk-h:{block.geo.cutH.toFixed(3)}mm">{#each block.slots as slot (slot.id)}<span class="ps-talk-cut__cell">{#if settings.anybookCircle}<AnyCode {settings} key={slot.id} standing={slotCaption(slot)} />{/if}<span class="ps-talk__card"><PrintPicture {slot} {provider} />{#if settings.showLabel}<span class="ps-talk__word">{slotCaption(slot)}</span>{/if}</span></span>{/each}</section>{:else if block.kind === 'game-board'}<!--
@@ -240,7 +240,7 @@
 -->{@const tail = `, ${t('ui.made_with')} ${BILDHAFT_URL}`}<p class="ps-attribution" style:--credit-chars={Math.max(...block.lines.map((line, at) => line.length + (at === block.lines.length - 1 ? tail.length : 0)))}><span class="ps-attribution__text">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
-  class="ps-sheet{two ? ' ps-sheet--two' : ''}{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}` : ''}"
+  class="ps-sheet{two ? ' ps-sheet--two' : ''}{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}${anybookOver(settings.anybookPlace) && settings.anybookPlace !== 'over' ? ' ps-sheet--any-over' : ''}` : ''}"
   style:--print-font={PRINT_FONTS[settings.font]?.family ?? PRINT_FONTS.andika.family}
   style:--sym="{settings.symbolSizeMm}mm"
   style:--cut="{settings.cutMarginMm}mm"

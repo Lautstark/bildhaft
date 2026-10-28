@@ -16,7 +16,7 @@
   import type { ProviderId, Sentence } from '../core/types.ts';
   import { slotCaption, symbolIdFor } from '../core/types.ts';
   import CardFace from './CardFace.svelte';
-  import AnyMark from './AnyMark.svelte';
+  import AnyStift from './AnyStift.svelte';
   import { cardCode } from './anybookEdit.ts';
   import { confirmDeleteSentence, openPicker } from '../app/editing.ts';
   import { t } from '../i18n/index.ts';
@@ -44,4 +44,4 @@
   };
 </script>
 
-<div class="word" role="button" tabindex="0" aria-label={shown ? t('ui.change_picture_for', { word: caption }) : t('ui.pick_picture_for', { word: caption || '…' })} onclick={open} onkeydown={keys}><CardFace {provider} id={shown} {caption} mirrored={slot?.mirrored} />{#if code}<AnyMark {code} />{/if}<button class="word__drop" type="button" aria-label={t('ui.delete_card', { word: caption || '…' })} onclick={(event) => { event.stopPropagation(); void confirmDeleteSentence(sentence); }}>×</button></div>
+<div class="word" role="button" tabindex="0" aria-label={shown ? t('ui.change_picture_for', { word: caption }) : t('ui.pick_picture_for', { word: caption || '…' })} onclick={open} onkeydown={keys}><CardFace {provider} id={shown} {caption} mirrored={slot?.mirrored} />{#if code}<AnyStift {code} mode="card" />{/if}<button class="word__drop" type="button" aria-label={t('ui.delete_card', { word: caption || '…' })} onclick={(event) => { event.stopPropagation(); void confirmDeleteSentence(sentence); }}>×</button></div>

@@ -38,8 +38,12 @@
   let cropping = $derived(s.loaded !== null);
 
   let source = $derived(getProvider(s.provider));
+  /* The symbol just picked, shown at once (her call, 2026-10-28): the field
+     itself is written a moment later, behind whatever edit is still in flight,
+     and the square must not stand empty or old meanwhile. */
+  let picked = $state<string | null>(null);
   /** What the field shows now, or nothing for a field the „+" just made. */
-  let shown = $derived(symbolIdFor(s.current, s.provider));
+  let shown = $derived(picked ?? symbolIdFor(s.current, s.provider));
 
   /* Once, as the sheet opens: it is a background read that fills the
      suggestions out. It no longer has to ask what is in the field — the
@@ -125,6 +129,10 @@
 
   /* Pressed, the picture folds the search open with the field ready to type in (her call). */
   let fold: HTMLElement | undefined = $state();
+  /* A field with nothing in it opens on its search, and the caret is in it
+     (her call, 2026-10-28) — after the dialog has put its own focus on ✕. */
+  // svelte-ignore state_referenced_locally
+  if (s.searching) requestAnimationFrame(() => fold?.querySelector<HTMLInputElement>('input[type="search"]')?.focus());
   async function toggleSearch(): Promise<void> {
     s.searching = !s.searching;
     if (!s.searching) return;
@@ -133,6 +141,7 @@
   }
 
   function chose(): void {
+    picked = null;
     const file = upload?.files?.[0];
     if (upload) upload.value = '';
     if (file) void s.beginCrop(file);
@@ -163,11 +172,11 @@
   busy={cropping}
   suggestions={s.suggested}
   describe={captionOf}
-  onpick={(candidate) => s.settle(() => s.handlers.onChoose(candidate))}
+  onpick={(candidate) => { picked = candidate.id; s.settle(() => s.handlers.onChoose(candidate)); }}
 >{#snippet between()}<div class="picker__crop" hidden={!cropping}>{#if s.loaded}<Crop bind:this={s.cropper} loaded={s.loaded} label={t('ui.crop_title')} zoomLabel={t('ui.zoom_in')} /><!--
   No buttons of its own: Fertig keeps the square — so does Enter — and the ✕
   drops it, which is what all three mean everywhere else here.
---><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}<p class="small muted picker__status">{statusFor(answer)}</p>{/snippet}{#snippet trailing()}<span class="picker__own"><label class="picker__own-add">{t('ui.own_picture_choose')}<!--
+--><p class="small muted" style="margin:8px 0 0">{t('ui.crop_hint')}</p>{/if}</div>{/snippet}{#snippet lead(answer)}{@const line = statusFor(answer)}{#if line}<p class="small muted picker__status">{line}</p>{/if}{/snippet}{#snippet trailing()}<span class="picker__own"><label class="picker__own-add">{t('ui.own_picture_choose')}<!--
   A file of the user's own. bildhaft keeps the bytes rather than a path, so
   moving or deleting the original afterwards changes nothing here.
 --><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.current.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.settle(clear)}>{t('ui.own_picture_remove')}</button>{/if}</span>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch></div>{/if}<!--

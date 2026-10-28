@@ -527,7 +527,7 @@ test('the collection name can head the sheet', async ({ page }) => {
   await expect(page.locator('.preview-frame .ps-title')).toHaveCount(0);
 
   await openLook(page);
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
   await expect(page.locator('.preview-frame .ps-title')).toHaveText('Morgenkreis');
   await backToPrint(page);
@@ -547,7 +547,7 @@ test('the collection name can head the sheet', async ({ page }) => {
  * settings column is gone.
  */
 test('the Zeile is one base in one order, then what only the template has', async ({ page }) => {
-  await expect(page.locator('.ding__chip')).toHaveText(['Seite', 'Symbol', 'Streifen']);
+  await expect(page.locator('.ding__chip')).toHaveText(['Seite', '+Titel', 'Symbol', 'Streifen', '+Anybook']);
   await openDing(page, 'Seite');
   await page.getByRole('button', { name: 'Seitenfarbe Grün' }).click();
   await expect(page.locator('#print-root .ps-page--coloured').first()).toBeAttached();
@@ -634,6 +634,28 @@ test('the household\'s print settings move onto the Sammlungen that used them, o
 });
 
 /*
+ * The activation code stands first on the sheet while it is measured, lying
+ * over the corner, and is no block of its own: counted as one, it moved every
+ * page's plan a block on and the first page ran over its foot (her test print
+ * of a Rezept, 2026-10-28). One sentence a page shows it plainest.
+ */
+test('the activation code is no block: one sentence a page stays one with Anybook on', async ({ page }) => {
+  await openDing(page, 'Seite');
+  await page.getByLabel('Ein Satz pro Seite').check();
+  await openDing(page, 'Anybook');
+  await expect(page.getByLabel('Anybook-Codes', { exact: true })).toBeChecked();
+  // Off until asked for (her call, 2026-10-28): it is no block either way.
+  await expect(page.getByLabel('Aktivierungscode oben rechts')).not.toBeChecked();
+  await expect(page.locator('.preview-frame .ps-any--start')).toHaveCount(0);
+  await page.getByLabel('Aktivierungscode oben rechts').check();
+  await expect(page.locator('.preview-frame .ps-any--start')).toHaveCount(1);
+  const pages = page.locator('.preview-frame .ps-page');
+  await expect(pages).toHaveCount(2);
+  await expect(pages.nth(0).locator('.ps-sentence')).toHaveCount(1);
+  await expect(pages.nth(1).locator('.ps-sentence')).toHaveCount(1);
+});
+
+/*
  * The title is written in Bearbeiten, under the head: it follows the name
  * until other words are typed, and the print view only says whether and
  * where. „Jede Seite" puts it over every page; „Erste Seite" over the first.
@@ -642,7 +664,7 @@ test('the title is written in Bearbeiten and prints over the first or every page
   await page.getByLabel('Name des Materials', { exact: true }).fill('Morgenkreis – Gruppe Igel');
   await openDing(page, 'Seite');
   await page.getByLabel('Ein Satz pro Seite').check();
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
   const titles = page.locator('#print-root .ps-title');
   await expect(titles).toHaveText(['Morgenkreis – Gruppe Igel']);
@@ -657,16 +679,16 @@ test('the title is written in Bearbeiten and prints over the first or every page
   await expect(titles).toHaveText(['Morgenkreis']);
 
   // Over every page: two sentences, a page each, a title on both.
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByRole('button', { name: 'Jede Seite', exact: true }).click();
   await expect(titles).toHaveText(['Morgenkreis', 'Morgenkreis']);
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').uncheck();
   await expect(titles).toHaveCount(0);
 
   // Switched on again it is where it was — over every page — as a label keeps
   // above or below. And back to the name, with whatever the name becomes.
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
   // Emptied, the title follows the name again — there is no × to press.
@@ -682,6 +704,9 @@ test('the title is written in Bearbeiten and prints over the first or every page
  * before the words, and it is no row of the material.
  */
 test('a title symbol prints before the title and is no row', async ({ page }) => {
+  // A Satzstreifen starts without its title, and Bearbeiten shows the title line only while it prints.
+  await openDing(page, 'Titel');
+  await page.getByLabel('Titel drucken').check();
   await showMaterial(page);
   await expect(page.locator('.rows .row')).toHaveCount(2);
   await page.getByRole('button', { name: 'Symbol zum Titel hinzufügen' }).click();
@@ -693,8 +718,6 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
   await expect(page.locator('.collection-head')).toContainText('2 Zeilen');
 
   await showSheet(page);
-  await openDing(page, 'Seite');
-  await page.getByLabel('Titel drucken').check();
   await expect(page.locator('.preview-frame .ps-title .ps-title__pic img')).toBeVisible();
   await expect(page.locator('#print-root .ps-sentence')).toHaveCount(2);
 });
@@ -706,7 +729,7 @@ test('a title symbol prints before the title and is no row', async ({ page }) =>
  */
 test('a headed grid page takes its room from the cards, not from the paper', async ({ page }) => {
   await cardSheet(page);
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();
@@ -735,10 +758,10 @@ test('a big underlined heading still takes its room from the cards', async ({ pa
   await showMaterial(page);
   // Two lines at 30 pt, the most the room is reserved for.
   await page.getByLabel('Name des Materials', { exact: true }).fill('Kindergarten Sonnenschein – Morgenkreis');
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
   await page.getByRole('spinbutton', { name: 'Schriftgröße', exact: true }).fill('30');
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Linie darunter').check();
   await openDing(page, 'Symbol');
   await page.getByRole('button', { name: 'Raster' }).click();

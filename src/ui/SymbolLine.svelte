@@ -13,9 +13,9 @@
   import { symbolIdFor } from '../core/types.ts';
   import SymbolPicture from '../pieces/Symbol.svelte';
 
-  let { pictures, provider, value, placeholder, textLabel, pictureLabel, addLabel, focus = false, onPick, onAdd, onText, lead }: {
-    /** Drawn first on the line: the title's Anybook code. */
-    lead?: Snippet;
+  let { pictures, provider, value, placeholder, textLabel, pictureLabel, addLabel, focus = false, onPick, onAdd, onText, trail }: {
+    /** Under the words: the Anybook field — the words first, then what the pen says (her calls, 2026-10-28). */
+    trail?: Snippet;
     /** The symbols with a picture chosen, in their order. */
     pictures: Slot[];
     provider: ProviderId;
@@ -34,4 +34,4 @@
   function focused(node: HTMLElement, when: boolean): void { if (when) node.focus(); }
 </script>
 
-<div class="title-line">{@render lead?.()}{#each pictures as slot (slot.id)}<button class="title-line__pic" type="button" aria-label={pictureLabel} title={pictureLabel} onclick={() => onPick(slot)}><SymbolPicture {provider} id={symbolIdFor(slot, provider)} alt="" mirrored={slot.mirrored} /></button>{/each}<button class="title-line__add" type="button" aria-label={addLabel} title={addLabel} onclick={onAdd}>+</button><input class="title-line__text" type="text" {value} {placeholder} aria-label={textLabel} title={textLabel} use:focused={focus} onchange={(event) => onText(event.currentTarget.value)} onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /></div>
+<div class="title-line">{#each pictures as slot (slot.id)}<button class="title-line__pic" type="button" aria-label={pictureLabel} title={pictureLabel} onclick={() => onPick(slot)}><SymbolPicture {provider} id={symbolIdFor(slot, provider)} alt="" mirrored={slot.mirrored} /></button>{/each}<button class="title-line__add" type="button" aria-label={addLabel} title={addLabel} onclick={onAdd}>+</button><span class="title-line__words"><input class="title-line__text" type="text" {value} {placeholder} aria-label={textLabel} title={textLabel} use:focused={focus} onchange={(event) => onText(event.currentTarget.value)} onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} />{@render trail?.()}</span></div>

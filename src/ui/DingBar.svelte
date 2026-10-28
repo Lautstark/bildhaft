@@ -22,7 +22,7 @@
   /* How big things come out, measured off the sheet beside this row. */
   let { measures = null }: { measures?: Measures | null } = $props();
 
-  let open = $state<'page' | 'symbol' | 'own' | null>(null);
+  let open = $state<'page' | 'title' | 'symbol' | 'own' | 'anybook' | null>(null);
   let host: HTMLElement | undefined = $state();
 
   let mp = $derived(materialPrint());
@@ -49,7 +49,16 @@
   const away = (event: PointerEvent) => {
     if (open && host && !host.contains(event.target as Node)) open = null;
   };
-  const show = (which: 'page' | 'symbol' | 'own') => { open = open === which ? null : which; };
+  /* A Titel or Anybook button that is off switches on as it opens (her call,
+     2026-10-28): pressing it means wanting it, and an open menu with one empty
+     box and nothing under it looks broken. Off is the box inside. */
+  const show = (which: 'page' | 'title' | 'symbol' | 'own' | 'anybook') => {
+    const opening = open !== which;
+    open = opening ? which : null;
+    if (!opening || !mp || !offer) return;
+    if (which === 'title' && !mp.settings.showCollectionTitle) mp.set('showCollectionTitle', true);
+    if (which === 'anybook' && !mp.settings.anybookCircle && !offer.anybookOff) mp.set('anybookCircle', true);
+  };
   const POSITIONS = ['above', 'below'] as const;
 
   const mm = (value: number): string => value.toLocaleString(LOCALE, { maximumFractionDigits: 0 });
@@ -73,6 +82,17 @@
   handlers the print column always had. Live, because the sheet beside it is.
 --><label class="ding-num">{label} <input class="field" type="number" {min} {max} {step} {value} aria-label={aria ?? label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} />{#if unit}<span class="ding-num__unit">{unit}</span>{/if}</label>{/snippet}
 
+{#snippet toggled(which: 'title' | 'anybook', name: string, on: boolean, colour: string | null)}<!--
+  Aus „+ Name“, gestrichelt; an „✓ Name“ mit dem Pfeil (ihre Wahl P1). Ein
+  Druck auf „+“ schaltet ein und öffnet das Menü (show).
+--><button class="ding__chip{on ? '' : ' ding__chip--add'}" type="button" aria-label={name} aria-expanded={open === which} onclick={() => show(which)}>{#if on}<span class="ding__ck" aria-hidden="true">✓</span>{:else}<span class="ding__plus" aria-hidden="true">+</span>{/if}{name}{#if on && colour}<span class="ding__dot" style:--c={colour}></span>{/if}{#if on}{@render dd()}{/if}</button>{/snippet}
+
+{#snippet head(label: string, checked: boolean, onToggle: (next: boolean) => void, disabled = false)}<label class="ding-head"><span>{label}</span><input class="ding-switch" type="checkbox" role="switch" {checked} {disabled} onchange={(event) => onToggle(event.currentTarget.checked)} /></label>{/snippet}
+
+{#snippet swRow(label: string, checked: boolean, onToggle: (next: boolean) => void)}<label class="ding-r ding-r--sw"><span>{label}</span><input class="ding-switch ding-switch--sm" type="checkbox" role="switch" {checked} onchange={(event) => onToggle(event.currentTarget.checked)} /></label>{/snippet}
+
+{#snippet stepper(label: string, value: number, min: number, max: number, fallback: number, unit: string, onInput: (next: number) => void)}<span class="ding-step"><button type="button" aria-label={t('ui.less_of', { what: label })} disabled={value <= min} onclick={() => onInput(Math.max(min, value - 1))}>−</button><input class="field" type="number" {min} {max} step="1" {value} aria-label={label} oninput={(event) => { const n = event.currentTarget.valueAsNumber; if (Number.isFinite(n) && n >= min && n <= max) onInput(n); }} onchange={(event) => { const n = clamp(event.currentTarget.valueAsNumber, min, max, fallback); event.currentTarget.value = String(n); onInput(n); }} /><span class="ding-step__unit">{unit}</span><button type="button" aria-label={t('ui.more_of', { what: label })} disabled={value >= max} onclick={() => onInput(Math.min(max, value + 1))}>+</button></span>{/snippet}
+
 {#if mp && offer}<div class="ding-bar" bind:this={host}>
   <span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_page')} aria-expanded={open === 'page'} onclick={() => show('page')}>{t('ui.ding_page')}{#if mp.settings.pageColour}<span class="ding__dot" style:--c={mp.settings.pageColour}></span>{/if}{@render dd()}</button>{#if open === 'page'}<div class="ding__pop" role="group" aria-label={t('ui.ding_page')}>
     <!--
@@ -82,20 +102,6 @@
     -->
     <div class="palette-row" role="group" aria-label={t('ui.print_font')}><span class="palette-row__name small faint">{t('ui.print_font')}</span><span class="segmented">{#each Object.keys(PRINT_FONTS) as PrintFont[] as font (font)}<button type="button" style:font-family={PRINT_FONTS[font].family} aria-pressed={mp.settings.font === font} onclick={() => mp?.set('font', font)}>{PRINT_FONTS[font].name}</button>{/each}</span></div>
     {#if offer.page}<PaletteRow label={t('ui.page_colour')} value={mp.settings.pageColour} strength="fill" none ownStart="#d9ebd3" onPick={(next) => mp?.set('pageColour', next)} />{/if}
-    {#if offer.title}<!--
-      Der Titel steht oben auf der Seite, also wohnt er hier (2026-10-23, ihr
-      Wunsch): alles Titelhafte — Größe, Farbe, Linie, Erste/Jede — hängt am
-      Haken, ganz oder gar nicht. Die Farbe ist zugleich die des Materials:
-      Einkaufswagen und Rahmen folgen ihr, bis der Rahmen eine eigene bekommt.
-    -->
-    {@render check(t('ui.title_print'), mp.settings.showCollectionTitle, (next) => mp?.set('showCollectionTitle', next))}
-    {#if mp.settings.showCollectionTitle}<div class="ding__dep">
-      {@render num(t('ui.font_size'), mp.settings.titleSizePt, 8, 40, 1, 15, 'pt', (next) => mp?.set('titleSizePt', next))}
-      <PaletteRow label={t('ui.colour')} value={mp.settings.titleColour} strength="frame" none ownStart="#3d7d3a" onPick={paintMaterial} />
-      {@render check(t('ui.title_line'), mp.settings.titleLine, (next) => mp?.set('titleLine', next))}
-      {#if offer.title === 'pages'}<div class="ding__row"><span class="segmented">{#each [false, true] as every (every)}<button type="button" aria-pressed={mp.settings.titleEvery === every} onclick={() => mp?.set('titleEvery', every)}>{every ? t('ui.title_every') : t('ui.title_first')}</button>{/each}</span></div>{/if}
-    </div>{/if}
-    {/if}
     {#if offer.onePerPage}{@render check(t('ui.one_per_page'), mp.settings.onePerPage, (next) => mp?.set('onePerPage', next))}{/if}
     {#if offer.guide}{@render check(t('ui.shop_guide_print'), mp.settings.showGuide, (next) => mp?.set('showGuide', next))}{/if}
     <!--
@@ -109,15 +115,25 @@
       <div class="ding__row"><span class="segmented">{#each ['left', 'top'] as const as edge (edge)}<button type="button" aria-pressed={mp.settings.punch === edge} onclick={() => mp?.set('punch', edge)}>{t(edge === 'left' ? 'ui.punch_left' : 'ui.punch_top')}</button>{/each}</span></div>
       {@render check(t('ui.punch_marks'), mp.settings.punchMarks, (next) => mp?.set('punchMarks', next))}
     </div>{/if}
-    <!-- Anybook (2026-10-26, ihr Wunsch): auf jeder Karte mit Symbol, am Titel und mit dem Aktivierungscode in der Ecke der Seite — darum im Seite-Menü (2026-10-27), vor der Fußzeile. -->
-    {@render check(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next), !!offer.anybookOff)}
-    {#if offer.anybookOff}<p class="ding-check__why small faint">{t(offer.anybookOff)}</p>{/if}
-    {#if mp.settings.anybookCircle && (offer.anybookPlaces ?? ANYBOOK_PLACES).length > 1}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each offer.anybookPlaces ?? ANYBOOK_PLACES as place (place)}<button type="button" aria-pressed={mp.settings.anybookPlace === place} onclick={() => mp?.set('anybookPlace', place)}>{t(`ui.anybook_${place}`)}</button>{/each}</span></div></div>{/if}
-    <!-- Der Aktivierungscode oben rechts in der Ecke der ersten Seite (2026-10-27): eine Wahl des Materials, darum hier bei den Codes. -->
-    {#if mp.settings.anybookCircle}<div class="ding__dep">{@render check(t('ui.anybook_activation'), mp.settings.anybookActivation !== false, (next) => mp?.set('anybookActivation', next ? undefined : false))}{#if mp.settings.anybookOff?.length}<!-- Wo Codes weggenommen sind, sagt es auch das Menü (ihr Wunsch): in Bearbeiten ist ihr Ring rot durchgestrichen. --><p class="ding-check__why small faint">{t(mp.settings.anybookOff.length === 1 ? 'ui.anybook_off_one' : 'ui.anybook_off_n', { n: mp.settings.anybookOff.length })}</p>{/if}</div>{/if}
     {#if offer.pageNumbers}{@render check(t('ui.page_numbers'), mp.settings.showPageNumbers, (next) => mp?.set('showPageNumbers', next))}{/if}
     {#if metacom}{@render check(t('ui.print_copyright'), mp.settings.showCopyright, (next) => mp?.set('showCopyright', next))}{/if}
   </div>{/if}</span>
+  {#if offer.title}<!--
+    Der Titel als eigener Knopf (2026-10-28, ihr Wunsch, wie Anybook): aus
+    steht „+ Titel“ gestrichelt da, wie „+ Bild“ in Bearbeiten, an „✓ Titel“
+    (ihre Wahl P1). Das Menü (M1): oben der Schalter, darunter je eine Zeile,
+    der Name links. Aus zeigt Bearbeiten die Titelzeile nicht: was nur fürs
+    Papier da ist, steht dort nur, wenn es gedruckt wird. Die Farbe ist
+    zugleich die des Materials: Einkaufswagen und Rahmen folgen ihr.
+  --><span class="ding">{@render toggled('title', t('ui.ding_title'), mp.settings.showCollectionTitle, mp.settings.titleColour)}{#if open === 'title'}<div class="ding__pop ding__pop--rows" role="group" aria-label={t('ui.ding_title')}>
+    {@render head(t('ui.title_print'), mp.settings.showCollectionTitle, (next) => mp?.set('showCollectionTitle', next))}
+    {#if mp.settings.showCollectionTitle}
+      <div class="ding-r"><span class="ding-r__name">{t('ui.ding_size')}</span>{@render stepper(t('ui.font_size'), mp.settings.titleSizePt, 8, 40, 15, 'pt', (next) => mp?.set('titleSizePt', next))}</div>
+      <div class="ding-r ding-r--palette"><PaletteRow label={t('ui.colour')} value={mp.settings.titleColour} strength="frame" none ownStart="#3d7d3a" onPick={paintMaterial} /></div>
+      {@render swRow(t('ui.title_line'), mp.settings.titleLine, (next) => mp?.set('titleLine', next))}
+      {#if offer.title === 'pages'}<div class="ding-r"><span class="ding-r__name">{t('ui.ding_where')}</span><span class="segmented">{#each [false, true] as every (every)}<button type="button" aria-pressed={mp.settings.titleEvery === every} onclick={() => mp?.set('titleEvery', every)}>{every ? t('ui.title_every') : t('ui.title_first')}</button>{/each}</span></div>{/if}
+    {/if}
+  </div>{/if}</span>{/if}
   {#if symbolish}<span class="ding"><button class="ding__chip" type="button" aria-label={t('ui.ding_symbol')} aria-expanded={open === 'symbol'} onclick={() => show('symbol')}>{t('ui.ding_symbol')}{@render dd()}</button>{#if open === 'symbol'}<div class="ding__pop" role="group" aria-label={t('ui.ding_symbol')}>
     {#if measures}<!--
       Die Messzeile (2026-10-27, ihr Mock): in jeder Vorlage hier zuoberst und
@@ -170,4 +186,21 @@
     --><PaletteRow label={t('ui.talk_band')} value={mp.settings.gameGroundColour} strength="fill" none ownStart="#d8e9fc" onPick={(next) => mp?.set('gameGroundColour', next)} />
     <PaletteRow label={t('ui.talk_line')} value={mp.settings.accentColour} strength="frame" ownStart="#3f88e0" onPick={(next) => mp?.set('accentColour', next ?? '#3f88e0')} />{/if}
   </div>{/if}</span>{/if}
+  <!--
+    Anybook als eigener Knopf (2026-10-28, ihr Wunsch): er ist der eine
+    Schalter. An, zeigt Bearbeiten bei allem, was einen Code bekommt, was der
+    Stift sagt; aus, nichts davon — gelöscht wird dabei nichts, eigene Worte
+    und entfernte Codes sind beim Wiedereinschalten wieder da. Wo der Sticker
+    sitzt, zeigen acht kleine Karten (ihr Mock): vier neben dem Bild, vier
+    auf der Ecke; wo das Feld fest ist (Spiel, Plauderbuch), nur die Ecken.
+  --><span class="ding">{@render toggled('anybook', t('ui.ding_anybook'), mp.settings.anybookCircle, null)}{#if open === 'anybook'}<div class="ding__pop ding__pop--rows" role="group" aria-label={t('ui.ding_anybook')}>
+    {@render head(t('ui.anybook_circle'), mp.settings.anybookCircle, (next) => mp?.set('anybookCircle', next), !!offer.anybookOff)}
+    {#if offer.anybookOff}<p class="ding-r__why small faint">{t(offer.anybookOff)}</p>{/if}
+    {#if mp.settings.anybookCircle}
+      {@const places = offer.anybookPlaces ?? ANYBOOK_PLACES}
+      {#if places.length > 1}<div class="ding-r ding-r--top"><span class="ding-r__name">{t('ui.anybook_place')}</span><div class="any-tiles" role="radiogroup" aria-label={t('ui.anybook_place')}>{#each places as place (place)}<button class="any-tile any-tile--{place}" type="button" role="radio" aria-checked={mp.settings.anybookPlace === place} aria-label={t(`ui.anybook_${place}`)} title={t(`ui.anybook_${place}`)} onclick={() => mp?.set('anybookPlace', place)}><span class="any-tile__pic"></span><span class="any-tile__dot"></span></button>{/each}<span class="any-tiles__name small">{t(`ui.anybook_${mp.settings.anybookPlace}`)}</span></div></div>{/if}
+      {@render swRow(t('ui.anybook_activation'), mp.settings.anybookActivation === true, (next) => mp?.set('anybookActivation', next ? true : undefined))}
+      {#if mp.settings.anybookOff?.length}<!-- Wo Codes weggenommen sind, sagt es auch das Menü (ihr Wunsch): in Bearbeiten ist ihr Feld rot. --><p class="ding-r__foot small">{t(mp.settings.anybookOff.length === 1 ? 'ui.anybook_off_one' : 'ui.anybook_off_n', { n: mp.settings.anybookOff.length })}</p>{/if}
+    {/if}
+  </div>{/if}</span>
 </div>{/if}

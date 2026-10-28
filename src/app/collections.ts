@@ -15,6 +15,7 @@ import { LANG, t } from '../i18n/index.ts';
 import { openSheet } from '@lautstark/design/svelte/sheet';
 import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
+import { forgetPenRecordings } from '../ui/anybookVoice.ts';
 import { pagesOf } from '../core/talk.ts';
 import { activeCollection, providerId, s } from './state.svelte.ts';
 import { notify } from './notify.ts';
@@ -380,6 +381,8 @@ export async function confirmClearAll(): Promise<void> {
   if (!ok) return;
 
   await clearEverything();
+  /* The pen's recordings are a cache, but of the words just deleted. */
+  await forgetPenRecordings().catch(() => undefined);
   const fresh = await createCollection();
   await refreshCollections();
   s.sentences = [];

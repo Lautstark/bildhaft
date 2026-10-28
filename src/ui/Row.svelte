@@ -4,9 +4,8 @@
   import TitleField from '@lautstark/design/svelte/TitleField';
   import Icon from '../pieces/Icon.svelte';
   import CardFace from './CardFace.svelte';
-  import AnyMark from './AnyMark.svelte';
+  import AnyStift from './AnyStift.svelte';
   import { cardCode, lineCode } from './anybookEdit.ts';
-  import { openCodeSheet } from './anyCodeSheet.svelte.ts';
   import { symbolIdFor } from '../ui/symbols.ts';
   import { confirmDeleteSentence, handleAddSlot, handleRename, handleReorder, openPicker } from '../app/editing.ts';
   import { t } from '../i18n/index.ts';
@@ -142,12 +141,12 @@
      symbols were fetched with and the ones a search finds it by — and the
      placeholder that was showing them is gone the moment there is a name.
      Nowhere but here: the paper prints the name alone. */
-  /* A Schritt's or a Lied's line's one code, at its number or its start. */
+  /* A Schritt's or a Lied's line's one code: its field under the line's words, as everywhere (her calls, 2026-10-28). */
   let line = $derived(lineCode(sentence));
   let typedLine = $derived(sentence.title?.trim() ? t('ui.typed_line', { text: sentence.rawInput }) : null);
 </script>
 
-<article class="row" aria-label={sentence.rawInput}><header class="row__head">{#if step !== undefined}<span class="row__step" class:row__step--grip={onGrab} aria-hidden="true" draggable={onGrab ? 'true' : undefined} title={onGrab ? t('ui.drag_to_reorder') : undefined} ondragstart={onGrab}>{step}</span>{/if}{#if line}{@const at = line}<AnyMark code={at} place="inline" onopen={() => openCodeSheet(at, step !== undefined ? t('ui.anybook_code_step', { n: step }) : t('ui.anybook_code_line'))} />{/if}<TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions"><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
+<article class="row" aria-label={sentence.rawInput}><header class="row__head">{#if step !== undefined}<span class="row__step" class:row__step--grip={onGrab} aria-hidden="true" draggable={onGrab ? 'true' : undefined} title={onGrab ? t('ui.drag_to_reorder') : undefined} ondragstart={onGrab}>{step}</span>{/if}<span class="row__words"><TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if line}<AnyStift code={line} mode="line" />{/if}</span>{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions"><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
   class="slot"
   class:slot--empty={!symbolIdFor(slot, provider)}
   class:slot--dragging={dragFrom === index}
@@ -164,4 +163,4 @@
   ondragleave={() => { if (over === index) over = null; }}
   ondrop={(event) => drop(event, index)}
   ondragend={clearDrag}
-><CardFace {provider} id={symbolIdFor(slot, provider)} caption={slotCaption(slot)} mirrored={slot.mirrored} negated={slot.negated} />{#if cardCode(sentence, slot)}<AnyMark code={cardCode(sentence, slot)!} />{/if}</div>{/each}<button class="slot-add" type="button" title={t('ui.add_slot')} onclick={() => void handleAddSlot(sentence.id)}>+</button></div></article>
+><CardFace {provider} id={symbolIdFor(slot, provider)} caption={slotCaption(slot)} mirrored={slot.mirrored} negated={slot.negated} />{#if cardCode(sentence, slot)}<AnyStift code={cardCode(sentence, slot)!} mode="card" />{/if}</div>{/each}<button class="slot-add" type="button" title={t('ui.add_slot')} onclick={() => void handleAddSlot(sentence.id)}>+</button></div></article>

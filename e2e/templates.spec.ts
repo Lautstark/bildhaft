@@ -152,7 +152,7 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
      page's ground is its own row under „Seite", „keine" first. All of it in
      the Zeile over the material, and the open preview follows. */
   await showMaterial(page);
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByRole('button', { name: 'Farbe Blau', exact: true }).click();
   await showSheet(page);
   await expect.poll(stroke).toBe('rgb(63, 136, 224)');
@@ -170,7 +170,7 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
 
   // Its name over the board is set as everywhere: size, colour, a line.
   await showMaterial(page);
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Linie darunter').check();
   await page.getByLabel('Schriftgröße', { exact: true }).fill('20');
   await page.getByLabel('Schriftgröße', { exact: true }).press('Tab');
@@ -748,7 +748,7 @@ test('a Rezept takes each part where it stands, and prints them in order', async
   // Rezept's headings with it. And the title can be left off, as everywhere.
   const title = sheet.locator('.ps-title');
   await expect(title).toHaveCSS('border-bottom-style', 'solid');
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Eigene Farbe: Farbe').fill('#118833');
   await expect(title).toHaveCSS('color', 'rgb(17, 136, 51)');
   await page.getByLabel('Titel drucken').uncheck();
@@ -842,14 +842,17 @@ test('a Rezept prints the title from its title line, and its parts under bands',
   expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
     .toBe('rgb(255, 255, 255)');
 
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').uncheck();
   await expect(sheet.locator('.ps-title')).toHaveCount(0);
   await expect(sheet.locator('.ps-title__pic')).toHaveCount(0);
+  // Only for the paper, so Bearbeiten shows it only while it prints (her call, 2026-10-28).
+  await expect(page.locator('main .title-line')).toHaveCount(0);
 
   // Symbol taken out and words emptied, the name prints alone.
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
+  await expect(page.locator('main .title-line')).toHaveCount(1);
   await showMaterial(page);
   await page.getByRole('button', { name: 'Symbol im Titel ändern' }).click();
   await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
@@ -884,8 +887,8 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
   await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
   expect(before.length).toBeGreaterThan(0);
 
-  await openDing(page, 'Seite');
-  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
     all.map((el) => getComputedStyle(el.querySelector(':scope > .ps-any') ?? el).borderRadius === '50%'));
   await expect.poll(() => circles('.ps-recipe-cards .ps-card__img')).toEqual([true]);
@@ -902,12 +905,13 @@ test('a Rezept gives each Schritt one Anybook circle, under its number', async (
 
 /*
  * The codes are set where the material is edited, not on the sheet (her
- * call, 2026-10-27): with Anybook on, a card in Bearbeiten wears a ring, its
- * Symbol dialog says what the pen says, and a Schritt's code has a small sheet
- * of its own. What is typed there is what the sheet's code says; taken off
- * with ✕, the sheet prints none there. Without Anybook nothing of it shows.
+ * call, 2026-10-27), and the Anybook button is their one switch (2026-10-28):
+ * on, every card that gets a code has a field „Stift sagt" under it and a
+ * Schritt one in its head; off, Bearbeiten shows none of it. What is typed
+ * there is what the sheet's code says; taken off with ✕, the sheet prints
+ * none there. Off and on again, nothing is lost (her condition).
  */
-test('a Rezept’s Anybook codes are set in Bearbeiten: a card’s in its Symbol dialog, a Schritt’s in a sheet of its own', async ({ page }) => {
+test('a Rezept’s Anybook codes are set in Bearbeiten, under each card and in each Schritt’s head, and survive the button off and on', async ({ page }) => {
   await pickTemplate(page, /^Rezept/);
   await addRecipeCard(page, 'Zutat', 'Eier', '2 Eier');
   const schritte = page.getByRole('region', { name: 'Schritte' });
@@ -916,35 +920,50 @@ test('a Rezept’s Anybook codes are set in Bearbeiten: a card’s in its Symbol
   await page.getByLabel('Neuer Schritt').press('Enter');
   await expect(schritte.locator('.row')).toHaveCount(1);
   await showSheet(page);
-  await expect(page.locator('main .any-mark')).toHaveCount(0);
+  await expect(page.locator('main .any-pen')).toHaveCount(0);
+  await expect(page.locator('.ding__chip[aria-label="Anybook"]')).toHaveClass(/ding__chip--add/);
 
-  await openDing(page, 'Seite');
-  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  // Pressed while off, the button switches on as it opens (her call): no empty box to tick first.
+  await openDing(page, 'Anybook');
+  await expect(page.getByLabel('Anybook-Codes', { exact: true })).toBeChecked();
+  await expect(page.locator('.ding__chip[aria-label="Anybook"]')).not.toHaveClass(/ding__chip--add/);
   const zutaten = page.getByRole('region', { name: 'Zutaten' });
-  await expect(zutaten.locator('.word .any-mark')).toHaveCount(1);
-  await expect(schritte.locator('.row__head .any-mark')).toHaveCount(1);
+  await expect(zutaten.locator('.word .any-peek')).toHaveCount(1);
+  await expect(schritte.locator('.row__head .any-pen')).toHaveCount(1);
   // A Schritt's pictures carry no code of their own: the Schritt has one.
-  await expect(schritte.locator('.slot .any-mark')).toHaveCount(0);
+  await expect(schritte.locator('.slot .any-peek')).toHaveCount(0);
 
   const sheet = page.locator('.preview-frame');
-  const card = zutaten.locator('.word').first();
-  await card.click();
-  const dialog = page.getByRole('dialog');
-  const says = dialog.getByLabel('Stift sagt');
-  await expect(says).toHaveValue('2 Eier');
-  await says.fill('zwei Eier');
-  await dialog.getByRole('button', { name: 'Fertig' }).click();
+  // Under a card only the words (too small to write in, her call): pressed,
+  // the card's dialog opens with the caret in „Stift sagt".
+  const peek = zutaten.locator('.word .any-peek');
+  await expect(peek).toHaveText('2 Eier');
+  await peek.click();
+  const said = page.getByRole('dialog').getByLabel('Stift sagt');
+  await expect(said).toBeFocused();
+  await said.fill('zwei Eier');
+  await page.getByRole('dialog').getByRole('button', { name: 'Fertig' }).click();
   await expect(sheet.locator('.ps-recipe-cards .ps-any').first()).toHaveAttribute('data-said', 'zwei Eier');
-  await expect(card.locator('.any-mark--own')).toHaveCount(1);
+  await expect(peek).toHaveText('zwei Eier');
+  await expect(peek).toHaveClass(/any-peek--own/);
 
-  await schritte.locator('.row__head .any-mark').click();
-  const step = page.getByRole('dialog', { name: 'Code für Schritt 1' });
-  await expect(step.getByLabel('Stift sagt')).toHaveValue('Eier in die Schüssel');
+  const step = schritte.locator('.row__head .any-pen');
+  await expect(step.locator('input')).toHaveValue('Eier in die Schüssel');
   await step.getByRole('button', { name: 'Code entfernen' }).click();
   await expect(step.getByRole('button', { name: 'Code wieder drucken' })).toBeVisible();
-  await step.getByRole('button', { name: 'Fertig' }).click();
   await expect(sheet.locator('.ps-recipe-step__n > .ps-any')).toHaveClass(/ps-any--off/);
-  await expect(schritte.locator('.row__head .any-mark--off')).toHaveCount(1);
+
+  // Off: nothing of it in Bearbeiten or on the sheet.
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).uncheck();
+  await expect(page.locator('main :is(.any-pen, .any-peek)')).toHaveCount(0);
+  await expect(sheet.locator('.ps-sheet--anybook')).toHaveCount(0);
+  // On again: the words of its own and the code taken off are where they were.
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
+  await expect(zutaten.locator('.word .any-peek')).toHaveText('zwei Eier');
+  await expect(step.getByRole('button', { name: 'Code wieder drucken' })).toBeVisible();
+  await expect(sheet.locator('.ps-recipe-cards .ps-any').first()).toHaveAttribute('data-said', 'zwei Eier');
+  await expect(sheet.locator('.ps-recipe-step__n > .ps-any')).toHaveClass(/ps-any--off/);
 });
 
 /*
@@ -966,9 +985,9 @@ test('a Lied gives each line one Anybook circle, at its start', async ({ page })
   await expect.poll(async () => { const now = await pictures(); const same = JSON.stringify(now) === JSON.stringify(before); before = now; return same; }).toBe(true);
   expect(before.length).toBeGreaterThan(2);
 
-  await openDing(page, 'Seite');
-  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
-  await expect(page.getByRole('button', { name: 'überlappend' })).toHaveCount(0);
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
+  await expect(page.getByRole('radio', { name: 'Ecke rechts oben' })).toHaveCount(0);
   const circles = (selector: string) => sheet.locator(selector).evaluateAll((all) =>
     all.map((el) => getComputedStyle(el.querySelector(':scope > .ps-any') ?? el).borderRadius === '50%'));
   await expect.poll(() => circles('.ps-song-line')).toEqual([true, true]);
@@ -1004,7 +1023,7 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   // A Tafel prints no name until asked; the picture comes and goes with it.
   // One sheet, so it is asked whether, not where.
   await showSheet(page);
-  await openDing(page, 'Seite');
+  await openDing(page, 'Titel');
   await page.getByLabel('Titel drucken').check();
   await expect(page.getByRole('button', { name: 'Jede Seite', exact: true })).toHaveCount(0);
   await showMaterial(page);
@@ -1505,6 +1524,10 @@ test('Wortkarten take a list, and say which cards it makes before Enter', async 
   await expect(page.locator('.words .word:not(.word--add) .word__name'))
     .toHaveText(['Apfel', 'Guten Morgen', '1,5 l Milch'], { useInnerText: true });
 
+  // Wortkarten start without their title; the title line stands only while it prints.
+  await openDing(page, 'Titel');
+  await page.getByLabel('Titel drucken').check();
+
   // Box, head, title, wall — in that order, once there is something to head.
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
   expect(await top('.composer')).toBeLessThan(await top('.collection-head'));
@@ -1552,6 +1575,9 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
   await expect(cells.nth(2).locator('.word__name')).toHaveText('Banane');
   await expect(cells.nth(0)).toHaveClass(/cell--free/);
+  // A Tafel starts without its title; the title line stands only while it prints.
+  await openDing(page, 'Titel');
+  await expect(page.getByLabel('Titel drucken')).toBeChecked();
   expect(await top('.title-line')).toBeLessThan(await top('.board'));
   expect(await top('.board')).toBeLessThan(await top('.board-head'));
 
@@ -1589,8 +1615,8 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   const before = await sizes();
   expect(before.circle).toBe(false);
 
-  await openDing(page, 'Seite');
-  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
   await expect.poll(async () => (await sizes()).circle).toBe(true);
   const after = await sizes();
   expect(after.symbol).toBeCloseTo(before.symbol, 1);
@@ -1636,7 +1662,7 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   });
 
   // Daneben: the card grows to the right by the circle, the symbol keeps its size, the circle is off it.
-  await page.getByRole('button', { name: 'daneben' }).click();
+  await page.getByRole('radio', { name: 'rechts', exact: true }).click();
   await expect.poll(async () => (await against()).width).toBeGreaterThan(before.width + 10);
   const beside = await against();
   expect(beside.symbol).toBeCloseTo(before.symbol, 0);
@@ -1647,7 +1673,7 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   // symbol gives up only what it must, on its bottom line, so the circle lies
   // on the picture's corner by no more than its diameter, width and height
   // together — over the whole box (391f546) it hid most of the picture.
-  await page.getByRole('button', { name: 'überlappend' }).click();
+  await page.getByRole('radio', { name: 'Ecke rechts oben' }).click();
   await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
   const over = await against();
   expect(over.height).toBeCloseTo(before.height, 1);

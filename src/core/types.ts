@@ -728,8 +728,15 @@ export type PaperSize = 'a5' | 'a4';
 export type SheetFit = 'size' | 'card' | 'grid';
 
 /** Where an Anybook sticker's circle goes against a card's symbol. */
-export type AnybookPlace = 'above' | 'beside' | 'over';
-export const ANYBOOK_PLACES: readonly AnybookPlace[] = ['above', 'beside', 'over'];
+/* Where a card's sticker sits (her eight, 2026-10-28): beside the symbol on
+   one of its four sides, with room of its own — 'above' and 'beside' are top
+   and right, the two there were first — or on one of the card's four corners,
+   'over' being the top right one. */
+export type AnybookPlace = 'above' | 'below' | 'left' | 'beside' | 'over-tl' | 'over' | 'over-bl' | 'over-br';
+export const ANYBOOK_PLACES: readonly AnybookPlace[] = ['above', 'below', 'left', 'beside', 'over-tl', 'over', 'over-bl', 'over-br'];
+export const ANYBOOK_CORNERS: readonly AnybookPlace[] = ['over-tl', 'over', 'over-bl', 'over-br'];
+/** On the card's corner, not beside the symbol. */
+export const anybookOver = (place: AnybookPlace): boolean => place === 'over' || place.startsWith('over-');
 
 /**
  * The one font a sheet prints in, title to copyright line (her choice,
@@ -801,8 +808,8 @@ export interface PrintSettings {
   /** Codes taken off the sheet, by the same keys: their place stays free. */
   anybookOff?: string[];
   /**
-   * Whether the activation code stands at the right end of the title on the
-   * first page. Absent is yes; it makes the sheet work with any pen.
+   * Whether the activation code stands in the first page's top right corner.
+   * Absent is no (her call, 2026-10-28): it is asked for, not given.
    */
   anybookActivation?: boolean;
   /** The voice this material's codes speak in, where it is not the household's. */

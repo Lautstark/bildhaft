@@ -1793,6 +1793,68 @@ footer.footer {
   color: var(--text); font: inherit; font-size: 14px;
 }
 .ding__chip:hover, .ding__chip[aria-expanded="true"] { border-color: var(--accent); }
+/* Titel and Anybook (her pick P1, 2026-10-28): off, „+ Titel“ on a dashed
+   pill, as „+ Bild“ is in Bearbeiten; on, a small tick before the name. */
+.ding__chip--add { border-style: dashed; color: var(--text-dim); }
+.ding__plus { font-weight: 700; margin-right: -2px; }
+.ding__ck { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 9.5px; font-weight: 800; }
+
+/* Their menu (her pick M1): a switch at the top, then one row a setting, its
+   name on the left in one column, the setting beside it. */
+.ding__pop--rows { gap: 0; padding: 4px 0 6px; min-width: 340px; }
+.ding-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 16px 12px; font-weight: 650; cursor: pointer; }
+.ding__pop--rows > .ding-head:not(:last-child) { border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.ding-r { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 16px; font-size: 14px; }
+.ding-r > :not(.ding-r__name) { justify-self: start; }
+.ding-r__name { color: var(--text-dim); }
+.ding-r--top { align-items: start; }
+.ding-r--top > .ding-r__name { padding-top: 4px; }
+.ding-r--sw { grid-template-columns: minmax(0, 1fr) auto; cursor: pointer; }
+.ding-r--sw > span { justify-self: stretch; }
+.ding-r--palette { display: block; }
+.ding-r--palette .palette-row { display: grid; grid-template-columns: 84px repeat(8, max-content); gap: 6px; align-items: center; }
+.ding__pop .ding-r--palette .palette-row__name { color: var(--text-dim); min-width: 0; margin-right: 6px; }
+.ding-r__why { margin: 0; padding: 0 16px 8px; }
+.ding-r__foot { margin: 4px 0 0; padding: 8px 16px 4px; border-top: 1px solid var(--line); color: var(--text-dim); }
+
+/* A switch is a checkbox drawn as one: the same control to every reader. */
+.ding-switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .15s; }
+.ding-switch::before { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: left .15s; }
+.ding-switch:checked { background: var(--accent); }
+.ding-switch:checked::before { left: 16px; }
+.ding-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ding-switch:disabled { opacity: .45; cursor: default; }
+.ding-switch--sm { width: 30px; height: 18px; }
+.ding-switch--sm::before { width: 14px; height: 14px; }
+.ding-switch--sm:checked::before { left: 14px; }
+
+/* − 15 pt +: the number still typed in, as before. */
+.ding-step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--surface); }
+.ding-step > button { width: 30px; height: 30px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 16px; cursor: pointer; }
+.ding-step > button:hover:not(:disabled) { background: var(--surface-2); }
+.ding-step > button:disabled { color: var(--text-faint); cursor: default; }
+.ding-step .field { width: 38px; padding: 4px 0; border: 0; border-inline: 1px solid var(--line); border-radius: 0; text-align: right; background: transparent; -moz-appearance: textfield; }
+.ding-step .field::-webkit-inner-spin-button, .ding-step .field::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.ding-step__unit { padding: 0 8px 0 3px; color: var(--muted); font-size: 12.5px; align-self: stretch; display: grid; place-items: center; border-right: 1px solid var(--line); }
+.ding-step .field { border-right: 0; }
+
+/* The eight places, each a small card with its sticker where it would print (her mock). */
+.any-tiles { display: grid; grid-template-columns: repeat(4, 46px); gap: 6px; }
+.any-tiles__name { grid-column: 1 / -1; color: var(--text-dim); }
+.any-tile { position: relative; width: 46px; height: 52px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.any-tile:hover { border-color: var(--text-faint); }
+.any-tile[aria-checked="true"] { border: 2px solid var(--accent); background: var(--accent-soft, var(--surface-2)); }
+.any-tile__pic { position: absolute; left: calc(50% - 10px); top: calc(50% - 10px); width: 20px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 18c-4-2-7-6-6-9.5C5 6 8 6 10 7c2-1 5-1 6 1.5 1 3.5-2 7.5-6 9.5z' fill='%23e5392f' stroke='%232b2523' stroke-width='.8'/%3E%3Cpath d='M10 7c-2-1-3.5-2.5-3-4 1.5.6 2.4 1.4 3 2.5.6-1.1 1.5-1.9 3-2.5.5 1.5-1 3-3 4z' fill='%234caf50' stroke='%232b2523' stroke-width='.6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.any-tile__dot { position: absolute; width: 11px; height: 11px; box-sizing: border-box; border: 1.3px dashed var(--text-dim); border-radius: 50%; background: var(--surface); }
+.any-tile[aria-checked="true"] .any-tile__dot { border-style: solid; border-color: var(--accent); }
+.any-tile--above .any-tile__dot { top: 3px; left: calc(50% - 5.5px); } .any-tile--above .any-tile__pic { top: calc(50% - 5px); }
+.any-tile--below .any-tile__dot { bottom: 3px; left: calc(50% - 5.5px); } .any-tile--below .any-tile__pic { top: calc(50% - 15px); }
+.any-tile--left .any-tile__dot { left: 3px; top: calc(50% - 5.5px); } .any-tile--left .any-tile__pic { left: calc(50% - 5px); }
+.any-tile--beside .any-tile__dot { right: 3px; top: calc(50% - 5.5px); } .any-tile--beside .any-tile__pic { left: calc(50% - 15px); }
+.any-tile--over-tl .any-tile__dot { top: -4px; left: -4px; }
+.any-tile--over .any-tile__dot { top: -4px; right: -4px; }
+.any-tile--over-bl .any-tile__dot { bottom: -4px; left: -4px; }
+.any-tile--over-br .any-tile__dot { bottom: -4px; right: -4px; }
 .ding__dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 1px solid rgba(0, 0, 0, .15); }
 .ding__dd { display: inline-flex; color: var(--muted); margin: 1px -2px 0 0; }
 .ding__chip:hover { border-color: var(--muted); }
@@ -1872,6 +1934,9 @@ footer.footer {
 /* Die Arbeitsfläche zeigt Struktur, nicht Papierform: ihre Felder stehen
    quadratisch, die echten Proportionen stehen rechts auf dem Papier. */
 .work-main .cell { aspect-ratio: 1; }
+/* Mit Anybook steht unter jeder Karte ihr Feld „Stift sagt“: das Feld wird
+   um so viel höher, statt dem Bild den Platz zu nehmen. */
+.work-main .board:has(.any-pen) .cell { aspect-ratio: 1 / 1.25; }
 /* Leer bleibt die Tafel klein genug, dass Spalten und Zeilen darunter im
    Blick sind. */
 .work-main .board:not(:has(.board-card)) { grid-template-columns: repeat(var(--cols), minmax(0, 104px)); }
@@ -1973,12 +2038,9 @@ footer.footer {
 
 /* ---------------------------------------------------------- anybook codes */
 
-/* A field's code in Bearbeiten (AnyMark): a small ring in the card's top left
-   corner, away from its ×; orange for words of its own, struck through in red
-   when it is off. Changed in the Symbol dialog's „Anybook-Stift“ (AnyStift),
-   or in the small code sheet where there is no such dialog. The print
-   preview only shows the codes as they print. */
-:is(.word, .slot):has(> .any-mark) { position: relative; }
+/* The ring that stands for a code: at the start of every „Stift sagt“ field
+   (AnyStift); orange for words of its own, struck through in red when it is
+   off. The print preview only shows the codes as they print. */
 .any-mark {
   box-sizing: border-box;
   width: 18px;
@@ -1989,15 +2051,46 @@ footer.footer {
   background: var(--surface) radial-gradient(circle, var(--text) 0 2.5px, transparent 3px);
   flex: none;
 }
-/* Top left, the card's × mirrored: the same height, the same distance in (her calls). */
-.any-mark--corner { position: absolute; top: 6px; left: 6px; }
-.any-mark--inline { position: relative; cursor: pointer; }
-.any-mark--inline:hover { border-color: var(--accent); }
 /* Words of its own: the whole ring in the accent (her call), not a dot beside it. */
 .any-mark--own { border-color: var(--accent); background: var(--surface) radial-gradient(circle, var(--accent) 0 2.5px, transparent 3px); }
 .any-mark--off { border-color: var(--danger); background: var(--surface) linear-gradient(135deg, transparent calc(50% - 1px), var(--danger) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
 .any-mark--still { display: inline-block; vertical-align: -3px; margin-right: 6px; }
-.row__head > .any-mark--inline { margin-right: 4px; }
+
+/* In Bearbeiten, while the Anybook button is on (2026-10-28, her call): one
+   small field under each card that gets a code, in a Schritt's or a Lied
+   line's head, before the title. The words the pen says by itself stand
+   pale; words of its own dark, in an accent frame. */
+.any-peek { display: flex; align-items: flex-start; gap: 5px; width: 100%; min-width: 0; margin-top: 4px; padding: 2px 2px 0; box-sizing: border-box; font-size: 12px; line-height: 1.3; color: var(--text-dim); text-align: left; }
+.any-peek .any-mark--still { width: 12px; height: 12px; border-width: 1.5px; margin: 1px 0 0; background-size: auto; }
+.any-peek__words { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.any-peek--own { color: var(--text); }
+.any-peek--off { color: var(--danger); }
+.any-pen--line { flex: none; width: min(100%, 360px); }
+/* Under the words they belong to (her call, 2026-10-28): a title's, a
+   question's, a Schritt's or a Lied line's — the words first, then the pen. */
+.title-line__words, .row__words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.title-line__words > .title-line__text, .row__words > .row__title { flex: none; align-self: stretch; }
+.title-line__words > .any-pen--line { margin-left: 8px; }
+.row__words > .any-pen--line { margin-left: -1px; }
+.any-stift__say--small {
+  gap: 1px; padding: 0 2px 0 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
+}
+.any-stift__say--small:focus-within { border-color: var(--text-faint); }
+.any-stift__say--small .any-mark--still { width: 13px; height: 13px; border-width: 1.5px; margin-right: 4px; background-size: auto; }
+.any-stift__say--small .field { padding: 3px 0; border: 0; background: transparent; box-shadow: none; font-size: 12.5px; color: var(--text-dim); min-height: 0; height: auto; }
+.any-stift__say--small .field:focus { outline: none; color: var(--text); }
+.any-stift__say--line .field { font-size: 13.5px; }
+.any-stift__say--own { border-color: var(--accent); }
+.any-stift__say--own .field { color: var(--text); }
+.any-stift__say--small.any-stift__say--off { border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
+.any-stift__say--small.any-stift__say--off .field { color: var(--danger); opacity: 1; }
+/* ▶ and ✕ only while the field is pointed at or typed in: under a narrow
+   card the words need the room. A code taken off keeps its ↺ in sight. */
+.any-stift__say--small > button.btn { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; min-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text-faint); font-size: 10px; line-height: 1; cursor: pointer; border-radius: 50%; }
+.any-stift__say--small > button.btn:hover { color: var(--text); background: var(--surface-2); }
+.any-stift__say--card:not(:hover, :focus-within, .any-stift__say--off) > button.btn { display: none; }
+.any-stift__say--card { min-height: 24px; }
+.any-pen--card .any-stift__error { margin: 2px 0 0; font-size: 11px; }
 
 .any-stift { display: grid; gap: 6px; margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .any-stift__head { margin: 0; font-size: 14px; font-weight: 650; }

@@ -288,6 +288,13 @@ export interface SheetPlan {
 /** A sheet that has been measured for neither of the two answers yet. */
 export const UNPLANNED: SheetPlan = { rows: null, pages: null };
 
+/* The sheet's blocks, as pages are packed from them. The activation code
+   stands first on a sheet still unpaged, lying over its corner, and is no
+   block: counted, it pushed every page's plan one block on and the first page
+   ran over its foot (her test print, 2026-10-28). */
+const blocksOf = (sheet: HTMLElement): HTMLElement[] =>
+  ([...sheet.children] as HTMLElement[]).filter((one) => !one.classList.contains('ps-any--start'));
+
 /** A block's own height and the margins above and below it, in pixels. */
 function outer(node: HTMLElement): { top: number; height: number; bottom: number } {
   const style = getComputedStyle(node);
@@ -378,7 +385,7 @@ export function stripLines(sheet: HTMLElement, settings: PrintSettings): (number
  * A group is the unit, never a line: a line sung „2×" goes with its bar.
  */
 export function songPieces(sheet: HTMLElement, settings: PrintSettings): (number[] | null)[] | null {
-  const blocks = [...sheet.children] as HTMLElement[];
+  const blocks = blocksOf(sheet);
   const credit = blocks.at(-1)?.classList.contains('ps-attribution') ? blocks.pop()! : null;
   const limit = pageRoom(credit, settings);
   const heading = blocks.find((block) => block.classList.contains('ps-title'));
@@ -499,7 +506,7 @@ const FIT_TOLERANCE = 0.5;
  * now, applied by the component in the paint before this one.
  */
 export function planPages(sheet: HTMLElement, settings: PrintSettings): number[] {
-  const blocks = [...sheet.children] as HTMLElement[];
+  const blocks = blocksOf(sheet);
   /*
    * The credit block is not packed with the rest. It is the foot of every
    * page — one line with the page number at its right — so that a sheet
@@ -697,7 +704,7 @@ export type Block =
      going on. */
   | { kind: 'song-part'; part: SongPartKind; n: number; groups: { lines: Sentence[]; times: number }[]; more: boolean }
   | { kind: 'song-again' }
-  | { kind: 'talk-page'; pictures: Slot[]; text: string; count: number; geo: TalkGeometry }
+  | { kind: 'talk-page'; id: string | null; pictures: Slot[]; text: string; count: number; geo: TalkGeometry }
   | { kind: 'talk-cut'; slots: Slot[]; cols: number; geo: TalkGeometry }
   /* One sheet of a Spiel: each row its free cells' Ablage fields, then its
      cells in their own order — a printed card, or the field where one is
@@ -1167,7 +1174,7 @@ export function sheetBlocks(
          its caption. */
       const first = one.question?.slots[0];
       const text = one.question?.rawInput || (first ? slotCaption(first) : '');
-      blocks.push({ kind: 'talk-page', pictures: picturesOf(one.question), text, count: room, geo });
+      blocks.push({ kind: 'talk-page', id: one.question?.id ?? null, pictures: picturesOf(one.question), text, count: room, geo });
     }
     const cards = shown.flatMap((one) => one.sayings.flatMap((sentence) => sentence.slots.slice(0, 1)));
     if (cards.length > 0 && cut !== 'none') {

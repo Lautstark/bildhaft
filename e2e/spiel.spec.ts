@@ -37,6 +37,25 @@ async function pick(page: import('@playwright/test').Page, scope: ReturnType<imp
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
+/*
+ * A field the „+" just made opens on its search with the caret in it, says
+ * nothing about wanting a word, and the square shows the pick at once — not
+ * after the field has been written (her calls, 2026-10-28).
+ */
+test('ein neues Feld öffnet mit dem Cursor in der Suche und zeigt das gewählte Bild sofort', async ({ page }) => {
+  const row = page.locator('.game__row').first();
+  await row.getByRole('button', { name: '+ Bild' }).click();
+  const search = page.getByLabel('Symbol suchen');
+  await expect(search).toBeFocused();
+  await expect(page.locator('.picker__status')).toHaveCount(0);
+  await search.fill('Apfel');
+  await search.press('Enter');
+  await page.locator('.picker__item', { hasText: 'Apfel' }).first().click();
+  await expect(page.locator('.picker__tile img')).toBeVisible();
+  await closePicker(page);
+  await expect(row.locator('.word img')).toHaveCount(1);
+});
+
 test('ein Spiel baut sich Zeile für Zeile, und druckt Blatt und Kartenbogen', async ({ page }) => {
   // An empty Spiel already shows its first row: the two tiles, no typing box.
   const rows = page.locator('.game__row');
@@ -245,10 +264,11 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   await pick(page, rows.first(), '+ Bild', 'Apfel');
   await pick(page, rows.first(), '+ Platzhalter', 'Birne');
 
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
-  await page.getByLabel('Platzhalter für Anybook-Sticker').check();
-  // A Spiel's cards have no room above their symbol: the circle only overlaps, nothing to choose.
-  await expect(page.getByRole('button', { name: 'darüber' })).toHaveCount(0);
+  await page.locator('.ding__chip[aria-label="Anybook"]').click();
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
+  // A Spiel's cards have no room beside their symbol: the circle only goes on one of the four corners.
+  await expect(page.getByRole('radiogroup', { name: 'Platz' }).getByRole('radio')).toHaveCount(4);
+  await expect(page.getByRole('radio', { name: 'oben', exact: true })).toHaveCount(0);
   await showSheet(page);
 
   /* The circle is the code element on the card, at its top right; what
@@ -309,14 +329,14 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
   expect(Math.max(...symbols)).toBeLessThanOrEqual(0.2);
   expect(Math.min(...symbols)).toBeGreaterThanOrEqual(-0.2);
 
-  // A Spiel's cards are given: no room beside a symbol in the middle, so no „daneben“.
-  await expect(page.getByRole('button', { name: 'daneben' })).toHaveCount(0);
+  // A Spiel's cards are given: no room beside a symbol in the middle, so no „rechts“.
+  await expect(page.getByRole('radio', { name: 'rechts', exact: true })).toHaveCount(0);
 });
 
 test('auf A5 bietet das Spiel kein Anybook an: ausgegraut, mit dem Grund darunter, und der Bogen hat keinen Kreis', async ({ page }) => {
   await pick(page, page.locator('.game__row').first(), '+ Bild', 'Apfel');
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
-  const box = page.getByLabel('Platzhalter für Anybook-Sticker');
+  await page.locator('.ding__chip[aria-label="Anybook"]').click();
+  const box = page.getByLabel('Anybook-Codes', { exact: true });
   await box.check();
   await showSheet(page);
   await expect(page.locator('.preview-frame .ps-sheet--anybook').first()).toBeVisible();
@@ -325,7 +345,7 @@ test('auf A5 bietet das Spiel kein Anybook an: ausgegraut, mit dem Grund darunte
   await page.locator('.paper-pick__pop').getByRole('button', { name: 'A5', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.preview-frame .ps-sheet--anybook')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Seite', exact: true }).click();
+  await page.locator('.ding__chip[aria-label="Anybook"]').click();
   await expect(box).toBeDisabled();
   await expect(box).not.toBeChecked();
   await expect(page.getByText('Auf A5 sind die Karten zu klein für einen Anybook-Sticker. Auf A4 geht es.')).toBeVisible();

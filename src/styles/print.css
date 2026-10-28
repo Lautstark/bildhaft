@@ -239,7 +239,7 @@
   align-items: center;
   justify-content: center;
   gap: 1mm;
-  width: calc(var(--sym) + var(--any-right, 0mm) + 2 * var(--cut));
+  width: calc(var(--sym) + var(--any-left, 0mm) + var(--any-right, 0mm) + 2 * var(--cut));
   /* The cut line is part of the margin rather than added to it. The width
      already holds the border (border-box); the height is the padding, the
      symbol and the border, so the border comes off the padding — otherwise
@@ -283,7 +283,7 @@
 }
 
 .ps-card__label {
-  width: calc(var(--sym) + var(--any-right, 0mm) + 2 * var(--cut) - 1mm);
+  width: calc(var(--sym) + var(--any-left, 0mm) + var(--any-right, 0mm) + 2 * var(--cut) - 1mm);
   font-size: var(--label);
   line-height: 1.15;
   text-align: center;
@@ -298,7 +298,7 @@
  * half, and a laminating pouch would seal onto ink instead of paper.
  */
 .ps-card--framed {
-  width: calc(var(--sym) + var(--any-right, 0mm) + 2 * (var(--cut) + var(--frame-pad) + var(--frame-w)));
+  width: calc(var(--sym) + var(--any-left, 0mm) + var(--any-right, 0mm) + 2 * (var(--cut) + var(--frame-pad) + var(--frame-w)));
 }
 .ps-card__frame {
   box-sizing: border-box;
@@ -962,16 +962,18 @@
  * growing card before, it hid the picture. The circle never makes a symbol
  * bigger. One host for all since 2026-10-27.
  */
-.ps-sheet--anybook:not(.ps-sheet--any-over) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
+.ps-sheet--anybook:not(.ps-sheet--any-over, .ps-sheet--any-below) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img),
 .ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img),
+.ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img),
 .ps-sheet--anybook :is(.ps-recipe-step__n, .ps-song-line:has(img)) {
   position: relative;
 }
 /* The code is its own element (AnyCode.svelte), shown only where a rule
    below gives it a place. */
 .ps-any { display: none; }
-.ps-sheet--anybook:not(.ps-sheet--any-over) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any,
+.ps-sheet--anybook:not(.ps-sheet--any-over, .ps-sheet--any-below) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any,
 .ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any,
+.ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) > .ps-any,
 .ps-sheet--anybook .ps-recipe-step__n > .ps-any,
 .ps-sheet--anybook .ps-song-line:has(img) > .ps-any {
   display: block;
@@ -990,8 +992,27 @@
   left: calc(50% - 4.75mm);
 }
 /* Beside: right of the symbol, at its middle. */
-.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any {
+/* Said as strongly as the rule that sets every circle at the top right, or it loses to it. */
+.ps-sheet.ps-sheet--anybook.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any {
   top: calc(50% - 4.75mm);
+}
+/* Below: under the word, in the middle (her eight, 2026-10-28) — the word
+   stays with its picture, and the card grows by the circle at its foot. */
+.ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) {
+  padding-bottom: calc(var(--any-foot, max(0mm, var(--cut) - 0.2mm)) + 10.5mm);
+}
+.ps-sheet--any-below .ps-card--framed > .ps-card__frame { --any-foot: var(--frame-pad); }
+.ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) > .ps-any {
+  top: auto;
+  bottom: var(--any-foot, max(0mm, var(--cut) - 0.2mm));
+  right: auto;
+  left: calc(50% - 4.75mm);
+}
+/* Left: left of the symbol, at its middle. */
+.ps-sheet.ps-sheet--anybook.ps-sheet--any-left .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any {
+  top: calc(50% - 4.75mm);
+  right: auto;
+  left: 0;
 }
 
 /* The Schritt's number stands over its circle, the column as wide as the
@@ -1025,6 +1046,7 @@
   gap: 2mm;
 }
 .ps-sheet--anybook .ps-title > .ps-any--title,
+.ps-sheet--anybook .ps-talk__band > .ps-any,
 .ps-sheet--anybook .ps-any--start {
   display: block;
   flex: none;
@@ -1069,12 +1091,16 @@
 .ps-studio .ps-sheet--any-over .ps-any:not(.ps-any--title, .ps-any--start) {
   translate: -1.5mm 1.5mm;
 }
+.ps-studio .ps-sheet--any-over-tl .ps-any:not(.ps-any--title, .ps-any--start) { translate: 1.5mm 1.5mm; }
+.ps-studio .ps-sheet--any-over-bl .ps-any:not(.ps-any--title, .ps-any--start) { translate: 1.5mm -1.5mm; }
+.ps-studio .ps-sheet--any-over-br .ps-any:not(.ps-any--title, .ps-any--start) { translate: -1.5mm -1.5mm; }
 
 /* The room, said once: on top for above, on the right for beside. */
 .ps-sheet--any-above { --any-top: 10.5mm; }
+.ps-sheet--any-left { --any-left: 10.5mm; }
 .ps-sheet--any-beside { --any-right: 10.5mm; }
 /* A card that gets no circle gets no room: a Schritt's pictures, a place. */
-:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card { --any-right: 0mm; }
+:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card { --any-left: 0mm; --any-right: 0mm; }
 
 /* Above and beside — growing: the room comes on top of the symbol. Given: it comes off it. */
 .ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
@@ -1084,7 +1110,7 @@
   box-sizing: border-box;
 }
 .ps-sheet--anybook .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) {
-  padding: var(--any-top, 0mm) var(--any-right, 0mm) 0 0;
+  padding: var(--any-top, 0mm) var(--any-right, 0mm) 0 var(--any-left, 0mm);
 }
 
 /* A Spiel's and a Plauderbuch's box is the symbol's own size, with the
@@ -1136,10 +1162,18 @@
   top: 1mm;
   right: 1mm;
 }
+/* The other three corners (her eight, 2026-10-28), 1 mm in as the first. On a
+   bottom corner the symbol gives up its room from below: it keeps its top line. */
+.ps-sheet--any-over-tl :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { right: auto; left: 1mm; }
+.ps-sheet--any-over-bl :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { top: auto; bottom: 1mm; right: auto; left: 1mm; }
+.ps-sheet--any-over-br :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { top: auto; bottom: 1mm; }
 .ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic) img {
   max-width: var(--any-s);
   max-height: var(--any-s);
   translate: 0 calc((var(--any-s0) - var(--any-s)) / 2);
+}
+:is(.ps-sheet--any-over-bl, .ps-sheet--any-over-br) :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic) img {
+  translate: 0 calc((var(--any-s) - var(--any-s0)) / 2);
 }
 
 /* ----------------------------------------------------------------- spiel */
