@@ -173,7 +173,9 @@
   align-items: center;
   gap: 2mm;
 }
-.ps-title--pictured > span { margin-left: 3mm; }
+/* Not the pictures themselves, which are spans too: the first stands at the
+   left edge, as the bands under it do. */
+.ps-title--pictured > span:not(.ps-title__pic) { margin-left: 3mm; }
 .ps-title__pic {
   flex: none;
   display: grid;

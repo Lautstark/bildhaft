@@ -859,6 +859,10 @@ test('a Rezept prints the title from its title line, and its parts under bands',
   await expect(sheet.locator('.ps-title .ps-title__pic img')).toBeVisible();
   await expect(sheet.locator('.ps-title')).toHaveText('Bananenpfannkuchen');
   await expect(sheet.locator('.ps-recipe-head')).toHaveText(['Zutaten']);
+  /* The title's picture at the left edge, where the bands begin: the words'
+     3 mm once caught the picture too (2026-10-28). */
+  const left = async (selector: string) => (await sheet.locator(selector).first().boundingBox())!.x;
+  expect(Math.abs(await left('.ps-title__pic') - await left('.ps-recipe-head'))).toBeLessThan(0.5);
   expect(await sheet.locator('.ps-recipe-head').first().evaluate((el) => getComputedStyle(el).color))
     .toBe('rgb(255, 255, 255)');
 
