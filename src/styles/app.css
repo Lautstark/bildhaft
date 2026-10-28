@@ -1459,6 +1459,7 @@ footer.footer {
 .board-card img { -webkit-user-drag: none; user-select: none; }
 .board-card:active { cursor: grabbing; }
 .board-card--dragging { opacity: .35; }
+.board-card--over { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
 /* The move for a keyboard, where a mouse has the drag. Beside the delete cross
    and hidden the same way, for the same reason: a wall of arrows is a wall of
    things to do. */

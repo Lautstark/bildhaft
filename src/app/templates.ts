@@ -315,9 +315,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
 
   /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
      into an A5 ring binder. Every paper and either way up, as everywhere;
-     the fields and the cards grow with it (talkGeometry), and which way up
-     and whether the cards carry their word decide how many Antworten a page
-     holds (talkCapacity). Always to velcro — empty fields on the pages, the
+     the paper and which way up decide how many Antworten a page holds
+     (talkCapacity), whether the cards carry their word their shape
+     (talkGeometry). Always to velcro — empty fields on the pages, the
      cards on sheets of their own, the laminate's seam smaller than a field —
      and always a free field for the answer. Seite and Symbol as everywhere;
      its own menu has the band's colour and the free field's line, a Spiel's

@@ -1312,9 +1312,10 @@ async function pickCard(page: import('@playwright/test').Page, scope: import('@p
  * symbols. An Antwort is a card added by the wall's „+"; there is no „✎
  * Text". On paper each page is a sheet with its question on the band, a
  * free field, and every field the page holds, however many Antworten it
- * has — eight square ones on A5 across, ten upright with the word; more
- * Antworten wait under the
- * page, as cards beside a Tafel do, and are not printed, and a waiting card
+ * has — three on A5 across, square, upright with the word, nine on A4
+ * standing; more Antworten wait under the page, as cards beside a Tafel
+ * do, are not printed, come onto the page on a paper that holds them, and
+ * a waiting card
  * dropped on one on the page changes places with it; the cards follow on
  * sheets of their own, cut lines on, the laminate's seam smaller than a
  * field, which carry no footer and are not counted in the page numbers; the
@@ -1360,17 +1361,17 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   const words = ['Apfel', 'Ball', 'Hund', 'Katze', 'Maus', 'Baum', 'Haus', 'Auto', 'Kuchen'];
   for (const word of words) await pickCard(page, asked, 'Antwort zu „Was ich erzähle“ hinzufügen', word);
 
-  // Eight fit on the page; the ninth waits under it, with the „+".
-  await expect(asked.locator('.talk__sayings .word__name')).toHaveText(words.slice(0, 8));
+  // Three fit on A5 across; the rest wait under it, with the „+".
+  await expect(asked.locator('.talk__sayings .word__name')).toHaveText(words.slice(0, 3));
   const tray = asked.locator('.talk__tray');
   await expect(tray.locator('.tray__head b')).toHaveText('Passt nicht mehr auf die Seite');
-  await expect(tray.locator('.word__name')).toHaveText(['Kuchen']);
+  await expect(tray.locator('.word__name')).toHaveText(words.slice(3));
   await expect(asked.locator('.talk__sayings .word--add')).toHaveCount(0);
   await expect(tray.locator('.word--add')).toHaveCount(1);
   // Dropped on a card on the page, the waiting one takes its place.
-  await tray.locator('.board-card').first().dragTo(asked.locator('.talk__sayings .board-card').nth(7));
-  await expect(asked.locator('.talk__sayings .word__name').nth(7)).toHaveText('Kuchen');
-  await expect(tray.locator('.word__name')).toHaveText(['Auto']);
+  await tray.locator('.board-card').first().dragTo(asked.locator('.talk__sayings .board-card').nth(2));
+  await expect(asked.locator('.talk__sayings .word__name').nth(2)).toHaveText('Katze');
+  await expect(tray.locator('.word__name').first()).toHaveText('Hund');
 
   // A new page, named by its place while it has no question.
   await page.getByRole('button', { name: '+ Seite' }).click();
@@ -1389,31 +1390,39 @@ test('a Plauderbuch is written page by page, and prints its pages and the cards 
   await expect(sheet.locator('.ps-page--whole .ps-talk-cut')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Papier wählen' })).toHaveText('A5 quer · 2 pro A4 · 2 Blatt');
   // One sheet a page, its question's symbols and words on the band, all
-  // eight square fields on every page — what waits is not printed.
+  // three square fields on every page — what waits is not printed.
   const pages = sheet.locator('.ps-talk');
   await expect(pages).toHaveCount(2);
   await expect(pages.nth(0).locator('.ps-talk__question')).toHaveText('Was ich erzähle');
   await expect(pages.nth(0).locator('.ps-talk__band .ps-title__pic')).toHaveCount(2);
   await expect(sheet.locator('.ps-talk__field--free')).toHaveCount(2);
   expect(await pages.evaluateAll((all) => all.map((one) =>
-    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([8, 8]);
+    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([3, 3]);
   const mm = (where: string, name: string) => sheet.locator(where).first().evaluate((node, prop) =>
     parseFloat(getComputedStyle(node).getPropertyValue(prop)), name);
   await expect.poll(async () => await mm('.ps-talk', '--talk-w') - await mm('.ps-talk', '--talk-h')).toBeCloseTo(0, 2);
   // The cards to cut: square, no word, the laminate's 2 mm a side smaller, cut lines on.
   const cut = sheet.locator('.ps-talk-cut');
-  await expect(cut.locator('.ps-talk__card')).toHaveCount(9);
+  await expect(cut.locator('.ps-talk__card')).toHaveCount(4);
   await expect(cut.locator('.ps-talk__word')).toHaveCount(0);
   await expect.poll(async () => await mm('.ps-talk', '--talk-w') - await mm('.ps-talk-cut', '--talk-w')).toBeCloseTo(4, 2);
   await expect(sheet.locator('.ps-sheet')).toHaveClass(/ps-sheet--cutlines/);
 
-  // With the word the cards stand upright and ten fit: nothing waits any more.
+  // With the word the cards stand upright, as many as before.
   await openDing(page, 'Symbol');
   await page.getByLabel('Beschriftung drucken').check();
-  await expect(asked.locator('.talk__tray')).toHaveCount(0);
-  await expect(asked.locator('.talk__sayings .word__name')).toHaveCount(9);
   await expect.poll(async () => await mm('.ps-talk', '--talk-w') / await mm('.ps-talk', '--talk-h')).toBeCloseTo(0.75, 2);
-  await expect(cut.locator('.ps-talk__word')).toHaveText([...words.slice(0, 7), 'Kuchen', 'Auto', 'Stern']);
+  await expect(tray.locator('.word__name')).toHaveCount(6);
+  await expect(cut.locator('.ps-talk__word')).toHaveText(['Apfel', 'Ball', 'Katze', 'Stern']);
+  // A4 standing holds nine: what waited comes onto the page by itself,
+  // and only the „+" is left under it.
+  await pickPaper(page, 'A4');
+  await pickPaper(page, 'Hoch');
+  await expect(tray.locator('.word__name')).toHaveCount(0);
+  await expect(asked.locator('.talk__sayings .word__name')).toHaveCount(9);
+  expect(await pages.evaluateAll((all) => all.map((one) =>
+    one.querySelectorAll('.ps-talk__fields .ps-talk__field').length))).toEqual([9, 9]);
+  await expect(cut.locator('.ps-talk__word')).toHaveText(['Apfel', 'Ball', 'Katze', 'Hund', ...words.slice(4), 'Stern']);
 
   // Its own colours: the band and the free field's line.
   await openDing(page, 'Plauderbuch');
