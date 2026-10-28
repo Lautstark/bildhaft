@@ -1091,14 +1091,15 @@
 }
 .ps-studio .ps-sheet--anybook .ps-any--start { --any-ring: transparent; }
 /* How near a code comes to a card's edge, said once for every place and
-   both sheets (her call, 2026-10-28): Studio's code, about 10 mm across,
-   1.5 mm from the cut line — the sticker's 9.5 mm circle, on the same
-   middle, 1.75 mm; 2 mm cost a Spiel's small symbols too much. Studio's code stands where the sticker does; nothing moves it
+   both sheets (her call, 2026-10-28): Studio's code, 10.8 mm across
+   (anybook.ts, STUDIO_CODE_MM), 1.5 mm from the cut line — the sticker's
+   9.5 mm circle, on the same middle, 2.15 mm; 2 mm cost a Spiel's small
+   symbols too much. Studio's code stands where the sticker does; nothing moves it
    on its own sheet. In a corner that is --any-in (below); above, below,
    left and right the circle keeps it however narrow the Rand: --any-edge
    is what the Rand lacks of it, added to the room, and below to the foot. */
 .ps-sheet--anybook {
-  --any-gap: 1.75mm;
+  --any-gap: 2.15mm;
   --any-edge: max(0mm, var(--any-gap) - var(--cut));
 }
 

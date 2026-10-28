@@ -38,9 +38,11 @@ export function anybookMark(settings: { anybookSay?: Record<string, string>; any
 /**
  * How wide Studio draws a code, in millimetres. It anchors a code by its top
  * left corner, so a code meant to sit on a circle's centre is written half of
- * this up and to the left. Measured in mitreden by placing codes and looking.
+ * this up and to the left. Measured in mitreden by placing codes and looking
+ * (10 mm), and again on her Spiel printed from Studio (2026-10-28): 10.8 mm,
+ * at 10 its code stood 0.8 mm nearer the right edge than the top.
  */
-export const STUDIO_CODE_MM = 10;
+export const STUDIO_CODE_MM = 10.8;
 
 /** One code on the sheet: where its centre is, and which recording it plays. */
 export interface PlacedCode {
