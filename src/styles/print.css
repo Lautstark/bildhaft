@@ -697,12 +697,12 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 7mm;
-  height: 7mm;
+  width: 9.5mm;
+  height: 9.5mm;
   border-radius: 50%;
   background: var(--recipe);
   color: #fff;
-  font-size: 11pt;
+  font-size: 14pt;
   font-weight: 700;
 }
 .ps-recipe-step__slots {
@@ -1015,13 +1015,11 @@
   left: 0;
 }
 
-/* The Schritt's number stands over its circle, as big as it (her call,
-   2026-10-28): the two make one column; the Schritt is no taller. */
+/* The Schritt's number stands over its circle, as big as it — the number
+   is that size always (her call, 2026-10-28): the two make one column; the
+   Schritt is no taller. */
 .ps-sheet--anybook .ps-recipe-step__n {
-  width: 9.5mm;
-  height: 9.5mm;
   margin: 0 0 12.5mm;
-  font-size: 14pt;
 }
 .ps-sheet--anybook .ps-recipe-step__n > .ps-any {
   top: calc(100% + 3mm);
