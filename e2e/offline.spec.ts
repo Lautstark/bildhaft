@@ -74,6 +74,18 @@ const ALLOWED = new Map([
   // ever print to the console. Same shape as rolldown.rs above, and the test
   // below that opens the page still sees this origin and no other.
   ['svelte.dev', "a documentation link in Svelte's runtime error messages"],
+  // Fetched, and only for the Anybook codes: the piper voice model, once, the
+  // first time a code is heard or a Studio file made. Declared — „Stimmen von
+  // Hugging Face". (Azure's host is built from the region at runtime and named
+  // nowhere here; it is declared too, „Azure Speech, nur auf eigenen Wunsch".)
+  ['huggingface.co', 'the voice model for the Anybook codes, fetched once'],
+  // Never fetched: strings inside stimmquelle's voice catalogue (a voice's
+  // licence and its speaker's page) and in the libraries it speaks through —
+  // onnxruntime's documentation link, lamejs's banner.
+  ['creativecommons.org', "a voice's licence, in stimmquelle's catalogue"],
+  ['www.caito.de', "the Thorsten voice's home, in stimmquelle's catalogue"],
+  ['web.dev', "a documentation link in onnxruntime-web's runtime"],
+  ['www.mp3dev.org', "lamejs's banner"],
 ]);
 
 /**

@@ -194,7 +194,8 @@ test('the settings sheet, as it opens', async ({ page }) => {
   /* No panel is touched first: which one is open on arrival is a decision — see
      settingsDialog.ts on why it is Sprache — and a column of headings with
      exactly one of them unfolded is what this shot is of. */
-  await expect(sheet.locator('details.panel')).toHaveCount(7);
+  // Nine since the Anybook codes: their Stimme and Azure Speech came in.
+  await expect(sheet.locator('details.panel')).toHaveCount(9);
   await expect(sheet).toHaveScreenshot('settings-sheet.png', { mask: dynamic(page) });
 });
 

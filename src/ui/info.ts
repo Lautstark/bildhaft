@@ -120,8 +120,9 @@ const impressum = (): InfoPage =>
 /**
  * The information Article 13 GDPR asks for. It gets by without the usual
  * boilerplate because almost nothing happens here: there is no server for
- * anything to land on. What still has to be named is what the host logs, and
- * that an ARASAAC request carries the IP address with it.
+ * anything to land on. What still has to be named is what the host logs, that
+ * an ARASAAC request carries the IP address with it, and — for the Anybook
+ * codes — the voice fetched from Hugging Face and, on her own key, Azure.
  */
 const privacy = (): InfoPage =>
   page('privacy', t('ui.privacy'), [
@@ -137,6 +138,10 @@ const privacy = (): InfoPage =>
     })),
     h3(t('info.shelf')),
     para(t('info.shelf_body')),
+    h3(t('info.voices')),
+    para(t('info.voices_body')),
+    h3(t('info.azure')),
+    para(t('info.azure_body')),
     h3(t('info.storage')),
     para(t('info.storage_body')),
     h3(t('info.not_happening')),
