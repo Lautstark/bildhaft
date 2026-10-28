@@ -1018,10 +1018,10 @@
 /* The Schritt's number stands over its circle, the column as wide as the
    circle, the row as tall as the two. */
 .ps-sheet--anybook .ps-recipe-step__n {
-  margin: 0 1.25mm 11mm;
+  margin: 0 1.25mm 12.5mm;
 }
 .ps-sheet--anybook .ps-recipe-step__n > .ps-any {
-  top: calc(100% + 1.5mm);
+  top: calc(100% + 3mm);
   right: auto;
   left: calc(50% - 4.75mm);
 }
