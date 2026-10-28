@@ -301,6 +301,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
       cardBackground: '#ffffff',
       accentColour: '#e0558c', gameGroundColour: '#fdeef3',
       ...HEADED, titleColour: '#e0558c', showPageNumbers: false,
+      /* It goes into a folder, so it comes punched: at the top, where a sheet
+         lying on its side is filed. No marks, the punch has its own stop. */
+      punch: 'top', punchMarks: false,
     }),
     // Its cards have no room above their symbol: the Anybook circle lies over its corner.
     // On A5 a card is too small for the sticker at all (her call, 2026-10-27).

@@ -37,13 +37,13 @@ export function printFor(
  * What a Sammlung set for itself: where `print` differs from what its
  * template gives by itself, and nothing else. Only the difference, so that a
  * Sammlung given another template takes that template's defaults rather than
- * carrying the last one's, and the household's copyright choice not at all.
+ * carrying the last one's.
  */
 export function ownPrint(which: CollectionKind, print: PrintSettings, board: Board | null): Partial<PrintSettings> {
   const plain = printFor(DEFAULT_PRINT_SETTINGS, which, board);
   const own: Partial<Record<keyof PrintSettings, unknown>> = {};
   for (const key of Object.keys(print) as (keyof PrintSettings)[]) {
-    if (key !== 'showCopyright' && print[key] !== plain[key]) own[key] = print[key];
+    if (print[key] !== plain[key]) own[key] = print[key];
   }
   return own as Partial<PrintSettings>;
 }
@@ -61,12 +61,12 @@ async function keepPrint(print: PrintSettings): Promise<void> {
 
 /**
  * What every Sammlung's print starts from, under its template's defaults and
- * what it set for itself: the same for all of them. Only whether the METACOM
- * notice prints is the household's, because it is about passing paper on,
- * not about any one material.
+ * what it set for itself: the same for all of them. Whether the METACOM
+ * notice prints is the material's too — one is handed on, the next stays at
+ * home (her call, 2026-10-28).
  */
 function printBase(): PrintSettings {
-  return { ...DEFAULT_PRINT_SETTINGS, showCopyright: s.settings!.print.showCopyright };
+  return { ...DEFAULT_PRINT_SETTINGS };
 }
 
 /**
@@ -99,6 +99,19 @@ const PRINT_STEPS: PrintStep[] = [
   /* 2026-10-27: a Spiel starts without its word. One that printed with it
      because that was the template's answer keeps printing with it. */
   (which, own) => (which === 'spiel' && !('showLabel' in own) ? { ...own, showLabel: true } : own),
+  /* 2026-10-28: whether the METACOM notice prints was the household's, one
+     switch for every material. Each keeps what it printed with, and from
+     here the switch is its own. */
+  (_which, own, _collection, household) =>
+    (household.showCopyright && !('showCopyright' in own) ? { ...own, showCopyright: true } : own),
+  /* 2026-10-28: a Spiel opens punched at the top, without marks. One that
+     printed unpunched, or punched with marks, because that was the
+     template's answer stays so. */
+  (which, own) => {
+    if (which !== 'spiel') return own;
+    if (!('punch' in own)) return { ...own, punch: null };
+    return own.punch && !('punchMarks' in own) ? { ...own, punchMarks: true } : own;
+  },
 ];
 
 /** The steps not yet run in this browser, over every Sammlung. */
@@ -173,16 +186,9 @@ export async function openSavedPdf(saved: SavedPdf): Promise<void> {
 export function printOptions(): PrintOptions | null {
   const open = activeCollection();
   return buildOptions(open, s.sentences, kind(), {
-    onChange: (print: PrintSettings) => {
-      if (!s.settings) return;
-      /* The Sammlung keeps what was set, so it prints tomorrow as it printed
-         today; nothing of it reaches another one. Whether the METACOM notice
-         prints is the household's, and keepPrint leaves it out. */
-      if (print.showCopyright !== s.settings.print.showCopyright) {
-        persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: print.showCopyright } });
-      }
-      void keepPrint(print);
-    },
+    /* The Sammlung keeps what was set, so it prints tomorrow as it printed
+       today; nothing of it reaches another one. */
+    onChange: (print: PrintSettings) => { if (s.settings) void keepPrint(print); },
     onPdf: (pdf, print, pages) => keepPdf(pdf, print, pages),
   });
 }
@@ -372,16 +378,7 @@ export function materialPrint(): {
   const which = kind();
   const board = which === 'tafel' ? boardOf(open) : null;
   const settings = printFor(printBase(), which, board, open.print ?? {});
-  /* The one setting that is the household's, not the material's: whether the
-     METACOM notice prints is about passing paper on, so it goes to the
-     settings — the same split printOptions().onChange makes, and keepPrint
-     leaves it out of what the Sammlung keeps. */
-  const write = (next: PrintSettings) => {
-    if (s.settings && next.showCopyright !== s.settings.print.showCopyright) {
-      persistSettings({ ...s.settings, print: { ...s.settings.print, showCopyright: next.showCopyright } });
-    }
-    void keepPrint(next);
-  };
+  const write = (next: PrintSettings) => { void keepPrint(next); };
   return {
     settings,
     set: (key, value) => write(settle(which, { ...settings, [key]: value }, board)),

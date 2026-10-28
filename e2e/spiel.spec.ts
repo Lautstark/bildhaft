@@ -231,12 +231,14 @@ test('zum Lochen: der Rand an der Lochkante wird 2 cm, die Marken stehen darin',
   await pick(page, rows.first(), '+ Platzhalter', 'Birne');
 
   await page.getByRole('button', { name: 'Seite', exact: true }).click();
-  await page.getByLabel('Zum Lochen').check();
-  // A Spiel is landscape: it starts punched at the top, where a binder wants it.
+  // A Spiel goes into a folder: it opens punched at the top, without marks.
+  await expect(page.getByLabel('Zum Lochen')).toBeChecked();
   await expect(page.getByRole('button', { name: 'oben' })).toHaveAttribute('aria-pressed', 'true');
 
   await showSheet(page);
   const sheetPage = page.locator('.preview-frame .ps-page').first();
+  await expect(sheetPage.locator('.ps-punch')).toHaveCount(0);
+  await page.getByLabel('Lochmarken').check();
   await expect(sheetPage.locator('.ps-punch')).toHaveCount(3);
   await expect(sheetPage.locator('.ps-punch--top')).toHaveCount(3);
   // The page box carries the margin itself, the paper none: so the marks can stand in it.

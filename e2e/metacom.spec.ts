@@ -4,7 +4,7 @@ import {
   arasaacHeading, chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings,
   withoutDirectoryPicker,
 } from './metacom-folder.ts';
-import { addCards, openDing, showSheet, translate } from './helpers.ts';
+import { addCards, openDing, pickTemplate, showSheet, translate } from './helpers.ts';
 
 /**
  * METACOM with a fake symbol folder.
@@ -673,6 +673,30 @@ test('the copyright notice is offered for METACOM, and only on request', async (
     .toContainText('METACOM Symbole © Annette Kitzinger');
   // ARASAAC's credit has no business on a sheet of METACOM symbols.
   await expect(page.locator('#print-root .ps-attribution')).not.toContainText('ARASAAC');
+});
+
+/* Whether the notice prints is the material's (her call, 2026-10-28): one is
+   handed on, the next stays at home, and ticking it in one leaves the other. */
+test('the copyright notice is ticked per material', async ({ page }) => {
+  await openSymbolSettings(page);
+  await chooseFakeFolder(page);
+  await page.getByRole('button', { name: 'Dialog schließen' }).click();
+  await translate(page, 'Ich möchte schlafen');
+  await showSheet(page);
+  await openDing(page, 'Seite');
+  await page.getByLabel('Copyright-Hinweis drucken').check();
+  await expect(page.locator('#print-root .ps-attribution')).toContainText('METACOM Symbole © Annette Kitzinger');
+
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await pickTemplate(page, /^Satzstreifen/);
+  await translate(page, 'Ich möchte schlafen');
+  await showSheet(page);
+  await expect(page.locator('#print-root .ps-attribution')).toHaveCount(0);
+
+  // Back to the first, the older of the two: the newer one stands on top.
+  await page.locator('.collections__item').last().click();
+  await showSheet(page);
+  await expect(page.locator('#print-root .ps-attribution')).toContainText('METACOM Symbole © Annette Kitzinger');
 });
 
 test('a credit line does not push itself onto a page of its own', async ({ page }) => {

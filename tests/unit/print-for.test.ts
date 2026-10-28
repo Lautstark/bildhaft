@@ -31,6 +31,11 @@ describe('what a template opens the print dialog on', () => {
     expect(TEMPLATES.wortkarten.offers(DEFAULT_PRINT_SETTINGS).paper).toBe('side');
   });
 
+  it('opens a Spiel punched at the top, without marks: it goes into a folder', () => {
+    expect(printFor(remembered, 'spiel', null)).toMatchObject({ punch: 'top', punchMarks: false });
+    expect(ownPrint('spiel', printFor(remembered, 'spiel', null), null)).not.toHaveProperty('punch');
+  });
+
   it('opens an A3 kept from before there was none on A4', () => {
     const a3 = { paper: 'a3' } as unknown as Partial<PrintSettings>;
     for (const which of ['satzstreifen', 'tafel', 'rezept', 'lied', 'spiel', 'plauderbuch'] as const) {
@@ -137,7 +142,7 @@ describe('what a template opens the print dialog on', () => {
 describe('what a Sammlung keeps of its print', () => {
   it('keeps what differs from its template, and nothing else', () => {
     const print = { ...printFor(DEFAULT_PRINT_SETTINGS, 'satzstreifen', null), symbolSizeMm: 55, showCopyright: true };
-    expect(ownPrint('satzstreifen', print, null)).toEqual({ symbolSizeMm: 55 });
+    expect(ownPrint('satzstreifen', print, null)).toEqual({ symbolSizeMm: 55, showCopyright: true });
   });
 
   it('keeps nothing of a print that is its template\'s own', () => {

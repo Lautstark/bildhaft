@@ -1315,7 +1315,7 @@ test('a Lied grows and shrinks part by part', async ({ page }) => {
 });
 
 /*
- * Whether the METACOM notice prints is the household's, in a Lied as anywhere.
+ * Whether the METACOM notice prints is the material's, in a Lied as anywhere.
  * A Lied keeps its print to itself, and the notice — which the Sammlung does
  * not keep — fell back off on the next change, or would not stay ticked.
  */
