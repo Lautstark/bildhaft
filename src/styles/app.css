@@ -1382,7 +1382,9 @@ footer.footer {
      the tiles by a step, which is what makes them tiles. */
   /* App-Grund statt Papier-Beige: das Papier liegt rechts in der Vorschau. */
   background: var(--surface-2);
-  color: #222;
+  /* Die Schrift des App-Grunds dazu: das alte #222 vom Papier stand im
+     Dunkeln grau auf grau. */
+  color: var(--text);
   position: relative;
   z-index: 0;
 }
@@ -1459,6 +1461,7 @@ footer.footer {
 .board-card img { -webkit-user-drag: none; user-select: none; }
 .board-card:active { cursor: grabbing; }
 .board-card--dragging { opacity: .35; }
+.board-card--over { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
 /* The move for a keyboard, where a mouse has the drag. Beside the delete cross
    and hidden the same way, for the same reason: a wall of arrows is a wall of
    things to do. */

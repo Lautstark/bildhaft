@@ -718,13 +718,13 @@ export type Block =
  * down, the cards cut for them, and the paper's factor everything else is
  * multiplied by.
  *
- * The page is laid out for A5 and grows with the paper — A4 by √2 —
- * so the fields and the cards cut for them are bigger together, and a page
- * holds as many Antworten on every paper. Which way up it stands, and
- * whether the cards carry their word, decide the field's shape and how many
- * there are (talkShape): a card with only its picture is square, one with
- * its word under it stands upright. The fields take what the page has, the
- * band with the free field counted as one more row.
+ * The band and the gaps are laid out for A5 and grow with the paper — A4
+ * by √2. The paper and which way up it stands decide how many fields there
+ * are (talkShape); whether the cards carry their word decides their shape:
+ * a card with only its picture is square, one with its word under it
+ * stands upright. The fields take what the page has, the band with the
+ * free field counted as one more row; what is left stands between the
+ * band and the fields, which keep to the foot of the page.
  */
 export interface TalkGeometry {
   cols: number;
@@ -748,19 +748,20 @@ export interface TalkGeometry {
 }
 
 /**
- * How a Plauderbuch page is divided: lying on its side four square fields
- * across and two down, or five upright ones with their word; standing up
- * three by three either way. The free field beside the question is the
- * same shape as the others — any card goes into it.
+ * How a Plauderbuch page is divided, per paper — few fields, so the cards
+ * stay big enough to grasp: A5 lying three in one row, standing three by
+ * two; A4 lying four by two, standing three by three. With the word or
+ * without, the count is the same. The free field beside the question is
+ * the same shape as the others — any card goes into it.
  */
-export function talkShape(settings: Pick<PrintSettings, 'orientation' | 'showLabel'>): { cols: number; rows: number; aspect: number } {
+export function talkShape(settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel'>): { cols: number; rows: number; aspect: number } {
   const aspect = settings.showLabel ? 3 / 4 : 1;
-  if (settings.orientation === 'landscape') return settings.showLabel ? { cols: 5, rows: 2, aspect } : { cols: 4, rows: 2, aspect };
-  return { cols: 3, rows: 3, aspect };
+  if (settings.paper === 'a4') return settings.orientation === 'landscape' ? { cols: 4, rows: 2, aspect } : { cols: 3, rows: 3, aspect };
+  return settings.orientation === 'landscape' ? { cols: 3, rows: 1, aspect } : { cols: 3, rows: 2, aspect };
 }
 
 /** How many Antworten a page of a Plauderbuch prints; the rest wait in Bearbeiten. */
-export const talkCapacity = (settings: Pick<PrintSettings, 'orientation' | 'showLabel'>): number => {
+export const talkCapacity = (settings: Pick<PrintSettings, 'paper' | 'orientation' | 'showLabel'>): number => {
   const { cols, rows } = talkShape(settings);
   return cols * rows;
 };

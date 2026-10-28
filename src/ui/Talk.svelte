@@ -72,15 +72,18 @@
     await removePage(page.id);
   }
 
-  /* A card carried from one place on a page to another. */
+  /* A card carried from one place on a page to another, and the one it
+     would change places with, ringed as a Tafel's field is. */
   let carrying = $state<string | null>(null);
+  let target = $state<string | null>(null);
   function dragStart(event: DragEvent, id: string): void {
     carrying = id;
     event.dataTransfer?.setData('text/plain', id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
   }
-  function over(event: DragEvent): void {
+  function over(event: DragEvent, id: string): void {
     event.preventDefault();
+    target = carrying !== null && carrying !== id ? id : null;
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   }
   /* A tick later, as on the Tafel: a repaint while the drop is still being
@@ -89,7 +92,7 @@
   function dropOn(event: DragEvent, page: TalkPage, onto: string): void {
     event.preventDefault();
     const id = carrying ?? (event.dataTransfer?.getData('text/plain') || null);
-    carrying = null;
+    carrying = null; target = null;
     if (id && id !== onto) setTimeout(() => void swapSayings(page.id, id, onto), 0);
   }
 
@@ -97,7 +100,7 @@
 
 {#snippet head(page: TalkPage, at: number)}{@const held = questionOf(page)}<div class="talk__head"><SymbolLine pictures={picturesOf(held)} {provider} value={questionText(held)} placeholder={t('ui.talk_question_placeholder')} textLabel={t('ui.talk_question_of', { page: nameOf(page, at) })} pictureLabel={t('ui.talk_question_picture', { page: nameOf(page, at) })} addLabel={t('ui.talk_question_symbol', { page: nameOf(page, at) })} focus={!page.id} onPick={(slot) => { if (held) openPicker(held.id, slot.id); }} onAdd={() => void addQuestionSymbol(page.id || null)} onText={(text) => void writeQuestion(page.id || null, text)}>{#snippet trail()}{@const code = questionCode(held, questionText(held))}{#if code}<AnyStift {code} mode="line" />{/if}{/snippet}</SymbolLine>{#if page.id}<span class="song__acts"><button class="btn destructive icon" type="button" title={t('ui.talk_delete_page', { page: nameOf(page, at) })} aria-label={t('ui.talk_delete_page', { page: nameOf(page, at) })} onclick={() => void take(page, at)}><Icon name="trash" /></button></span>{/if}</div>{/snippet}
 
-{#snippet card(page: TalkPage, id: string)}{@const sentence = byId.get(id)}{#if sentence}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === id} draggable="true" ondragstart={(event) => dragStart(event, id)} ondragend={() => { carrying = null; }} ondragover={over} ondrop={(event) => dropOn(event, page, id)}><WordCard {sentence} {provider} /></div>{/if}{/snippet}
+{#snippet card(page: TalkPage, id: string)}{@const sentence = byId.get(id)}{#if sentence}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === id} class:board-card--over={target === id} draggable="true" ondragstart={(event) => dragStart(event, id)} ondragend={() => { carrying = null; target = null; }} ondragover={(event) => over(event, id)} ondragleave={() => { if (target === id) target = null; }} ondrop={(event) => dropOn(event, page, id)}><WordCard {sentence} {provider} /></div>{/if}{/snippet}
 
 {#snippet add(page: TalkPage, at: number)}<AddTile label={t('ui.talk_saying_add', { page: nameOf(page, at) })} onAdd={() => void addCard('saying', page.id || undefined)} />{/snippet}
 

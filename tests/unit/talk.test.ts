@@ -27,11 +27,11 @@ describe('a Plauderbuch', () => {
     expect(rowsOf(withoutRow(book, 'z'))).toEqual(['q', 'x', 'y']);
   });
 
-  it('opens on A5 across, its title printed, and keeps what it set for itself', () => {
+  it('opens on A5 standing, its title printed, and keeps what it set for itself', () => {
     const opened = printFor({ ...DEFAULT_PRINT_SETTINGS, paper: 'a4', orientation: 'portrait', showCollectionTitle: true }, 'plauderbuch', null);
-    expect(opened).toMatchObject({ layout: 'plauderbuch', paper: 'a5', orientation: 'landscape', showCollectionTitle: true });
-    expect(printFor(DEFAULT_PRINT_SETTINGS, 'plauderbuch', null, { paper: 'a4', orientation: 'portrait' }))
-      .toMatchObject({ paper: 'a4', orientation: 'portrait' });
+    expect(opened).toMatchObject({ layout: 'plauderbuch', paper: 'a5', orientation: 'portrait', showCollectionTitle: true });
+    expect(printFor(DEFAULT_PRINT_SETTINGS, 'plauderbuch', null, { paper: 'a4', orientation: 'landscape' }))
+      .toMatchObject({ paper: 'a4', orientation: 'landscape' });
   });
 
   const settings = { showLabel: false, labelSizePt: 9, cutMarginMm: 3 };
@@ -41,11 +41,13 @@ describe('a Plauderbuch', () => {
     expect(withSwapped(book, 'a', 'x', 'z')).toEqual(book);
   });
 
-  it('holds eight square fields lying and nine standing, ten and nine upright with the word', () => {
-    expect(talkCapacity({ orientation: 'landscape', showLabel: false })).toBe(8);
-    expect(talkCapacity({ orientation: 'landscape', showLabel: true })).toBe(10);
-    expect(talkCapacity({ orientation: 'portrait', showLabel: false })).toBe(9);
-    expect(talkCapacity({ orientation: 'portrait', showLabel: true })).toBe(9);
+  it('holds three fields on A5 lying, six standing, eight and nine on A4 — with the word or without', () => {
+    for (const showLabel of [false, true]) {
+      expect(talkCapacity({ paper: 'a5', orientation: 'landscape', showLabel })).toBe(3);
+      expect(talkCapacity({ paper: 'a5', orientation: 'portrait', showLabel })).toBe(6);
+      expect(talkCapacity({ paper: 'a4', orientation: 'landscape', showLabel })).toBe(8);
+      expect(talkCapacity({ paper: 'a4', orientation: 'portrait', showLabel })).toBe(9);
+    }
     const square = talkGeometry({ ...settings, paper: 'a5', orientation: 'landscape' }, printableArea('a5', 'landscape'), 0);
     expect(square.cardW).toBeCloseTo(square.cardH, 6);
     const upright = talkGeometry({ ...settings, showLabel: true, paper: 'a5', orientation: 'landscape' }, printableArea('a5', 'landscape'), 0);
@@ -75,10 +77,10 @@ describe('a Plauderbuch', () => {
     expect(g.symW).toBeLessThanOrEqual(g.cutW);
   });
 
-  it('grows with the paper: A4 by √2', () => {
+  it('scales its band and gaps with the paper: A4 by √2', () => {
     const a5 = talkGeometry({ ...settings, paper: 'a5', orientation: 'portrait' }, printableArea('a5', 'portrait'), 0);
     const a4 = talkGeometry({ ...settings, paper: 'a4', orientation: 'portrait' }, printableArea('a4', 'portrait'), 0);
     expect(a4.k / a5.k).toBe(Math.SQRT2);
-    expect(a4.cardW).toBeGreaterThan(Math.SQRT2 * a5.cardW);
+    expect(a4.gap / a5.gap).toBeCloseTo(Math.SQRT2, 6);
   });
 });
