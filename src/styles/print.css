@@ -1015,10 +1015,13 @@
   left: 0;
 }
 
-/* The Schritt's number stands over its circle, the column as wide as the
-   circle, the row as tall as the two. */
+/* The Schritt's number stands over its circle, as big as it (her call,
+   2026-10-28): the two make one column; the Schritt is no taller. */
 .ps-sheet--anybook .ps-recipe-step__n {
-  margin: 0 1.25mm 12.5mm;
+  width: 9.5mm;
+  height: 9.5mm;
+  margin: 0 0 12.5mm;
+  font-size: 14pt;
 }
 .ps-sheet--anybook .ps-recipe-step__n > .ps-any {
   top: calc(100% + 3mm);
