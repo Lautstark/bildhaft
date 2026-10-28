@@ -7,7 +7,7 @@ import {
   PX_PER_MM, sheetBlocks, sheetsOf, songPieces, stripLines,
   type Block, type PrintBoard, type PrintGame, type PrintSong, type PrintTalk, type SheetOptions, type SheetPlan,
 } from './printSheet.ts';
-import { warmSymbols } from './symbols.ts';
+import { peekSymbolUrl, warmSymbols } from './symbols.ts';
 import { previewsToPdf, previewToPdf } from './pdf.ts';
 import { settle } from '../app/templates.ts';
 
@@ -210,7 +210,36 @@ export class Printing {
    */
   update(options: PrintOptions): void {
     this.options = { ...options, settings: this.settings };
-    window.setTimeout(() => this.replan());
+    window.setTimeout(() => { this.replan(); void this.replanWhenDrawn(); });
+  }
+
+  /** Every picture this preview draws, and its type, ready to be measured. */
+  async drawn(): Promise<void> {
+    await warmSymbols(this.options.provider, this.symbolIds());
+    await document.fonts?.ready;
+  }
+
+  /**
+   * The pages planned once more if they were planned too early. A card with
+   * its Anybook code below grows by the circle only once its picture is drawn,
+   * and a picture the source had not handed over yet was not: a Rezept's
+   * Zutaten and Hilfsmittel stood two circles short, and the Schritt that
+   * seemed to fit ran off page 1 into the gap (2026-10-28). Nothing missing,
+   * nothing planned again. A preview no longer on screen is left alone — its
+   * replan would write the @page rule over the one in front.
+   */
+  async replanWhenDrawn(): Promise<void> {
+    const { provider } = this.options;
+    const late = this.symbolIds().some((id) => !peekSymbolUrl(provider, id)) || document.fonts?.status === 'loading';
+    if (!late) return;
+    await this.drawn();
+    if (this.holder?.isConnected) this.replan();
+  }
+
+  /* The title's symbols are not among the sheet's rows or cards, and are drawn all the same. */
+  private symbolIds(): string[] {
+    const { provider, sentences, pictures } = this.options;
+    return symbolIdsIn(pictures?.length ? [...sentences, { slots: pictures }] : sentences, provider);
   }
 
   /**
@@ -398,10 +427,7 @@ function mountPrintable(entry: { states: Printing[]; printable: ReturnType<typeo
    measured, and a label set in a fallback face is not the same height as the
    same label in the real one. */
 async function ready(state: Printing): Promise<void> {
-  const { provider, sentences, pictures } = state.options;
-  /* The title's symbols are not among the sheet's rows or cards, and are drawn all the same. */
-  await warmSymbols(provider, symbolIdsIn(pictures?.length ? [...sentences, { slots: pictures }] : sentences, provider));
-  await document.fonts?.ready;
+  await state.drawn();
   state.replan();
   // Two frames so the printable copy is laid out before anything reads it.
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -510,6 +536,7 @@ export function attachGroupPrinting(states: Printing[]): () => void {
     return watching;
   });
   for (const state of states) state.replan();
+  for (const state of states) void state.replanWhenDrawn();
   let done = false;
   return () => {
     if (done) return;
