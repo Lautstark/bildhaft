@@ -77,6 +77,13 @@ describe('a Plauderbuch', () => {
     expect(g.symW).toBeLessThanOrEqual(g.cutW);
   });
 
+  it('gives up for an Anybook circle only what the circle on the cut sheet takes, 1 mm from the cut line', () => {
+    const at = (cutMarginMm: number) => talkGeometry({ ...settings, cutMarginMm, showLabel: true, paper: 'a5', orientation: 'portrait' }, printableArea('a5', 'portrait'), 0);
+    // The circle 3 mm further out lies 2 × 3 / 1.5 mm less on the symbol.
+    expect(at(3).anySymW - at(0).anySymW).toBeCloseTo(4, 6);
+    expect(at(3).anySymW).toBeLessThanOrEqual(at(3).symW);
+  });
+
   it('scales its band and gaps with the paper: A4 by √2', () => {
     const a5 = talkGeometry({ ...settings, paper: 'a5', orientation: 'portrait' }, printableArea('a5', 'portrait'), 0);
     const a4 = talkGeometry({ ...settings, paper: 'a4', orientation: 'portrait' }, printableArea('a4', 'portrait'), 0);

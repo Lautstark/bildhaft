@@ -829,10 +829,11 @@ function cardSymbol(room: { width: number; height: number }): number {
  * The symbol with an Anybook circle over the corner of its card: print.css's
  * rule (anybook, „Over"), said here for a Spiel's and a Plauderbuch's, whose
  * symbol has to be the one size on sheet and card — so it is worked out
- * once, from the card, the smaller of the two.
+ * once, from the card, the smaller of the two. `out` is how far the circle's
+ * corner stands outside the card: the air round a cut card it sits in.
  */
-function anybookSymbol(box: { width: number; height: number }, symbol: number, pad: number): number {
-  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad - 11.5) / 1.5);
+function anybookSymbol(box: { width: number; height: number }, symbol: number, pad: number, out = 0): number {
+  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad + 2 * out - 11.5) / 1.5);
 }
 type GameShape = { units: number; zellen: number; platz: number };
 
@@ -979,7 +980,11 @@ export function talkGeometry(
   const label = settings.showLabel ? 2 * settings.labelSizePt * 0.3528 * 1.15 + k : 0;
   const room = { width: cutW - 2 * k, height: cutH - label - 3 * k };
   const symW = cardSymbol(room);
-  return { cols, rows, cardW, cardH, gap, air: settings.cutMarginMm * k, k, height, cutW, cutH, symW, anySymW: anybookSymbol(room, symW, k) };
+  /* A Plauderbuch's symbols are printed on the Kartenbogen only, where the
+     circle sits 1 mm from the cut line, the air round the card further out
+     than the card's own corner (3f841b1): it lies that much less on the symbol. */
+  const around = settings.cutMarginMm * k;
+  return { cols, rows, cardW, cardH, gap, air: around, k, height, cutW, cutH, symW, anySymW: anybookSymbol(room, symW, k, around) };
 }
 
 /**
