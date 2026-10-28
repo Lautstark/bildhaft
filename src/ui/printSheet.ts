@@ -825,9 +825,9 @@ type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 
 function cardSymbol(room: { width: number; height: number }): number {
   return Math.max(8, Math.min(room.width, room.height));
 }
-/** The Anybook circle, and how far in from a Kartenbogen's cut line it stands (print.css, --any-in). */
+/** The Anybook circle, and how far in from a Kartenbogen's cut line it stands (print.css, --any-gap). */
 const ANYBOOK_MM = 9.5;
-const ANYBOOK_IN_MM = 1.5;
+const ANYBOOK_IN_MM = 2.25;
 /**
  * The symbol with an Anybook circle over the corner of its card: print.css's
  * rule (anybook, „Over"), said here for a Spiel's and a Plauderbuch's, whose
@@ -984,7 +984,7 @@ export function talkGeometry(
   const room = { width: cutW - 2 * k, height: cutH - label - 3 * k };
   const symW = cardSymbol(room);
   /* A Plauderbuch's symbols are printed on the Kartenbogen only, where the
-     circle sits 1.5 mm from the cut line, the air round the card further out
+     circle sits 2.25 mm from the cut line, the air round the card further out
      than the card's own corner (3f841b1): it lies that much less on the symbol. */
   const around = settings.cutMarginMm * k;
   return { cols, rows, cardW, cardH, gap, air: around, k, height, cutW, cutH, symW, anySymW: anybookSymbol(room, symW, k, around) };

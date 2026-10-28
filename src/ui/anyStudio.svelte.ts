@@ -102,10 +102,8 @@ export class StudioExport {
 
       /* Where each code's centre is, in millimetres of its own sheet of
          paper; the pages counted on over the previews, as the file has them.
-         Read off the sheet as Studio gets it, where a corner's code stands
-         further in than a sticker's circle (print.css) — read off the
-         preview, the codes stood where the stickers do, close to the cut
-         line (her print, 2026-10-28). */
+         Read off the sheet as Studio gets it, the one drawn into the PDF
+         beside them, so no code can stand off its white disc. */
       const placed: (PlacedCode & { said: string; voice: string })[] = [];
       let activation: PlacedCode | null = null;
       let page = 0;

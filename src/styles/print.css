@@ -1010,7 +1010,7 @@
 .ps-sheet--any-below .ps-card--framed > .ps-card__frame { --any-foot: var(--frame-pad); }
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) > .ps-any {
   top: auto;
-  bottom: var(--any-foot, var(--cut) + var(--any-edge) - 0.2mm);
+  bottom: var(--any-foot, calc(var(--cut) + var(--any-edge) - 0.2mm));
   right: auto;
   left: calc(50% - 4.75mm);
 }
@@ -1090,24 +1090,19 @@
   --any-fill: #fff;
 }
 .ps-studio .ps-sheet--anybook .ps-any--start { --any-ring: transparent; }
-/* Studio's code comes with a ring of its own, about 10.7 mm across — wider
-   than the sticker's 9.5 mm. On a card's corner it touched the cut line (her
-   test print, 2026-10-27): on this sheet its middle sits a little further
-   in, 0.5 mm — 1.5 mm, with the corner's 1.5 mm, sat on a Spiel's small
-   symbols (her look, 2026-10-28) — so some 1.4 mm stay between ring and edge. */
-.ps-studio .ps-sheet--any-over .ps-any:not(.ps-any--title, .ps-any--start) {
-  translate: -0.5mm 0.5mm;
+/* How near a code comes to a card's edge, said once for every place and
+   both sheets (her call, 2026-10-28): Studio's code, about 10 mm across,
+   2 mm from the cut line — the sticker's 9.5 mm circle, on the same middle,
+   2.25 mm. Studio's code stands where the sticker does; nothing moves it
+   on its own sheet. In a corner that is --any-in (below); above, below,
+   left and right the circle keeps it however narrow the Rand: --any-edge
+   is what the Rand lacks of it, added to the room, and below to the foot. */
+.ps-sheet--anybook {
+  --any-gap: 2.25mm;
+  --any-edge: max(0mm, var(--any-gap) - var(--cut));
 }
-.ps-studio .ps-sheet--any-over-tl .ps-any:not(.ps-any--title, .ps-any--start) { translate: 0.5mm 0.5mm; }
-.ps-studio .ps-sheet--any-over-bl .ps-any:not(.ps-any--title, .ps-any--start) { translate: 0.5mm -0.5mm; }
-.ps-studio .ps-sheet--any-over-br .ps-any:not(.ps-any--title, .ps-any--start) { translate: -0.5mm -0.5mm; }
 
-/* The room, said once: on top for above, on the right for beside. The
-   circle keeps 2.5 mm from the card's edge however narrow its Rand (her
-   call, 2026-10-28: a Rezept's 1.5 mm had Studio's ring at the cut line) —
-   --any-edge is what the Rand lacks of it, added to the room, and below to
-   the foot. */
-.ps-sheet--anybook { --any-edge: max(0mm, 2.5mm - var(--cut)); }
+/* The room, said once: on top for above, on the right for beside. */
 .ps-sheet--any-above { --any-top: calc(10.5mm + var(--any-edge)); }
 .ps-sheet--any-left { --any-left: calc(10.5mm + var(--any-edge)); }
 .ps-sheet--any-beside { --any-right: calc(10.5mm + var(--any-edge)); }
@@ -1136,17 +1131,15 @@
 }
 
 /*
- * Over (her calls, 2026-10-27): the circle on the card itself, 1.5 mm in
- * (her call, 2026-10-28, from 1 mm; a card to cut out — a Spiel's, a
- * Plauderbuch's — from its cut line, not from the card inside its
- * laminating air: her call, again, 2026-10-27)
+ * Over (her calls, 2026-10-27): the circle on the card itself, --any-gap in
+ * (a card to cut out — a Spiel's, a Plauderbuch's — from its cut line, not
+ * from the card inside its laminating air: her call, again, 2026-10-27)
  * from its top right corner — its edge, or its frame's — on every card
  * alike, the word on top or not: on top, a word longer than the corner
  * leaves is covered, and that is the price of the pairing. --any-pad is how
  * far the symbol's box stands in from the card's edge: its padding; --any-in
- * how far the circle stands in from where it hangs, counted from the middle
- * of the cut line, where the scissors go: a card's is its 0.2 mm border,
- * the circle hangs inside it; a Kartenbogen's is drawn outside its cell.
+ * how far the circle stands in from where it hangs: --any-gap from the
+ * card's edge, so on a card inside its 0.2 mm border that much less.
  *
  * The card keeps its size; the symbol gives up only what it must, keeps its
  * bottom line and stays centred. What it must: the circle may lie on the
@@ -1161,10 +1154,10 @@
  * keeps its size. A Spiel's and a Plauderbuch's symbol is the one size on
  * sheet and card: printSheet.ts works it out once (anybookSymbol, --any-sym).
  */
-.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); --any-in: 1.4mm; }
-.ps-card--framed { --any-pad: var(--frame-pad); --any-in: 1.5mm; }
+.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); --any-in: calc(var(--any-gap) - 0.2mm); }
+.ps-card--framed { --any-pad: var(--frame-pad); --any-in: var(--any-gap); }
 :is(.ps-talk__card, .ps-spiel__bild) { --any-pad: calc(1mm * var(--talk-k)); }
-:is(.ps-talk-cut__cell, .ps-spiel__bild) { --any-in: 1.5mm; }
+:is(.ps-talk-cut__cell, .ps-spiel__bild) { --any-in: var(--any-gap); }
 
 .ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) {
   container-type: size;

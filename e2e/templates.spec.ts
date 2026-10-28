@@ -1712,7 +1712,7 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   expect(beside.height).toBeCloseTo(before.height, 1);
   expect(beside.right).toBeGreaterThanOrEqual(-0.05);
 
-  // Überlappend: 1.4 mm inside the card's 0.2 mm cut line, 1.5 mm from its middle, the card as it was; the
+  // Überlappend: 2.05 mm inside the card's 0.2 mm cut line, 2.25 mm from its edge, the card as it was; the
   // symbol gives up only what it must, on its bottom line, so the circle lies
   // on the picture's corner by no more than its diameter, width and height
   // together — over the whole box (391f546) it hid most of the picture.
@@ -1720,35 +1720,36 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
   const over = await against();
   expect(over.height).toBeCloseTo(before.height, 1);
-  expect(Math.abs(over.fromRight - 1.4)).toBeLessThan(0.25);
-  expect(Math.abs(over.fromTop - 1.4)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromRight - 2.05)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromTop - 2.05)).toBeLessThan(0.25);
   expect(over.symbol).toBeLessThan(before.symbol - 1);
   expect(Math.abs(over.bottom)).toBeLessThan(0.2);
   expect(-Math.min(0, over.right) - Math.min(0, over.above)).toBeLessThan(9.6);
 });
 
-test('with a narrow Rand the Anybook circle still keeps 2.5 mm from the cut line above, below, left and right, and 1.5 mm in a corner', async ({ page }) => {
+test('with a narrow Rand the Anybook circle keeps 2.25 mm from the cut line in every place, a corner too', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await showSheet(page);
   await openDing(page, 'Symbol');
   await page.getByLabel('Rand', { exact: true }).fill('1');
   await openDing(page, 'Anybook');
   await page.getByLabel('Anybook-Codes', { exact: true }).check();
-  // The circle against the card's edge, in mm: the nearest of its four sides.
-  const gap = () => page.evaluate(() => {
+  // The circle against each side of the card, in mm.
+  const gaps = () => page.evaluate(() => {
     const ring = document.querySelector('.preview-frame .ps-card:has(img) .ps-any') as HTMLElement;
     const card = ring.closest('.ps-card') as HTMLElement;
     const r = ring.getBoundingClientRect();
     const q = card.getBoundingClientRect();
     const mm = r.width / 9.5;
-    return Math.min(r.left - q.left, r.top - q.top, q.right - r.right, q.bottom - r.bottom) / mm;
+    return { oben: (r.top - q.top) / mm, unten: (q.bottom - r.bottom) / mm, links: (r.left - q.left) / mm, rechts: (q.right - r.right) / mm };
   });
-  for (const place of ['oben', 'unten', 'links', 'rechts']) {
+  // On the side it is put to, 2.25 mm from the edge, give or take the screen's rounding of the 0.2 mm cut line.
+  for (const place of ['oben', 'unten', 'links', 'rechts'] as const) {
     await page.getByRole('radio', { name: place, exact: true }).click();
-    // 2.5 mm, give or take the screen's rounding of the 0.2 mm cut line.
-    await expect.poll(gap, { message: place }).toBeGreaterThan(2.35);
+    await expect.poll(async () => Math.abs((await gaps())[place] - 2.25), { message: place }).toBeLessThan(0.2);
   }
   await page.getByRole('radio', { name: 'Ecke rechts oben' }).click();
-  await expect.poll(gap).toBeGreaterThan(1.35);
+  await expect.poll(async () => Math.abs((await gaps()).rechts - 2.25)).toBeLessThan(0.2);
+  expect(Math.abs((await gaps()).oben - 2.25)).toBeLessThan(0.2);
 });
 
