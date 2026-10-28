@@ -989,24 +989,28 @@
   border-radius: 50%;
   background: var(--any-fill, transparent);
 }
-.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any {
+/* Above, beside, left and below each said as strongly as the rule that sets
+   every circle at the top right, or it loses to it. --any-edge (below) keeps
+   the circle off a narrow Rand's cut line. */
+.ps-sheet.ps-sheet--anybook.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any {
+  top: var(--any-edge);
   right: auto;
   left: calc(50% - 4.75mm);
 }
 /* Beside: right of the symbol, at its middle. */
-/* Said as strongly as the rule that sets every circle at the top right, or it loses to it. */
 .ps-sheet.ps-sheet--anybook.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any {
   top: calc(50% - 4.75mm);
+  right: var(--any-edge);
 }
 /* Below: under the word, in the middle (her eight, 2026-10-28) — the word
    stays with its picture, and the card grows by the circle at its foot. */
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) {
-  padding-bottom: calc(var(--any-foot, max(var(--cut) - 0.2mm, 2.3mm)) + 10.5mm);
+  padding-bottom: calc(var(--any-foot, var(--cut) + var(--any-edge) - 0.2mm) + 10.5mm);
 }
 .ps-sheet--any-below .ps-card--framed > .ps-card__frame { --any-foot: var(--frame-pad); }
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) > .ps-any {
   top: auto;
-  bottom: var(--any-foot, max(var(--cut) - 0.2mm, 2.3mm));
+  bottom: var(--any-foot, var(--cut) + var(--any-edge) - 0.2mm);
   right: auto;
   left: calc(50% - 4.75mm);
 }
@@ -1016,8 +1020,6 @@
   right: auto;
   left: var(--any-edge);
 }
-.ps-sheet.ps-sheet--anybook.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any { right: var(--any-edge); }
-.ps-sheet.ps-sheet--anybook.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any { top: var(--any-edge); }
 
 /* The Schritt's number stands over its circle, as big as it — the number
    is that size always (her call, 2026-10-28): the two make one column; the
@@ -1102,8 +1104,8 @@
 /* The room, said once: on top for above, on the right for beside. The
    circle keeps 2.5 mm from the card's edge however narrow its Rand (her
    call, 2026-10-28: a Rezept's 1.5 mm had Studio's ring at the cut line) —
-   --any-edge is what the Rand lacks of it, added to the room; below, the
-   foot is at least that. */
+   --any-edge is what the Rand lacks of it, added to the room, and below to
+   the foot. */
 .ps-sheet--anybook { --any-edge: max(0mm, 2.5mm - var(--cut)); }
 .ps-sheet--any-above { --any-top: calc(10.5mm + var(--any-edge)); }
 .ps-sheet--any-left { --any-left: calc(10.5mm + var(--any-edge)); }
@@ -1134,8 +1136,9 @@
 
 /*
  * Over (her calls, 2026-10-27): the circle on the card itself, 1.5 mm in
- * (her call, 2026-10-28, from 1 mm; a card to cut out — a Spiel's, a Plauderbuch's — from its cut line, not
- * from the card inside its laminating air: her call, again, 2026-10-27)
+ * (her call, 2026-10-28, from 1 mm; a card to cut out — a Spiel's, a
+ * Plauderbuch's — from its cut line, not from the card inside its
+ * laminating air: her call, again, 2026-10-27)
  * from its top right corner — its edge, or its frame's — on every card
  * alike, the word on top or not: on top, a word longer than the corner
  * leaves is covered, and that is the price of the pairing. --any-pad is how

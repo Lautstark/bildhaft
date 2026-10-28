@@ -1727,3 +1727,28 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   expect(-Math.min(0, over.right) - Math.min(0, over.above)).toBeLessThan(9.6);
 });
 
+test('with a narrow Rand the Anybook circle still keeps 2.5 mm from the cut line above, below, left and right, and 1.5 mm in a corner', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await showSheet(page);
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Rand', { exact: true }).fill('1');
+  await openDing(page, 'Anybook');
+  await page.getByLabel('Anybook-Codes', { exact: true }).check();
+  // The circle against the card's edge, in mm: the nearest of its four sides.
+  const gap = () => page.evaluate(() => {
+    const ring = document.querySelector('.preview-frame .ps-card:has(img) .ps-any') as HTMLElement;
+    const card = ring.closest('.ps-card') as HTMLElement;
+    const r = ring.getBoundingClientRect();
+    const q = card.getBoundingClientRect();
+    const mm = r.width / 9.5;
+    return Math.min(r.left - q.left, r.top - q.top, q.right - r.right, q.bottom - r.bottom) / mm;
+  });
+  for (const place of ['oben', 'unten', 'links', 'rechts']) {
+    await page.getByRole('radio', { name: place, exact: true }).click();
+    // 2.5 mm, give or take the screen's rounding of the 0.2 mm cut line.
+    await expect.poll(gap, { message: place }).toBeGreaterThan(2.35);
+  }
+  await page.getByRole('radio', { name: 'Ecke rechts oben' }).click();
+  await expect.poll(gap).toBeGreaterThan(1.35);
+});
+

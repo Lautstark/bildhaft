@@ -825,6 +825,9 @@ type GameSettings = Pick<PrintSettings, 'paper' | 'cutMarginMm' | 'showLabel' | 
 function cardSymbol(room: { width: number; height: number }): number {
   return Math.max(8, Math.min(room.width, room.height));
 }
+/** The Anybook circle, and how far in from a Kartenbogen's cut line it stands (print.css, --any-in). */
+const ANYBOOK_MM = 9.5;
+const ANYBOOK_IN_MM = 1.5;
 /**
  * The symbol with an Anybook circle over the corner of its card: print.css's
  * rule (anybook, „Over"), said here for a Spiel's and a Plauderbuch's, whose
@@ -833,7 +836,7 @@ function cardSymbol(room: { width: number; height: number }): number {
  * corner stands outside the card: the air round a cut card it sits in.
  */
 function anybookSymbol(box: { width: number; height: number }, symbol: number, pad: number, out = 0): number {
-  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad + 2 * out - 12.5) / 1.5);
+  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad + 2 * out - 2 * ANYBOOK_IN_MM - ANYBOOK_MM) / 1.5);
 }
 type GameShape = { units: number; zellen: number; platz: number };
 
