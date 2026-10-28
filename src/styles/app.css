@@ -1382,7 +1382,9 @@ footer.footer {
      the tiles by a step, which is what makes them tiles. */
   /* App-Grund statt Papier-Beige: das Papier liegt rechts in der Vorschau. */
   background: var(--surface-2);
-  color: #222;
+  /* Die Schrift des App-Grunds dazu: das alte #222 vom Papier stand im
+     Dunkeln grau auf grau. */
+  color: var(--text);
   position: relative;
   z-index: 0;
 }

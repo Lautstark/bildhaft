@@ -427,6 +427,26 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
 });
 });
 
+/* Im Dunkeln stand das Wort einer Karte auf der Tafel dunkelgrau auf der
+   dunklen Kachel: die Tafel trug noch die Schriftfarbe aus der Zeit, als ihr
+   Grund Papier war. Ihr Wort ist so hell wie das einer Karte im Ablagefach. */
+test('on a dark Tafel the words on the board are as bright as the ones in the tray', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await sidebarReady(page);
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await expect(page.locator('.templates')).toBeVisible();
+  await pickTemplate(page, /^Tafel/);
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill('Ball\nEimer');
+  await bar.press('Enter');
+  await expect(page.locator('.tray .word__name')).toHaveCount(2);
+  await page.locator('.tray .board-card').first().locator('.word__pic').dragTo(page.locator('.board .cell').first());
+  const onBoard = page.locator('.board .cell .word__name');
+  await expect(onBoard).toHaveText('Ball');
+  const color = (l: typeof onBoard) => l.evaluate((e) => getComputedStyle(e).color);
+  expect(await color(onBoard)).toBe(await color(page.locator('.tray .word__name').first()));
+});
+
 /**
  * A „+" pressed and thought better of leaves nothing behind.
  *
