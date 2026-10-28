@@ -1001,12 +1001,12 @@
 /* Below: under the word, in the middle (her eight, 2026-10-28) — the word
    stays with its picture, and the card grows by the circle at its foot. */
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) {
-  padding-bottom: calc(var(--any-foot, max(0mm, var(--cut) - 0.2mm)) + 10.5mm);
+  padding-bottom: calc(var(--any-foot, max(var(--cut) - 0.2mm, 2.3mm)) + 10.5mm);
 }
 .ps-sheet--any-below .ps-card--framed > .ps-card__frame { --any-foot: var(--frame-pad); }
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) > .ps-any {
   top: auto;
-  bottom: var(--any-foot, max(0mm, var(--cut) - 0.2mm));
+  bottom: var(--any-foot, max(var(--cut) - 0.2mm, 2.3mm));
   right: auto;
   left: calc(50% - 4.75mm);
 }
@@ -1014,8 +1014,10 @@
 .ps-sheet.ps-sheet--anybook.ps-sheet--any-left .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any {
   top: calc(50% - 4.75mm);
   right: auto;
-  left: 0;
+  left: var(--any-edge);
 }
+.ps-sheet.ps-sheet--anybook.ps-sheet--any-beside .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) > .ps-any { right: var(--any-edge); }
+.ps-sheet.ps-sheet--anybook.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any { top: var(--any-edge); }
 
 /* The Schritt's number stands over its circle, as big as it — the number
    is that size always (her call, 2026-10-28): the two make one column; the
@@ -1097,10 +1099,15 @@
 .ps-studio .ps-sheet--any-over-bl .ps-any:not(.ps-any--title, .ps-any--start) { translate: 1.5mm -1.5mm; }
 .ps-studio .ps-sheet--any-over-br .ps-any:not(.ps-any--title, .ps-any--start) { translate: -1.5mm -1.5mm; }
 
-/* The room, said once: on top for above, on the right for beside. */
-.ps-sheet--any-above { --any-top: 10.5mm; }
-.ps-sheet--any-left { --any-left: 10.5mm; }
-.ps-sheet--any-beside { --any-right: 10.5mm; }
+/* The room, said once: on top for above, on the right for beside. The
+   circle keeps 2.5 mm from the card's edge however narrow its Rand (her
+   call, 2026-10-28: a Rezept's 1.5 mm had Studio's ring at the cut line) —
+   --any-edge is what the Rand lacks of it, added to the room; below, the
+   foot is at least that. */
+.ps-sheet--anybook { --any-edge: max(0mm, 2.5mm - var(--cut)); }
+.ps-sheet--any-above { --any-top: calc(10.5mm + var(--any-edge)); }
+.ps-sheet--any-left { --any-left: calc(10.5mm + var(--any-edge)); }
+.ps-sheet--any-beside { --any-right: calc(10.5mm + var(--any-edge)); }
 /* A card that gets no circle gets no room: a Schritt's pictures, a place. */
 :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card { --any-left: 0mm; --any-right: 0mm; }
 
