@@ -1712,7 +1712,7 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   expect(beside.height).toBeCloseTo(before.height, 1);
   expect(beside.right).toBeGreaterThanOrEqual(-0.05);
 
-  // Überlappend: 2.05 mm inside the card's 0.2 mm cut line, 2.25 mm from its edge, the card as it was; the
+  // Überlappend: 1.55 mm inside the card's 0.2 mm cut line, 1.75 mm from its edge, the card as it was; the
   // symbol gives up only what it must, on its bottom line, so the circle lies
   // on the picture's corner by no more than its diameter, width and height
   // together — over the whole box (391f546) it hid most of the picture.
@@ -1720,14 +1720,14 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
   const over = await against();
   expect(over.height).toBeCloseTo(before.height, 1);
-  expect(Math.abs(over.fromRight - 2.05)).toBeLessThan(0.25);
-  expect(Math.abs(over.fromTop - 2.05)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromRight - 1.55)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromTop - 1.55)).toBeLessThan(0.25);
   expect(over.symbol).toBeLessThan(before.symbol - 1);
   expect(Math.abs(over.bottom)).toBeLessThan(0.2);
   expect(-Math.min(0, over.right) - Math.min(0, over.above)).toBeLessThan(9.6);
 });
 
-test('with a narrow Rand the Anybook circle keeps 2.25 mm from the cut line in every place, a corner too', async ({ page }) => {
+test('with a narrow Rand the Anybook circle keeps 1.75 mm from the cut line in every place, a corner too', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await showSheet(page);
   await openDing(page, 'Symbol');
@@ -1743,13 +1743,13 @@ test('with a narrow Rand the Anybook circle keeps 2.25 mm from the cut line in e
     const mm = r.width / 9.5;
     return { oben: (r.top - q.top) / mm, unten: (q.bottom - r.bottom) / mm, links: (r.left - q.left) / mm, rechts: (q.right - r.right) / mm };
   });
-  // On the side it is put to, 2.25 mm from the edge, give or take the screen's rounding of the 0.2 mm cut line.
+  // On the side it is put to, 1.75 mm from the edge, give or take the screen's rounding of the 0.2 mm cut line.
   for (const place of ['oben', 'unten', 'links', 'rechts'] as const) {
     await page.getByRole('radio', { name: place, exact: true }).click();
-    await expect.poll(async () => Math.abs((await gaps())[place] - 2.25), { message: place }).toBeLessThan(0.2);
+    await expect.poll(async () => Math.abs((await gaps())[place] - 1.75), { message: place }).toBeLessThan(0.2);
   }
   await page.getByRole('radio', { name: 'Ecke rechts oben' }).click();
-  await expect.poll(async () => Math.abs((await gaps()).rechts - 2.25)).toBeLessThan(0.2);
-  expect(Math.abs((await gaps()).oben - 2.25)).toBeLessThan(0.2);
+  await expect.poll(async () => Math.abs((await gaps()).rechts - 1.75)).toBeLessThan(0.2);
+  expect(Math.abs((await gaps()).oben - 1.75)).toBeLessThan(0.2);
 });
 
