@@ -98,6 +98,8 @@
    * own sentence saying nothing on a Tafel is cut.
    */
   const CUT_UP = new Set(['row', 'grid', 'cut', 'talk-cut']);
+  /* The materials whose print has an accent colour of its own: the Anybook ring on Studio's sheet takes it. */
+  const ACCENTED = new Set(['rezept', 'lied', 'plauderbuch', 'spiel']);
   let cutUp = $derived(blocks.some((block) => CUT_UP.has(block.kind)));
 
   /** The blocks of each page, or one page holding all of them while unplanned. */
@@ -269,6 +271,7 @@
   style:--title-rule-gap="{TITLE_RULE_GAP_MM}mm"
   style:--title-rule="{TITLE_RULE_MM}mm"
   style:--any-start={titleColour(settings) === '#000000' ? null : titleColour(settings)}
+  style:--any-accent={ACCENTED.has(settings.layout) ? settings.accentColour : null}
   style:--recipe={settings.accentColour}
   style:--song={settings.accentColour}
   style:--spiel-accent={settings.accentColour}

@@ -1080,16 +1080,17 @@
    preview shows it faintly with a „+“, so it can be put back (PrintView). */
 .ps-sheet--anybook .ps-any--off { visibility: hidden; }
 
-/* The sheet handed to Anybook Studio: a white disc and no ring (her call,
-   2026-10-27) — Studio prints the code into it with a frame of its own; the
-   white keeps a picture's corner away from the code, so the pen reads the
-   code alone. The activation code too: no ring on this sheet either. */
+/* The sheet handed to Anybook Studio: a white disc, its ring drawn solid
+   in the material's accent where it has one, grey where not (her call,
+   2026-10-29) — Studio prints only the code into it, its „Ziehhilfe“ off,
+   so the ring stands exactly where it is meant to, whatever size Studio's
+   own would be. The white keeps a picture's corner away from the code, so
+   the pen reads the code alone. The activation code keeps its own ring. */
 .ps-studio .ps-sheet--anybook {
   --any-line: solid;
-  --any-ring: transparent;
+  --any-ring: var(--any-accent, #b9b2b0);
   --any-fill: #fff;
 }
-.ps-studio .ps-sheet--anybook .ps-any--start { --any-ring: transparent; }
 /* How near a code comes to a card's edge, said once for every place and
    both sheets (her call, 2026-10-28): Studio's code, 10.8 mm across
    (anybook.ts, STUDIO_CODE_MM), 1.5 mm from the cut line — the sticker's
