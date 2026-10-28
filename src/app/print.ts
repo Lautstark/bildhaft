@@ -274,6 +274,12 @@ function buildOptions(
   };
 }
 
+/** Whether a material prints Anybook codes, as its own print would. */
+export function anybookOf(collection: Collection): boolean {
+  const which = kindOf(collection);
+  return printFor(printBase(), which, which === 'tafel' ? boardOf(collection) : null, collection.print ?? {}).anybookCircle;
+}
+
 /** A material loaded for the group print: the Sammlung with its rows. */
 export interface GroupLoaded { collection: Collection; sentences: Sentence[] }
 

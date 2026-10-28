@@ -2024,6 +2024,8 @@ footer.footer {
 }
 .group-print__check { white-space: nowrap; }
 .group-print__check--aus { color: var(--text-faint); text-decoration: line-through; }
+/* ◎: this material prints Anybook codes. */
+.group-print__any { margin-left: 4px; color: var(--accent-strong); font-size: 12px; }
 .print-dock--big .print-view { width: min(1000px, 92vw); max-height: calc(100vh - 56px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 22px 0; cursor: auto; }
 .print-dock--big .ding { position: relative; }
 .print-dock--big .ding__pop { left: 0; right: auto; top: calc(100% + 6px); }

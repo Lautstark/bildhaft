@@ -453,13 +453,20 @@ async function keep(state: Printing): Promise<void> {
  * into instead of circles for stickers.
  */
 export async function capturing<T>(state: Printing, make: () => Promise<T>, studio = false): Promise<T> {
-  const holder = state.holder;
-  holder?.classList.add('ps-capturing');
-  if (studio) holder?.classList.add('ps-studio');
+  return capturingAll([state], make, studio);
+}
+
+/** `capturing` over several previews at once — the group print's Studio file. */
+export async function capturingAll<T>(states: Printing[], make: () => Promise<T>, studio = false): Promise<T> {
+  const holders = states.map((state) => state.holder).filter((holder): holder is HTMLElement => holder !== undefined);
+  for (const holder of holders) {
+    holder.classList.add('ps-capturing');
+    if (studio) holder.classList.add('ps-studio');
+  }
   try {
     return await make();
   } finally {
-    holder?.classList.remove('ps-capturing', 'ps-studio');
+    for (const holder of holders) holder.classList.remove('ps-capturing', 'ps-studio');
   }
 }
 
@@ -515,11 +522,16 @@ export function attachGroupPrinting(states: Printing[]): () => void {
     /* The @page rule is left as it is: a preview built again attaches a task
        later and writes its own, and clearing it in between left a moment in
        which the printer was told no paper at all. */
+    /* After the teardown, not in it: this runs as an effect's cleanup, and
+       Svelte throws on the effects the printable copy's cards make there —
+       #print-root stayed empty and the page stopped answering. Only if that
+       owner is still the top one and has no copy yet by then. */
     const back = owners.at(-1);
-    if (back) {
+    if (back) queueMicrotask(() => {
+      if (owners.at(-1) !== back || back.printable) return;
       mountPrintable(back);
       flushSync();
       for (const state of back.states) state.replan();
-    }
+    });
   };
 }

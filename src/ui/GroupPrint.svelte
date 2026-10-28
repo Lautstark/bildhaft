@@ -19,7 +19,8 @@
   import PrintSheet from './PrintSheet.svelte';
   import { attachGroupPrinting, groupPdf, Printing } from './printDialog.svelte.ts';
   import { printerPaper } from './printSheet.ts';
-  import { groupPrintLoad, groupPrintParts, pdfStem, type GroupLoaded } from '../app/print.ts';
+  import { anybookOf, groupPrintLoad, groupPrintParts, pdfStem, type GroupLoaded } from '../app/print.ts';
+  import { openStudioSheet } from './anyStudio.svelte.ts';
   import { download } from '@lautstark/werkzeuge/download';
   import { t } from '../i18n/index.ts';
 
@@ -74,13 +75,24 @@
   })));
   let mixed = $derived(papers.size > 1);
 
+  /* The materials that print Anybook codes carry a ◎ in the list; with one
+     of them ticked the overlay saves a single Studio file of all it prints. */
+  let anybook = $derived(new Set(loaded?.filter(({ collection }) => anybookOf(collection)).map(({ collection }) => collection.id)));
+  let ticked = $derived(loaded?.filter(({ collection }) => chosen.has(collection.id)) ?? []);
+  let withCodes = $derived(ticked.some(({ collection }) => anybook.has(collection.id)));
+  let fileName = $derived(which.ordner ?? t(`ui.group_${which.kind}`));
+  function studio(): void {
+    openStudioSheet(previews, fileName,
+      ticked.map(({ collection }) => ({ name: collection.name, anybook: anybook.has(collection.id) })));
+  }
+
   let saving = $state(false);
   async function savePdf(): Promise<void> {
     if (saving || previews.length === 0) return;
     saving = true;
     try {
       const pdf = await groupPdf(previews);
-      download(pdf, `${which.ordner ?? t(`ui.group_${which.kind}`)} ${pdfStem(new Date(), previews[0]!.settings)}.pdf`);
+      download(pdf, `${fileName} ${pdfStem(new Date(), previews[0]!.settings)}.pdf`);
     } finally {
       saving = false;
     }
@@ -102,7 +114,7 @@
       <div class="group-print__wahl" role="group" aria-label={t('ui.group_print_pick')}>
         {#each loaded as { collection } (collection.id)}
           <label class="ding-check group-print__check{chosen.has(collection.id) ? '' : ' group-print__check--aus'}">
-            <input type="checkbox" checked={chosen.has(collection.id)} onchange={() => toggle(collection.id)} />{collection.name}
+            <input type="checkbox" checked={chosen.has(collection.id)} onchange={() => toggle(collection.id)} />{collection.name}{#if anybook.has(collection.id)}<span class="group-print__any" title={t('ui.group_print_anybook')} aria-label={t('ui.group_print_anybook')}>◎</span>{/if}
           </label>
         {/each}
       </div>
@@ -117,6 +129,7 @@
       <div class="print-view__foot">
         {#if mixed}<span class="print-view__meta opt__warn">{t('ui.group_print_mixed')}</span>{/if}
         <span class="print-view__sp"></span>
+        {#if withCodes}<button class="print-view__tool" type="button" title={t('ui.anybook_studio')} disabled={preparing || previews.length === 0} onclick={studio}>⤓ Anybook</button>{/if}
         <button class="print-view__tool" type="button" aria-label={t('ui.pdf_save')} title={t('ui.pdf_save')} disabled={saving || preparing || previews.length === 0} onclick={() => void savePdf()}>{#if saving}<span class="spinner"></span>{:else}⤓{/if} PDF</button>
         <button class="print-view__tool" type="button" disabled={preparing || mixed || previews.length === 0} onclick={() => previews[0]?.print()}>{#if preparing}<span class="spinner"></span>{/if} {t('ui.print')}</button>
       </div>

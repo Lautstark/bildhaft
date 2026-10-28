@@ -116,3 +116,63 @@ test('der Gruppendruck druckt die Spiele zusammen, die Karten geteilt auf einem 
   await expect(overlay.locator('.ps-spiel-cut .ps-talk__card').nth(0).locator('.ps-spiel__wort')).toHaveCount(0);
   await expect(overlay.locator('.ps-spiel-cut .ps-talk__card').nth(1).locator('.ps-spiel__wort')).toHaveText('Socke');
 });
+
+test('der Gruppendruck geht nach dem Schließen wieder auf, auch über offenen Satzstreifen', async ({ page }) => {
+  // Six Satzstreifen, so the group has a head. Closing the overlay hands
+  // #print-root back to the open material's print column, whose cards are
+  // PrintCards — mounting them inside the overlay's teardown threw, and the
+  // page stopped answering: the printer opened nothing any more.
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await translate(page, 'Ich esse einen Apfel');
+  for (const name of ['S2', 'S3', 'S4', 'S5', 'S6']) {
+    await newMaterial(page, /^Satzstreifen/, name);
+    await translate(page, 'Wir spielen Ball');
+  }
+  const overlay = page.locator('.group-print');
+  const open = page.getByRole('button', { name: 'Alle Satzstreifen drucken' });
+  await open.click();
+  await expect(overlay).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(overlay).toHaveCount(0);
+  await open.click();
+  await expect(overlay).toBeVisible();
+  // The print column behind it has its printable copy back once it closes.
+  await page.getByRole('button', { name: 'Große Vorschau schließen' }).click();
+  await expect(page.locator('#print-root .ps-sheet')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('der Gruppendruck speichert eine Datei für Anybook Studio, wenn ein angehaktes Material Anybook hat', async ({ page }) => {
+  // Six Satzstreifen, two of them with Anybook: those carry the ◎.
+  await translate(page, 'Ich esse einen Apfel');
+  await page.getByLabel('Name des Materials').fill('Frühstück');
+  await openDing(page, 'Anybook');
+  await page.keyboard.press('Escape');
+  for (const name of ['Draußen', 'S3', 'S4', 'S5', 'S6']) {
+    await newMaterial(page, /^Satzstreifen/, name);
+    await translate(page, 'Wir spielen Ball');
+    if (name === 'Draußen') { await openDing(page, 'Anybook'); await page.keyboard.press('Escape'); }
+  }
+  await page.getByRole('button', { name: 'Alle Satzstreifen drucken' }).click();
+  const overlay = page.locator('.group-print');
+  await expect(overlay).toBeVisible();
+  await expect(overlay.locator('.group-print__check', { has: page.locator('.group-print__any') })).toHaveText(['Draußen◎', 'Frühstück◎']);
+
+  // One file for everything ticked: each material in its own voice, no
+  // picker; the ones without Anybook named, along without codes.
+  const anybook = overlay.getByRole('button', { name: '⤓ Anybook' });
+  await anybook.click();
+  const sheet = page.getByRole('dialog', { name: 'Für Anybook Studio' });
+  await expect(sheet).toContainText(/2 Materialien · \d+ Codes · jedes mit seiner Stimme/);
+  await expect(sheet).toContainText('„S6“, „S5“, „S4“, „S3“ haben kein Anybook und kommen ohne Codes mit.');
+  await expect(sheet.getByRole('button', { name: /Stimme/ })).toHaveCount(0);
+  await sheet.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(sheet).toHaveCount(0);
+
+  // With only materials without Anybook ticked there is nothing for Studio.
+  for (const name of ['Draußen', 'Frühstück']) {
+    await overlay.locator('.group-print__check', { hasText: name }).getByRole('checkbox').uncheck();
+  }
+  await expect(anybook).toHaveCount(0);
+});
