@@ -1712,7 +1712,7 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   expect(beside.height).toBeCloseTo(before.height, 1);
   expect(beside.right).toBeGreaterThanOrEqual(-0.05);
 
-  // Überlappend: 1 mm in from the card's corner, the card as it was; the
+  // Überlappend: 1.4 mm inside the card's 0.2 mm cut line, 1.5 mm from its middle, the card as it was; the
   // symbol gives up only what it must, on its bottom line, so the circle lies
   // on the picture's corner by no more than its diameter, width and height
   // together — over the whole box (391f546) it hid most of the picture.
@@ -1720,8 +1720,8 @@ test('a card that grows round its symbol grows upwards or sideways for the Anybo
   await expect.poll(async () => (await against()).width).toBeCloseTo(before.width, 1);
   const over = await against();
   expect(over.height).toBeCloseTo(before.height, 1);
-  expect(Math.abs(over.fromRight - 1)).toBeLessThan(0.25);
-  expect(Math.abs(over.fromTop - 1)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromRight - 1.4)).toBeLessThan(0.25);
+  expect(Math.abs(over.fromTop - 1.4)).toBeLessThan(0.25);
   expect(over.symbol).toBeLessThan(before.symbol - 1);
   expect(Math.abs(over.bottom)).toBeLessThan(0.2);
   expect(-Math.min(0, over.right) - Math.min(0, over.above)).toBeLessThan(9.6);

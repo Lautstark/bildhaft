@@ -833,7 +833,7 @@ function cardSymbol(room: { width: number; height: number }): number {
  * corner stands outside the card: the air round a cut card it sits in.
  */
 function anybookSymbol(box: { width: number; height: number }, symbol: number, pad: number, out = 0): number {
-  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad + 2 * out - 11.5) / 1.5);
+  return Math.min(symbol, (box.width / 2 + (box.height + symbol) / 2 + 2 * pad + 2 * out - 12.5) / 1.5);
 }
 type GameShape = { units: number; zellen: number; platz: number };
 
@@ -981,7 +981,7 @@ export function talkGeometry(
   const room = { width: cutW - 2 * k, height: cutH - label - 3 * k };
   const symW = cardSymbol(room);
   /* A Plauderbuch's symbols are printed on the Kartenbogen only, where the
-     circle sits 1 mm from the cut line, the air round the card further out
+     circle sits 1.5 mm from the cut line, the air round the card further out
      than the card's own corner (3f841b1): it lies that much less on the symbol. */
   const around = settings.cutMarginMm * k;
   return { cols, rows, cardW, cardH, gap, air: around, k, height, cutW, cutH, symW, anySymW: anybookSymbol(room, symW, k, around) };

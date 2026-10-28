@@ -1089,7 +1089,7 @@
 /* Studio's code comes with a ring of its own, about 10.7 mm across — wider
    than the sticker's 9.5 mm. On a card's corner it touched the cut line (her
    test print, 2026-10-27): on this sheet its middle sits 1.5 mm further in,
-   so close to 2 mm stay between ring and edge. */
+   so some 2.4 mm stay between ring and edge. */
 .ps-studio .ps-sheet--any-over .ps-any:not(.ps-any--title, .ps-any--start) {
   translate: -1.5mm 1.5mm;
 }
@@ -1126,49 +1126,53 @@
 }
 
 /*
- * Over (her calls, 2026-10-27): the circle on the card itself, 1 mm in
- * (a card to cut out — a Spiel's, a Plauderbuch's — from its cut line, not
+ * Over (her calls, 2026-10-27): the circle on the card itself, 1.5 mm in
+ * (her call, 2026-10-28, from 1 mm; a card to cut out — a Spiel's, a Plauderbuch's — from its cut line, not
  * from the card inside its laminating air: her call, again, 2026-10-27)
  * from its top right corner — its edge, or its frame's — on every card
  * alike, the word on top or not: on top, a word longer than the corner
  * leaves is covered, and that is the price of the pairing. --any-pad is how
- * far the symbol's box stands in from the card's edge: its padding.
+ * far the symbol's box stands in from the card's edge: its padding; --any-in
+ * how far the circle stands in from where it hangs, counted from the middle
+ * of the cut line, where the scissors go: a card's is its 0.2 mm border,
+ * the circle hangs inside it; a Kartenbogen's is drawn outside its cell.
  *
  * The card keeps its size; the symbol gives up only what it must, keeps its
  * bottom line and stays centred. What it must: the circle may lie on the
  * symbol's square by a quarter of the circle at most: it does when the
  * square's corner is no further right of the circle's middle than it is
  * below it. With the box W by H, the symbol s0 (its size without the
- * circle) and the circle's 9.5 mm 1 mm in, that is
- *   s ≤ (W/2 + (H + s0)/2 + 2 pad − 11.5 mm) / 1.5,
+ * circle) and the circle's 9.5 mm `in` in, that is
+ *   s ≤ (W/2 + (H + s0)/2 + 2 pad − 2 in − 9.5 mm) / 1.5,
  * read off the box itself (a size container), so a grid's field and a
  * growing card follow it alike. Where
  * the corner is free already — a Tafel's field with its air — the symbol
  * keeps its size. A Spiel's and a Plauderbuch's symbol is the one size on
  * sheet and card: printSheet.ts works it out once (anybookSymbol, --any-sym).
  */
-.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); }
-.ps-card--framed { --any-pad: var(--frame-pad); }
+.ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); --any-in: 1.4mm; }
+.ps-card--framed { --any-pad: var(--frame-pad); --any-in: 1.5mm; }
 :is(.ps-talk__card, .ps-spiel__bild) { --any-pad: calc(1mm * var(--talk-k)); }
+:is(.ps-talk-cut__cell, .ps-spiel__bild) { --any-in: 1.5mm; }
 
 .ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) {
   container-type: size;
   --any-s0: min(100cqw, 100cqh);
-  --any-s: min(var(--any-s0), (50cqw + (100cqh + var(--any-s0)) / 2 + 2 * var(--any-pad) - 11.5mm) / 1.5);
+  --any-s: min(var(--any-s0), (50cqw + (100cqh + var(--any-s0)) / 2 + 2 * var(--any-pad) - 2 * var(--any-in) - 9.5mm) / 1.5);
 }
 .ps-sheet--any-over :is(.ps-talk__card, .ps-spiel__bild) .ps-title__pic:has(img) {
   --any-s0: var(--sym);
   --any-s: var(--any-sym);
 }
 .ps-sheet--any-over :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any {
-  top: 1mm;
-  right: 1mm;
+  top: var(--any-in);
+  right: var(--any-in);
 }
-/* The other three corners (her eight, 2026-10-28), 1 mm in as the first. On a
+/* The other three corners (her eight, 2026-10-28), as far in as the first. On a
    bottom corner the symbol gives up its room from below: it keeps its top line. */
-.ps-sheet--any-over-tl :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { right: auto; left: 1mm; }
-.ps-sheet--any-over-bl :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { top: auto; bottom: 1mm; right: auto; left: 1mm; }
-.ps-sheet--any-over-br :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { top: auto; bottom: 1mm; }
+.ps-sheet--any-over-tl :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { right: auto; left: var(--any-in); }
+.ps-sheet--any-over-bl :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { top: auto; bottom: var(--any-in); right: auto; left: var(--any-in); }
+.ps-sheet--any-over-br :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame, .ps-talk-cut__cell, .ps-talk__card, .ps-spiel__bild):has(img) > .ps-any { top: auto; bottom: var(--any-in); }
 .ps-sheet--any-over :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic) img {
   max-width: var(--any-s);
   max-height: var(--any-s);
