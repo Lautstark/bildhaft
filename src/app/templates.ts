@@ -313,8 +313,8 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
   },
 
-  /* Opens on A5 lying on its side, the Plauderplan-Drehbuch's paper: it goes
-     into an A5 ring binder. Every paper and either way up, as everywhere;
+  /* Opens on A5 standing up, six fields under the question: it goes into
+     an A5 ring binder. Every paper and either way up, as everywhere;
      the paper and which way up decide how many Antworten a page holds
      (talkCapacity), whether the cards carry their word their shape
      (talkGeometry). Always to velcro — empty fields on the pages, the
@@ -327,7 +327,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     cards: false,
     zeileInEdit: true,
     defaults: () => ({
-      paper: 'a5', orientation: 'landscape', cutMarginMm: 3, showCutLines: true,
+      paper: 'a5', orientation: 'portrait', cutMarginMm: 3, showCutLines: true,
       /* 7 pt: an Antwort of two to four words keeps to the two lines its card
          has room for, lying on its side too (2026-10-27, measured on the Prüfseite). */
       showLabel: false, labelPosition: 'below', labelSizePt: 7,
