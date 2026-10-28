@@ -101,11 +101,15 @@ export class StudioExport {
       for (const state of this.states) await readyToDraw(state);
 
       /* Where each code's centre is, in millimetres of its own sheet of
-         paper; the pages counted on over the previews, as the file has them. */
+         paper; the pages counted on over the previews, as the file has them.
+         Read off the sheet as Studio gets it, where a corner's code stands
+         further in than a sticker's circle (print.css) — read off the
+         preview, the codes stood where the stickers do, close to the cut
+         line (her print, 2026-10-28). */
       const placed: (PlacedCode & { said: string; voice: string })[] = [];
       let activation: PlacedCode | null = null;
       let page = 0;
-      for (const state of this.states) {
+      await capturingAll(this.states, async () => { for (const state of this.states) {
         const sheet = printerPaper(state.settings);
         const paper = paperSize(sheet.paper, sheet.orientation);
         const voice = this.voiceOf(state);
@@ -126,7 +130,7 @@ export class StudioExport {
             else placed.push({ ...code, said: el.dataset.said ?? '', voice });
           }
         }
-      }
+      } }, true);
 
       /* One recording per thing said in one voice: two codes saying „Pfanne" share it. */
       const names = new Map<string, { name: string; said: string; voice: string }>();
