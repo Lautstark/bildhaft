@@ -985,7 +985,7 @@
   width: 9.5mm;
   height: 9.5mm;
   box-sizing: border-box;
-  border: 0.25mm var(--any-line, dashed) var(--any-ring, #cfc8c1);
+  border: var(--any-ring-w, 0.25mm) var(--any-line, dashed) var(--any-ring, #cfc8c1);
   border-radius: 50%;
   background: var(--any-fill, transparent);
 }
@@ -1059,7 +1059,7 @@
   width: 9.5mm;
   height: 9.5mm;
   box-sizing: border-box;
-  border: 0.25mm var(--any-line, dashed) var(--any-ring, #cfc8c1);
+  border: var(--any-ring-w, 0.25mm) var(--any-line, dashed) var(--any-ring, #cfc8c1);
   border-radius: 50%;
   background: var(--any-fill, transparent);
 }
@@ -1085,9 +1085,11 @@
    2026-10-29) — Studio prints only the code into it, its „Ziehhilfe“ off,
    so the ring stands exactly where it is meant to, whatever size Studio's
    own would be. The white keeps a picture's corner away from the code, so
-   the pen reads the code alone. The activation code keeps its own ring. */
+   the pen reads the code alone. The activation code keeps its own ring.
+   Twice a sticker's, 0.5 mm, to be seen as the place to tap (her call). */
 .ps-studio .ps-sheet--anybook {
   --any-line: solid;
+  --any-ring-w: 0.5mm;
   --any-ring: var(--any-accent, #b9b2b0);
   --any-fill: #fff;
 }
