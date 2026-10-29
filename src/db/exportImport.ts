@@ -2,7 +2,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, COLLECTION_KINDS, EXPORT_FORMAT, EXPORT_VERSION,
   type BackupExport, type Board, type Collection, type CollectionExport, type CollectionKind,
   OWN_PREFIX, ownImageId, ownImagesInUse,
-  type GameBook, type Override, type OwnImage, type OwnImageExport, type Sentence, type Slot, type Song, type TalkBook,
+  type GameBook, type Override, type OwnImage, type OwnImageExport, type PrintSettings, type Sentence, type Slot, type Song, type TalkBook,
 } from '../core/types.ts';
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
@@ -343,7 +343,9 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     // And a Spiel's rows theirs.
     ...(source.game ? { game: remapGame(source.game, sentenceIds) } : {}),
     // How it printed is part of what it is; the copyright choice is not in it.
-    ...(source.print ? { print: source.print } : {}),
+    ...(source.print ? { print: remapPrint(source.print, sentenceIds) } : {}),
+    // And what its paper is titled, where that is not its name.
+    ...(typeof source.title === 'string' && source.title.trim() ? { title: source.title } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -407,6 +409,7 @@ export async function copyCollection(
     ...(withContent && song ? { song: remapSong(song, sentenceIds) } : {}),
     ...(withContent && talk ? { talk: remapTalk(talk, sentenceIds) } : {}),
     ...(withContent && game ? { game: remapGame(game, sentenceIds) } : {}),
+    ...(withContent && kept.print ? { print: remapPrint(kept.print, sentenceIds) } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -463,6 +466,17 @@ function remapGame(game: GameBook, ids: Map<string, string>): GameBook {
         .map((zelle) => ({ ...zelle, karte: ids.get(zelle.karte) }))
         .filter((zelle): zelle is { karte: string; platz: boolean } => Boolean(zelle.karte)),
     })),
+  };
+}
+
+/** What the pen says, its rows' keys pointing at their fresh ids. A step's
+ *  sentence is keyed by its row, a card's by its slot — and a slot keeps its
+ *  id through an import and a copy, so only the rows' keys move. */
+function remapPrint(print: Partial<PrintSettings>, ids: Map<string, string>): Partial<PrintSettings> {
+  if (!print.anybookSay) return print;
+  return {
+    ...print,
+    anybookSay: Object.fromEntries(Object.entries(print.anybookSay).map(([key, say]) => [ids.get(key) ?? key, say])),
   };
 }
 
