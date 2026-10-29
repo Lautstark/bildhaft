@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { inflateSync } from 'node:zlib';
+import { PDFDocument, PDFName, PDFRawStream } from 'pdf-lib';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
 import { backToPrint, closePicker, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
@@ -209,6 +212,48 @@ test('an Einkaufsliste prints its guide and three sheets, and the cart holds its
       }));
     expect(fits).toBe(true);
   }
+});
+
+/*
+ * The PDF draws each page on its own, without the sheet around it and without
+ * the stylesheet. The board's page colour and its cart are set on that sheet,
+ * and the cart lies outside its own viewBox: both came out as nothing — a white
+ * page with the places floating on it. So: the board's page in the PDF has its
+ * green, and the cart's line.
+ */
+test('the PDF of an Einkaufsliste has its coloured page and its cart', async ({ page }) => {
+  await sidebarReady(page);
+  await page.getByRole('button', { name: '+ Neues Material' }).click();
+  await pickTemplate(page, /^Einkaufsliste/);
+  await page.getByLabel('Wörter hinzufügen').fill('Apfel');
+  await page.getByLabel('Wörter hinzufügen').press('Enter');
+  await showSheet(page);
+  await expect(page.locator('.preview-frame .ps-cart')).toHaveCount(1);
+
+  const [file] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Als PDF speichern' }).click(),
+  ]);
+  const pdf = await PDFDocument.load(await readFile(await file.path()));
+  /* Each page is one picture; the board is the second, after the guide. Its
+     colour channels, inflated, are rows of r, g, b. */
+  const pictures = pdf.context.enumerateIndirectObjects()
+    .map(([, object]) => object)
+    .filter((object): object is PDFRawStream => object instanceof PDFRawStream
+      && object.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')
+      && object.dict.get(PDFName.of('ColorSpace')) === PDFName.of('DeviceRGB'));
+  expect(pictures).toHaveLength(4);
+  const near = (rgb: Buffer, [r, g, b]: number[]) => {
+    let n = 0;
+    for (let i = 0; i < rgb.length; i += 3) {
+      if (Math.abs(rgb[i]! - r!) < 12 && Math.abs(rgb[i + 1]! - g!) < 12 && Math.abs(rgb[i + 2]! - b!) < 12) n++;
+    }
+    return n;
+  };
+  const board = inflateSync(pictures[1]!.contents);
+  const all = board.length / 3;
+  expect(near(board, [0xd9, 0xeb, 0xd3]) / all).toBeGreaterThan(0.3); // the page
+  expect(near(board, [0x3d, 0x7d, 0x3a]) / all).toBeGreaterThan(0.005); // the cart
 });
 
 /**

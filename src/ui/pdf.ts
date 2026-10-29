@@ -37,6 +37,23 @@ export async function previewsToPdf(parts: { pages: HTMLElement[]; settings: Pri
   return new Blob([bytes as BlobPart], { type: 'application/pdf' });
 }
 
+/** The custom properties a page's ancestors set inline, nearest first. */
+function inherited(page: HTMLElement): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (let at = page.parentElement; at; at = at.parentElement) {
+    for (const name of Array.from(at.style)) {
+      if (name.startsWith('--') && !(name in vars)) vars[name] = at.style.getPropertyValue(name);
+    }
+  }
+  return vars;
+}
+
+/** What the page is printed on: its own background, or white. */
+function paperColour(page: HTMLElement): string {
+  const colour = getComputedStyle(page).backgroundColor;
+  return colour === 'transparent' || colour === 'rgba(0, 0, 0, 0)' ? '#ffffff' : colour;
+}
+
 async function addPages(pdf: PDFDocument, pages: HTMLElement[], settings: PrintSettings): Promise<void> {
   /* The printer's sheet: on A5, an A4 with two pages on it. */
   const sheetPaper = printerPaper(settings);
@@ -52,10 +69,23 @@ async function addPages(pdf: PDFDocument, pages: HTMLElement[], settings: PrintS
       width: page.offsetWidth,
       height: page.offsetHeight,
       scale: DPI / CSS_DPI,
-      backgroundColor: '#ffffff',
+      /* Under the page, not over it: the option is laid on with !important,
+         and white there painted out a coloured page — an Einkaufsliste's
+         board. Its own colour where it has one, white where it has none. */
+      backgroundColor: paperColour(page),
       /* The page box carries the preview's drop shadow and the gap to the
          next page; neither is paper. */
       style: { boxShadow: 'none', margin: '0' },
+      /* The sheet's colours — the page, an Einkaufsliste's cart, a title —
+         are variables set on the sheet around the page, and a page drawn on
+         its own has no sheet around it: they came out as nothing, the cart not
+         at all. Set with setProperty, because `style` above is assigned by
+         name, which a custom property does not take. */
+      onCloneNode: (clone) => {
+        for (const [name, value] of Object.entries(inherited(page))) {
+          (clone as HTMLElement).style.setProperty(name, value);
+        }
+      },
     });
     const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('the page could not be drawn'))), 'image/png'));
