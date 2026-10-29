@@ -980,6 +980,9 @@
 .ps-sheet--anybook .ps-song-line:has(img) > .ps-any {
   display: block;
   position: absolute;
+  /* Above the card it hangs on: a Kartenbogen's card is white and comes
+     after it, and covered all of the ring but the bit in the card's air. */
+  z-index: 1;
   top: 0;
   right: 0;
   width: 9.5mm;

@@ -300,6 +300,10 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
         off: img ? ((img.left + img.right) / 2 - (box.left + box.right) / 2) / scale / mm : null,
         // 2.15 mm in from the corner, right and top.
         corner: ring ? [(box.right - ring.right) / scale / mm, (ring.top - box.top) / scale / mm] : null,
+        // Nothing of the card drawn over the ring: at its left and its foot the ring comes
+        // before everything else of the card there (the preview's zoom button lies over all).
+        onTop: ring ? [[ring.left + 2, (ring.top + ring.bottom) / 2], [(ring.left + ring.right) / 2, ring.bottom - 2]]
+          .every(([x, y]) => document.elementsFromPoint(x!, y!).filter((e) => card.contains(e))[0] === code) : null,
       };
     });
   }, selector);
@@ -316,6 +320,7 @@ test('Platzhalter für Anybook-Sticker: oben rechts auf jeder Karte mit Symbol, 
       expect(Math.abs(card.off!), sel).toBeLessThan(0.3);
       // On the cut sheet 2.15 mm in from the cut line's corner.
       if (sel.includes('cut')) for (const gap of card.corner!) expect(Math.abs(gap - 2.15), sel).toBeLessThan(0.15);
+      expect(card.onTop, sel).toBe(true);
     }
   }
   // A Platzhalter and the Ablage's dots carry no circle.
