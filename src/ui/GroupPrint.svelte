@@ -22,7 +22,7 @@
   import { untrack } from 'svelte';
   import type { GroupPrintWhich } from '../core/ordner.ts';
   import type { PrintSettings } from '../core/types.ts';
-  import DingBar from './DingBar.svelte';
+  import DingBar, { dd } from './DingBar.svelte';
   import PaperPick from './PaperPick.svelte';
   import PrintSheet from './PrintSheet.svelte';
   import { attachGroupPrinting, groupPdf, Printing } from './printDialog.svelte.ts';
@@ -57,11 +57,14 @@
   };
   let listOpen = $state(false);
 
-  /* What the menu set, over every material, for this print. */
+  /* What the menu set, over every material, for this print, and which settings it changed. */
   let over = $state.raw<Partial<PrintSettings>>({});
-  let source = $derived(loaded ? groupPrintSource(loaded, chosen, over, (next) => { over = next; }) : null);
-  /* One change of the Materialfarbe sets the cart's and the accent with the title's. */
-  let changes = $derived(Object.keys(over).filter((key) => !('titleColour' in over && (key === 'cartColour' || key === 'accentColour'))).length);
+  let changed = $state.raw<ReadonlySet<keyof PrintSettings>>(new Set());
+  let source = $derived(loaded ? groupPrintSource(loaded, chosen, over, (next, key) => {
+    over = next;
+    changed = new Set([...changed, key]);
+  }) : null);
+  const reset = (): void => { over = {}; changed = new Set(); };
 
   let parts = $derived(loaded ? groupPrintParts(loaded, chosen, over) : []);
   let previews = $derived(parts.map((part) => {
@@ -117,7 +120,8 @@
   }
 </script>
 
-<svelte:window onkeydown={(event) => { if (event.key === 'Escape') onClose(); }} />
+<!-- An Escape that closed a menu (it says so, defaultPrevented) leaves the overlay open. -->
+<svelte:window onkeydown={(event) => { if (event.key === 'Escape' && !event.defaultPrevented) onClose(); }} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 <div class="print-dock print-dock--big" aria-label={caption} onclick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -131,7 +135,7 @@
     </div>
     {#if loaded}
       <div class="group-print__sum">
-        <button class="group-print__fold" type="button" aria-expanded={listOpen} onclick={() => { listOpen = !listOpen; }}><span class="ding__dd"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></span>{t('ui.group_print_n_of', { n: chosen.size, all: loaded.length })}</button>
+        <button class="group-print__fold" type="button" aria-expanded={listOpen} onclick={() => { listOpen = !listOpen; }}>{@render dd()}{t('ui.group_print_n_of', { n: chosen.size, all: loaded.length })}</button>
         {#if !listOpen}<span class="group-print__names small faint">{ticked.map(({ collection }) => collection.name).join(', ')}</span>{/if}
       </div>
       {#if listOpen}<div class="group-print__wahl" role="group" aria-label={t('ui.group_print_pick')}>
@@ -145,7 +149,7 @@
       </div>{/if}
       {#if source}<div class="group-print__menu">
         <DingBar {source} />
-        <span class="group-print__only small faint">{#if changes > 0}{t(changes === 1 ? 'ui.group_print_changed_one' : 'ui.group_print_changed_n', { n: changes })} · <button class="group-print__link" type="button" onclick={() => { over = {}; }}>{t('ui.group_print_reset')}</button>{:else}{t('ui.group_print_only')}{/if}</span>
+        <span class="group-print__only small faint">{#if changed.size > 0}{t(changed.size === 1 ? 'ui.group_print_changed_one' : 'ui.group_print_changed_n', { n: changed.size })} · <button class="group-print__link" type="button" onclick={reset}>{t('ui.group_print_reset')}</button>{:else}{t('ui.group_print_only')}{/if}</span>
       </div>{/if}
       <div class="print-view__scroll"><div class="print-view__stage">
         {#key previews}

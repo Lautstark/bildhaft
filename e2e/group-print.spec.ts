@@ -207,6 +207,13 @@ test('das Menü im Gruppendruck stellt alle angehakten Materialien um, nur für 
   await expect(overlay.locator('.group-print__names')).toContainText('Frühstück');
   await expect(overlay.locator('.group-print__only')).toHaveText('Gilt nur für diesen Druck. Die Materialien bleiben, wie sie sind.');
 
+  // Escape closes a menu, not the overlay around it.
+  await overlay.locator('.ding__chip[aria-label="Symbol"]').click();
+  await expect(overlay.locator('.ding__pop')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(overlay.locator('.ding__pop')).toHaveCount(0);
+  await expect(overlay).toBeVisible();
+
   // Where they disagree, the field stands empty and says who has what.
   await overlay.locator('.ding__chip[aria-label="Symbol"]').click();
   const size = overlay.getByLabel('Symbolgröße');

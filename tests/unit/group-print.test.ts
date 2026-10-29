@@ -65,12 +65,17 @@ describe('the group print', () => {
     shelf[1]!.collection.print = { cutMarginMm: 6 };
     const all = new Set(shelf.map(({ collection }) => collection.id));
     let over = {};
-    const source = groupPrintSource(shelf, all, over, (next) => { over = next; })!;
+    const changed: string[] = [];
+    const source = groupPrintSource(shelf, all, over, (next, key) => { over = next; changed.push(key); })!;
     /* Where they disagree, the menu says who has what. */
     expect(source.mixed('cutMarginMm')?.map((group) => group.names)).toEqual([['A', 'C'], ['B']]);
     expect(source.mixed('showLabel')).toBeNull();
     source.set('cutMarginMm', 4);
     expect(over).toEqual({ cutMarginMm: 4 });
+    /* A patch is one change, named by its first setting: the Materialfarbe. */
+    groupPrintSource(shelf, all, {}, (_next, key) => { changed.push(key); })!
+      .patch({ titleColour: '#3d7d3a', cartColour: '#3d7d3a', accentColour: '#3d7d3a' });
+    expect(changed).toEqual(['cutMarginMm', 'titleColour']);
     const parts = groupPrintParts(shelf, all, over).filter((part) => part.collection);
     expect(parts.map((part) => part.options.settings.cutMarginMm)).toEqual([4, 4, 4]);
     expect(groupPrintSource(shelf, all, over, () => undefined)!.mixed('cutMarginMm')).toBeNull();

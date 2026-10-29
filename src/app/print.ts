@@ -263,10 +263,7 @@ function buildOptions(
     game,
     collectionName: open ? titleOf(open) : 'bildhaft',
     pictures: titlePictures(all),
-    /* What this Sammlung set, over its template's defaults, under what the
-       template always is (templates.ts) — and over what it set, what the
-       group print set for this one print. */
-    settings: printFor(printBase(), which, board, { ...open?.print, ...over }),
+    settings: printOf(open, over),
     onChange: hooks.onChange,
     onPdf: hooks.onPdf,
     provider: providerId(),
@@ -277,13 +274,19 @@ function buildOptions(
 
 /** Whether a material prints Anybook codes, as its own print would — or as the group print sets it. */
 export function anybookOf(collection: Collection, over: Partial<PrintSettings> = {}): boolean {
-  return groupPrintSettings(collection, over).anybookCircle;
+  return printOf(collection, over).anybookCircle;
 }
 
-/** What one material of the group print prints with: its own settings, and over them what the group print set. */
-function groupPrintSettings(collection: Collection, over: Partial<PrintSettings>): PrintSettings {
-  const which = kindOf(collection);
-  return printFor(printBase(), which, which === 'tafel' ? boardOf(collection) : null, { ...collection.print, ...over });
+/**
+ * What a material prints with: what it set for itself, over its template's
+ * defaults, under what the template always is (templates.ts) — and over all
+ * it set, what the group print sets for one print (`over`). No material is
+ * what nothing is open prints with, the way `kind()` answers then.
+ */
+function printOf(collection: Collection | null, over: Partial<PrintSettings> = {}): PrintSettings {
+  const which = collection ? kindOf(collection) : 'satzstreifen';
+  const board = which === 'tafel' && collection ? boardOf(collection) : null;
+  return printFor(printBase(), which, board, { ...collection?.print, ...over });
 }
 
 /** A material loaded for the group print: the Sammlung with its rows. */
@@ -408,7 +411,7 @@ export function materialPrint(): PrintSource | null {
   if (!open || !s.settings) return null;
   const which = kind();
   const board = which === 'tafel' ? boardOf(open) : null;
-  const settings = printFor(printBase(), which, board, open.print ?? {});
+  const settings = printOf(open);
   const write = (next: PrintSettings) => { void keepPrint(next); };
   return {
     kind: which,
@@ -423,21 +426,27 @@ export function materialPrint(): PrintSource | null {
  * The menu over „Alle drucken": what the ticked materials print with, and
  * changing it changes it for all of them — for this print only. Nothing is
  * written to a material; `onOver` hands the group print what it now sets
- * over every one of them, and closing the overlay forgets it.
+ * over every one of them, and closing the overlay forgets it. With it comes
+ * the one setting that was changed, by name: a patch is one change, named by
+ * its first — the Materialfarbe sets the cart's and the accent with the
+ * title's, and is still one.
  */
 export function groupPrintSource(
   loaded: GroupLoaded[], chosen: ReadonlySet<string>, over: Partial<PrintSettings>,
-  onOver: (next: Partial<PrintSettings>) => void,
+  onOver: (next: Partial<PrintSettings>, changed: keyof PrintSettings) => void,
 ): PrintSource | null {
   const ticked = loaded.filter(({ collection }) => chosen.has(collection.id));
   const first = ticked[0];
   if (!first || !s.settings) return null;
-  const all = ticked.map(({ collection }) => ({ name: collection.name, settings: groupPrintSettings(collection, over) }));
+  const all = ticked.map(({ collection }) => ({ name: collection.name, settings: printOf(collection, over) }));
   return {
     kind: kindOf(first.collection),
     settings: all[0]!.settings,
-    set: (key, value) => onOver({ ...over, [key]: value }),
-    patch: (next) => onOver({ ...over, ...next }),
+    set: (key, value) => onOver({ ...over, [key]: value }, key),
+    patch: (next) => {
+      const first = Object.keys(next)[0] as keyof PrintSettings | undefined;
+      if (first) onOver({ ...over, ...next }, first);
+    },
     mixed: (key, as = (value) => value) => {
       const groups: PrintMixed = [];
       for (const one of all) {
@@ -454,8 +463,7 @@ export function groupPrintSource(
 export function paperOf(): Pick<PrintSettings, 'paper' | 'orientation'> | null {
   const open = activeCollection();
   if (!open || !s.settings) return null;
-  const board = kind() === 'tafel' ? boardOf(open) : null;
-  const print = printFor(printBase(), kind(), board, open.print ?? {});
+  const print = printOf(open);
   return { paper: print.paper, orientation: print.orientation };
 }
 
@@ -468,7 +476,7 @@ export function tafelField(): { width: number; height: number } | null {
   const open = activeCollection();
   if (!open || kind() !== 'tafel' || !s.settings) return null;
   const board = boardOf(open);
-  const print = printFor(printBase(), kind(), board, open.print ?? {});
+  const print = printOf(open);
   const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
   const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
     : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
@@ -480,7 +488,7 @@ export function tafelField(): { width: number; height: number } | null {
 function gameSheet() {
   const open = activeCollection();
   if (!open || kind() !== 'spiel' || !s.settings) return null;
-  const print = printFor(printBase(), 'spiel', null, open.print ?? {});
+  const print = printOf(open);
   const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
   const titled: Titled = !print.showCollectionTitle || !titleOf(open).trim() ? false
     : titlePictures(s.sentences).length > 0 ? 'pictured' : 'text';
@@ -494,7 +502,7 @@ function gameSheet() {
 export function talkPrint(): { room: number } | null {
   const open = activeCollection();
   if (!open || kind() !== 'plauderbuch' || !s.settings) return null;
-  return { room: talkCapacity(printFor(printBase(), 'plauderbuch', null, open.print ?? {})) };
+  return { room: talkCapacity(printOf(open)) };
 }
 
 /** A game's rows as the geometry counts them: how many, the longest, and

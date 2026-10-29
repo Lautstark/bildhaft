@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  /* The chevron of a chip, lent to „Alle drucken" for its folding list. */
+  export { dd };
+</script>
+
 <script lang="ts">
   /**
    * The row over the material: one button per thing on the sheet — Seite,
@@ -97,7 +102,11 @@
   }
 </script>
 
-<svelte:window onpointerdown={away} onkeydown={(event) => { if (event.key === 'Escape') open = null; }} />
+<!--
+  In the capture phase, and saying so when it closed a menu: an overlay
+  around this row („Alle drucken") closes on Escape too, and must not when
+  the Escape was this menu's.
+--><svelte:window onpointerdown={away} onkeydowncapture={(event) => { if (event.key === 'Escape' && open) { open = null; event.preventDefault(); } }} />
 
 {#snippet dd()}<span class="ding__dd"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></span>{/snippet}
 
