@@ -2014,16 +2014,39 @@ footer.footer {
 .group-print { display: flex; flex-direction: column; height: calc(100vh - 56px); }
 .group-print .print-view__scroll { flex: 1; min-height: 0; overflow: auto; }
 .group-print .print-view__stage { display: flex; flex-direction: column; gap: 10px; }
+/* Die Auswahl, zugeklappt eine Zeile: „4 von 4 Materialien" und die Namen
+   (ihre Wahl B, 2026-10-29). Aufgeklappt ein Material pro Zeile, in Spalten. */
+.group-print__sum { display: flex; gap: 10px; align-items: baseline; padding: 8px 2px 6px; min-width: 0; flex: none; }
+.group-print__fold { display: inline-flex; gap: 6px; align-items: center; flex: none; border: 0; background: none; padding: 0; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.group-print__fold[aria-expanded="false"] .ding__dd { transform: rotate(-90deg); }
+.group-print__names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .group-print__wahl {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  padding: 8px 2px 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0 12px;
+  padding: 0 2px 6px;
   border-bottom: 1px solid var(--line);
   flex: none;
+  max-height: 34vh;
+  overflow: auto;
 }
-.group-print__check { white-space: nowrap; }
-.group-print__check--aus { color: var(--text-faint); text-decoration: line-through; }
+.group-print__head { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; padding: 2px 8px 6px; }
+.group-print__check { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; padding: 5px 8px; border-radius: 8px; }
+.group-print__check:hover { background: var(--surface-2); }
+.group-print__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-print__check--aus .group-print__name { color: var(--text-faint); text-decoration: line-through; }
+.group-print__link { border: 0; background: none; padding: 0; color: var(--accent-strong); font: inherit; text-decoration: underline; cursor: pointer; }
+/* Das Menü über einem Material, hier für alle angehakten und nur für diesen Druck. */
+.group-print__menu { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 0 2px; flex: none; }
+.group-print__menu .ding-bar { margin-bottom: 0; }
+.group-print__only { margin-left: auto; }
+/* Wer was hat, unter einem Kästchen oder Feld, das für die angehakten Materialien verschieden steht. */
+.ding__mixed { margin: -6px 0 0; }
+.ding-check + .ding__mixed { margin-left: 24px; }
+.ding__row > .ding__mixed { flex-basis: 100%; margin: 0; }
+.ding-switch:indeterminate { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.ding-switch:indeterminate::before { left: 9px; }
+.ding-switch--sm:indeterminate::before { left: 8px; }
 /* ◎: this material prints Anybook codes. */
 .group-print__any { margin-left: 4px; color: var(--accent-strong); font-size: 12px; }
 .print-dock--big .print-view { width: min(1000px, 92vw); max-height: calc(100vh - 56px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px 22px 0; cursor: auto; }

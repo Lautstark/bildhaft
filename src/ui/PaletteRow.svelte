@@ -11,9 +11,11 @@
   import { ZONE_COLOURS } from './palette.ts';
   import { t } from '../i18n/index.ts';
 
-  let { label, value, strength, none = false, ownStart = '#2c66c8', onPick }: {
+  let { label, value, mixed = null, strength, none = false, ownStart = '#2c66c8', onPick }: {
     label: string;
     value: string | null;
+    /** Who has which colour, where the materials of „Alle drucken" disagree: then none stands picked. */
+    mixed?: string | null;
     /** `frame` for lines and text, `fill` for grounds — the same eight hues. */
     strength: 'frame' | 'fill';
     /** Whether „keine" is a choice: a ground may be bare, a line's colour may not. */
@@ -30,7 +32,8 @@
     ...(strength === 'fill' ? [{ value: '#ffffff', name: 'ui.zone_white' }] : []),
     ...ZONE_COLOURS.slice(0, 5).map((hue) => ({ value: hue[strength], name: hue.name })),
   ]);
-  let own = $derived(value !== null && !colours.some((c) => c.value === value));
+  let own = $derived(!mixed && value !== null && !colours.some((c) => c.value === value));
+  let on = (colour: string | null): boolean => !mixed && value === colour;
 </script>
 
-<div class="palette-row" role="group" aria-label={label}><span class="palette-row__name small faint">{label}</span>{#if none}<button class="group-panel__swatch group-panel__swatch--none{value ? '' : ' group-panel__swatch--on'}" type="button" aria-label="{label}: {t('ui.none')}" aria-pressed={!value} onclick={() => onPick(null)}></button>{/if}{#each colours as colour (colour.value)}<button class="group-panel__swatch{value === colour.value ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour.value} aria-label={t('ui.colour_for', { what: label, colour: t(colour.name) })} aria-pressed={value === colour.value} onclick={() => onPick(colour.value)}></button>{/each}<label class="group-panel__wheel{own ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: label })}><input class="group-panel__own" type="color" value={value ?? ownStart} aria-label={t('ui.own_colour_for', { what: label })} onchange={(event) => onPick(event.currentTarget.value)} /></label></div>
+<div class="palette-row" role="group" aria-label={label}><span class="palette-row__name small faint">{label}</span>{#if none}<button class="group-panel__swatch group-panel__swatch--none{on(null) ? ' group-panel__swatch--on' : ''}" type="button" aria-label="{label}: {t('ui.none')}" aria-pressed={on(null)} onclick={() => onPick(null)}></button>{/if}{#each colours as colour (colour.value)}<button class="group-panel__swatch{on(colour.value) ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour.value} aria-label={t('ui.colour_for', { what: label, colour: t(colour.name) })} aria-pressed={on(colour.value)} onclick={() => onPick(colour.value)}></button>{/each}<label class="group-panel__wheel{own ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: label })}><input class="group-panel__own" type="color" value={value ?? ownStart} aria-label={t('ui.own_colour_for', { what: label })} onchange={(event) => onPick(event.currentTarget.value)} /></label></div>{#if mixed}<p class="ding__mixed small faint">{mixed}</p>{/if}

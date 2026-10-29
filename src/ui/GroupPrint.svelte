@@ -12,14 +12,22 @@
    * without Beschriftung) keep a Bogen of their own.
    *
    * Nothing here writes: the previews take each material's kept settings and
-   * change none of them, and the tick lives only in this overlay.
+   * change none of them, and the tick lives only in this overlay. The menu
+   * under the list — the one over a single material — sets for every ticked
+   * material at once, and for this print only (her call, 2026-10-29): what it
+   * sets lies over each material's own and is forgotten when the overlay
+   * closes. The list itself folds to one line, „4 von 4 Materialien" and
+   * their names (her pick B).
    */
   import { untrack } from 'svelte';
   import type { GroupPrintWhich } from '../core/ordner.ts';
+  import type { PrintSettings } from '../core/types.ts';
+  import DingBar from './DingBar.svelte';
+  import PaperPick from './PaperPick.svelte';
   import PrintSheet from './PrintSheet.svelte';
   import { attachGroupPrinting, groupPdf, Printing } from './printDialog.svelte.ts';
   import { printerPaper } from './printSheet.ts';
-  import { anybookOf, groupPrintLoad, groupPrintParts, pdfStem, type GroupLoaded } from '../app/print.ts';
+  import { anybookOf, groupPrintLoad, groupPrintParts, groupPrintSource, pdfStem, type GroupLoaded } from '../app/print.ts';
   import { openStudioSheet } from './anyStudio.svelte.ts';
   import { download } from '@lautstark/werkzeuge/download';
   import { t } from '../i18n/index.ts';
@@ -47,16 +55,26 @@
     if (next.has(id)) next.delete(id); else next.add(id);
     chosen = next;
   };
+  let listOpen = $state(false);
 
-  let previews = $derived.by(() => {
-    if (!loaded) return [];
-    return groupPrintParts(loaded, chosen).map((part) => {
-      const one = new Printing(part.options);
-      /* All pages below one another at the overlay's width; the overlay scrolls. */
-      one.fit = { kind: 'flow' };
-      return one;
-    });
-  });
+  /* What the menu set, over every material, for this print. */
+  let over = $state.raw<Partial<PrintSettings>>({});
+  let source = $derived(loaded ? groupPrintSource(loaded, chosen, over, (next) => { over = next; }) : null);
+  /* One change of the Materialfarbe sets the cart's and the accent with the title's. */
+  let changes = $derived(Object.keys(over).filter((key) => !('titleColour' in over && (key === 'cartColour' || key === 'accentColour'))).length);
+
+  let parts = $derived(loaded ? groupPrintParts(loaded, chosen, over) : []);
+  let previews = $derived(parts.map((part) => {
+    const one = new Printing(part.options);
+    /* All pages below one another at the overlay's width; the overlay scrolls. */
+    one.fit = { kind: 'flow' };
+    return one;
+  }));
+  /* A material's own pages, as its sheet came out; the shared Kartenbogen is nobody's. */
+  const pagesOf = (id: string): number | null => {
+    const at = parts.findIndex((part) => part.collection?.id === id);
+    return at < 0 ? null : previews[at]?.pageCount ?? null;
+  };
   $effect(() => {
     if (previews.length === 0) return;
     const current = previews;
@@ -77,7 +95,7 @@
 
   /* The materials that print Anybook codes carry a ◎ in the list; with one
      of them ticked the overlay saves a single Studio file of all it prints. */
-  let anybook = $derived(new Set(loaded?.filter(({ collection }) => anybookOf(collection)).map(({ collection }) => collection.id)));
+  let anybook = $derived(new Set(loaded?.filter(({ collection }) => anybookOf(collection, over)).map(({ collection }) => collection.id)));
   let ticked = $derived(loaded?.filter(({ collection }) => chosen.has(collection.id)) ?? []);
   let withCodes = $derived(ticked.some(({ collection }) => anybook.has(collection.id)));
   let fileName = $derived(which.ordner ?? t(`ui.group_${which.kind}`));
@@ -108,16 +126,27 @@
       <span class="print-view__cap">{caption}</span>
       <span class="small faint">{t(pageCount === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pageCount })}</span>
       <span class="print-view__sp"></span>
+      {#if source}<PaperPick {source} />{/if}
       <button class="print-view__tool" type="button" aria-label={t('ui.preview_close')} title={t('ui.preview_close')} onclick={onClose}>✕</button>
     </div>
     {#if loaded}
-      <div class="group-print__wahl" role="group" aria-label={t('ui.group_print_pick')}>
+      <div class="group-print__sum">
+        <button class="group-print__fold" type="button" aria-expanded={listOpen} onclick={() => { listOpen = !listOpen; }}><span class="ding__dd"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></span>{t('ui.group_print_n_of', { n: chosen.size, all: loaded.length })}</button>
+        {#if !listOpen}<span class="group-print__names small faint">{ticked.map(({ collection }) => collection.name).join(', ')}</span>{/if}
+      </div>
+      {#if listOpen}<div class="group-print__wahl" role="group" aria-label={t('ui.group_print_pick')}>
+        <div class="group-print__head"><span class="small faint">{t('ui.group_print_pick')}</span><span class="print-view__sp"></span><button class="group-print__link" type="button" onclick={() => { chosen = new Set(loaded?.map(({ collection }) => collection.id)); }}>{t('ui.group_print_all')}</button><button class="group-print__link" type="button" onclick={() => { chosen = new Set(); }}>{t('ui.group_print_none')}</button></div>
         {#each loaded as { collection } (collection.id)}
+          {@const pages = chosen.has(collection.id) ? pagesOf(collection.id) : null}
           <label class="ding-check group-print__check{chosen.has(collection.id) ? '' : ' group-print__check--aus'}">
-            <input type="checkbox" checked={chosen.has(collection.id)} onchange={() => toggle(collection.id)} />{collection.name}{#if anybook.has(collection.id)}<span class="group-print__any" title={t('ui.group_print_anybook')} aria-label={t('ui.group_print_anybook')}>◎</span>{/if}
+            <input type="checkbox" checked={chosen.has(collection.id)} onchange={() => toggle(collection.id)} /><span class="group-print__name">{collection.name}{#if anybook.has(collection.id)}<span class="group-print__any" title={t('ui.group_print_anybook')} aria-label={t('ui.group_print_anybook')}>◎</span>{/if}</span>{#if pages}<span class="small faint">{t(pages === 1 ? 'ui.n_page' : 'ui.n_pages', { n: pages })}</span>{/if}
           </label>
         {/each}
-      </div>
+      </div>{/if}
+      {#if source}<div class="group-print__menu">
+        <DingBar {source} />
+        <span class="group-print__only small faint">{#if changes > 0}{t(changes === 1 ? 'ui.group_print_changed_one' : 'ui.group_print_changed_n', { n: changes })} · <button class="group-print__link" type="button" onclick={() => { over = {}; }}>{t('ui.group_print_reset')}</button>{:else}{t('ui.group_print_only')}{/if}</span>
+      </div>{/if}
       <div class="print-view__scroll"><div class="print-view__stage">
         {#key previews}
           {#each previews as preview, at (at)}

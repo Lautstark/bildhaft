@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Collection, GameZelle, Sentence, Slot } from '../../src/core/types.ts';
-import { groupPrintParts } from '../../src/app/print.ts';
+import { groupPrintParts, groupPrintSource } from '../../src/app/print.ts';
 import { s } from '../../src/app/state.svelte.ts';
 import { defaultSettings } from '../../src/db/repo.ts';
 import { copyrightFor, sheetBlocks } from '../../src/ui/printSheet.ts';
@@ -58,5 +58,24 @@ describe('the group print', () => {
     const single = cutW({ ...alone.options, cutGeo: undefined, cut: 'with', game: alone.options.game });
     expect(single).toBeGreaterThan(20);
     expect(cutW(shared[0]!.options)).toBeCloseTo(single, 2);
+  });
+
+  it('sets what its menu sets over every ticked material, for this print only', () => {
+    const shelf = ['A', 'B', 'C'].map(game);
+    shelf[1]!.collection.print = { cutMarginMm: 6 };
+    const all = new Set(shelf.map(({ collection }) => collection.id));
+    let over = {};
+    const source = groupPrintSource(shelf, all, over, (next) => { over = next; })!;
+    /* Where they disagree, the menu says who has what. */
+    expect(source.mixed('cutMarginMm')?.map((group) => group.names)).toEqual([['A', 'C'], ['B']]);
+    expect(source.mixed('showLabel')).toBeNull();
+    source.set('cutMarginMm', 4);
+    expect(over).toEqual({ cutMarginMm: 4 });
+    const parts = groupPrintParts(shelf, all, over).filter((part) => part.collection);
+    expect(parts.map((part) => part.options.settings.cutMarginMm)).toEqual([4, 4, 4]);
+    expect(groupPrintSource(shelf, all, over, () => undefined)!.mixed('cutMarginMm')).toBeNull();
+    /* Nothing written: each material keeps what it had. */
+    expect(shelf[1]!.collection.print).toEqual({ cutMarginMm: 6 });
+    expect(shelf[0]!.collection.print).toBeUndefined();
   });
 });

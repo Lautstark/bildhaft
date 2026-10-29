@@ -201,7 +201,7 @@ export function printOptions(): PrintOptions | null {
  */
 function buildOptions(
   open: Collection | null, all: Sentence[], which: CollectionKind,
-  hooks: Pick<PrintOptions, 'onChange' | 'onPdf'>,
+  hooks: Pick<PrintOptions, 'onChange' | 'onPdf'>, over: Partial<PrintSettings> = {},
 ): PrintOptions | null {
   const byId = new Map(all.map((sentence) => [sentence.id, sentence]));
   /* A Tafel prints whole and in its own order: the fields, free ones
@@ -264,8 +264,9 @@ function buildOptions(
     collectionName: open ? titleOf(open) : 'bildhaft',
     pictures: titlePictures(all),
     /* What this Sammlung set, over its template's defaults, under what the
-       template always is (templates.ts). */
-    settings: printFor(printBase(), which, board, open?.print ?? {}),
+       template always is (templates.ts) — and over what it set, what the
+       group print set for this one print. */
+    settings: printFor(printBase(), which, board, { ...open?.print, ...over }),
     onChange: hooks.onChange,
     onPdf: hooks.onPdf,
     provider: providerId(),
@@ -274,10 +275,15 @@ function buildOptions(
   };
 }
 
-/** Whether a material prints Anybook codes, as its own print would. */
-export function anybookOf(collection: Collection): boolean {
+/** Whether a material prints Anybook codes, as its own print would — or as the group print sets it. */
+export function anybookOf(collection: Collection, over: Partial<PrintSettings> = {}): boolean {
+  return groupPrintSettings(collection, over).anybookCircle;
+}
+
+/** What one material of the group print prints with: its own settings, and over them what the group print set. */
+function groupPrintSettings(collection: Collection, over: Partial<PrintSettings>): PrintSettings {
   const which = kindOf(collection);
-  return printFor(printBase(), which, which === 'tafel' ? boardOf(collection) : null, collection.print ?? {}).anybookCircle;
+  return printFor(printBase(), which, which === 'tafel' ? boardOf(collection) : null, { ...collection.print, ...over });
 }
 
 /** A material loaded for the group print: the Sammlung with its rows. */
@@ -319,14 +325,16 @@ const CUT_KEY: (keyof PrintSettings)[] = [
  * whose cards differ (another paper, with instead of without Beschriftung)
  * keep a Bogen of their own, after the shared one.
  */
-export function groupPrintParts(loaded: GroupLoaded[], chosen: ReadonlySet<string>): GroupPrintPart[] {
+export function groupPrintParts(
+  loaded: GroupLoaded[], chosen: ReadonlySet<string>, over: Partial<PrintSettings> = {},
+): GroupPrintPart[] {
   const parts: GroupPrintPart[] = [];
   const noop = () => undefined;
   const condense = loaded.some(({ collection }) => ['spiel', 'plauderbuch'].includes(kindOf(collection)));
   const cutGroups = new Map<string, { geo: NonNullable<ReturnType<typeof cutGeometry>>; all: PrintOptions[] }>();
   for (const { collection, sentences } of loaded) {
     if (!chosen.has(collection.id)) continue;
-    const options = buildOptions(collection, sentences, kindOf(collection), { onChange: noop });
+    const options = buildOptions(collection, sentences, kindOf(collection), { onChange: noop }, over);
     if (!options) continue;
     if (condense) {
       /* The card as this material's own print cuts it — a game whose rows
@@ -367,18 +375,35 @@ export function groupPrintParts(loaded: GroupLoaded[], chosen: ReadonlySet<strin
   return parts;
 }
 
+/** Who has which value of a setting, where the materials of a group print disagree on it. */
+export type PrintMixed = { value: unknown; names: string[] }[];
+
+/**
+ * Print settings and the way to change them, for the menu over a sheet: one
+ * material's, or every ticked one of the group print's.
+ */
+export interface PrintSource {
+  kind: CollectionKind;
+  /** What the menu shows; in the group print, the first ticked material's. */
+  settings: PrintSettings;
+  set: <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => void;
+  /** Several at once, as one change: the Materialfarbe is the title's, the frame's and the cart's. */
+  patch: (next: Partial<PrintSettings>) => void;
+  /**
+   * Where the materials disagree: who has what, by the value `as` makes of
+   * it (a Lochrand on the left and one on top are both „zum Lochen"). Null
+   * where they agree, and always for one material.
+   */
+  mixed: (key: keyof PrintSettings, as?: (value: unknown) => unknown) => PrintMixed | null;
+}
+
 /**
  * The open material's print settings, to be set from Bearbeiten: what the
  * sheet will print with, and the two ways to change it. The same `keepPrint`
  * path the print preview writes through, so the Zeile over the material and
  * the preview can never disagree about what was set.
  */
-export function materialPrint(): {
-  settings: PrintSettings;
-  set: <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => void;
-  /** Several at once, as one change: the Materialfarbe is the title's, the frame's and the cart's. */
-  patch: (next: Partial<PrintSettings>) => void;
-} | null {
+export function materialPrint(): PrintSource | null {
   const open = activeCollection();
   if (!open || !s.settings) return null;
   const which = kind();
@@ -386,9 +411,42 @@ export function materialPrint(): {
   const settings = printFor(printBase(), which, board, open.print ?? {});
   const write = (next: PrintSettings) => { void keepPrint(next); };
   return {
+    kind: which,
     settings,
+    mixed: () => null,
     set: (key, value) => write(settle(which, { ...settings, [key]: value }, board)),
     patch: (next) => write(settle(which, { ...settings, ...next }, board)),
+  };
+}
+
+/**
+ * The menu over „Alle drucken": what the ticked materials print with, and
+ * changing it changes it for all of them — for this print only. Nothing is
+ * written to a material; `onOver` hands the group print what it now sets
+ * over every one of them, and closing the overlay forgets it.
+ */
+export function groupPrintSource(
+  loaded: GroupLoaded[], chosen: ReadonlySet<string>, over: Partial<PrintSettings>,
+  onOver: (next: Partial<PrintSettings>) => void,
+): PrintSource | null {
+  const ticked = loaded.filter(({ collection }) => chosen.has(collection.id));
+  const first = ticked[0];
+  if (!first || !s.settings) return null;
+  const all = ticked.map(({ collection }) => ({ name: collection.name, settings: groupPrintSettings(collection, over) }));
+  return {
+    kind: kindOf(first.collection),
+    settings: all[0]!.settings,
+    set: (key, value) => onOver({ ...over, [key]: value }),
+    patch: (next) => onOver({ ...over, ...next }),
+    mixed: (key, as = (value) => value) => {
+      const groups: PrintMixed = [];
+      for (const one of all) {
+        const value = as(one.settings[key]);
+        const same = groups.find((group) => JSON.stringify(group.value) === JSON.stringify(value));
+        if (same) same.names.push(one.name); else groups.push({ value, names: [one.name] });
+      }
+      return groups.length > 1 ? groups : null;
+    },
   };
 }
 

@@ -11,7 +11,8 @@ import { addCards, closePicker, openDing, pickTemplate, showSheet, translate } f
  * materials whose cards print identically are shared, condensed at the end;
  * cards that would print differently (here: with against without
  * Beschriftung) keep a Bogen of their own; a tick taken away takes the
- * material's pages and its cards with it, at once.
+ * material's pages and its cards with it, at once. The list folds to one
+ * line; the menu under it sets for every ticked material, for that print only.
  */
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
@@ -37,6 +38,12 @@ async function cutWidth(page: Page, scope: string): Promise<number> {
     const cut = document.querySelector(`${selector} .ps-spiel-cut`) as HTMLElement | null;
     return cut ? parseFloat(getComputedStyle(cut).getPropertyValue('--talk-w')) : 0;
   }, scope);
+}
+
+/** Unfolds the overlay's list of materials, folded to „n von m Materialien". */
+async function unfold(page: Page): Promise<void> {
+  const fold = page.locator('.group-print__fold');
+  if (await fold.getAttribute('aria-expanded') !== 'true') await fold.click();
 }
 
 /** A new Material of the given template, named. */
@@ -81,7 +88,9 @@ test('der Gruppendruck druckt die Spiele zusammen, die Karten geteilt auf einem 
   await page.getByRole('button', { name: 'Alle Spiele drucken' }).click();
   const overlay = page.locator('.group-print');
   await expect(overlay).toBeVisible();
-  await expect(overlay.getByRole('checkbox')).toHaveCount(2);
+  await expect(overlay.locator('.group-print__fold')).toHaveText('2 von 2 Materialien');
+  await unfold(page);
+  await expect(overlay.locator('.group-print__wahl').getByRole('checkbox')).toHaveCount(2);
   await expect(overlay.locator('.ps-spiel')).toHaveCount(2);
   await expect(overlay.locator('.ps-spiel-cut')).toHaveCount(1);
   await expect(overlay.locator('.ps-spiel-cut .ps-talk__card .ps-spiel__wort')).toHaveText(['Banane', 'Socke']);
@@ -157,7 +166,8 @@ test('der Gruppendruck speichert eine Datei für Anybook Studio, wenn ein angeha
   await page.getByRole('button', { name: 'Alle Satzstreifen drucken' }).click();
   const overlay = page.locator('.group-print');
   await expect(overlay).toBeVisible();
-  await expect(overlay.locator('.group-print__check', { has: page.locator('.group-print__any') })).toHaveText(['Draußen◎', 'Frühstück◎']);
+  await unfold(page);
+  await expect(overlay.locator('.group-print__name', { has: page.locator('.group-print__any') })).toHaveText(['Draußen◎', 'Frühstück◎']);
 
   // One file for everything ticked: each material in its own voice, no
   // picker; the ones without Anybook named, along without codes.
@@ -175,4 +185,48 @@ test('der Gruppendruck speichert eine Datei für Anybook Studio, wenn ein angeha
     await overlay.locator('.group-print__check', { hasText: name }).getByRole('checkbox').uncheck();
   }
   await expect(anybook).toHaveCount(0);
+});
+
+test('das Menü im Gruppendruck stellt alle angehakten Materialien um, nur für diesen Druck', async ({ page }) => {
+  // Six Satzstreifen; Frühstück has bigger symbols than the others.
+  await translate(page, 'Ich esse einen Apfel');
+  await page.getByLabel('Name des Materials').fill('Frühstück');
+  await openDing(page, 'Symbol');
+  await page.getByLabel('Symbolgröße').fill('50');
+  await page.keyboard.press('Escape');
+  for (const name of ['S2', 'S3', 'S4', 'S5', 'S6']) {
+    await newMaterial(page, /^Satzstreifen/, name);
+    await translate(page, 'Wir spielen Ball');
+  }
+  const overlay = page.locator('.group-print');
+  const sizes = () => overlay.locator('.ps-sheet').evaluateAll((sheets) => sheets.map((sheet) => getComputedStyle(sheet).getPropertyValue('--sym').trim()));
+  await page.getByRole('button', { name: 'Alle Satzstreifen drucken' }).click();
+  await expect(overlay).toBeVisible();
+  // Folded: how many, and their names.
+  await expect(overlay.locator('.group-print__fold')).toHaveText('6 von 6 Materialien');
+  await expect(overlay.locator('.group-print__names')).toContainText('Frühstück');
+  await expect(overlay.locator('.group-print__only')).toHaveText('Gilt nur für diesen Druck. Die Materialien bleiben, wie sie sind.');
+
+  // Where they disagree, the field stands empty and says who has what.
+  await overlay.locator('.ding__chip[aria-label="Symbol"]').click();
+  const size = overlay.getByLabel('Symbolgröße');
+  await expect(size).toHaveValue('');
+  await expect(overlay.locator('.ding__pop .ding__mixed').first()).toContainText('Frühstück 50 mm');
+  // Set, it is set for all of them.
+  await size.fill('30');
+  await expect.poll(sizes).toEqual(Array(6).fill('30mm'));
+  await expect(overlay.locator('.ding__pop .ding__mixed')).toHaveCount(0);
+  await expect(overlay.locator('.group-print__only')).toContainText('1 Änderung, nur für diesen Druck');
+  // Zurücksetzen gives each its own back.
+  await overlay.getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expect.poll(async () => (await sizes()).filter((one) => one === '50mm').length).toBe(1);
+
+  // Nothing is written: set again, closed and opened, each has its own.
+  await overlay.locator('.ding__chip[aria-label="Symbol"]').click();
+  await size.fill('30');
+  await expect.poll(sizes).toEqual(Array(6).fill('30mm'));
+  await page.getByRole('button', { name: 'Große Vorschau schließen' }).click();
+  await expect(overlay).toHaveCount(0);
+  await page.getByRole('button', { name: 'Alle Satzstreifen drucken' }).click();
+  await expect.poll(async () => (await sizes()).filter((one) => one === '50mm').length).toBe(1);
 });
