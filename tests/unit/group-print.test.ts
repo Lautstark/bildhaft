@@ -13,11 +13,11 @@ import type { PrintOptions } from '../../src/ui/printDialog.svelte.ts';
  * of them together are a game no sheet can hold, and the shared Bogen took
  * its measure from that and shrank every card.
  */
-const slot = (word: string): Slot => ({
-  id: `slot-${word}`, sourceToken: word, concept: word, origin: 'override', chosen: { arasaac: null },
+const slot = (word: string, of = ''): Slot => ({
+  id: `slot-${of}${word}`, sourceToken: word, concept: word, origin: 'override', chosen: { arasaac: null },
 } as unknown as Slot);
 const card = (collectionId: string, word: string): Sentence => ({
-  id: `${collectionId}-${word}`, normalizedInput: '', rawInput: '', slots: [slot(word)],
+  id: `${collectionId}-${word}`, normalizedInput: '', rawInput: '', slots: [slot(word, collectionId)],
   collectionId, createdAt: 0, updatedAt: 0,
 } as Sentence);
 
@@ -82,5 +82,19 @@ describe('the group print', () => {
     /* Nothing written: each material keeps what it had. */
     expect(shelf[1]!.collection.print).toEqual({ cutMarginMm: 6 });
     expect(shelf[0]!.collection.print).toBeUndefined();
+  });
+
+  it('lets every card on the shared Bogen say what its own material says', () => {
+    const shelf = ['A', 'B'].map(game);
+    shelf[0]!.collection.print = { anybookCircle: true, anybookSay: { 'slot-Ax0': 'Der Apfel.' } };
+    shelf[1]!.collection.print = { anybookCircle: true, anybookSay: { 'slot-Bx0': 'Der Kuchen.' }, anybookOff: ['slot-Bx1'] };
+    const shared = groupPrintParts(shelf, new Set(['A', 'B'])).filter((part) => part.collection === null);
+    expect(shared).toHaveLength(1);
+    const { settings } = shared[0]!.options;
+    expect(settings.anybookSay).toEqual({ 'slot-Ax0': 'Der Apfel.', 'slot-Bx0': 'Der Kuchen.' });
+    expect(settings.anybookOff).toEqual(['slot-Bx1']);
+    /* Cards with codes and cards without are not one Bogen. */
+    shelf[1]!.collection.print = {};
+    expect(groupPrintParts(shelf, new Set(['A', 'B'])).filter((part) => part.collection === null)).toHaveLength(2);
   });
 });

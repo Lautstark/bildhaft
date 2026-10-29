@@ -318,6 +318,7 @@ const CUT_KEY: (keyof PrintSettings)[] = [
   'paper', 'orientation', 'punch', 'cutMarginMm',
   'showLabel', 'labelPosition', 'labelSizePt',
   'cardBorderMm', 'cardBorderColor', 'cardRadiusMm', 'cardBackground',
+  'anybookCircle', 'anybookPlace',
 ];
 
 /**
@@ -364,6 +365,14 @@ export function groupPrintParts(
       collection: null,
       options: {
         ...first,
+        /* What each card's code says, and which are off, is its own
+           material's: the first one's alone left every other card saying
+           its Beschriftung. A slot's id is its own, so they merge. */
+        settings: {
+          ...first.settings,
+          anybookSay: Object.assign({}, ...group.map((options) => options.settings.anybookSay)),
+          anybookOff: group.flatMap((options) => options.settings.anybookOff ?? []),
+        },
         cutGeo: geo,
         sentences: group.flatMap((options) => options.sentences),
         game: first.kind === 'spiel' ? { rows: group.flatMap((options) => options.game?.rows ?? []) } : null,
