@@ -503,6 +503,16 @@ export interface TalkPage {
  */
 export interface GameBook {
   rows: GameRow[];
+  /**
+   * Set from the first moment on a Spiel made as „Spiel · Tabelle" — Zeile ×
+   * Spalte, every card where its row and its column meet — and never
+   * switched: a Muster has no table in it to switch to. The rows hold it as
+   * they hold any game: the first row is the column heads, each further row
+   * its head and then one cell per column, in the columns' order. A cell
+   * whose card is still to be chosen is `karte: ''` — it keeps its column's
+   * place, so nothing to its right moves over.
+   */
+  tabelle?: boolean;
 }
 
 export interface GameRow {
@@ -605,6 +615,18 @@ export interface BoardGroup {
  */
 export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied', 'plauderbuch', 'spiel'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
+
+/**
+ * The tiles „Was möchtest du gestalten?" offers: one per template, and the
+ * Spiel twice — in Reihen, or as a Tabelle. Both are a `spiel` and live in
+ * its group; which one is fixed by `game.tabelle` from the first moment.
+ */
+export const TEMPLATE_TILES = [...COLLECTION_KINDS, 'spieltabelle'] as const;
+export type TemplateTile = (typeof TEMPLATE_TILES)[number];
+
+/** What a Sammlung is called where its template is named: a Tabelle says so. */
+export const templateKey = (collection: Collection): TemplateTile =>
+  kindOf(collection) === 'spiel' && collection.game?.tabelle ? 'spieltabelle' : kindOf(collection);
 
 /** What a Sammlung is when it has never been asked. */
 export const kindOf = (collection: Collection): CollectionKind =>

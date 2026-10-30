@@ -1,5 +1,6 @@
 import type { Collection, GameBook, Sentence } from '../core/types.ts';
-import { rowsOfGame, withGameRow, withoutGameCard } from '../core/game.ts';
+import { bookOfTabelle, moved, rowsOfGame, tabelleOf, withGameRow, withoutGameCard } from '../core/game.ts';
+import type { Tabelle } from '../core/game.ts';
 import { deleteSentence, newId, patchCollection, putSentence } from '../db/repo.ts';
 import { emptySlot, openPicker } from './editing.ts';
 import { activeCollection, s } from './state.svelte.ts';
@@ -24,7 +25,7 @@ async function keepGame(open: Collection, game: GameBook): Promise<void> {
  *  an empty Spiel shows to begin on, made real by what is put into it. */
 function bookWithRow(open: Collection): GameBook {
   const rows = rowsOfGame(open.game);
-  return rows.length > 0 ? { rows } : { rows: [{ id: newId(), zellen: [] }] };
+  return rows.length > 0 ? { ...open.game, rows } : { ...open.game, rows: [{ id: newId(), zellen: [] }] };
 }
 
 /** Rows deleted that no row of the book names any more. */
@@ -33,6 +34,19 @@ async function dropRows(ids: string[]): Promise<void> {
   for (const id of ids) await deleteSentence(id);
   const gone = new Set(ids);
   s.sentences = s.sentences.filter((sentence) => !gone.has(sentence.id));
+}
+
+/** An empty card of the Sammlung, for a „+" to open the picker on. */
+async function newCard(open: Collection): Promise<{ sentence: Sentence; slot: Sentence['slots'][number] }> {
+  const slot = emptySlot();
+  const now = Date.now();
+  const sentence: Sentence = {
+    id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
+    collectionId: open.id, createdAt: now, updatedAt: now,
+  };
+  await putSentence(sentence);
+  s.sentences = [...s.sentences, sentence];
+  return { sentence, slot };
 }
 
 /**
@@ -44,14 +58,7 @@ async function dropRows(ids: string[]): Promise<void> {
 export async function addGameCard(platz: boolean, rowId?: string): Promise<void> {
   const open = activeCollection();
   if (!open) return;
-  const slot = emptySlot();
-  const now = Date.now();
-  const sentence: Sentence = {
-    id: newId(), normalizedInput: '', rawInput: '', slots: [slot],
-    collectionId: open.id, createdAt: now, updatedAt: now,
-  };
-  await putSentence(sentence);
-  s.sentences = [...s.sentences, sentence];
+  const { sentence, slot } = await newCard(open);
   const book = bookWithRow(open);
   const row = book.rows.find((one) => one.id === rowId) ?? book.rows.at(-1)!;
   await keepGame(open, withGameRow(book, row.id, (one) => ({
@@ -68,7 +75,7 @@ export async function addGameCard(platz: boolean, rowId?: string): Promise<void>
 export async function addGameRow(): Promise<void> {
   const open = activeCollection();
   if (!open) return;
-  await keepGame(open, { rows: [...rowsOfGame(open.game), { id: newId(), zellen: [] }] });
+  await keepGame(open, { ...open.game, rows: [...rowsOfGame(open.game), { id: newId(), zellen: [] }] });
 }
 
 /** A row dragged to another place of the game. */
@@ -79,7 +86,7 @@ export async function moveGameRow(from: number, to: number): Promise<void> {
   if (from === to || !rows[from] || !rows[to]) return;
   const [moved] = rows.splice(from, 1);
   rows.splice(to, 0, moved!);
-  await keepGame(open, { rows });
+  await keepGame(open, { ...open.game, rows });
 }
 
 /** A cell dragged to another place in its row — a Platzhalter into the
@@ -101,8 +108,8 @@ export async function removeGameRow(rowId: string): Promise<void> {
   const open = activeCollection();
   const row = rowsOfGame(open?.game).find((one) => one.id === rowId);
   if (!open?.game || !row) return;
-  await keepGame(open, { rows: rowsOfGame(open.game).filter((one) => one.id !== rowId) });
-  await dropRows(row.zellen.map((zelle) => zelle.karte));
+  await keepGame(open, { ...open.game, rows: rowsOfGame(open.game).filter((one) => one.id !== rowId) });
+  await dropRows(row.zellen.map((zelle) => zelle.karte).filter(Boolean));
 }
 
 /** A card deleted where it stands: out of the book too. */
@@ -110,4 +117,92 @@ export async function takeOutOfGame(sentence: Sentence): Promise<void> {
   const open = activeCollection();
   if (!open?.game) return;
   await keepGame(open, withoutGameCard(open.game, sentence.id));
+}
+
+/*
+ * Eine Tabelle: Zeile × Spalte. Every „+" makes its card and opens the
+ * picker on it, as a row's „+" does; a column or a row whose picker is
+ * closed without a choice goes again (withoutGameCard).
+ */
+
+async function keepTabelle(open: Collection, change: (table: Tabelle) => Tabelle): Promise<void> {
+  const table = tabelleOf(open.game);
+  await keepGame(open, bookOfTabelle(change(table), table.kopfId || newId()));
+}
+
+/** A column at the end: its head through the picker, a place in every row. */
+export async function addTabelleSpalte(): Promise<void> {
+  const open = activeCollection();
+  if (!open) return;
+  const { sentence, slot } = await newCard(open);
+  await keepTabelle(open, (table) => ({
+    ...table,
+    spalten: [...table.spalten, sentence.id],
+    zeilen: table.zeilen.map((zeile) => ({ ...zeile, felder: [...zeile.felder, ''] })),
+  }));
+  openPicker(sentence.id, slot.id);
+}
+
+/** A row at the end: its head through the picker, a place under every column. */
+export async function addTabelleZeile(): Promise<void> {
+  const open = activeCollection();
+  if (!open) return;
+  const { sentence, slot } = await newCard(open);
+  await keepTabelle(open, (table) => ({
+    ...table,
+    zeilen: [...table.zeilen, { id: newId(), kopf: sentence.id, felder: table.spalten.map(() => '') }],
+  }));
+  openPicker(sentence.id, slot.id);
+}
+
+/**
+ * The card for a place still to be chosen: a column's head (`zeile` null), a
+ * row's head (`spalte` null), or the card where the two meet.
+ */
+export async function fillTabelle(zeile: string | null, spalte: number | null): Promise<void> {
+  const open = activeCollection();
+  if (!open) return;
+  const { sentence, slot } = await newCard(open);
+  await keepTabelle(open, (table) => zeile === null
+    ? { ...table, spalten: table.spalten.map((karte, i) => (i === spalte ? sentence.id : karte)) }
+    : {
+      ...table,
+      zeilen: table.zeilen.map((one) => (one.id !== zeile ? one : spalte === null
+        ? { ...one, kopf: sentence.id }
+        : { ...one, felder: one.felder.map((karte, i) => (i === spalte ? sentence.id : karte)) })),
+    });
+  openPicker(sentence.id, slot.id);
+}
+
+/** A column taken out, with its head and every card under it. */
+export async function removeTabelleSpalte(spalte: number): Promise<void> {
+  const open = activeCollection();
+  if (!open?.game) return;
+  const table = tabelleOf(open.game);
+  if (!(spalte in table.spalten)) return;
+  const gone = [table.spalten[spalte]!, ...table.zeilen.map((zeile) => zeile.felder[spalte]!)].filter(Boolean);
+  await keepTabelle(open, () => ({
+    ...table,
+    spalten: table.spalten.filter((_, i) => i !== spalte),
+    zeilen: table.zeilen.map((zeile) => ({ ...zeile, felder: zeile.felder.filter((_, i) => i !== spalte) })),
+  }));
+  await dropRows(gone);
+}
+
+/** A column dragged to another place, its cards in every row with it. */
+export async function moveTabelleSpalte(from: number, to: number): Promise<void> {
+  const open = activeCollection();
+  if (!open?.game || from === to) return;
+  await keepTabelle(open, (table) => ({
+    ...table,
+    spalten: moved(table.spalten, from, to),
+    zeilen: table.zeilen.map((zeile) => ({ ...zeile, felder: moved(zeile.felder, from, to) })),
+  }));
+}
+
+/** A row dragged to another place; the head row stays on top. */
+export async function moveTabelleZeile(from: number, to: number): Promise<void> {
+  const open = activeCollection();
+  if (!open?.game || from === to) return;
+  await keepTabelle(open, (table) => ({ ...table, zeilen: moved(table.zeilen, from, to) }));
 }

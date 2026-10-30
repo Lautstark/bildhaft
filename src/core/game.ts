@@ -15,13 +15,26 @@ export const rowsOfGame = (book: GameBook | undefined): GameRow[] =>
     ],
   }));
 
-/** Every card the book points at, in reading order. */
+/** Every card the book points at, in reading order — a Tabelle's cells still
+ *  to be chosen are no card. */
 export const cardsOfGame = (book: GameBook | undefined): string[] =>
-  rowsOfGame(book).flatMap((row) => row.zellen.map((zelle) => zelle.karte));
+  rowsOfGame(book).flatMap((row) => row.zellen.map((zelle) => zelle.karte)).filter(Boolean);
 
-/** The book without one card, wherever its cell stood. */
+/** The book without one card, wherever its cell stood. In a Tabelle the
+ *  cell keeps its place, still to be chosen — and a column or row left with
+ *  nothing in it at all goes with it: the „+ Spalte" closed without a choice. */
 export function withoutGameCard(book: GameBook, id: string): GameBook {
+  if (book.tabelle) {
+    return prunedTabelle({
+      ...book,
+      rows: rowsOfGame(book).map((row) => ({
+        id: row.id,
+        zellen: row.zellen.map((zelle) => (zelle.karte === id ? { karte: '', platz: zelle.platz } : zelle)),
+      })),
+    });
+  }
   return {
+    ...book,
     rows: rowsOfGame(book).map((row) => ({
       id: row.id,
       zellen: row.zellen.filter((zelle) => zelle.karte !== id),
@@ -31,4 +44,76 @@ export function withoutGameCard(book: GameBook, id: string): GameBook {
 
 /** The book with one row changed, found by its id. */
 export const withGameRow = (book: GameBook, id: string, change: (row: GameRow) => GameRow): GameBook =>
-  ({ rows: rowsOfGame(book).map((row) => (row.id === id ? change(row) : row)) });
+  ({ ...book, rows: rowsOfGame(book).map((row) => (row.id === id ? change(row) : row)) });
+
+/**
+ * A Tabelle as its parts: the column heads, and each row's head and the
+ * cells under the heads — padded, so a row read from an older or a hand-made
+ * book is as wide as the head row says. `''` is a place still to be chosen.
+ */
+export interface Tabelle {
+  /** The head row's id, '' while the Tabelle has none yet. */
+  kopfId: string;
+  spalten: string[];
+  zeilen: { id: string; kopf: string; felder: string[] }[];
+}
+
+export function tabelleOf(book: GameBook | undefined): Tabelle {
+  const [kopf, ...rest] = rowsOfGame(book);
+  const spalten = (kopf?.zellen ?? []).map((zelle) => zelle.karte);
+  return {
+    kopfId: kopf?.id ?? '',
+    spalten,
+    zeilen: rest.map((row) => ({
+      id: row.id,
+      kopf: row.zellen[0]?.karte ?? '',
+      felder: spalten.map((_, i) => row.zellen[i + 1]?.karte ?? ''),
+    })),
+  };
+}
+
+/** A Tabelle's heads as cards for the sheet, a place still to be chosen null —
+ *  the cards it lays come with the rows. */
+export function tabelleHeads<T>(book: GameBook | undefined, get: (id: string) => T | undefined) {
+  const table = tabelleOf(book);
+  return {
+    spalten: table.spalten.map((id) => get(id) ?? null),
+    zeilen: table.zeilen.map((zeile) => ({ kopf: get(zeile.kopf) ?? null })),
+  };
+}
+
+/** The book a Tabelle is written back as: heads printed, every cell a Platzhalter. */
+export function bookOfTabelle(table: Tabelle, kopfId: string): GameBook {
+  return {
+    tabelle: true,
+    rows: [
+      { id: table.kopfId || kopfId, zellen: table.spalten.map((karte) => ({ karte, platz: false })) },
+      ...table.zeilen.map((zeile) => ({
+        id: zeile.id,
+        zellen: [{ karte: zeile.kopf, platz: false }, ...zeile.felder.map((karte) => ({ karte, platz: true }))],
+      })),
+    ],
+  };
+}
+
+/** Columns and rows with no card anywhere in them, gone. */
+function prunedTabelle(book: GameBook): GameBook {
+  const table = tabelleOf(book);
+  const keep = table.spalten.map((kopf, i) => Boolean(kopf) || table.zeilen.some((zeile) => zeile.felder[i]));
+  return bookOfTabelle({
+    kopfId: table.kopfId,
+    spalten: table.spalten.filter((_, i) => keep[i]),
+    zeilen: table.zeilen
+      .map((zeile) => ({ ...zeile, felder: zeile.felder.filter((_, i) => keep[i]) }))
+      .filter((zeile) => zeile.kopf || zeile.felder.some(Boolean)),
+  }, table.kopfId);
+}
+
+/** One element of a list moved from one place to another. */
+export function moved<T>(list: T[], from: number, to: number): T[] {
+  if (from === to || !(from in list) || !(to in list)) return list;
+  const next = [...list];
+  const [one] = next.splice(from, 1);
+  next.splice(to, 0, one!);
+  return next;
+}

@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.sidebar')).toBeVisible();
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await expect(page.locator('.templates')).toBeVisible();
-  await pickTemplate(page, /^Spiel/);
+  await pickTemplate(page, /^Spiel · Reihen/);
 });
 
 /** Adds a cell through the „+" tile of the given row scope, picking `term`. */

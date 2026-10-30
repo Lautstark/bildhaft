@@ -1311,3 +1311,28 @@
 /* Times the paper's factor, as every other length of a Spiel: gameLabelMm(). */
 .ps-spiel__wort { font-size: calc(var(--label) * var(--talk-k)); font-weight: 600; line-height: 1.15; max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
 .ps-spiel--above .ps-spiel__wort { order: -1; }
+/* A Spiel · Tabelle: one raster, the cells touching, parted by the accent's
+   line (TABELLE_LINE_MM) — the heads white with their picture, the fields
+   the Spielfeld's ground with a Klett dot. The Ablage keeps the table's
+   pitch, so its dots stand level with the table's rows. */
+.ps-tabelle {
+  flex: none;
+  align-self: start;
+  display: grid;
+  grid-template-columns: repeat(calc(var(--spalten) + 1), var(--talk-w));
+  grid-auto-rows: var(--talk-h);
+  gap: calc(0.6mm * var(--talk-k));
+  padding: calc(0.6mm * var(--talk-k));
+  border-radius: calc(3mm * var(--talk-k));
+  background: var(--spiel-accent, #e0558c);
+  overflow: hidden;
+}
+.ps-tabelle > * { background: #fff; }
+.ps-tabelle .ps-tabelle__kopf { border: 0; border-radius: 0; background: var(--card-bg, #fff); }
+.ps-tabelle__feld { display: grid; place-items: center; background: linear-gradient(var(--spiel-grund, #fdeef3), var(--spiel-grund, #fdeef3)), #fff; }
+.ps-spiel--tabelle .ps-spiel__lager {
+  grid-template-rows: repeat(var(--spiel-units), calc(var(--talk-h) + 0.6mm * var(--talk-k)));
+  row-gap: 0;
+  padding-top: calc(0.6mm * var(--talk-k));
+  align-self: start;
+}

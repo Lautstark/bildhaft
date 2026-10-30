@@ -1781,6 +1781,24 @@ footer.footer {
 .game__acts { display: flex; justify-content: flex-end; opacity: 0; transition: opacity .13s; }
 .game__row:hover .game__acts, .game__acts:focus-within { opacity: 1; }
 .game__more { display: flex; justify-content: flex-start; }
+/* A Spiel · Tabelle in Bearbeiten, laid out as it prints: the empty corner,
+   the column heads along the top with „+ Spalte" after them, each row its
+   head and then a place under every column; the bins at the edges. */
+.game-table { display: grid; grid-template-columns: repeat(calc(var(--spalten) + 2), 118px) auto; gap: 14px 12px; align-items: center; justify-items: center; padding: 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; }
+.game-table .word { width: 104px; }
+.game-table__ecke { align-self: stretch; justify-self: stretch; display: grid; place-items: center; border-radius: var(--radius); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--text) 5%, transparent) 8px 16px); color: var(--text-faint); font-size: 11px; }
+.game-table__kopf { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.game-table__kopf, .game-table__zeilenkopf { border-radius: var(--radius); }
+.game-table__feld, .game-table__zeilenkopf { display: flex; }
+.game-table__acts { opacity: 0; transition: opacity .13s; }
+.game-table__kopf .game-table__acts { position: absolute; bottom: -14px; }
+.game-table__kopf:hover .game-table__acts, .game-table__acts:focus-within { opacity: 1; }
+.game-table__acts--zeile { opacity: .55; }
+.game-table__acts--zeile:hover { opacity: 1; }
+.game-table--spalte-before { box-shadow: -3px 0 0 var(--accent); }
+.game-table--spalte-after { box-shadow: 3px 0 0 var(--accent); }
+.game-table--zeile-before { box-shadow: 0 -3px 0 var(--accent); }
+.game-table--zeile-after { box-shadow: 0 3px 0 var(--accent); }
 /* ------------------------------------------------- die Zeile & das Blatt */
 
 /*

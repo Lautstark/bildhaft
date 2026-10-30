@@ -1,9 +1,9 @@
 import type { Board, Collection, CollectionKind, GameRow, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
 import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
-import { rowsOfGame } from '../core/game.ts';
+import { rowsOfGame, tabelleHeads, tabelleOf } from '../core/game.ts';
 import {
-  copyrightFor, creditLines, cutGeometry, gameFits, gameReserveMm, printableArea, tafelFieldMm,
+  copyrightFor, creditLines, cutGeometry, gameFits, gameReserveMm, printableArea, tabelleFits, tafelFieldMm,
   talkCapacity, type Titled,
 } from '../ui/printSheet.ts';
 import { sungParts } from '../core/song.ts';
@@ -237,6 +237,7 @@ function buildOptions(
         .map((zelle) => ({ karte: byId.get(zelle.karte), platz: zelle.platz }))
         .filter((zelle): zelle is { karte: Sentence; platz: boolean } => Boolean(zelle.karte)),
     })),
+    tabelle: open.game.tabelle ? tabelleHeads(open.game, (id) => byId.get(id)) : null,
   } : null;
   const chosen = board
     ? placedIds(board).map((id) => byId.get(id)).filter((x): x is Sentence => Boolean(x))
@@ -553,4 +554,25 @@ export function gameRoom(): { bild: (rowId?: string) => boolean; platz: (rowId?:
     platz: (rowId) => fits(grown(rowId, true)),
     zeile: fits([...rows, { id: '', zellen: [{ karte: '', platz: false }] }]),
   };
+}
+
+/**
+ * What the open Spiel · Tabelle still has room for at the one field: another
+ * column, another row — measured as gameRoom() measures, against the fullest
+ * sheet it can be printed on, every place of the table counted as a card.
+ */
+export function tabelleRoom(): { spalte: boolean; zeile: boolean } {
+  const sheet = gameSheet();
+  const table = tabelleOf(activeCollection()?.game);
+  const fullest = !sheet ? [] : ([null, 'top', 'left'] as const).map((punch) => {
+    const print = { ...sheet.print, punch, showPageNumbers: true };
+    const credits = creditLines(provider().attribution, copyrightFor(providerId(), true));
+    return { print, page: printableArea(print.paper, print.orientation, punch), reserve: gameReserveMm(print, credits, sheet.titled) };
+  });
+  const fits = (spalten: number, zeilen: number) => fullest.every((one) => tabelleFits(one.print, one.page, one.reserve, {
+    spalten, zeilen, platz: spalten * zeilen,
+  }));
+  const m = table.spalten.length;
+  const n = table.zeilen.length;
+  return { spalte: fits(m + 1, Math.max(1, n)), zeile: fits(Math.max(1, m), n + 1) };
 }

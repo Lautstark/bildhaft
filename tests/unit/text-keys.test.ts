@@ -6,7 +6,7 @@ import { TEXTS } from '../../src/i18n/texts.ts';
 import { SLOT_ORIGINS } from '../../src/core/types.ts';
 import { SOURCE_STATUS_CODES } from '../../src/ui/symbolSources.ts';
 import { TOPICS } from '../../src/core/tags.ts';
-import { ANYBOOK_PLACES, COLLECTION_KINDS, RECIPE_PARTS } from '../../src/core/types.ts';
+import { ANYBOOK_PLACES, COLLECTION_KINDS, RECIPE_PARTS, TEMPLATE_TILES } from '../../src/core/types.ts';
 
 /** The parts of a Rezept that are cards rather than rows. */
 const CARD_PARTS = RECIPE_PARTS.filter((p) => p !== 'schritt');
@@ -120,8 +120,8 @@ const COMPOSED: { prefix: string; from: readonly string[]; where: string }[] = [
   // somebody as a dotted identifier in their Wortschatz.
   { prefix: 'ui.topic_', from: TOPICS, where: 'ui/Wortschatz.svelte' },
   // The templates a Sammlung can be, named on the tiles in its empty state.
-  { prefix: 'ui.template_', from: COLLECTION_KINDS, where: 'app/Material.svelte' },
-  { prefix: 'ui.template_', from: COLLECTION_KINDS.map((k) => `${k}_note`), where: 'app/Material.svelte' },
+  { prefix: 'ui.template_', from: TEMPLATE_TILES, where: 'app/Material.svelte' },
+  { prefix: 'ui.template_', from: TEMPLATE_TILES.map((k) => `${k}_note`), where: 'app/Material.svelte' },
   // The same templates in the plural, heading their groups in the sidebar.
   { prefix: 'ui.group_', from: COLLECTION_KINDS, where: 'ui/Sidebar.svelte' },
   // A Rezept's three parts: the heading over each; the „+" of the two parts

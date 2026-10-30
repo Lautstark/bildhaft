@@ -12,7 +12,7 @@ import type { Collection, CollectionKind, ProviderId, Sentence } from '../core/t
 import { contentOf, kindOf, OWN_PREFIX, symbolIdFor, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
 import { sungParts } from '../core/song.ts';
-import { rowsOfGame } from '../core/game.ts';
+import { rowsOfGame, tabelleHeads } from '../core/game.ts';
 import { primeSymbolUrl } from '../ui/symbols.ts';
 import type { Material } from './faelle.ts';
 
@@ -84,6 +84,7 @@ function materialAus(c: Collection, all: Sentence[], provider: ProviderId): Mate
     rows: rowsOfGame(c.game).map((row) => ({
       zellen: row.zellen.map((z) => ({ karte: get(z.karte), platz: z.platz })).filter((z): z is { karte: Sentence; platz: boolean } => Boolean(z.karte)),
     })),
+    tabelle: c.game.tabelle ? tabelleHeads(c.game, get) : null,
   } : undefined;
   const sentences = board ? placedIds(board).map(get).filter(some)
     : which === 'rezept' ? [...all].sort((a, b) => a.createdAt - b.createdAt)

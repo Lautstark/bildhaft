@@ -595,6 +595,9 @@ export interface PrintTalk {
 /** A Spiel's rows as they print: cell by cell, printed or left free. */
 export interface PrintGame {
   rows: { zellen: { karte: Sentence; platz: boolean }[] }[];
+  /** Set for a Spiel · Tabelle: its heads, a place still to be chosen null,
+   *  and how many fields each row has — one per column. */
+  tabelle?: { spalten: (Sentence | null)[]; zeilen: { kopf: Sentence | null }[] } | null;
 }
 
 export interface SheetOptions {
@@ -711,6 +714,7 @@ export type Block =
      laid, in the middle of a Muster as well as at its end. */
   | { kind: 'game-board'; rows: { cells: { slot: Slot; platz: boolean }[] }[]; lager: number; geo: GameGeometry }
   | { kind: 'game-cut'; slots: Slot[]; cols: number; geo: GameGeometry }
+  | { kind: 'game-table'; spalten: (Slot | null)[]; zeilen: { kopf: Slot | null; felder: number }[]; lager: number; geo: GameGeometry }
   | { kind: 'credit'; lines: string[] };
 
 /**
@@ -934,6 +938,13 @@ export function gameGeometry(
   settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: GameShape,
 ): GameGeometry {
   const { k, gap, height, reihen, lagerCols, fieldW } = gameRaster(settings, page, reserve, shape);
+  return fieldGeometry(settings, k, gap, height, reihen, lagerCols, fieldW);
+}
+
+/** What a Spiel's field comes to: its height, the cut card, the symbol. */
+function fieldGeometry(
+  settings: GameSettings, k: number, gap: number, height: number, reihen: number, lagerCols: number, fieldW: number,
+): GameGeometry {
   /* The air round a cut card is the margin, as everywhere. */
   const air = settings.cutMarginMm * k;
   const label = gameLabelMm(settings, k);
@@ -956,6 +967,65 @@ export function gameGeometry(
     cutW, cutH,
     symW, anySymW: anybookSymbol(room, symW, k),
   };
+}
+
+/**
+ * A Spiel · Tabelle: its head row and head column and a field where each
+ * row meets each column, all in one raster at the one field — the same as
+ * every Spiel's, so its cards are the size of every other game's. The cells
+ * touch, parted by the accent's line, so the table reads as one grid. The
+ * Ablage beside it fills the raster's rows from the top, level with the
+ * table's, as many as the page holds, column by column.
+ */
+export type TabelleShape = { spalten: number; zeilen: number; platz: number };
+
+/** The line between a Tabelle's cells, and round it. */
+export const TABELLE_LINE_MM = 0.6;
+
+function tabelleRaster(settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: TabelleShape) {
+  const k = GAME_SCALE[settings.paper];
+  const gap = 6 * k;
+  const height = page.height - reserve;
+  const label = gameLabelMm(settings, k);
+  const line = TABELLE_LINE_MM * k;
+  const field = GAME_FIELD_MM * k;
+  const cols = Math.max(1, shape.spalten) + 1;
+  const rows = Math.max(0, shape.zeilen) + 1;
+  const platz = Math.max(1, shape.platz);
+  const fixed = (settings.punch === 'left' ? 21 : 28) * k + (cols + 1) * line;
+  /* The Ablage as tall as the table where its columns leave room beside it,
+     taller — more rows, fewer columns — only where they do not. */
+  const measure = (fieldW: number) => {
+    const pitch = fieldW * GAME_ASPECT + label + line;
+    const most = Math.max(rows, Math.floor((height - k - line) / pitch + 1e-9));
+    const width = (reihen: number) => {
+      const lagerCols = Math.ceil(platz / reihen);
+      return fixed + (lagerCols - 1) * gap + (lagerCols + cols) * fieldW;
+    };
+    let reihen = rows;
+    while (reihen < most && width(reihen) > page.width) reihen += 1;
+    return { reihen, lagerCols: Math.ceil(platz / reihen), width: width(reihen) };
+  };
+  const hLimit = ((height - k - line) / rows - line - label) / GAME_ASPECT;
+  let fieldW = Math.min(field, hLimit);
+  /* Narrower until the Ablage and the table stand side by side on the page. */
+  for (let step = 0; step < 200 && measure(fieldW).width > page.width; step += 1) fieldW *= 0.99;
+  const { reihen, lagerCols } = measure(fieldW);
+  return { k, gap, height, reihen, lagerCols, fieldW, fits: fieldW >= field - 1e-6 };
+}
+
+/** Whether a Tabelle of this shape fits its sheet at the one field size. */
+export function tabelleFits(
+  settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: TabelleShape,
+): boolean {
+  return tabelleRaster(settings, page, reserve, shape).fits;
+}
+
+export function tabelleGeometry(
+  settings: GameSettings, page: { width: number; height: number }, reserve: number, shape: TabelleShape,
+): GameGeometry {
+  const { k, gap, height, reihen, lagerCols, fieldW } = tabelleRaster(settings, page, reserve, shape);
+  return fieldGeometry(settings, k, gap, height, reihen, lagerCols, fieldW);
 }
 
 /** What the laminate seals beyond the paper's edge, each side. */
@@ -1212,12 +1282,26 @@ export function sheetBlocks(
       return { cells };
     }).filter((row) => row.cells.length > 0);
     const karten = rows.flatMap((row) => row.cells.filter((cell) => cell.platz).map((cell) => cell.slot));
-    const geo = gameGeometry(settings, page, gameReserveMm(settings, credits, titled), {
-      units: rows.length,
-      zellen: Math.max(1, ...rows.map((row) => row.cells.length)),
-      platz: Math.max(1, karten.length),
-    });
-    if (rows.length > 0 && cut !== 'only') blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
+    const table = game?.tabelle;
+    /* A Tabelle prints as its raster, a place in it whether or not its card
+       is chosen yet; it prints once there is a head in it to read. */
+    const geo = table
+      ? tabelleGeometry(settings, page, gameReserveMm(settings, credits, titled), {
+        spalten: table.spalten.length, zeilen: table.zeilen.length, platz: karten.length,
+      })
+      : gameGeometry(settings, page, gameReserveMm(settings, credits, titled), {
+        units: rows.length,
+        zellen: Math.max(1, ...rows.map((row) => row.cells.length)),
+        platz: Math.max(1, karten.length),
+      });
+    if (table && cut !== 'only' && [...table.spalten, ...table.zeilen.map((zeile) => zeile.kopf)].some(Boolean)) {
+      blocks.push({
+        kind: 'game-table',
+        spalten: table.spalten.map((karte) => karte?.slots[0] ?? null),
+        zeilen: table.zeilen.map((zeile) => ({ kopf: zeile.kopf?.slots[0] ?? null, felder: table.spalten.length })),
+        lager: karten.length, geo,
+      });
+    } else if (!table && rows.length > 0 && cut !== 'only') blocks.push({ kind: 'game-board', rows, lager: karten.length, geo });
     if (karten.length > 0 && cut !== 'none') {
       const cutGeo = (cut === 'only' && options.cutGeo ? options.cutGeo : geo) as GameGeometry;
       const cols = Math.max(1, Math.floor(cutPage.width / (cutGeo.cutW + 2 * cutGeo.air) + 1e-6));

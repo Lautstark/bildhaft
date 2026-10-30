@@ -28,6 +28,7 @@
   import { renameCollection } from '../db/repo.ts';
   import Icon from '../pieces/Icon.svelte';
   import { activeCollection, holdsWords, kind, s } from './state.svelte.ts';
+  import { templateKey } from '../core/types.ts';
   import { pagesOf } from '../core/talk.ts';
   import { rowsOfGame } from '../core/game.ts';
   import { confirmDeleteCollection, handleExport, openSourceSheet } from './collections.ts';
@@ -68,7 +69,9 @@
   let sayings = $derived(pagesOf(activeCollection()?.talk).reduce((all, page) => all + page.sayings.length, 0));
   /* A Spiel's cards are the ones that are cut out and laid: its fixed
      pictures stay on the Spielblatt and are not counted. */
-  let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.zellen.filter((zelle) => zelle.platz).length, 0));
+  /* A Spiel · Tabelle says so, beside the way back to the choice. */
+  let tile = $derived.by(() => { const open = activeCollection(); return open ? templateKey(open) : kind(); });
+  let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.zellen.filter((zelle) => zelle.platz && zelle.karte).length, 0));
   let count = $derived(kind() === 'rezept'
     ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
     : kind() === 'plauderbuch'
@@ -92,7 +95,7 @@
   A Rezept and a Lied draw their own empty parts, so the empty state's box
   would be a second „noch leer" over them. What it carried that they do not
   is the way back to the choice of template, said here, small.
---><span class="small faint collection-head__other">{t(`ui.template_${kind()}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}<!--
+--><span class="small faint collection-head__other">{t(`ui.template_${tile}`)} · <button class="linklike" type="button" onclick={() => { s.choosing = s.activeId; }}>{t('ui.other_template')}</button></span>{/if}<!--
   §3.6's order: the export first, what this Sammlung is set to under it, the
   delete last. The middle item is not an act on the Sammlung and that is the
   point — the menu holds what a Sammlung *is* as well as what can be done to

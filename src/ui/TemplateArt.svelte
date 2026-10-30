@@ -7,9 +7,9 @@
    * lines between them. The dashed lines are the whole argument — they say
    * without a sentence that this paper gets cut up and the other one does not.
    */
-  import type { CollectionKind } from '../core/types.ts';
+  import type { TemplateTile } from '../core/types.ts';
 
-  let { kind }: { kind: CollectionKind } = $props();
+  let { kind }: { kind: TemplateTile } = $props();
 
   /* A grid with a card in some fields and not in others: the free field is
      what the Tafel tile has to show, because it is what that template is for. */
@@ -28,6 +28,9 @@
   const recipeSteps = [0, 1, 2];
   const songLines = [0, 1];
   const songBlocks = [0, 1, 2];
+  /* A Tabelle's raster: heads filled along the top and down the left, the
+     corner left out, a dashed field where every row meets every column. */
+  const tableCells = [0, 1, 2].flatMap((row) => [0, 1, 2].map((col) => ({ row, col }))).filter((cell) => cell.row + cell.col > 0);
   const talkPages = [0, 1];
 </script>
 
@@ -45,7 +48,9 @@
   One sheet lying on its side: left the Ablage's dashed fields, right two
   rows — a picture, then the dashed field its card is laid onto. The dashed
   fields are the whole argument: this paper is velcroed, not cut.
---><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art"><rect class="tpl__ink" x="22" y="5" width="88" height="36" rx="3" /><rect class="tpl__ink" x="27" y="10" width="15" height="11" rx="2" stroke-dasharray="2 2" /><rect class="tpl__ink" x="27" y="25" width="15" height="11" rx="2" stroke-dasharray="2 2" /><line class="tpl__ink" x1="47" y1="9" x2="47" y2="37" />{#each [0, 1] as r}<rect class="tpl__fill" x="53" y={10 + r * 15} width="17" height="11" rx="2" /><line class="tpl__ink" x1="73" y1={15.5 + r * 15} x2="79" y2={15.5 + r * 15} /><rect class="tpl__ink" x="83" y={10 + r * 15} width="17" height="11" rx="2" stroke-dasharray="2 2" />{/each}</svg>{:else if kind === 'einkaufsliste'}<!--
+--><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art"><rect class="tpl__ink" x="22" y="5" width="88" height="36" rx="3" /><rect class="tpl__ink" x="27" y="10" width="15" height="11" rx="2" stroke-dasharray="2 2" /><rect class="tpl__ink" x="27" y="25" width="15" height="11" rx="2" stroke-dasharray="2 2" /><line class="tpl__ink" x1="47" y1="9" x2="47" y2="37" />{#each [0, 1] as r}<rect class="tpl__fill" x="53" y={10 + r * 15} width="17" height="11" rx="2" /><line class="tpl__ink" x1="73" y1={15.5 + r * 15} x2="79" y2={15.5 + r * 15} /><rect class="tpl__ink" x="83" y={10 + r * 15} width="17" height="11" rx="2" stroke-dasharray="2 2" />{/each}</svg>{:else if kind === 'spieltabelle'}<!--
+  The Spiel's Ablage at the left, its fence, and the Tabelle beside it.
+--><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art"><rect class="tpl__ink" x="22" y="5" width="88" height="36" rx="3" /><rect class="tpl__ink" x="27" y="10" width="15" height="11" rx="2" stroke-dasharray="2 2" /><rect class="tpl__ink" x="27" y="25" width="15" height="11" rx="2" stroke-dasharray="2 2" /><line class="tpl__ink" x1="47" y1="9" x2="47" y2="37" />{#each tableCells as cell (`${cell.row}:${cell.col}`)}<rect class={cell.row === 0 || cell.col === 0 ? 'tpl__fill' : 'tpl__ink'} x={53 + cell.col * 17} y={9 + cell.row * 10.5} width="15" height="9" rx="1.5" stroke-dasharray={cell.row === 0 || cell.col === 0 ? null : '2 2'} />{/each}</svg>{:else if kind === 'einkaufsliste'}<!--
   Three sheets that only mean anything together, so the tile draws all three:
   the board with its cart, the cards to cut, and the sheet they live on.
 --><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art"><rect class="tpl__ink" x="3" y="8" width="40" height="30" rx="3" /><path class="tpl__ink" d="M23 14 h16 v12 h-16 z" /><path class="tpl__ink" d="M23 14 l-4 -4" /><circle class="tpl__ink" cx="27" cy="29" r="2" /><circle class="tpl__ink" cx="36" cy="29" r="2" />{#each listSymbols as i}<rect class="tpl__fill" x="7" y={12 + i * 8} width="6" height="6" rx="1" />{/each}{#each cutCols as col}{#each rows3 as row}<rect class="tpl__ink" x={54 + col * 14} y={8 + row * 11} width="11" height="8" rx="2" />{/each}{/each}<line class="tpl__cut" x1="51" y1="6" x2="51" y2="42" /><line class="tpl__cut" x1="84" y1="6" x2="84" y2="42" />{#each storeCols as col}{#each rows3 as row}<rect class="tpl__ink" x={92 + col * 13} y={8 + row * 11} width="10" height="6" rx="1" /><rect class="tpl__fill" x={92 + col * 13} y={15 + row * 11} width="7" height="2" rx="1" />{/each}{/each}</svg>{:else}<svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art">{#each cardRows as row}{#each cardCols as col}<rect class="tpl__ink" x={10 + col * 33} y={5 + row * 21} width="26" height="16" rx="3" />{/each}{/each}<line class="tpl__cut" x1="39.5" y1="2" x2="39.5" y2="45" /><line class="tpl__cut" x1="72.5" y1="2" x2="72.5" y2="45" /><line class="tpl__cut" x1="6" y1="23.5" x2="112" y2="23.5" /></svg>{/if}

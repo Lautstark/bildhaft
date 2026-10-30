@@ -457,14 +457,17 @@ function remapTalk(talk: TalkBook, ids: Map<string, string>): TalkBook {
  *  from before there were cells is read as the cells it meant. */
 function remapGame(game: GameBook, ids: Map<string, string>): GameBook {
   return {
+    ...(game.tabelle ? { tabelle: true } : {}),
     rows: (game.rows ?? []).map((row) => ({
       id: row.id,
       zellen: (row.zellen ?? [
         ...(row.fest ?? []).map((karte) => ({ karte, platz: false })),
         ...(row.karten ?? []).map((karte) => ({ karte, platz: true })),
       ])
-        .map((zelle) => ({ ...zelle, karte: ids.get(zelle.karte) }))
-        .filter((zelle): zelle is { karte: string; platz: boolean } => Boolean(zelle.karte)),
+        /* A Tabelle's place still to be chosen keeps its column: it stays
+           a place, where a row's card that is gone goes with it. */
+        .map((zelle) => ({ ...zelle, karte: game.tabelle && !zelle.karte ? '' : ids.get(zelle.karte) }))
+        .filter((zelle): zelle is { karte: string; platz: boolean } => zelle.karte !== undefined),
     })),
   };
 }

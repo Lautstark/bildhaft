@@ -25,7 +25,7 @@
   import SharedSidebar from '@lautstark/design/svelte/Sidebar';
   import type { Collection } from '../core/types.ts';
   import type { CollectionKind } from '../core/types.ts';
-  import { COLLECTION_KINDS, sentenceCaption, kindOf } from '../core/types.ts';
+  import { COLLECTION_KINDS, sentenceCaption, kindOf, templateKey } from '../core/types.ts';
   import { editedLabel } from '../core/edited.ts';
   import { drawCollections } from '@lautstark/design/collections';
   import Icon from '../pieces/Icon.svelte';
@@ -162,7 +162,7 @@
       rows: list.map((collection) => ({
         id: collection.id,
         name: collection.name,
-        subtitle: withKind ? `${t(`ui.template_${kindOf(collection)}`)} · ${edited(collection)}` : edited(collection),
+        subtitle: withKind ? `${t(`ui.template_${templateKey(collection)}`)} · ${edited(collection)}` : edited(collection),
       })),
       /* Nothing is open down here while the Wortschatz is showing. Two rows
          lit in two sections would say both are, and one of them is only the

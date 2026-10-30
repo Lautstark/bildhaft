@@ -57,7 +57,7 @@ async function newMaterial(page: Page, template: RegExp, name: string): Promise<
 
 /** One Spiel of one row: a printed picture and a Platzhalter. */
 async function newGame(page: Page, name: string, bild: string, karte: string): Promise<void> {
-  await newMaterial(page, /^Spiel/, name);
+  await newMaterial(page, /^Spiel · Reihen/, name);
   await pick(page, '+ Bild', bild);
   await pick(page, '+ Platzhalter', karte);
   /* With its words, so the cards can be told apart on the shared Bogen. */
