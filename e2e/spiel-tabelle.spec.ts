@@ -111,8 +111,16 @@ test('eine Tabelle baut sich Spalte für Spalte und Zeile für Zeile, und druckt
 
   // A column taken out goes with its head and every card under it.
   await showMaterial(page);
+  // Its bin stands over the column, at the table's edge, and shows while the
+  // pointer is in the column; pointed at, it outlines all it would take out.
+  const spalteWeg = table.getByRole('button', { name: 'Spalte 2 löschen' });
   await kopf.nth(1).hover();
-  await kopf.nth(1).getByRole('button', { name: 'Spalte 2 löschen' }).click();
+  await expect(spalteWeg.locator('..')).toHaveCSS('opacity', '1');
+  const kopfBox = (await kopf.nth(1).boundingBox())!;
+  expect((await spalteWeg.boundingBox())!.y + 20).toBeLessThan(kopfBox.y);
+  await spalteWeg.hover();
+  await expect(table.locator('.game-table--doomed')).toHaveCount(3);
+  await spalteWeg.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
   await expect(words(kopf)).toHaveText(['Tasse']);
   await expect(felder).toHaveCount(2);
@@ -120,7 +128,11 @@ test('eine Tabelle baut sich Spalte für Spalte und Zeile für Zeile, und druckt
     .not.toContain('Pullover');
 
   // A row taken out goes with its head and its cards.
-  await table.getByRole('button', { name: 'Zeile 1 löschen' }).click();
+  const zeileWeg = table.getByRole('button', { name: 'Zeile 1 löschen' });
+  expect((await zeileWeg.boundingBox())!.x + 20).toBeLessThan((await zeilenkopf.nth(0).boundingBox())!.x);
+  await zeileWeg.hover();
+  await expect(table.locator('.game-table--doomed')).toHaveCount(2);
+  await zeileWeg.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
   await expect(words(zeilenkopf)).toHaveText(['Rot']);
   await expect(words(felder)).toHaveText(['Rottasse']);

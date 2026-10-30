@@ -1783,18 +1783,18 @@ footer.footer {
 .game__more { display: flex; justify-content: flex-start; }
 /* A Spiel · Tabelle in Bearbeiten, laid out as it prints: the empty corner,
    the column heads along the top with „+ Spalte" after them, each row its
-   head and then a place under every column; the bins at the edges. */
-.game-table { display: grid; grid-template-columns: repeat(calc(var(--spalten) + 2), 118px) auto; gap: 14px 12px; align-items: center; justify-items: center; padding: 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; }
+   head and then a place under every column. The bins stand at the table's
+   edge — a thin row over the columns, a thin column left of the rows — and
+   show for the column or row the pointer is in; pointed at, a bin outlines
+   all it would take out. */
+.game-table { display: grid; grid-template-columns: 34px repeat(calc(var(--spalten) + 2), 118px); grid-template-rows: 34px; gap: 14px 12px; align-items: center; justify-items: center; padding: 10px 14px 14px 6px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; max-width: 100%; overflow-x: auto; }
 .game-table .word { width: 104px; }
 .game-table__ecke { align-self: stretch; justify-self: stretch; display: grid; place-items: center; border-radius: var(--radius); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--text) 5%, transparent) 8px 16px); color: var(--text-faint); font-size: 11px; }
-.game-table__kopf { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.game-table__kopf, .game-table__zeilenkopf { border-radius: var(--radius); }
-.game-table__feld, .game-table__zeilenkopf { display: flex; }
-.game-table__acts { opacity: 0; transition: opacity .13s; }
-.game-table__kopf .game-table__acts { position: absolute; bottom: -14px; }
-.game-table__kopf:hover .game-table__acts, .game-table__acts:focus-within { opacity: 1; }
-.game-table__acts--zeile { opacity: .55; }
-.game-table__acts--zeile:hover { opacity: 1; }
+.game-table__kopf, .game-table__zeilenkopf, .game-table__feld { display: flex; border-radius: calc(var(--radius) + 4px); }
+.game-table__bin { opacity: 0; transition: opacity .13s; }
+.game-table__bin--on, .game-table__bin:focus-within { opacity: 1; }
+/* What a bin would take out, while it is pointed at. */
+.game-table--doomed { outline: 2px solid var(--danger); outline-offset: 4px; background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .game-table--spalte-before { box-shadow: -3px 0 0 var(--accent); }
 .game-table--spalte-after { box-shadow: 3px 0 0 var(--accent); }
 .game-table--zeile-before { box-shadow: 0 -3px 0 var(--accent); }
