@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
 import {
-  arasaacHeading, chooseFakeFolder, openSymbolSettings, withoutDirectoryPicker,
+  arasaacCard, chooseFakeFolder, openSymbolSettings, withoutDirectoryPicker,
 } from './metacom-folder.ts';
 import { pickTemplate } from './helpers.ts';
 
@@ -133,8 +133,7 @@ test('a Sammlung that answered for itself keeps its source when the default move
 
   // Now move the default back to ARASAAC.
   await openSymbolSettings(page);
-  await arasaacHeading(page).click();
-  await page.getByRole('button', { name: 'Als Standard verwenden' }).click();
+  await arasaacCard(page).getByRole('radio').check();
   // And say what that did — and, here, what it did not do.
   await expect(page.locator('.toast')).toContainText('bleibt, wie es ist');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();

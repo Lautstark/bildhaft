@@ -144,10 +144,10 @@ const stateOf = (page: Page, heading: string): Locator =>
  *                                folder somebody picked. This is the one the
  *                                `mask` option is really for.
  *
- *   METACOM · .state             The symbol total and the root name of a
- *                                licensed folder on whichever machine is
- *                                running this. Nobody else's directory names
- *                                belong in a committed picture.
+ *   Symbole · .state             „METACOM · 9.214 Symbole" once a licensed
+ *                                folder is read on whichever machine is
+ *                                running this. Nobody else's symbol count
+ *                                belongs in a committed picture.
  *
  *   .where-panel .standing       The standing backup's line inside the panel:
  *                                a folder and an age that differs between two
@@ -156,8 +156,8 @@ const stateOf = (page: Page, heading: string): Locator =>
  *                                covers the text, the box keeps whatever the
  *                                stylesheet gives it.
  *
- * The other four headings — Sprache, ARASAAC, Funktionswörter, Erscheinungsbild
- * — are left in the picture on purpose. Their state lines are the page's own
+ * The other three headings — Sprache & Aussehen, Stimme, Wörter ohne Bild —
+ * are left in the picture on purpose. Their state lines are the page's own
  * words for a setting, constant in the bundle, and they are exactly the kind of
  * small right-aligned type a moved stylesheet loses quietly.
  *
@@ -182,7 +182,7 @@ const stateOf = (page: Page, heading: string): Locator =>
 function dynamic(page: Page): Locator[] {
   return [
     stateOf(page, 'Deine Daten'),
-    stateOf(page, 'METACOM'),
+    stateOf(page, 'Symbole'),
     page.locator('dialog.sheet .panel[open] .where-panel .standing'),
   ];
 }
@@ -194,8 +194,10 @@ test('the settings sheet, as it opens', async ({ page }) => {
      settingsDialog.ts on why it is Sprache — and a column of headings with
      exactly one of them unfolded is what this shot is of. */
   // Nine since the Anybook codes brought Stimme and Azure Speech; eight since
-  // „Alles löschen" moved into the ⋯ of „Deine Daten" (2026-10-31).
-  await expect(sheet.locator('details.panel')).toHaveCount(8);
+  // „Alles löschen" moved into the ⋯ of „Deine Daten"; five since Sprache and
+  // Erscheinungsbild, ARASAAC and METACOM, and Stimme and Azure became one
+  // panel each (2026-10-31).
+  await expect(sheet.locator('details.panel')).toHaveCount(5);
   await expect(sheet).toHaveScreenshot('settings-sheet.png', { mask: dynamic(page) });
 });
 
@@ -228,59 +230,54 @@ test('the „Deine Daten" panel, unfolded', async ({ page }) => {
      „Deine Daten"'s own heading would be laid across „Alles löschen", the one
      row whose colour this frame is for. A fresh context has no folder, so that
      heading says „nur in diesem Browser" on every machine. */
-  await expect(sheet).toHaveScreenshot('data-panel-menu.png', { mask: [stateOf(page, 'METACOM')] });
+  await expect(sheet).toHaveScreenshot('data-panel-menu.png', { mask: [stateOf(page, 'Symbole')] });
 });
 
 /*
- * METACOM, which nothing here had ever photographed.
+ * „Symbole", @lautstark/bildquelle's SymbolePanel: ARASAAC as a chosen radio
+ * card, and METACOM as a grey card with no radio, unfolded the way „Einrichten
+ * …" unfolds it — one sentence, „Ordner wählen …" and the licence link. Every
+ * class in it (.answers, .answer, .answer.off, .answer__tag, .answer__more,
+ * .acts) is a package's name for a rule in components.css, which is what this
+ * file is for: a package's DOM drawn by a second package's stylesheet is only
+ * checked where somebody photographs it.
  *
- * **Why this shot exists, and the measurement that asked for it.** The block
- * inside this panel is `@lautstark/bildquelle/metacom-panel`'s markup drawn by
- * `@lautstark/design`'s `.metacom-panel` rules — a package's DOM styled from a
- * second package, which is exactly the position the „Deine Daten" test above
- * describes for the Sicherung box. components.css says so beside the
- * rules in as many words: they were added with no product emitting the class
- * yet, and the migration is where their drawing has to be checked. This is that
- * check.
+ * It replaced „the METACOM panel, unfolded", which photographed
+ * `.metacom-panel` for the same reason.
  *
- * **The three shots above could not have been it, and their silence proves it
- * rather than clearing anything.** None of them unfolds this panel, so the
- * block's licence paragraph, its state line and its four buttons appear on no
- * baseline at all. What is visible of METACOM elsewhere is one line — the state
- * in its folded heading — and `dynamic()` below paints a rectangle over exactly
- * that line. The rectangle does not even change size when the sentence does:
- * `.panel > summary .state` is `flex: 1 1 auto`, so it fills the row whatever is
- * in it. Migrating the whole panel therefore left all three pictures
- * byte-identical, which looks like "nothing moved" and means "nothing was
- * looked at". vorlaut-editor reached the same conclusion the same way.
- *
- * The element and not the sheet: with no
- * folder connected this panel is a paragraph, a link, a state line and a row of
- * buttons, which stands inside the sheet's body with room to spare.
- *
- * `dynamic()` all the same, though nothing in a fresh context needs it here —
- * every test gets its own browser profile, so there is no adopted folder whose
- * name could reach a committed picture. Kept because the instruction is the
- * file's, not this test's, and because it costs this shot nothing: it covers the
- * folded heading's line, while the block's own state line and dot — which is the
- * part `.standing[data-state]` draws and the part that had never been checked —
- * are in the picture.
+ * Unfolded rather than as it opens, because the unfolded card holds every rule
+ * the folded one does and three more. No METACOM byte is in it: a fresh context
+ * has no folder, so the card is words and a button.
  */
-test('the METACOM panel, unfolded', async ({ page }) => {
+test('the Symbole panel, setting up METACOM', async ({ page }) => {
   await openSettings(page);
-  const panel = await openPanel(page, 'METACOM');
+  const panel = await openPanel(page, 'Symbole');
 
-  /* The block is really there before anything is taken. `.metacom-panel` is the
-     package's own class name, so this fails loudly if the module ever stops
-     emitting it — rather than quietly photographing an empty panel and holding
-     every later run to that. */
-  await expect(panel.locator('.metacom-panel')).toBeVisible();
-  // Its two halves that this migration is about: the state line with its dot,
-  // and the four acts drawn whether or not they can run.
-  await expect(panel.locator('.metacom-panel .standing .dot')).toBeVisible();
-  await expect(panel.locator('.metacom-panel .acts button')).toHaveCount(4);
+  /* The cards are really there before anything is taken, so this fails loudly
+     if the package ever stops emitting them rather than photographing an empty
+     panel and holding every later run to that. */
+  await expect(panel.locator('.answer')).toHaveCount(2);
+  await expect(panel.locator('.answer.off')).toContainText('METACOM');
+  await panel.getByRole('button', { name: 'Einrichten …' }).click();
+  await expect(panel.getByRole('button', { name: 'Ordner wählen …' })).toBeFocused();
 
-  await expect(panel).toHaveScreenshot('metacom-panel.png', { mask: dynamic(page) });
+  await expect(panel).toHaveScreenshot('symbole-panel.png', { mask: dynamic(page) });
+});
+
+/*
+ * „Stimme": the voices and, under them, „Stimmen von Microsoft Azure" as a
+ * `.where` box with its one button — stimmquelle's AzureConnection. A fresh
+ * context has no key, so the box says „nicht verbunden" on every machine. The
+ * voice list is the browser's and differs between the two runners, so it is
+ * the box alone that is photographed.
+ */
+test('the Azure connection, not connected', async ({ page }) => {
+  await openSettings(page);
+  const panel = await openPanel(page, 'Stimme');
+  const box = panel.locator('#azure');
+  await expect(box.locator('.where')).toContainText('nicht verbunden');
+  await expect(box.locator('.acts button')).toHaveText(['Verbinden …']);
+  await expect(box).toHaveScreenshot('azure-connection.png');
 });
 
 /* ==========================================================================

@@ -135,9 +135,9 @@ test('says METACOM is named in German, but only where that is news', async ({ pa
 
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await openSettings(page, 'en');
-  // The panel is named after the product, so it is the one heading that is
-  // the same word in both languages.
-  await page.getByText('METACOM', { exact: true }).click();
+  // Said where it is news: under METACOM, once somebody starts setting it up.
+  await page.locator('.panel > summary', { hasText: 'Symbols' }).click();
+  await page.getByRole('button', { name: 'Set up …' }).click();
   await expect(page.getByText(GERMAN_ONLY)).toBeVisible();
 });
 

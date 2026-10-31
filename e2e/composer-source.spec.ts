@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
 import {
-  chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings, withoutDirectoryPicker,
+  chooseFakeFolder, FILES, FOLDER, metacomCard, openSymbolSettings, withoutDirectoryPicker,
 } from './metacom-folder.ts';
 
 /**
@@ -87,7 +87,7 @@ test('stops saying „nicht bereit" once the folder has come back', async ({ pag
   await page.reload();
 
   await openSymbolSettings(page);
-  await expect(metacomHeading(page)).toContainText('8 Symbole');
+  await expect(metacomCard(page)).toContainText('8 Symbole');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   await expect(line(page)).toContainText('METACOM');

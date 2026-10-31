@@ -73,22 +73,27 @@ export async function openAppSettings(page: Page): Promise<void> {
 
 export async function openSymbolSettings(page: Page): Promise<void> {
   await openAppSettings(page);
-  // Each source is a folded panel; its controls are inside its own body, so a
-  // test that drives them has to open it exactly as a person would.
-  await metacomHeading(page).click();
+  // „Symbole" is a folded panel; the two cards are inside its body, so a test
+  // that drives them has to open it exactly as a person would.
+  await symbolsHeading(page).click();
 }
 
 /**
- * The METACOM panel's heading. Scoped to the summary rather than the panel
- * because the dictionary panel names the provider in force in its body too —
- * and because the state belongs to the heading now, which is the whole point of
- * it: those assertions pass without opening anything.
+ * The Symbole panel's heading, which says which pictures are in force:
+ * „ARASAAC", or „METACOM · 8 Symbole" once a folder is read and chosen. Scoped
+ * to the summary, so the assertion passes without opening anything.
  */
-export function metacomHeading(page: Page) {
-  return page.locator('.panel > summary').filter({ hasText: 'METACOM' });
+export function symbolsHeading(page: Page) {
+  return page.locator('.panel > summary').filter({ hasText: 'Symbole' });
 }
 
-/** Its counterpart, for the assertion that only one source is the default. */
-export function arasaacHeading(page: Page) {
-  return page.locator('.panel > summary').filter({ hasText: 'ARASAAC' });
+/** The METACOM card in that panel: a radio once a folder is read, a grey card
+ *  with „Einrichten …" until then. */
+export function metacomCard(page: Page) {
+  return page.locator('.answer').filter({ hasText: 'METACOM' });
+}
+
+/** Its counterpart, which is always a radio. */
+export function arasaacCard(page: Page) {
+  return page.locator('.answer').filter({ hasText: 'ARASAAC' });
 }

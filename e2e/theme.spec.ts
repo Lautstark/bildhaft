@@ -12,11 +12,13 @@ import { expect, test } from '@playwright/test';
 
 async function openTheme(page: import('@playwright/test').Page): Promise<void> {
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
-  await page.locator('.panel', { hasText: 'Erscheinungsbild' }).locator('summary').click();
+  // „Sprache & Aussehen" is the panel that opens on arrival, so this waits for
+  // the buttons rather than pressing the heading, which would fold it.
+  await track(page).waitFor();
 }
 
 const track = (page: import('@playwright/test').Page) =>
-  page.getByRole('group', { name: 'Erscheinungsbild' });
+  page.getByRole('group', { name: 'Aussehen' });
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -24,8 +26,8 @@ test.beforeEach(async ({ page }) => {
 
 test('opens following the device, and says so in the heading', async ({ page }) => {
   await openTheme(page);
-  await expect(page.locator('.panel', { hasText: 'Erscheinungsbild' }).locator('.state'))
-    .toHaveText('Systemeinstellung');
+  await expect(page.locator('.panel', { hasText: 'Aussehen' }).locator('.state'))
+    .toContainText('Systemeinstellung');
   // The absence of the attribute is what "follows the OS" is: a page that wrote
   // data-theme here would have picked one, and picked it in the dark.
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
@@ -37,8 +39,8 @@ test('a chosen scheme is in force, named in the heading, and survives a reload',
   await track(page).getByRole('button', { name: 'Dunkel' }).click();
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('.panel', { hasText: 'Erscheinungsbild' }).locator('.state'))
-    .toHaveText('Dunkel');
+  await expect(page.locator('.panel', { hasText: 'Aussehen' }).locator('.state'))
+    .toContainText('Dunkel');
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

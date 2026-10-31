@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
 import {
-  arasaacHeading, chooseFakeFolder, FILES, FOLDER, metacomHeading, openSymbolSettings,
+  arasaacCard, chooseFakeFolder, FILES, FOLDER, metacomCard, openSymbolSettings, symbolsHeading,
   withoutDirectoryPicker,
 } from './metacom-folder.ts';
 import { addCards, openDing, pickTemplate, showSheet, translate } from './helpers.ts';
@@ -31,21 +31,23 @@ test.beforeEach(async ({ page }) => {
  * here so that a regression names itself instead of surfacing as six tests
  * failing on a missing image.
  *
- * What adopting *means* moved once the source became a property of the
- * Sammlung: it sets the default rather than switching the whole app, and the
- * headings say „Standardquelle" rather than „Aktive Quelle". The Sammlungen
- * that follow the default still move — which is every one of them until
- * somebody says otherwise, and is why the rest of this file is unchanged.
+ * „Symbole" asks one question with two answers. METACOM is not a radio until
+ * its folder has been read — what cannot be picked is not offered as a pick —
+ * and once it has, it is the answer, which is what „Einrichten" promised. The
+ * Sammlungen that follow the default move with it, which is every one of them
+ * until somebody says otherwise, and is why the rest of this file is unchanged.
  */
-test('a chosen folder becomes the default source on its own', async ({ page }) => {
+test('a chosen folder becomes the answer on its own', async ({ page }) => {
   await openSymbolSettings(page);
-  await expect(metacomHeading(page)).not.toContainText('Standardquelle');
-  await expect(arasaacHeading(page)).toContainText('Standardquelle');
+  await expect(arasaacCard(page).getByRole('radio')).toBeChecked();
+  await expect(metacomCard(page).getByRole('radio')).toHaveCount(0);
+  await expect(symbolsHeading(page)).toContainText('ARASAAC');
 
   await chooseFakeFolder(page);
 
-  await expect(metacomHeading(page)).toContainText('Standardquelle');
-  await expect(arasaacHeading(page)).not.toContainText('Standardquelle');
+  await expect(metacomCard(page).getByRole('radio')).toBeChecked();
+  await expect(arasaacCard(page).getByRole('radio')).not.toBeChecked();
+  await expect(symbolsHeading(page)).toContainText('METACOM · 8 Symbole');
   // Said out loud, because the rows behind the dialog have just been redrawn.
   await expect(page.locator('.toast')).toContainText('Alle Zeilen werden neu gezeichnet');
 });
@@ -53,33 +55,26 @@ test('a chosen folder becomes the default source on its own', async ({ page }) =
 /**
  * The way in is a control, and the keyboard can work it.
  *
- * This is the one property the shared panel bought that nothing else here would
- * notice losing. bildhaft drew the folder button as `<label class="btn">`
- * wrapping a hidden file input: it looked exactly like a button, it worked
- * under a pointer, and it was not a control — a label has no tab stop and does
- * nothing on Enter. So the way into METACOM was mouse-only, in the product
- * whose whole subject is somebody who cannot use a mouse well.
- * `@lautstark/bildquelle/metacom-panel` uses a real `<button>` that clicks the
- * input, which is what wochenwerk and vorlaut-editor already did.
+ * bildhaft once drew the folder button as `<label class="btn">` wrapping a
+ * hidden file input: it looked exactly like a button, it worked under a
+ * pointer, and it was not a control — a label has no tab stop and does nothing
+ * on Enter. So the way into METACOM was mouse-only, in the product whose whole
+ * subject is somebody who cannot use a mouse well.
  *
- * Asserted three ways, because each alone can be true of the broken version:
- * the accessibility tree calls it a button; **Tab** reaches it, walking from the
- * panel's own heading through the licence link, which is the part a label fails;
- * and **Enter** on it forwards a click to the file input, which is the part a
- * `tabindex="0"` bolted onto a label would still fail.
+ * The way in is two presses now, „Einrichten …" and then „Ordner wählen …",
+ * and the first takes itself away when pressed. So this walks it from the
+ * panel's heading with the keyboard alone: Tab to the ARASAAC radio, Tab to
+ * „Einrichten …", Enter — and focus has to be on „Ordner wählen …" rather than
+ * fallen to the page — and Enter on that forwards a click to the file input,
+ * which is the part a `tabindex="0"` bolted onto a label would still fail.
  *
  * `withoutDirectoryPicker` in beforeEach is what puts the file-input arm in
  * play. On a browser that has `showDirectoryPicker` the same button opens the
- * native dialog instead — also from Enter, and also unreachable before.
+ * native dialog instead.
  */
-test('the folder button is a control, and the keyboard can reach and press it', async ({ page }) => {
+test('setting up is two buttons, and the keyboard can reach and press both', async ({ page }) => {
   await openSymbolSettings(page);
-  const panel = page.locator('details.panel', { has: page.locator('.metacom-panel') });
-
-  // The four acts are buttons, not labels dressed as them.
-  await expect(panel.locator('.metacom-panel .acts button')).toHaveCount(4);
-  const choose = panel.getByRole('button', { name: 'Ordner wählen', exact: true });
-  await expect(choose).toBeEnabled();
+  const panel = page.locator('details.panel', { has: page.locator('.answers') });
 
   /* The click the button owes the hidden input, counted. Prevented, because a
      real one opens a file dialog the test could never close. */
@@ -93,15 +88,17 @@ test('the folder button is a control, and the keyboard can reach and press it', 
     });
   });
 
-  /* From the panel's heading, which is where a reader who just opened this
-     section already is. Two stops: the licence link the module added, then the
-     button. A label would be neither of them — Tab would arrive somewhere else
-     entirely, which is what this walk is really asserting. */
   await panel.locator('summary').focus();
   await page.keyboard.press('Tab');
-  await expect(panel.getByRole('link')).toBeFocused();
+  await expect(arasaacCard(page).getByRole('radio')).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(panel.getByRole('button', { name: 'Einrichten …' })).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  const choose = panel.getByRole('button', { name: 'Ordner wählen …', exact: true });
   await expect(choose).toBeFocused();
+  // Where a licence comes from, beside the button and one Tab on.
+  await expect(panel.getByRole('link', { name: /METACOM/ })).toBeVisible();
 
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => (window as unknown as { picks: number }).picks)).toBe(1);
@@ -112,8 +109,8 @@ test('indexes a folder, ignoring anything that is not an image', async ({ page }
   await chooseFakeFolder(page);
 
   // Eight PNGs; the .txt must not be counted.
-  await expect(metacomHeading(page)).toContainText('8 Symbole');
-  await expect(metacomHeading(page)).toContainText(FOLDER);
+  await expect(metacomCard(page)).toContainText('8 Symbole');
+  await expect(metacomCard(page)).toContainText(FOLDER);
 });
 
 test('renders a sentence from the folder rather than from ARASAAC', async ({ page }) => {
@@ -205,7 +202,7 @@ test('says so when the folder is indexed but unreadable', async ({ page }) => {
    * adopted the cached index and reports itself ready.
    */
   await openSymbolSettings(page);
-  await expect(metacomHeading(page)).toContainText('8 Symbole');
+  await expect(metacomCard(page)).toContainText('8 Symbole');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   // Ready by its own account, and still unable to produce a single symbol.
@@ -501,7 +498,7 @@ test('a sentence still renders after the folder comes back under another name', 
    */
   await openSymbolSettings(page);
   await chooseFakeFolder(page, 'METACOM_9_Kopie');
-  await expect(metacomHeading(page)).toContainText('METACOM_9_Kopie');
+  await expect(metacomCard(page)).toContainText('METACOM_9_Kopie');
   await page.getByRole('button', { name: 'Dialog schließen' }).click();
 
   const images = page.locator('.row .slot img');
@@ -556,18 +553,15 @@ async function chooseTwoRenderings(page: Page): Promise<void> {
 /**
  * Choosing a rendering.
  *
- * It was a `<select>` driven with `selectOption` until conventions.md §6.10 —
- * a `<select>`'s open list is drawn by the operating system, which is the one
- * thing on the page that cannot follow the tokens. What replaced it is this
- * family's own dropdown: a button that says what is chosen, opening a menu of
- * alternatives. So the two presses are what a person does, and the item is
- * located by its role rather than by its text alone — `menuitemradio` is what
- * says these are alternatives with one in force, and finding it under that role
- * is the assertion that the set still announces itself as one.
+ * A `<select>` once, then a dropdown of its own, and now two rows in the `⋯`
+ * of the METACOM card, which is where everything a ready folder can still be
+ * asked lives. The rows are `menuitemradio`: alternatives with one in force,
+ * and finding them under that role is the assertion that the set still
+ * announces itself as one.
  */
 async function chooseRendering(page: Page, segment: string): Promise<void> {
-  await page.getByRole('button', { name: 'Darstellung' }).click();
-  await page.getByRole('menuitemradio', { name: new RegExp(`^${segment}`) }).click();
+  await page.getByRole('button', { name: 'Mehr zu METACOM' }).click();
+  await page.getByRole('menuitemradio', { name: new RegExp(`^Darstellung: ${segment}`) }).click();
 }
 
 /** Every symbol in the first row, by the width that identifies its rendering. */
