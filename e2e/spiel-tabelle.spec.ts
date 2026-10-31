@@ -37,24 +37,36 @@ const words = (scope: ReturnType<import('@playwright/test').Page['locator']>) =>
 
 test('eine Tabelle baut sich Spalte für Spalte und Zeile für Zeile, und druckt als ein Raster', async ({ page }) => {
   const table = page.locator('.game-table');
-  // Its own name, in the Spiel group; an empty Tabelle shows its corner and „+ Spalte".
+  // Its own name, in the Spiel group; an empty Tabelle shows its corner and its size button.
   await expect(page.locator('.collection-head__other')).toContainText('Spiel · Tabelle');
   await expect(table.locator('.game-table__ecke')).toBeVisible();
   await expect(page.locator('.game__row')).toHaveCount(0);
+  const size = page.locator('.game-table__size .size-pick__button');
+  await expect(size).toHaveText('Größe wählen ▾');
 
-  // A column closed without a choice leaves nothing behind.
-  await table.getByRole('button', { name: '+ Spalte' }).click();
+  // 2 × 2 from the raster, as a Tafel's size is set: heads to choose, a place under every column.
+  await size.click();
+  await page.locator('.size-pick__pop').getByRole('button', { name: '2 Spalten × 2 Zeilen', exact: true }).click();
+  await expect(size).toHaveText('2 × 2 Felder ▾');
+  const kopfWahl = table.getByRole('button', { name: 'Kopf wählen' });
+  await expect(kopfWahl).toHaveCount(4);
+  await expect(table.getByRole('button', { name: '+ Platzhalter' })).toHaveCount(4);
+
+  // A head closed without a choice keeps its place, empty.
+  await kopfWahl.first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(table.locator('.game-table__kopf')).toHaveCount(0);
+  await expect(kopfWahl).toHaveCount(4);
   await expect.poll(async () => (await readSentences(page)).length).toBe(0);
 
-  // Two columns, two rows: the heads along the top and down the left.
-  await pick(page, table, '+ Spalte', 'Pullover');
-  await pick(page, table, '+ Spalte', 'Tasse');
-  await pick(page, page.locator('main'), '+ Zeile', 'Rot');
-  await pick(page, page.locator('main'), '+ Zeile', 'Blau');
+  // The heads along the top and down the left.
+  const koepfe = table.locator('.game-table__kopf');
+  const zeilenkoepfe = table.locator('.game-table__zeilenkopf');
+  await pick(page, koepfe.nth(0), 'Kopf wählen', 'Pullover');
+  await pick(page, koepfe.nth(1), 'Kopf wählen', 'Tasse');
+  await pick(page, zeilenkoepfe.nth(0), 'Kopf wählen', 'Rot');
+  await pick(page, zeilenkoepfe.nth(1), 'Kopf wählen', 'Blau');
   await expect(words(table.locator('.game-table__kopf'))).toHaveText(['Pullover', 'Tasse']);
   await expect(words(table.locator('.game-table__zeilenkopf'))).toHaveText(['Rot', 'Blau']);
 
@@ -145,18 +157,34 @@ test('eine Tabelle baut sich Spalte für Spalte und Zeile für Zeile, und druckt
   await expect(words(felder)).toHaveText(['Rottasse']);
 });
 
-test('eine Tabelle wächst nur, solange das Blatt Platz hat', async ({ page }) => {
-  /* The one field of every Spiel, 30 mm on A4: four columns of three rows
-     stand beside their Ablage, a fifth column or a fourth row does not —
-     Bearbeiten stops offering them. */
+test('die Größe der Tabelle reicht nur so weit, wie das Blatt sie hält, und kleiner fragt nach', async ({ page }) => {
+  /* The one field of every Spiel, 30 mm on A4: up to 3 × 5, 4 × 3, 5 × 1
+     and 6 × 1 stand beside their Ablage — the raster greys the rest. */
   const table = page.locator('.game-table');
-  for (const term of ['Rot', 'Blau', 'Gelb']) await pick(page, page.locator('main'), '+ Zeile', term);
-  for (const term of ['Eins', 'Zwei', 'Drei']) await pick(page, table, '+ Spalte', term);
-  await expect(page.getByRole('button', { name: '+ Zeile' })).toBeVisible();
-  await pick(page, table, '+ Spalte', 'Vier');
-  await expect(table.locator('.game-table__kopf')).toHaveCount(4);
-  await expect(table.getByRole('button', { name: '+ Spalte' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '+ Zeile' })).toHaveCount(0);
+  const size = page.locator('.game-table__size .size-pick__button');
+  const cell = (c: number, r: number) => page.locator('.size-pick__pop').getByRole('button', { name: `${c} Spalten × ${r} Zeilen`, exact: true });
+  await size.click();
+  for (const [c, r] of [[4, 3], [3, 5], [6, 1]] as const) await expect(cell(c, r)).toBeEnabled();
+  for (const [c, r] of [[4, 4], [5, 2], [3, 6]] as const) {
+    if (await cell(c, r).count()) await expect(cell(c, r)).toBeDisabled();
+  }
+  await cell(4, 3).hover();
+  await expect(page.locator('.size-pick__say')).toContainText('passt aufs Blatt');
+  await cell(4, 3).click();
+  await expect(size).toHaveText('4 × 3 Felder ▾');
+  await expect(table.locator('.game-table__feld')).toHaveCount(12);
+
+  // A card in the last column: making it smaller says so, and asks.
+  await pick(page, table.locator('.game-table__feld').nth(3), '+ Platzhalter', 'Vier');
+  await size.click();
+  await cell(3, 3).hover();
+  await expect(page.locator('.size-pick__say')).toContainText('1 Karte fällt dabei weg');
+  await cell(3, 3).click();
+  await expect(page.getByRole('dialog')).toContainText('Auf 3 × 3 verkleinern?');
+  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
+  await expect(size).toHaveText('3 × 3 Felder ▾');
+  await expect(table.locator('.game-table__feld')).toHaveCount(9);
+  await expect.poll(async () => (await readSentences(page)).length).toBe(0);
 });
 
 test('die Kacheln: Spiel · Reihen und Spiel · Tabelle stehen einzeln nebeneinander, beide in der Spiel-Gruppe', async ({ page }) => {

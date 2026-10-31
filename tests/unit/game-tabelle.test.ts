@@ -50,10 +50,10 @@ describe('a Tabelle as a book', () => {
     expect(tabelleOf(next).spalten).toEqual(['pulli', 'tasse']);
   });
 
-  it('lets a column with nothing left in it go — the „+ Spalte" closed without a choice', () => {
+  it('keeps an empty column: only the size button or a bin takes a column away', () => {
     const next = withoutGameCard(book, 'tasse');
-    expect(tabelleOf(next).spalten).toEqual(['pulli']);
-    expect(tabelleOf(next).zeilen[0]!.felder).toEqual(['rotpulli']);
+    expect(tabelleOf(next).spalten).toEqual(['pulli', '']);
+    expect(tabelleOf(next).zeilen[0]!.felder).toEqual(['rotpulli', '']);
   });
 
   it('counts no card for a place still to be chosen', () => {

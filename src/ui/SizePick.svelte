@@ -29,7 +29,7 @@
   $effect(() => { if (open) pop?.focus(); });
 
   function show(): void {
-    at = { cols, rows };
+    at = { cols: Math.max(1, cols), rows: Math.max(1, rows) };
     open = !open;
   }
   function take(c: number, r: number): void {
@@ -57,4 +57,4 @@
   });
 </script>
 
-<div class="size-pick" bind:this={host}><button class="song__plus size-pick__button" type="button" aria-haspopup="true" aria-expanded={open} onclick={show}>{cols} × {rows} {unit} ▾</button>{#if open}<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions --><div bind:this={pop} class="size-pick__pop" role="group" aria-label={t('ui.size_pick')} tabindex="0" onkeydown={key}><p class="size-pick__say"><b>{t('ui.size_pick_n', { cols: at.cols, rows: at.rows })}</b>{#if hint(at.cols, at.rows)}<span>{hint(at.cols, at.rows)}</span>{/if}</p><!-- svelte-ignore a11y_no_static_element_interactions --><div class="size-pick__grid" style:--cols={maxCols} onpointerleave={() => { at = { cols, rows }; }}>{#each Array.from({ length: maxRows }) as _, r (r)}{#each Array.from({ length: maxCols }) as _, c (c)}<button class="size-pick__cell" class:size-pick__cell--in={c < at.cols && r < at.rows} type="button" tabindex="-1" disabled={!can(c + 1, r + 1)} aria-label={t('ui.size_pick_n', { cols: c + 1, rows: r + 1 })} onpointerenter={() => { at = { cols: c + 1, rows: r + 1 }; }} onclick={() => take(c + 1, r + 1)}></button>{/each}{/each}</div></div>{/if}</div>
+<div class="size-pick" bind:this={host}><button class="song__plus size-pick__button" type="button" aria-haspopup="true" aria-expanded={open} onclick={show}>{#if cols > 0 && rows > 0}{cols} × {rows} {unit}{:else}{t('ui.size_pick')}{/if} ▾</button>{#if open}<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions --><div bind:this={pop} class="size-pick__pop" role="group" aria-label={t('ui.size_pick')} tabindex="0" onkeydown={key}><p class="size-pick__say"><b>{t('ui.size_pick_n', { cols: at.cols, rows: at.rows })}</b>{#if hint(at.cols, at.rows)}<span>{hint(at.cols, at.rows)}</span>{/if}</p><!-- svelte-ignore a11y_no_static_element_interactions --><div class="size-pick__grid" style:--cols={maxCols} onpointerleave={() => { at = { cols, rows }; }}>{#each Array.from({ length: maxRows }) as _, r (r)}{#each Array.from({ length: maxCols }) as _, c (c)}<button class="size-pick__cell" class:size-pick__cell--in={c < at.cols && r < at.rows} type="button" tabindex="-1" disabled={!can(c + 1, r + 1)} aria-label={t('ui.size_pick_n', { cols: c + 1, rows: r + 1 })} onpointerenter={() => { at = { cols: c + 1, rows: r + 1 }; }} onclick={() => take(c + 1, r + 1)}></button>{/each}{/each}</div></div>{/if}</div>

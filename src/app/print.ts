@@ -1,7 +1,7 @@
 import type { Board, Collection, CollectionKind, GameRow, PrintSettings, SavedPdf, Sentence } from '../core/types.ts';
 import { contentOf, DEFAULT_PRINT_SETTINGS, kindOf, titleOf, titlePictures } from '../core/types.ts';
 import { boardOf, placedIds, stylesOf, zonesOf } from '../core/board.ts';
-import { rowsOfGame, tabelleHeads, tabelleOf } from '../core/game.ts';
+import { rowsOfGame, tabelleHeads } from '../core/game.ts';
 import {
   copyrightFor, creditLines, cutGeometry, gameFits, gameReserveMm, printableArea, tabelleFits, tafelFieldMm,
   talkCapacity, type Titled,
@@ -557,22 +557,19 @@ export function gameRoom(): { bild: (rowId?: string) => boolean; platz: (rowId?:
 }
 
 /**
- * What the open Spiel · Tabelle still has room for at the one field: another
- * column, another row — measured as gameRoom() measures, against the fullest
- * sheet it can be printed on, every place of the table counted as a card.
+ * Whether the open Spiel · Tabelle fits its sheet at the one field at this
+ * size — measured as gameRoom() measures, against the fullest sheet it can be
+ * printed on, every place of the table counted as a card. The size button
+ * offers only what does.
  */
-export function tabelleRoom(): { spalte: boolean; zeile: boolean } {
+export function tabelleFitsSize(spalten: number, zeilen: number): boolean {
   const sheet = gameSheet();
-  const table = tabelleOf(activeCollection()?.game);
-  const fullest = !sheet ? [] : ([null, 'top', 'left'] as const).map((punch) => {
+  if (!sheet) return true;
+  return ([null, 'top', 'left'] as const).every((punch) => {
     const print = { ...sheet.print, punch, showPageNumbers: true };
     const credits = creditLines(provider().attribution, copyrightFor(providerId(), true));
-    return { print, page: printableArea(print.paper, print.orientation, punch), reserve: gameReserveMm(print, credits, sheet.titled) };
+    return tabelleFits(print, printableArea(print.paper, print.orientation, punch), gameReserveMm(print, credits, sheet.titled), {
+      spalten, zeilen, platz: spalten * zeilen,
+    });
   });
-  const fits = (spalten: number, zeilen: number) => fullest.every((one) => tabelleFits(one.print, one.page, one.reserve, {
-    spalten, zeilen, platz: spalten * zeilen,
-  }));
-  const m = table.spalten.length;
-  const n = table.zeilen.length;
-  return { spalte: fits(m + 1, Math.max(1, n)), zeile: fits(Math.max(1, m), n + 1) };
 }

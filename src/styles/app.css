@@ -1300,6 +1300,8 @@ footer.footer {
 /* Under the Tafel, its size: one quiet button that opens the raster to pull
    a size out of (SizePick.svelte, her pick „S3", 2026-10-31). */
 .board-size { display: flex; justify-content: center; }
+.game-table__size { justify-content: flex-start; margin-bottom: 12px; }
+.game-table__size .size-pick__pop { left: 0; transform: none; }
 .size-pick { position: relative; display: inline-flex; }
 .size-pick__button { font-weight: 600; }
 .size-pick__pop { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 30; padding: 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); outline: none; }
@@ -1797,7 +1799,7 @@ footer.footer {
    edge — a thin row over the columns, a thin column left of the rows — and
    show for the column or row the pointer is in; pointed at, a bin outlines
    all it would take out. */
-.game-table { position: relative; display: grid; grid-template-columns: repeat(calc(var(--spalten) + 2), 118px); grid-template-rows: 34px; gap: 14px 12px; align-items: center; justify-items: center; padding: 10px 14px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; max-width: 100%; overflow-x: auto; }
+.game-table { position: relative; display: grid; grid-template-columns: repeat(calc(var(--spalten) + 1), 118px) 44px; grid-template-rows: 34px; gap: 14px 12px; align-items: center; justify-items: center; padding: 10px 14px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; max-width: 100%; overflow-x: auto; }
 .game-table .word { width: 104px; }
 .game-table__ecke { align-self: stretch; justify-self: stretch; display: grid; place-items: center; border-radius: var(--radius); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--text) 5%, transparent) 8px 16px); color: var(--text-faint); font-size: 11px; }
 .game-table__kopf, .game-table__zeilenkopf, .game-table__feld { display: flex; border-radius: calc(var(--radius) + 4px); }

@@ -130,29 +130,36 @@ async function keepTabelle(open: Collection, change: (table: Tabelle) => Tabelle
   await keepGame(open, bookOfTabelle(change(table), table.kopfId || newId()));
 }
 
-/** A column at the end: its head through the picker, a place in every row. */
-export async function addTabelleSpalte(): Promise<void> {
+/**
+ * The Tabelle at another size, set with its size button: columns and rows
+ * come at the end empty — a head still to be chosen, a place under every
+ * column — and go from the end with every card they held.
+ */
+export async function resizeTabelle(spalten: number, zeilen: number): Promise<void> {
   const open = activeCollection();
   if (!open) return;
-  const { sentence, slot } = await newCard(open);
-  await keepTabelle(open, (table) => ({
-    ...table,
-    spalten: [...table.spalten, sentence.id],
-    zeilen: table.zeilen.map((zeile) => ({ ...zeile, felder: [...zeile.felder, ''] })),
+  const table = tabelleOf(open.game);
+  const gone = [
+    ...table.spalten.slice(spalten),
+    ...table.zeilen.flatMap((zeile, r) => (r >= zeilen ? [zeile.kopf, ...zeile.felder] : zeile.felder.slice(spalten))),
+  ].filter(Boolean);
+  const heads = [...table.spalten.slice(0, spalten), ...Array<string>(Math.max(0, spalten - table.spalten.length)).fill('')];
+  const kept = table.zeilen.slice(0, zeilen).map((zeile) => ({
+    ...zeile,
+    felder: heads.map((_, i) => zeile.felder[i] ?? ''),
   }));
-  openPicker(sentence.id, slot.id);
+  const added = Array.from({ length: Math.max(0, zeilen - kept.length) }, () => ({ id: newId(), kopf: '', felder: heads.map(() => '') }));
+  await keepTabelle(open, () => ({ ...table, spalten: heads, zeilen: [...kept, ...added] }));
+  await dropRows(gone);
 }
 
-/** A row at the end: its head through the picker, a place under every column. */
-export async function addTabelleZeile(): Promise<void> {
-  const open = activeCollection();
-  if (!open) return;
-  const { sentence, slot } = await newCard(open);
-  await keepTabelle(open, (table) => ({
-    ...table,
-    zeilen: [...table.zeilen, { id: newId(), kopf: sentence.id, felder: table.spalten.map(() => '') }],
-  }));
-  openPicker(sentence.id, slot.id);
+/** How many cards a size would take away: what the size button says, and asks about. */
+export function tabelleLoses(spalten: number, zeilen: number): number {
+  const table = tabelleOf(activeCollection()?.game);
+  return [
+    ...table.spalten.slice(spalten),
+    ...table.zeilen.flatMap((zeile, r) => (r >= zeilen ? [zeile.kopf, ...zeile.felder] : zeile.felder.slice(spalten))),
+  ].filter(Boolean).length;
 }
 
 /**

@@ -21,17 +21,17 @@ export const cardsOfGame = (book: GameBook | undefined): string[] =>
   rowsOfGame(book).flatMap((row) => row.zellen.map((zelle) => zelle.karte)).filter(Boolean);
 
 /** The book without one card, wherever its cell stood. In a Tabelle the
- *  cell keeps its place, still to be chosen — and a column or row left with
- *  nothing in it at all goes with it: the „+ Spalte" closed without a choice. */
+ *  cell keeps its place, still to be chosen: its size is set by the size
+ *  button, and only there or by a bin does a column or row go. */
 export function withoutGameCard(book: GameBook, id: string): GameBook {
   if (book.tabelle) {
-    return prunedTabelle({
+    return bookOfTabelle(tabelleOf({
       ...book,
       rows: rowsOfGame(book).map((row) => ({
         id: row.id,
         zellen: row.zellen.map((zelle) => (zelle.karte === id ? { karte: '', platz: zelle.platz } : zelle)),
       })),
-    });
+    }), tabelleOf(book).kopfId);
   }
   return {
     ...book,
@@ -94,19 +94,6 @@ export function bookOfTabelle(table: Tabelle, kopfId: string): GameBook {
       })),
     ],
   };
-}
-
-/** Columns and rows with no card anywhere in them, gone. */
-function prunedTabelle(book: GameBook): GameBook {
-  const table = tabelleOf(book);
-  const keep = table.spalten.map((kopf, i) => Boolean(kopf) || table.zeilen.some((zeile) => zeile.felder[i]));
-  return bookOfTabelle({
-    kopfId: table.kopfId,
-    spalten: table.spalten.filter((_, i) => keep[i]),
-    zeilen: table.zeilen
-      .map((zeile) => ({ ...zeile, felder: zeile.felder.filter((_, i) => keep[i]) }))
-      .filter((zeile) => zeile.kopf || zeile.felder.some(Boolean)),
-  }, table.kopfId);
 }
 
 /** One element of a list moved from one place to another. */
