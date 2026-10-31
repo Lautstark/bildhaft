@@ -56,13 +56,18 @@ function remembered(): LanguageCode | null {
   }
 }
 
-/** The browser's own preference, if it names one we have. Regions are stripped. */
+/**
+ * The browser's own preference, if it names one we have. Regions are stripped.
+ *
+ * English when it names neither: somebody whose browser asks for French is
+ * likelier to read English than German.
+ */
 function preferred(): LanguageCode {
   for (const tag of navigator.languages ?? [navigator.language ?? '']) {
     const base = String(tag).toLowerCase().split('-')[0]!;
     if (isLanguage(base)) return base;
   }
-  return 'de';
+  return 'en';
 }
 
 /**
