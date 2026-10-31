@@ -310,27 +310,28 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel\nBanane');
   await bar.press('Enter');
-  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel', 'Banane']);
 
-  // Sized 4 × 3 until somebody says otherwise, and every field free.
+  // Sized 4 × 3 until somebody says otherwise. Typed words go straight into
+  // the first free fields; nothing waits under the Tafel while there is room.
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(12);
-  await expect(page.locator('.board .cell--free')).toHaveCount(12);
+  await expect(cells.nth(0).locator('.word__name')).toHaveText('Apfel');
+  await expect(cells.nth(1).locator('.word__name')).toHaveText('Banane');
+  await expect(page.locator('.board .cell--free')).toHaveCount(10);
+  await expect(page.locator('.tray')).toHaveCount(0);
+  // No arrows on a card: it moves by dragging.
+  await expect(page.locator('.board-card__move')).toHaveCount(0);
 
-  // The drag itself, from the tray into the sixth field.
-  await page.locator('.tray .board-card').filter({ hasText: 'Apfel' }).dragTo(cells.nth(5));
+  // Dragged into another field, it moves, it is not copied.
+  await cells.nth(0).locator('.board-card').dragTo(cells.nth(5));
   await expect(cells.nth(5).locator('.word__name')).toHaveText('Apfel');
-  await expect(page.locator('.tray .word__name')).toHaveText(['Banane']);
-
-  // And on into another field: it moves, it is not copied.
+  await expect(cells.nth(0)).toHaveClass(/cell--free/);
+  // Dragged onto another card, the two swap.
   await cells.nth(5).locator('.board-card').dragTo(cells.nth(1));
   await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
-  await expect(cells.nth(5)).toHaveClass(/cell--free/);
-
-  // Without a mouse: the arrow puts a card into the first free field.
-  await page.getByRole('button', { name: '„Banane“ ins erste freie Feld legen' }).click();
+  await expect(cells.nth(5).locator('.word__name')).toHaveText('Banane');
+  await cells.nth(5).locator('.board-card').dragTo(cells.nth(0));
   await expect(cells.nth(0).locator('.word__name')).toHaveText('Banane');
-  await expect(page.locator('.tray .word__name')).toHaveCount(0);
 
   // A smaller grid keeps what still has a place. Both cards are in the first
   // row, so 3 × 2 keeps them and the twelve fields become six. The grid is the
@@ -357,10 +358,12 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   await gridTo(page, 1);
   await expect(cells).toHaveCount(2);
   await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
-  await expect(page.getByText('1 Karte liegt wieder unter „Noch nicht auf der Tafel“.')).toBeVisible();
+  await expect(page.locator('.tray')).toContainText('Passt nicht mehr auf die Tafel');
+  await expect(page.getByText('1 Karte passt nicht mehr auf die Tafel und liegt darunter.')).toBeVisible();
   await gridTo(page, 3);
   await expect(cells).toHaveCount(6);
-  await page.getByRole('button', { name: '„Apfel“ ins erste freie Feld legen' }).click();
+  await page.locator('.tray .board-card').filter({ hasText: 'Apfel' }).dragTo(cells.nth(1));
+  await expect(page.locator('.tray')).toHaveCount(0);
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
 
   // The paper: six fields, two with a card, four free and drawn anyway.
@@ -433,20 +436,23 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await expect(page.locator('.templates')).toBeVisible();
   await pickTemplate(page, /^Tafel/);
 
+  // 24 words onto a Tafel of 4 × 3: twelve fill its fields, twelve wait under it.
   const names = Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`);
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill(names.join('\n'));
   await bar.press('Enter');
-  await expect(page.locator('.tray .word__name')).toHaveCount(24);
+  await expect(page.locator('.board .word__name')).toHaveCount(12);
+  await expect(page.locator('.tray .word__name')).toHaveCount(12);
   await gridTo(page, 6, 4);
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(24);
 
-  for (const [i, name] of names.entries()) {
+  for (const name of names.slice(12)) {
     const card = page.locator('.tray .board-card')
       .filter({ has: page.locator('.word__name', { hasText: new RegExp(`^${name}$`) }) });
-    await card.locator('.word__pic').dragTo(cells.nth(i));
-    await expect(cells.nth(i).locator('.word__name')).toHaveText(name);
+    const free = page.locator('.board .cell--free').first();
+    await card.locator('.word__pic').dragTo(free);
+    await expect(page.locator('.board .word__name', { hasText: new RegExp(`^${name}$`) })).toHaveCount(1);
   }
   // Every card stays inside its field, with the field's air around it: a
   // narrow field used to let the card push out over its neighbours.
@@ -457,15 +463,14 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
     expect(card.x + card.width).toBeLessThanOrEqual(cell.x + cell.width - 7);
     expect(card.y + card.height).toBeLessThanOrEqual(cell.y + cell.height - 7);
   }
-  await expect(page.locator('.tray .word__name')).toHaveCount(0);
+  await expect(page.locator('.tray')).toHaveCount(0);
 
-  // Back out with the card's ↓ — an empty tray is not on screen to drop on —
-  // and a swap between two full fields. The tray returns with its first word.
-  await cells.nth(0).locator('.board-card__move').click();
-  await expect(page.locator('.tray .word__name')).toHaveText(['Wort1']);
+  // A swap between two full fields.
+  const third = await cells.nth(2).locator('.word__name').textContent();
+  const fifth = await cells.nth(4).locator('.word__name').textContent();
   await cells.nth(2).locator('.board-card').dragTo(cells.nth(4));
-  await expect(cells.nth(2).locator('.word__name')).toHaveText('Wort5');
-  await expect(cells.nth(4).locator('.word__name')).toHaveText('Wort3');
+  await expect(cells.nth(2).locator('.word__name')).toHaveText(fifth!);
+  await expect(cells.nth(4).locator('.word__name')).toHaveText(third!);
 });
 });
 
@@ -481,8 +486,9 @@ test('on a dark Tafel the words on the board are as bright as the ones in the tr
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Ball\nEimer');
   await bar.press('Enter');
-  await expect(page.locator('.tray .word__name')).toHaveCount(2);
-  await page.locator('.tray .board-card').first().locator('.word__pic').dragTo(page.locator('.board .cell').first());
+  // A Tafel of one field: Ball lies on it, Eimer has no room and waits under it.
+  await gridTo(page, 1, 1);
+  await expect(page.locator('.tray .word__name')).toHaveText(['Eimer']);
   const onBoard = page.locator('.board .cell .word__name');
   await expect(onBoard).toHaveText('Ball');
   const color = (l: typeof onBoard) => l.evaluate((e) => getComputedStyle(e).color);
@@ -506,7 +512,7 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
-  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
+  await expect(page.locator('.board .cell').nth(0).locator('.word__name')).toHaveText('Apfel');
 
   // In a field: its „+" is a line to type in, the picker one press further;
   // the picker opens on a card lying there, and closing it takes the card
@@ -519,13 +525,17 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
   await expect(page.locator('.board .cell').nth(2)).toHaveClass(/cell--free/);
   await expect(page.locator('.word:not(.word--add)')).toHaveCount(1);
 
-  // In the tray: the same.
+  // In the tray — there only while a card has no room — the same.
+  await bar.fill('Birne');
+  await bar.press('Enter');
+  await gridTo(page, 1, 1);
+  await expect(page.locator('.tray .word__name')).toHaveText(['Birne']);
   await page.getByRole('button', { name: 'Neue Karte', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.word:not(.word--add)')).toHaveCount(1);
-  await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
+  await expect(page.locator('.word:not(.word--add)')).toHaveCount(2);
+  await expect(page.locator('.tray .word__name')).toHaveText(['Birne']);
 });
 
 /**
@@ -559,9 +569,9 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Rot');
   await bar.press('Enter');
-  await page.getByRole('button', { name: '„Rot“ ins erste freie Feld legen' }).click();
 
   const cells = page.locator('.board .cell');
+  await expect(cells.nth(0).locator('.word__name')).toHaveText('Rot');
   const zoned = page.locator('.cell--zoned');
   const marked = page.locator('.cell--selected');
   const panel = page.getByRole('group', { name: 'Markierte Felder' });
@@ -672,15 +682,9 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await expect(page.getByLabel('Wort für Feld 2')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByLabel('Wort für Feld 2')).toHaveCount(0);
+  // And a word typed goes into the first free field, grouped or not.
   await page.getByLabel('Wörter hinzufügen').fill('Blau');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
-  const card = page.locator('.tray .board-card').filter({ hasText: 'Blau' }).locator('.word__pic');
-  const c = (await card.boundingBox())!;
-  const d = (await cells.nth(1).boundingBox())!;
-  await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2, { steps: 10 });
-  await page.mouse.up();
   await expect(cells.nth(1).locator('.word__name')).toHaveText('Blau');
 
   await showSheet(page);
@@ -1084,7 +1088,7 @@ test('a Tafel prints its name with a picture, on a colour of its own', async ({ 
   const bar = page.getByLabel('Wörter hinzufügen');
   await bar.fill('Apfel');
   await bar.press('Enter');
-  await page.getByRole('button', { name: '„Apfel“ ins erste freie Feld legen' }).click();
+  await expect(page.locator('.board .word__name')).toHaveText(['Apfel']);
   await expect(page.locator('.tray .word__name')).toHaveCount(0);
   // A Tafel prints no name until asked; the picture comes and goes with it.
   // One sheet, so it is asked whether, not where.
@@ -1642,15 +1646,15 @@ test('an Einkaufsliste takes a list in the box on top, its title over the cards'
 /*
  * A Tafel is typed into where the card goes: a free field pressed is a line
  * to type in, and the word lies in that field — a list in the next free
- * fields from there. The box under the head, as everywhere, puts its cards
- * into the tray, to be placed by hand.
+ * fields from there. The box under the head fills the first free fields as
+ * well; only what finds no field waits under the Tafel.
  */
 test('a word typed into a free field lies there, a list in the next free fields', async ({ page }) => {
   await pickTemplate(page, /^Tafel/);
   // Empty, a Tafel is its box and its grid; its title line comes with its first card.
   await expect(page.locator('.title-line')).toHaveCount(0);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
-  expect(await top('.composer')).toBeLessThan(await top('.board-edge'));
+  expect(await top('.composer')).toBeLessThan(await top('.board'));
 
   await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
   const line = page.getByLabel('Wort für Feld 2');
@@ -1664,12 +1668,15 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await openDing(page, 'Titel');
   await expect(page.getByLabel('Titel drucken')).toBeChecked();
   expect(await top('.title-line')).toBeLessThan(await top('.board'));
-  expect(await top('.board')).toBeLessThan(await top('.board-edge__more'));
+  expect(await top('.board')).toBeLessThan(await top('.board-size'));
 
+  // The box over the Tafel puts its words into the first free fields too:
+  // Kiwi lies in the first field, the one left free.
   const box = page.getByLabel('Wörter hinzufügen');
   await box.fill('Kiwi');
   await box.press('Enter');
-  await expect(page.locator('.tray .word__name')).toHaveText(['Kiwi']);
+  await expect(cells.nth(0).locator('.word__name')).toHaveText('Kiwi');
+  await expect(page.locator('.tray')).toHaveCount(0);
 });
 
 test('a card that grows round its symbol grows upwards or sideways for the Anybook placeholder and keeps its symbol, and gives a little up for überlappend', async ({ page }) => {

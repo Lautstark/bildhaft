@@ -1,5 +1,5 @@
 import type { Board, Collection, Sentence } from '../core/types.ts';
-import { boardOf, placeOn, placedIds, resizeBoard, withoutLine } from '../core/board.ts';
+import { boardOf, placeOn, placedIds, resizeBoard } from '../core/board.ts';
 import { newId, patchCollection, putSentence } from '../db/repo.ts';
 import { activeCollection, s } from './state.svelte.ts';
 import { emptySlot, openPicker } from './editing.ts';
@@ -43,24 +43,6 @@ export async function resizeOpenBoard(cols: number, rows: number): Promise<void>
     const next = resizeBoard(board, cols, rows);
     after = placedIds(next).length;
     return next.cols === board.cols && next.rows === board.rows ? board : next;
-  });
-  const off = before - after;
-  if (off > 0) notify(off === 1 ? t('ui.board_off_one') : t('ui.board_off', { n: off }));
-}
-
-/**
- * One column or row of the open Tafel taken out by its bin; its cards go back
- * under „Noch nicht auf der Tafel", said as a resize says it.
- */
-export async function removeOpenBoardLine(what: 'spalte' | 'zeile', at: number): Promise<void> {
-  const open = activeCollection();
-  if (!open) return;
-  const before = placedIds(boardOf(open)).length;
-  let after = before;
-  await writeBoard((board) => {
-    const next = withoutLine(board, what, at);
-    after = placedIds(next).length;
-    return next;
   });
   const off = before - after;
   if (off > 0) notify(off === 1 ? t('ui.board_off_one') : t('ui.board_off', { n: off }));

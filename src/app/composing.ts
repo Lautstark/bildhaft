@@ -6,7 +6,8 @@ import { buildSayingSlot } from '../core/talk.ts';
 import { findByNormalized, newId, overrideMap, putSentence } from '../db/repo.ts';
 import { withTimeout } from '../core/timeout.ts';
 import { LANG, t } from '../i18n/index.ts';
-import { holdsWords, provider, providerId, s } from './state.svelte.ts';
+import { holdsWords, kind, provider, providerId, s } from './state.svelte.ts';
+import { addIntoFields } from './board.ts';
 import { notify } from './notify.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
 
@@ -105,7 +106,10 @@ export async function handleSubmit(): Promise<void> {
    */
   s.draft = '';
   s.reuse = null;
-  const left = await addLines(raw);
+  /* On a Tafel the words go straight into its free fields, from the first;
+     only what finds no field waits under it — „Passt nicht mehr auf die
+     Tafel" (her pick P1, 2026-10-31). */
+  const left = kind() === 'tafel' ? await addIntoFields(raw, 0) : await addLines(raw);
   if (left) s.draft = left;
 }
 

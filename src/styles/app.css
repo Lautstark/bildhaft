@@ -378,8 +378,8 @@ kbd {
 @media (hover: none) { .edge-bin { opacity: .7; } }
 /* What a bin would take out, the same everywhere: one red line 6 px outside
    the thing, its corners the thing's own rounded by those 6 px, a breath of
-   red behind. The Tafel's and the Tabelle's frames (.board-edge__frame,
-   .game-table__frame) draw exactly this round their fields. */
+   red behind. The Tabelle's frame (.game-table__frame) draws exactly this
+   round its fields. */
 .edge-host:has(> .edge-bin:hover), .edge-host:has(> .edge-bin :focus-visible) { outline: 2px solid var(--danger); outline-offset: 6px; background-color: color-mix(in srgb, var(--danger) 6%, var(--surface)); }
 
 .rows { display: flex; flex-direction: column; gap: 10px; }
@@ -1297,18 +1297,18 @@ footer.footer {
    fields are the same size as each other and as nothing else, because that is
    what a grid is; a card dropped into one takes the field's size. */
 .rows--tafel { gap: 18px; }
-/* The Tafel's edge (Der Mülleimer am Rand, as everywhere): a bin just over
-   every column and right of every row, placed off the measured fields; one
-   frame round what a bin would take; „+ Spalte" a strip right of the grid,
-   „+ Zeile" under it. */
-.board-edge { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; padding: 36px 92px 0 0; }
-.board-edge__bin { position: absolute; opacity: 0; transition: opacity .13s; }
-.board-edge__bin--on, .board-edge__bin:focus-within { opacity: 1; }
-@media (hover: none) { .board-edge__bin { opacity: .7; } }
-.board-edge__frame { position: absolute; z-index: 2; margin: -6px; padding: 6px; box-sizing: content-box; border: 2px solid var(--danger); border-radius: calc(var(--radius) + 6px); background: color-mix(in srgb, var(--danger) 6%, transparent); pointer-events: none; }
-.board-edge__add { position: absolute; width: 36px; border: 1px dashed var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--text-dim); font: inherit; font-size: 12.5px; writing-mode: vertical-rl; cursor: pointer; }
-.board-edge__add:hover { border-color: var(--accent); color: var(--accent-strong); }
-.board-edge__more { display: flex; justify-content: center; }
+/* Under the Tafel, its size: one quiet button that opens the raster to pull
+   a size out of (SizePick.svelte, her pick „S3", 2026-10-31). */
+.board-size { display: flex; justify-content: center; }
+.size-pick { position: relative; display: inline-flex; }
+.size-pick__button { font-weight: 600; }
+.size-pick__pop { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 30; padding: 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); outline: none; }
+.size-pick__say { margin: 0 0 8px; font-size: 12.5px; color: var(--text-dim); white-space: nowrap; display: grid; gap: 1px; }
+.size-pick__say b { color: var(--text); font-weight: 650; }
+.size-pick__grid { display: grid; grid-template-columns: repeat(var(--cols), 18px); gap: 4px; }
+.size-pick__cell { width: 18px; height: 18px; padding: 0; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.size-pick__cell--in { border-color: var(--accent); background: var(--accent-soft); }
+.size-pick__cell[disabled] { cursor: default; opacity: .35; }
 .board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 18px; padding: 0 4px; }
 .board-step { display: inline-flex; align-items: center; gap: 6px; }
 .board-step label { color: var(--text-dim); margin-right: 2px; }
@@ -1496,22 +1496,6 @@ footer.footer {
 /* The move for a keyboard, where a mouse has the drag. Beside the delete cross
    and hidden the same way, for the same reason: a wall of arrows is a wall of
    things to do. */
-.board-card__move {
-  position: absolute;
-  top: 4px; left: 4px;
-  width: 22px; height: 22px;
-  display: grid; place-items: center;
-  font: inherit; font-size: 14px; line-height: 1;
-  cursor: pointer;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--text-dim);
-  opacity: 0;
-}
-.board-card:hover .board-card__move, .board-card__move:focus-visible { opacity: 1; }
-.board-card__move:hover { color: var(--accent-strong); border-color: currentColor; }
-.board-card__move[disabled] { cursor: default; opacity: 0; }
 
 /* The tray, under the Tafel. Not a dock: it was one for a while, pinned to
    the foot of the window so a card was always within reach — and it took the

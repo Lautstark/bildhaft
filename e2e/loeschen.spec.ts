@@ -44,53 +44,41 @@ test('die Karte hat den Mülleimer statt des ×', async ({ page }) => {
   await expect(drop).not.toHaveText('×');
 });
 
-test('die Tafel: Mülleimer über jeder Spalte und rechts jeder Zeile, „+ Spalte" und „+ Zeile" statt der Zähler', async ({ page }) => {
+test('die Tafel: keine Mülleimer an Spalten und Zeilen, die Größe zieht man im Raster auf, keine Pfeile', async ({ page }) => {
   await page.getByRole('button', { name: '+ Neues Material' }).click();
   await pickTemplate(page, /^Tafel/);
   await expect(page.getByRole('spinbutton')).toHaveCount(0);
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(12);
-  await page.getByRole('button', { name: 'Neue Karte in Feld 1', exact: true }).click();
-  const line = page.getByLabel('Wort für Feld 1', { exact: true });
-  await line.fill('Apfel, Banane, Kiwi');
-  await line.press('Enter');
+  await expect(page.getByRole('button', { name: /^(Spalte|Zeile) \d+ löschen$/ })).toHaveCount(0);
+
+  // Typed words fill the first free fields; nothing waits under the Tafel, no arrows anywhere.
+  const bar = page.getByLabel('Wörter hinzufügen');
+  await bar.fill('Apfel, Banane, Kiwi');
+  await bar.press('Enter');
   await expect(page.locator('.board .word__name')).toHaveText(['Apfel', 'Banane', 'Kiwi']);
+  await expect(page.locator('.tray')).toHaveCount(0);
+  await expect(page.locator('.board-card__move')).toHaveCount(0);
 
-  // The column's bin stands just over it; the row's right of the grid.
-  const edge = page.locator('.board-edge');
-  const spalte2 = edge.getByRole('button', { name: 'Spalte 2 löschen', exact: true });
-  await cells.nth(1).hover();
-  await expect(spalte2.locator('..')).toHaveCSS('opacity', '1');
-  const field = (await cells.nth(1).boundingBox())!;
-  const binBox = (await spalte2.boundingBox())!;
-  expect(binBox.y + binBox.height).toBeLessThanOrEqual(field.y);
-  expect(binBox.x).toBeGreaterThan(field.x);
-  expect(binBox.x + binBox.width).toBeLessThan(field.x + field.width);
-  const zeile1 = edge.getByRole('button', { name: 'Zeile 1 löschen', exact: true });
-  const grid = (await page.locator('.board').boundingBox())!;
-  expect((await zeile1.boundingBox())!.x).toBeGreaterThanOrEqual(grid.x + grid.width);
-
-  // Pointed at, one frame goes round the whole column.
-  await spalte2.hover();
-  const frame = edge.locator('.board-edge__frame');
-  await expect(frame).toHaveCount(1);
-  const box = (await frame.boundingBox())!;
-  expect(box.height).toBeGreaterThan(field.height * 2.5);
-
-  // A column with a card in it is asked about; its card goes back to the tray.
-  await spalte2.click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
-  await expect(cells).toHaveCount(9);
-  await expect(page.locator('.board .word__name')).toHaveText(['Apfel', 'Kiwi']);
-  await expect(page.locator('.tray .word__name')).toHaveText(['Banane']);
-  await expect(page.getByText('1 Karte liegt wieder unter „Noch nicht auf der Tafel“.')).toBeVisible();
-
-  // „+ Spalte" and „+ Zeile" grow it at the end; an empty, bare line goes without asking.
-  await edge.getByRole('button', { name: '+ Spalte' }).click();
-  await expect(cells).toHaveCount(12);
-  await page.locator('.board-edge__more').getByRole('button', { name: '+ Zeile' }).click();
-  await expect(cells).toHaveCount(16);
-  await edge.getByRole('button', { name: 'Zeile 4 löschen', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(cells).toHaveCount(12);
+  // The size button opens a raster of at most 10 × 8; pointing says the fields' size on paper.
+  const button = page.locator('.board-size .size-pick__button');
+  await expect(button).toHaveText('4 × 3 Felder ▾');
+  await button.click();
+  const pop = page.locator('.size-pick__pop');
+  await expect(pop.locator('.size-pick__cell')).toHaveCount(80);
+  await pop.getByRole('button', { name: '2 Spalten × 1 Zeilen', exact: true }).hover();
+  await expect(pop.locator('.size-pick__say')).toContainText('2 Spalten × 1 Zeilen');
+  await expect(pop.locator('.size-pick__say')).toContainText(/Felder auf dem Papier etwa \d+ × \d+ mm/);
+  await expect(pop.locator('.size-pick__cell--in')).toHaveCount(2);
+  // Smaller than the cards: what has no field waits under the Tafel, and that is said.
+  await pop.getByRole('button', { name: '2 Spalten × 1 Zeilen', exact: true }).click();
+  await expect(cells).toHaveCount(2);
+  await expect(page.locator('.tray .word__name')).toHaveText(['Kiwi']);
+  await expect(page.locator('.tray')).toContainText('Passt nicht mehr auf die Tafel');
+  await expect(page.getByText('1 Karte passt nicht mehr auf die Tafel und liegt darunter.')).toBeVisible();
+  // Bigger again, from the keyboard: the arrows walk the size, Enter takes it.
+  await button.click();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(cells).toHaveCount(3);
 });

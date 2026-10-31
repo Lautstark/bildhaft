@@ -482,10 +482,10 @@ export function paperOf(): Pick<PrintSettings, 'paper' | 'orientation'> | null {
  * will make of it, asked the same way the sheet asks: the same credits under
  * it, the same name over it. Null for anything that is not a Tafel.
  */
-export function tafelField(): { width: number; height: number } | null {
+export function tafelField(grid?: { cols: number; rows: number }): { width: number; height: number } | null {
   const open = activeCollection();
   if (!open || kind() !== 'tafel' || !s.settings) return null;
-  const board = boardOf(open);
+  const board = grid ?? boardOf(open);
   const print = printOf(open);
   const credits = creditLines(provider().attribution, copyrightFor(providerId(), print.showCopyright));
   const titled = !print.showCollectionTitle || !titleOf(open).trim() ? false

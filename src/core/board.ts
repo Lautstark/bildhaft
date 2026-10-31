@@ -13,6 +13,14 @@ import type { Board, Collection, ZoneStyle } from './types.ts';
 export const DEFAULT_BOARD: Board = { cols: 4, rows: 3, cells: Array(12).fill(null) };
 
 export const MAX_BOARD_SIDE = 12;
+/**
+ * The largest Tafel the size raster offers (SizePick): ten across, eight
+ * down. Her Tafeln are 7 × 4; at 10 × 8 a field on A4 across is about
+ * 27 × 22 mm, the smallest that still carries a symbol one can point at
+ * (her call for sensible maxima, 2026-10-31). MAX_BOARD_SIDE stays the
+ * guard for what is stored.
+ */
+export const BOARD_PICK = { cols: 10, rows: 8 } as const;
 
 /**
  * The board of a Sammlung, made whole.
@@ -126,31 +134,6 @@ export function resizeBoard(board: Board, cols: number, rows: number): Board {
   }
   const { groups: _groups, ...rest } = board;
   return tidy({ ...rest, ...next, cells, zones });
-}
-
-/**
- * The same board without one column or one row — the bin at its edge. Every
- * other field keeps its card and its colour, closed up where the line was;
- * the cards that lay in the line come off the board, as cards that fall off
- * a smaller board do. The last column or row stays: a Tafel has a field.
- */
-export function withoutLine(board: Board, what: 'spalte' | 'zeile', at: number): Board {
-  const cols = what === 'spalte' ? board.cols - 1 : board.cols;
-  const rows = what === 'zeile' ? board.rows - 1 : board.rows;
-  if (cols < 1 || rows < 1) return board;
-  const from = zonesOf(board);
-  const cells: (string | null)[] = [];
-  const zones: (string | null)[] = [];
-  for (let r = 0; r < board.rows; r += 1) {
-    if (what === 'zeile' && r === at) continue;
-    for (let c = 0; c < board.cols; c += 1) {
-      if (what === 'spalte' && c === at) continue;
-      cells.push(board.cells[r * board.cols + c] ?? null);
-      zones.push(from[r * board.cols + c] ?? null);
-    }
-  }
-  const { groups: _groups, ...rest } = board;
-  return tidy({ ...rest, cols, rows, cells, zones });
 }
 
 /**

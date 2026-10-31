@@ -160,31 +160,16 @@ export async function closePicker(page: Page): Promise<void> {
 }
 
 /**
- * The open Tafel's grid set by its edge, as she sets it: „+ Spalte" and
- * „+ Zeile" to grow, the bin of the last column or row to shrink —
- * confirmed where the line held a card or a colour.
+ * The open Tafel's grid set as she sets it: the size button under it opens
+ * the raster, and the size is pulled out of its corner — one press.
  */
 export async function gridTo(page: Page, cols?: number, rows?: number): Promise<void> {
-  const edge = page.locator('.board-edge');
-  const bins = (what: string) => edge.getByRole('button', { name: new RegExp(`^${what} \\d+ löschen$`) });
-  for (const [what, want] of [['Spalte', cols], ['Zeile', rows]] as const) {
-    if (want === undefined) continue;
-    let n = await bins(what).count();
-    while (n < want) {
-      await (what === 'Spalte' ? edge.getByRole('button', { name: '+ Spalte' }) : page.locator('.board-edge__more').getByRole('button', { name: '+ Zeile' })).click();
-      n += 1;
-      await expect(bins(what)).toHaveCount(n);
-    }
-    while (n > want) {
-      await edge.getByRole('button', { name: `${what} ${n} löschen`, exact: true }).click();
-      const ok = page.getByRole('dialog').getByRole('button', { name: 'Löschen' });
-      const left = n - 1;
-      /* An empty, bare line goes at once; one with a card or a colour asks first. */
-      await expect.poll(async () => {
-        if (await ok.isVisible()) await ok.click();
-        return bins(what).count();
-      }).toBe(left);
-      n = left;
-    }
-  }
+  const button = page.locator('.board-size .size-pick__button');
+  const [now, c0, r0] = (await button.innerText()).match(/(\d+) × (\d+)/) ?? [];
+  if (!now) throw new Error('no Tafel size');
+  const want = { cols: cols ?? Number(c0), rows: rows ?? Number(r0) };
+  if (want.cols === Number(c0) && want.rows === Number(r0)) return;
+  await button.click();
+  await page.locator('.size-pick__pop').getByRole('button', { name: `${want.cols} Spalten × ${want.rows} Zeilen`, exact: true }).click();
+  await expect(button).toContainText(`${want.cols} × ${want.rows}`);
 }
