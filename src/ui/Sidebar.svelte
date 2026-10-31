@@ -23,9 +23,9 @@
    * is drawn below the breakpoint only.
    */
   import SharedSidebar from '@lautstark/design/svelte/Sidebar';
-  import type { Collection } from '../core/types.ts';
+  import type { Collection, Sentence } from '../core/types.ts';
   import type { CollectionKind } from '../core/types.ts';
-  import { COLLECTION_KINDS, sentenceCaption, kindOf, templateKey } from '../core/types.ts';
+  import { COLLECTION_KINDS, sentenceCaption, slotCaption, kindOf, templateKey } from '../core/types.ts';
   import { editedLabel } from '../core/edited.ts';
   import { drawCollections } from '@lautstark/design/collections';
   import Icon from '../pieces/Icon.svelte';
@@ -68,6 +68,13 @@
   let searchInput: HTMLInputElement;
 
   let searching = $derived(s.query.trim().length > 0);
+  /* Materials whose name or printed title holds the words. Read from the list
+     the sidebar already has rather than the database: every Material is in it. */
+  let materialHits = $derived.by(() => {
+    const q = s.query.trim().toLowerCase();
+    return q ? s.collections.filter((c) => c.name.toLowerCase().includes(q) || (c.title ?? '').toLowerCase().includes(q)) : [];
+  });
+  let hitCount = $derived(materialHits.length + s.results.length);
   /** Which lens is open, or `undefined` when a Material is showing instead. */
   let openTag = $derived(s.wortschatz ? s.wortschatz.tag : undefined);
 
@@ -239,6 +246,10 @@
     onNavigated();
   }
 
+  /* A card made with „+" has no typed line; what it says is the words under its symbols. */
+  const hitCaption = (sentence: Sentence): string =>
+    sentenceCaption(sentence) || sentence.slots.map(slotCaption).filter(Boolean).join(' ');
+
   const where = (collectionId: string) =>
     s.collections.find((c) => c.id === collectionId)?.name ?? '—';
 
@@ -274,7 +285,7 @@
   do anything, so it waits until there is a word to sort.
 
   Every heading is a button that folds what is under it.
--->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{s.results.length === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: s.results.length })}</h2><div class="list">{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{sentenceCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if s.results.length === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="sidebar__section sidebar__section--collections" ondragstart={dragStart} ondragover={dragOver} ondrop={drop} ondragend={(event) => { dragging = null; clearDrop(event.currentTarget); }}><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<div class="sidebar__grouprow" data-drop-kind={group.kind}><button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.group_${group.kind}`)}</span></button><!--
+-->{#if !searching}{#if grouped}<div class="sidebar__section sidebar__section--recent"><h2>{@render fold('recent', t('ui.recent'))}</h2>{#if isOpen('recent')}<div class="collections" {@attach materialRows(s.collections.slice(0, RECENT), true)}></div>{/if}</div>{/if}{/if}<div class="sidebar__section sidebar__section--words">{#if !searching}<h2>{@render fold('words', t('ui.wortschatz'))}</h2>{#if isOpen('words')}<div class="collections" {@attach wordRows}></div>{#if s.wordCount > 0}<button class="btn quiet sm" style="margin-top:6px" type="button" onclick={() => { void handleNewTag(); onNavigated(); }}>{t('ui.new_tag')}</button>{/if}{/if}{/if}</div>{#if searching}<div class="sidebar__section sidebar__section--collections"><h2>{hitCount === 1 ? t('ui.n_hits_one') : t('ui.n_hits', { n: hitCount })}</h2><div class="list">{#each materialHits as collection (collection.id)}<button class="hit" type="button" onclick={() => openResult(collection.id)}>{collection.name}<small>{t(`ui.template_${templateKey(collection)}`)}</small></button>{/each}{#each s.results as sentence (sentence.id)}<button class="hit" type="button" onclick={() => openResult(sentence.collectionId)}>{hitCaption(sentence)}<small>{where(sentence.collectionId)}</small></button>{/each}{#if hitCount === 0}<p class="small faint" style="padding:0 10px">{t('ui.nothing_found')}</p>{/if}</div></div>{:else}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="sidebar__section sidebar__section--collections" ondragstart={dragStart} ondragover={dragOver} ondrop={drop} ondragend={(event) => { dragging = null; clearDrop(event.currentTarget); }}><h2>{@render fold('collections', t('ui.collections'), grouped ? s.collections.length : undefined)}</h2>{#if isOpen('collections')}{#if grouped}{#each groups as group (group.kind)}<div class="sidebar__grouprow" data-drop-kind={group.kind}><button class="sidebar__group" type="button" aria-expanded={groupOpen(group.kind)} onclick={() => toggleGroup(group.kind)}><Icon name="chevronRight" /><span>{t(`ui.group_${group.kind}`)}</span></button><!--
   Der Gruppendruck: alles dieser Vorlage auf einmal, abwählbar in der
   Vorschau. Er steht links neben der Zahl, die bündig rechts bleibt wie bei
   „Materialien" — und zeigt sich erst dem Zeiger.

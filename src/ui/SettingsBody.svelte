@@ -3,9 +3,7 @@
   import { arasaac, metacom } from '@lautstark/bildquelle';
   import type { MetacomAction } from '@lautstark/bildquelle/metacom-panel';
   import MetacomPanel from '@lautstark/bildquelle/svelte/MetacomPanel';
-  import { headlineFor } from '@lautstark/sicherung/backup-panel';
-  import BackupPanel from '@lautstark/sicherung/svelte/BackupPanel';
-  import AblagePanel from '@lautstark/sicherung/svelte/AblagePanel';
+  import DatenPanel from '@lautstark/sicherung/svelte/DatenPanel';
   import { readTheme, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
@@ -18,7 +16,7 @@
   import ThemePicker from '@lautstark/design/svelte/ThemePicker';
   import { sourceFacts } from './symbolSources.ts';
   import { resetSymbolResolution } from './symbols.ts';
-  import { ablage, isStore } from '../db/folder.ts';
+  import { ablage } from '../db/folder.ts';
   import { adoptFolder } from '../db/repo.ts';
   import { downloadJson, exportEverything } from '../db/exportImport.ts';
   import { activeCollection, s as store } from '../app/state.svelte.ts';
@@ -89,35 +87,12 @@
   let adopted = false;
   let defaultDropped = false;
 
-  /*
-   * What „Wo alles liegt" carries in its own heading, asked here rather than
-   * reported by the panel.
-   *
-   * `BackupPanel` tells a `headline` callback on every paint, and that is the
-   * right seam for a product that always draws it. bildhaft does not: the block
-   * is offered only where there is no store folder, because with one the copies
-   * already go beside the work. The standing backup runs either way — app/
-   * backup.ts schedules it on every write and has never heard of the store — so
-   * a heading fed by the panel would go blank for exactly the households that
-   * have both, and a backup that is still being written would stop being
-   * visible without unfolding anything. That heading is what the vanilla panel
-   * reported from outside the `{#if}`, and it stays true here.
-   *
-   * `headlineFor` is the same function the component calls, and answers `''`
-   * where there is nothing to say — no folder set, and a browser with no
-   * picker, where there is no backup story to tell at all.
-   */
+  /* The standing backup: app/backup.ts schedules it on every write, whether or
+     not the work lives in a folder. „Deine Daten" shows it, and offers to point
+     it somewhere, only while the work is in the browser — with a folder as the
+     store the folder is the copy. Its heading words come from the panel. */
   const backup = standing();
-  let backupStatus = $state.raw(backup.status);
-  $effect(() => {
-    /* Read again on the way in. `Sicherung.subscribe` does not call its
-       listener on subscribe, so the status this panel arrived at is the one
-       read here, and re-reading closes the gap between construction and the
-       effect in which a debounced write could have landed. */
-    backupStatus = backup.status;
-    return backup.subscribe((next) => { backupStatus = next; });
-  });
-  let dataHeadline = $derived(headlineFor(backupStatus, panelLang));
+  let dataHeadline = $state('');
 
   /* Everything on screen is about to be wrong. */
   function storeChanged(): void {
@@ -375,19 +350,6 @@
 
   /* --------------------------------------------------------------- Daten --- */
 
-  /**
-   * A label wrapping a hidden file input, for the one button still built here.
-   *
-   * It used to draw METACOM's folder and ZIP buttons too, and those are the
-   * module's now — which fixed them: a `<label>` is not a control, so it has no
-   * tab stop and no Enter, and `metacom-panel` uses a real `<button>` that
-   * clicks a hidden input instead. The same defect is still under
-   * „Sicherung einlesen" below, which is a different surface and a change of
-   * its own; it is written down here so the next reader finds it rather than
-   * rediscovers it.
-   */
-  let importInput: HTMLInputElement;
-
   async function exportAll(): Promise<void> {
     /* Whole, always: a file somebody asked for by hand has to stand on its own,
        wherever it is opened. The standing backup is the one that leaves the
@@ -435,7 +397,6 @@
     azure: false,
     appearance: false,
     data: false,
-    danger: false,
   });
 </script>
 
@@ -506,51 +467,13 @@
   is how the summary line above knows what to say, and the note under the
   buttons is this product's own.
 --><ThemePicker key={THEME_KEY} label={(one) => THEME_LABELS[one]} ariaLabel={t('ui.set_appearance')} bind:theme /><span class="small faint">{t('ui.theme_note')}</span></div></Panel><Panel section={t('ui.where_all')} state={dataHeadline} bind:open={open.data}><!--
-  The panel itself comes from the package, so every Lautstark programme shows
-  the same one. What stays here is what bildhaft alone offers besides the store:
-  its standing snapshot and its file.
---><AblagePanel store={ablage} adopt={adoptFolder} changed={storeChanged} say={notify} lang={panelLang} /><hr class="hair" /><p class="sub">{t('ui.keep_out_in')}</p><!--
-  .explainer and not .notice: components.css reserves .notice for the outcome of
-  an action just taken, and this is standing prose about what a backup is. It
-  looks exactly as it did under the old local .notice — same plate, same type —
-  see app.css on the rename.
---><div class="explainer" style="margin-bottom:14px">{@html t('ui.backup_note')}</div><!--
-  Only where there is no store folder. With one, the copies already go beside
-  the work, and a second picker here would be the same offer under a name that
-  reads almost the same. Absent in any browser without the picker, and then the
-  download below is the whole offer, unchanged.
-
-  The second half of that condition used to be here too — the vanilla factory
-  answered `null` where `showDirectoryPicker` is absent, so the guard read
-  `!isStore() && folder`. A component cannot answer null, so it asks the live
-  status and draws nothing for `unsupported`, which is the same answer from one
-  step further in. The store folder is the only question left for this file.
--->{#if !isStore()}<BackupPanel {backup} say={notify} lang={panelLang} />{/if}<!--
-  The two halves of the same subject, side by side.
-
-  „Sicherung einlesen" used to be „Importieren" in the sidebar, a screen away
-  from the button that makes the file it reads. That was history rather than
-  intent: the sidebar button predates there being a backup format at all — it
-  meant "bring in one Sammlung" — and quietly gained a second job when the
-  full-backup format arrived. It still does both, because importCollectionFile
-  routes on the file's own format.
---><div style="display:flex;gap:8px;flex-wrap:wrap"><!--
-  Not primary. The panel above this one is @lautstark/sicherung's, and its
-  „Ordner wählen" is already the accent fill — design.md §4.3 gives that fill to
-  one thing per screen. Two filled buttons three pixels apart in the same colour
-  read as one control, which is what a visual baseline showed the moment one was
-  taken. The folder is the offer that keeps working after somebody stops
-  thinking about it; the file is the one they reach for deliberately.
---><button class="btn sm" type="button" onclick={() => void exportAll()}>{t('ui.backup_download')}</button><label class="btn sm" style="cursor:pointer">{t('ui.backup_read')}<input bind:this={importInput} type="file" accept="application/json,.json" hidden onchange={() => { const file = importInput.files?.[0]; importInput.value = ''; if (file) { s.close(); void handleImport(file); } }} /></label></div><p class="small faint" style="margin:8px 0 0">{@html t('ui.backup_read_note')}</p></Panel><!--
-  „Alles löschen" was an <h3> at the foot of „Daten" until 2026-08-29 — a second
-  heading level doing a panel's job, and the one control in this dialog that
-  destroys something filed under the word for making a backup. Its own panel,
-  last in the column, so the list says what is here without anybody opening
-  anything. vorlaut never mixed the two.
-
-  `state=""` and not no state at all: this panel has nothing to say in its
-  heading, and `''` is what draws the empty `<span class="state">` it has always
-  drawn. Panel omits the span entirely for `undefined`, and below 560px the
-  summary is a two-column grid where an empty span is a second row and two
-  pixels — so the two are not the same panel. §6.2.
---><Panel section={t('ui.delete_all_heading')} state="" bind:open={open.danger}><p class="small faint" style="margin:0 0 10px">{t('ui.delete_all_note')}</p><button class="btn destructive sm" type="button" onclick={() => { s.close(); void confirmClearAll(); }}>{t('ui.delete_all_button')}</button></Panel>
+  „Deine Daten" is @lautstark/sicherung's, the same panel in every Lautstark
+  programme: where the work is and whether that is safe, at most one button,
+  and everything else in its ⋯ — another folder, the file out and in, the dated
+  second copy while the work is in the browser, and deleting everything. That
+  last one was a panel of its own until 2026-10-31; it sits in the menu now,
+  red and last, and still asks before it does anything.
+--><DatenPanel store={ablage} adopt={adoptFolder} changed={storeChanged} say={notify} lang={panelLang}
+  {backup} headline={(text) => { dataHeadline = text; }}
+  file={{ download: () => void exportAll(), read: (file) => { s.close(); void handleImport(file); }, note: t('ui.backup_file_note') }}
+  wipe={() => { s.close(); void confirmClearAll(); }} /></Panel>

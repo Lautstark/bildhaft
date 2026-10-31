@@ -133,12 +133,12 @@ test('carries own pictures through a backup and back', async ({ page }) => {
   expect(raw).toHaveLength(1);
 
   // Import the file back: it must arrive as a second collection with the picture.
-  // Reading a file lives in Einstellungen → Sicherung, beside the button that makes
+  // Reading a file lives in Einstellungen → Deine Daten, beside the row that makes
   // one — it used to be a „Importieren" button in the sidebar, a screen away
   // from its own other half.
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
-  await page.locator('.panel', { hasText: 'Sicherung' }).locator('summary').click();
-  await page.locator('.panel', { hasText: 'Sicherung' }).locator('input[type=file]')
+  await page.locator('.panel', { hasText: 'Deine Daten' }).locator('> summary').click();
+  await page.locator('.panel', { hasText: 'Deine Daten' }).locator('input[type=file]')
     .setInputFiles(path!);
   // The dialog closes itself on a read, so the list is visible again.
   await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(2);
