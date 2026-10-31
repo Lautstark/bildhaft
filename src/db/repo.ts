@@ -10,7 +10,7 @@ import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
 import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
 import { LANG, LOCALE, t } from '../i18n/index.ts';
 import {
-  DEFAULT_PRINT_SETTINGS, ownImagesInUse,
+  DEFAULT_PRINT_SETTINGS, ownImagesInUse, slotCaption,
   type AppSettings, type Candidate, type Collection, type CollectionKind,
   type Override, type OwnImage,
   type ProviderId,
@@ -493,6 +493,12 @@ export async function findByNormalized(normalized: string): Promise<Sentence[]> 
  * either: the name is how it is thought of now, and the typed words are what
  * would otherwise become unfindable the moment it was named.
  *
+ * And the words under its symbols. A card made with „+" — a Spiel's, a
+ * Tafel's, a Rezept's Zutat — was never typed: its line is empty and its word
+ * lives on the field, so a search of the line alone could not find one. Not a
+ * title's symbols: they say what the material's name says, and the sidebar
+ * finds the name as a Material.
+ *
  * The name is matched lowercased rather than through `normalizeInput`, because
  * it never went through it — it is what somebody wrote, not a lookup key, and
  * there is no second copy of it to keep in step.
@@ -505,7 +511,8 @@ export async function searchSentences(query: string, limit = 60): Promise<Senten
   let cursor = await db.transaction('sentences').store.index('byUpdated').openCursor(null, 'prev');
   while (cursor && out.length < limit) {
     const row = cursor.value;
-    if (row.normalizedInput.includes(q) || (row.title ?? '').toLowerCase().includes(q)) {
+    if (row.normalizedInput.includes(q) || (row.title ?? '').toLowerCase().includes(q)
+      || (row.part !== 'titel' && row.slots.some((slot) => slotCaption(slot).toLowerCase().includes(q)))) {
       out.push(row);
     }
     cursor = await cursor.continue();
