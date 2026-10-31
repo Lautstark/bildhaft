@@ -1158,7 +1158,8 @@ footer.footer {
 .word__drop:hover { color: var(--danger, var(--text)); border-color: currentColor; }
 /* The card's bin is the trash of every other bin, small: one sign for
    „löschen" everywhere, the × left for „schließen" (her call, 2026-10-31). */
-.word__drop svg { width: 13px; height: 13px; }
+.word__drop { padding: 0; }
+.word__drop svg { display: block; width: 13px; height: 13px; }
 .word__drop { color: var(--danger, var(--text-dim)); }
 
 /* A word's own tags. Not chips: components.css reserves those for "changes
