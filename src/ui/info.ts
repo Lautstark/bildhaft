@@ -75,6 +75,8 @@ const para = (html: string, first = false) =>
 const about = (): InfoPage =>
   page('about', t('info.about_title'), [
     para(t('info.about_lead'), true),
+    h3(t('info.about_make')),
+    para(t('info.about_make_body')),
     h3(t('info.about_leaves')),
     para(t('info.about_leaves_body')),
     h3(t('info.about_symbols')),
