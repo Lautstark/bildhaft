@@ -3,6 +3,7 @@
   import { slotCaption } from '../core/types.ts';
   import TitleField from '@lautstark/design/svelte/TitleField';
   import Icon from '../pieces/Icon.svelte';
+  import EdgeBin from './EdgeBin.svelte';
   import CardFace from './CardFace.svelte';
   import AnyStift from './AnyStift.svelte';
   import { cardCode, lineCode } from './anybookEdit.ts';
@@ -146,7 +147,7 @@
   let typedLine = $derived(sentence.title?.trim() ? t('ui.typed_line', { text: sentence.rawInput }) : null);
 </script>
 
-<article class="row" aria-label={sentence.rawInput}><header class="row__head">{#if step !== undefined}<span class="row__step" class:row__step--grip={onGrab} aria-hidden="true" draggable={onGrab ? 'true' : undefined} title={onGrab ? t('ui.drag_to_reorder') : undefined} ondragstart={onGrab}>{step}</span>{/if}<span class="row__words"><TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if line}<AnyStift code={line} mode="line" />{/if}</span>{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}<div class="row__actions"><button class="btn destructive icon" type="button" title={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)}><Icon name="trash" /></button></div></header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
+<article class="row edge-host" aria-label={sentence.rawInput}><EdgeBin label={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)} /><header class="row__head">{#if step !== undefined}<span class="row__step" class:row__step--grip={onGrab} aria-hidden="true" draggable={onGrab ? 'true' : undefined} title={onGrab ? t('ui.drag_to_reorder') : undefined} ondragstart={onGrab}>{step}</span>{/if}<span class="row__words"><TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if line}<AnyStift code={line} mode="line" />{/if}</span>{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}</header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
   class="slot"
   class:slot--empty={!symbolIdFor(slot, provider)}
   class:slot--dragging={dragFrom === index}

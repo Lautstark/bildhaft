@@ -119,7 +119,12 @@ test('eine Tabelle baut sich Spalte für Spalte und Zeile für Zeile, und druckt
   const kopfBox = (await kopf.nth(1).boundingBox())!;
   expect((await spalteWeg.boundingBox())!.y + 20).toBeLessThan(kopfBox.y);
   await spalteWeg.hover();
-  await expect(table.locator('.game-table--doomed')).toHaveCount(3);
+  // One frame round the whole column, head and every field.
+  const frame = table.locator('.game-table__frame');
+  await expect(frame).toHaveCount(1);
+  const spalte = (await frame.boundingBox())!;
+  expect(spalte.y).toBeLessThan(kopfBox.y);
+  expect(spalte.y + spalte.height).toBeGreaterThan((await felder.last().boundingBox())!.y);
   await spalteWeg.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
   await expect(words(kopf)).toHaveText(['Tasse']);
@@ -129,9 +134,11 @@ test('eine Tabelle baut sich Spalte für Spalte und Zeile für Zeile, und druckt
 
   // A row taken out goes with its head and its cards.
   const zeileWeg = table.getByRole('button', { name: 'Zeile 1 löschen' });
-  expect((await zeileWeg.boundingBox())!.x + 20).toBeLessThan((await zeilenkopf.nth(0).boundingBox())!.x);
+  // A row's bin stands right of the row, as every bin at an edge does.
+  const lastFeld = (await felder.first().boundingBox())!;
+  expect((await zeileWeg.boundingBox())!.x).toBeGreaterThan(lastFeld.x + lastFeld.width);
   await zeileWeg.hover();
-  await expect(table.locator('.game-table--doomed')).toHaveCount(2);
+  await expect(frame).toHaveCount(1);
   await zeileWeg.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click();
   await expect(words(zeilenkopf)).toHaveText(['Rot']);

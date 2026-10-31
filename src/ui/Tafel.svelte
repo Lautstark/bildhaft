@@ -37,7 +37,9 @@
   import AddTile from './AddTile.svelte';
   import TitleLine from './TitleLine.svelte';
   import { activeCollection, s } from '../app/state.svelte.ts';
-  import { addIntoFields, handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
+  import { addIntoFields, handleNewCard, removeOpenBoardLine, resizeOpenBoard, writeBoard } from '../app/board.ts';
+  import { confirmDialog } from './dialog.ts';
+  import Icon from '../pieces/Icon.svelte';
   import { t } from '../i18n/index.ts';
 
   let { provider }: { provider: ProviderId } = $props();
@@ -63,18 +65,75 @@
      fields twice as tall as wide, and its columns here are narrowed by it. */
   let field = $derived(tafelField());
 
-  /* The grid's counters. Refreshed rather than bound, so a number being typed
-     is not put back under the finger by the write it causes. */
-  let colsInput: HTMLInputElement | undefined = $state();
-  let rowsInput: HTMLInputElement | undefined = $state();
-  $effect(() => {
-    if (colsInput && document.activeElement !== colsInput && colsInput.valueAsNumber !== board.cols) colsInput.value = String(board.cols);
-    if (rowsInput && document.activeElement !== rowsInput && rowsInput.valueAsNumber !== board.rows) rowsInput.value = String(board.rows);
-  });
   const resize = (cols: number, rows: number) => void resizeOpenBoard(cols, rows);
-  const typed = (input: HTMLInputElement): number | null =>
-    (Number.isFinite(input.valueAsNumber) && input.valueAsNumber >= 1 && input.valueAsNumber <= MAX_BOARD_SIDE
-      ? Math.round(input.valueAsNumber) : null);
+
+  /*
+   * Der Mülleimer am Rand, as everywhere (EdgeBin): a bin just over every
+   * column and right of every row, measured off the fields; one shows while
+   * the pointer is in its column or row, and pointed at, one frame goes round
+   * all it would take out. „+ Spalte" stands as a strip right of the grid,
+   * „+ Zeile" under it — the counters gone (her pick, 2026-10-31).
+   */
+  let edge: HTMLElement | undefined = $state();
+  let lines = $state({ cols: [] as number[], rows: [] as number[], top: 0, right: 0, bottom: 0 });
+  let near = $state<{ col: number; row: number } | null>(null);
+  let doom = $state<{ what: 'spalte' | 'zeile'; at: number } | null>(null);
+  const cellAt = (index: number): HTMLElement | undefined => grid?.children[index] as HTMLElement | undefined;
+  function measure(): void {
+    if (!edge || !grid) return;
+    const first = [...Array(board.cols).keys()].map((c) => cellAt(c));
+    const down = [...Array(board.rows).keys()].map((r) => cellAt(r * board.cols));
+    if (first.some((cell) => !cell) || down.some((cell) => !cell)) return;
+    const top = grid.offsetTop;
+    lines = {
+      cols: first.map((cell) => grid.offsetLeft + cell!.offsetLeft + cell!.offsetWidth / 2 - 15),
+      rows: down.map((cell) => grid.offsetTop + cell!.offsetTop + Math.min(cell!.offsetHeight / 2 - 15, 10)),
+      top, right: grid.offsetLeft + grid.offsetWidth, bottom: top + grid.offsetHeight,
+    };
+  }
+  $effect(() => {
+    void board.cols; void board.rows;
+    if (!grid) return;
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(grid);
+    return () => watch.disconnect();
+  });
+  function nearLine(event: PointerEvent): void {
+    const cell = (event.target as HTMLElement).closest('.board > *');
+    const index = cell ? [...grid.children].indexOf(cell) : -1;
+    near = index < 0 ? null : { col: index % board.cols, row: Math.floor(index / board.cols) };
+  }
+  let doomed = $derived.by(() => {
+    if (!doom || !grid) return null;
+    void lines;
+    const cells = doom.what === 'spalte'
+      ? [...Array(board.rows).keys()].map((r) => cellAt(r * board.cols + doom!.at))
+      : [...Array(board.cols).keys()].map((c) => cellAt(doom!.at * board.cols + c));
+    const shown = cells.filter((cell): cell is HTMLElement => Boolean(cell));
+    if (shown.length === 0) return null;
+    const left = grid.offsetLeft + Math.min(...shown.map((cell) => cell.offsetLeft));
+    const top = grid.offsetTop + Math.min(...shown.map((cell) => cell.offsetTop));
+    const right = grid.offsetLeft + Math.max(...shown.map((cell) => cell.offsetLeft + cell.offsetWidth));
+    const bottom = grid.offsetTop + Math.max(...shown.map((cell) => cell.offsetTop + cell.offsetHeight));
+    return { left, top, width: right - left, height: bottom - top };
+  });
+  /* Asked first where something would go with it — a card or a colour;
+     an empty, bare line goes at once, as nothing of it is lost. */
+  async function takeLine(what: 'spalte' | 'zeile', at: number): Promise<void> {
+    const indices = what === 'spalte'
+      ? [...Array(board.rows).keys()].map((r) => r * board.cols + at)
+      : [...Array(board.cols).keys()].map((c) => at * board.cols + c);
+    const held = indices.some((index) => board.cells[index] || map.zones[index]);
+    doom = null;
+    if (held && !(await confirmDialog({
+      title: t(what === 'spalte' ? 'ui.game_delete_spalte' : 'ui.game_delete_row', { n: at + 1 }),
+      body: t('ui.board_delete_line_body'),
+      confirmLabel: t('ui.delete'),
+      danger: true,
+    }))) return;
+    await removeOpenBoardLine(what, at);
+  }
 
   /** The free field being typed into, and what is typed there. */
   let typingAt = $state<number | null>(null);
@@ -352,7 +411,8 @@
   was meant for.
 --><div class="group-panel" role="group" aria-label={t('ui.selection')} onpointerdown={(event) => event.stopPropagation()}><div class="group-panel__head"><span class="group-panel__count">{selected.size === 1 ? t('ui.n_fields_one') : t('ui.n_fields', { n: selected.size })}</span><button class="group-panel__done" type="button" onclick={() => { flushName(); selected = new Set(); }}>{t('ui.done')}</button></div><span class="group-panel__label">{t('ui.group_name')}</span><input bind:this={nameInput} class="field group-panel__name" type="text" placeholder={t('ui.group_name_none')} aria-label={t('ui.group_name')} maxlength="40" oninput={typedName} onblur={flushName} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); flushName(); } }} />{#each [{ key: 'frame' as const, what: t('ui.group_frame'), ownStart: '#3f88e0' }, { key: 'fill' as const, what: t('ui.group_fill'), ownStart: '#d8e9fc' }] as row (row.key)}<span class="group-panel__label">{row.what}</span><div class="group-panel__row" role="group" aria-label={row.what}><button class="group-panel__swatch group-panel__swatch--none{style[row.key] ? '' : ' group-panel__swatch--on'}" type="button" aria-label="{row.what}: {t('ui.none')}" aria-pressed={!style[row.key]} onclick={() => choose({ [row.key]: undefined })}></button>{#each ZONE_COLOURS as colour (colour.name)}<button class="group-panel__swatch{style[row.key] === colour[row.key] ? ' group-panel__swatch--on' : ''}" type="button" style:--c={colour[row.key]} aria-label={t('ui.colour_for', { what: row.what, colour: t(colour.name) })} aria-pressed={style[row.key] === colour[row.key]} onclick={() => choose({ [row.key]: colour[row.key] })}></button>{/each}<label class="group-panel__wheel{isOwn(row.key) ? ' group-panel__swatch--on' : ''}" title={t('ui.own_colour_for', { what: row.what })}><input class="group-panel__own" type="color" value={style[row.key] ?? row.ownStart} aria-label={t('ui.own_colour_for', { what: row.what })} onchange={(event) => choose({ [row.key]: event.currentTarget.value })} /></label></div>{/each}<div class="group-panel__foot">{#if leaving}<button class="group-panel__remove" type="button" onclick={() => { const indices = [...selected]; selected = new Set(); void writeBoard((one) => leaveZone(one, indices)); }}>{t('ui.leave_group')}</button>{:else}<button class="group-panel__remove" type="button" disabled={!editing} onclick={() => { const id = editing; selected = new Set(); if (id) void writeBoard((one) => dissolveZone(one, id)); }}>{t('ui.remove_group')}</button>{/if}</div></div>{/snippet}
 
-<div bind:this={grid} class="board" role="list" style:--cols={String(board.cols)} style:--rows={String(board.rows)} style:--field={field ? String(field.width / field.height) : '1'}>{#each board.cells as id, index (index)}{@const card = id ? byId.get(id) : undefined}{@const zone = map.zones[index]}{@const box = zoneBox(map, index, '4px', '12px', '-2px')}{@const zoneStyle = zone ? map.styles[zone] : undefined}<!-- A field takes the keyboard, because Space marks it and an arrow walks to
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="board-edge" bind:this={edge} onpointermove={nearLine} onpointerleave={() => { near = null; }}><div bind:this={grid} class="board" role="list" style:--cols={String(board.cols)} style:--rows={String(board.rows)} style:--field={field ? String(field.width / field.height) : '1'}>{#each board.cells as id, index (index)}{@const card = id ? byId.get(id) : undefined}{@const zone = map.zones[index]}{@const box = zoneBox(map, index, '4px', '12px', '-2px')}{@const zoneStyle = zone ? map.styles[zone] : undefined}<!-- A field takes the keyboard, because Space marks it and an arrow walks to
      the next one; and it says whether it is marked, which is what the panel
      above is counting. Both are what `role="listitem"` has no vocabulary for,
      and the list is what the grid is. -->
@@ -387,16 +447,13 @@
 --><!--
   Pressed, it is a line to type in; the picker, for somebody with a picture in
   mind rather than a word, is one press further.
--->{#if typingAt === index}<div class="cell__type"><input use:focus class="cell__input" type="text" bind:value={fieldText} placeholder={t('ui.board_type_placeholder')} aria-label={t('ui.board_type_here', { n: index + 1 })} disabled={s.busy} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void typeInto(index); } else if (event.key === 'Escape') { typingAt = null; fieldText = ''; } }} onblur={() => { if (!fieldText.trim()) typingAt = null; }} /><button class="linklike small" type="button" onpointerdown={(event) => event.preventDefault()} onclick={() => { typingAt = null; fieldText = ''; void handleNewCard(index); }}>{t('ui.board_pick_here')}</button></div>{:else}<button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => { fieldText = ''; typingAt = index; }}>+</button>{/if}{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>
+-->{#if typingAt === index}<div class="cell__type"><input use:focus class="cell__input" type="text" bind:value={fieldText} placeholder={t('ui.board_type_placeholder')} aria-label={t('ui.board_type_here', { n: index + 1 })} disabled={s.busy} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void typeInto(index); } else if (event.key === 'Escape') { typingAt = null; fieldText = ''; } }} onblur={() => { if (!fieldText.trim()) typingAt = null; }} /><button class="linklike small" type="button" onpointerdown={(event) => event.preventDefault()} onclick={() => { typingAt = null; fieldText = ''; void handleNewCard(index); }}>{t('ui.board_pick_here')}</button></div>{:else}<button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => { fieldText = ''; typingAt = index; }}>+</button>{/if}{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div>{#each lines.cols as x, i (i)}{@render lineBin('spalte', i, x, lines.top - 36)}{/each}{#each lines.rows as y, i (i)}{@render lineBin('zeile', i, lines.right + 8, y)}{/each}{#if board.cols < MAX_BOARD_SIDE}<button class="board-edge__add" type="button" style:left="{lines.right + 48}px" style:top="{lines.top}px" style:height="{lines.bottom - lines.top}px" onclick={() => resize(board.cols + 1, board.rows)}>{t('ui.game_add_spalte')}</button>{/if}{#if doomed}<span class="board-edge__frame" aria-hidden="true" style:left="{doomed.left}px" style:top="{doomed.top}px" style:width="{doomed.width}px" style:height="{doomed.height}px"></span>{/if}</div>{#if board.rows < MAX_BOARD_SIDE}<div class="board-edge__more"><button class="song__plus song__plus--part" type="button" onclick={() => resize(board.cols, board.rows + 1)}>{t('ui.game_add_row')}</button></div>{/if}
 
 {#if selected.size > 0}<div class="board-dock">{@render panel()}</div>{/if}
 {#if !board.cells.some(Boolean) && waiting.length === 0}<p class="empty-whisper" style="text-align:center;margin:2px 0 0">{t('ui.tafel_whisper')}</p>{/if}
 <!--
-  How many fields across and down, under the Tafel (2026-10-23, ihr Wunsch):
-  the grid speaks for itself, its counters follow it. Beside them, how big a
-  field comes out on the paper chosen in the panel.
---><div class="board-head">{#each [{ id: 'board-cols', label: t('ui.columns'), less: t('ui.columns_less'), more: t('ui.columns_more'), n: board.cols, set: (n: number) => resize(n, board.rows) }, { id: 'board-rows', label: t('ui.rows'), less: t('ui.rows_less'), more: t('ui.rows_more'), n: board.rows, set: (n: number) => resize(board.cols, n) }] as one (one.id)}<span class="board-step"><label for={one.id}>{one.label}</label><button class="board-step__btn" type="button" aria-label={one.less} disabled={one.n <= 1} onclick={() => one.set(one.n - 1)}>−</button>{#if one.id === 'board-cols'}<input bind:this={colsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{:else}<input bind:this={rowsInput} class="field board-step__n" id={one.id} type="number" min="1" max={MAX_BOARD_SIDE} step="1" oninput={(event) => { const n = typed(event.currentTarget); if (n !== null) one.set(n); }} onwheel={(event) => event.currentTarget.blur()} />{/if}<button class="board-step__btn" type="button" aria-label={one.more} disabled={one.n >= MAX_BOARD_SIDE} onclick={() => one.set(one.n + 1)}>+</button></span>{/each}</div>
-<!--
   Only once words wait: a board with room for everything has no tray, and
   the way onto the board is the board itself (2026-10-23, ihr Wunsch).
 -->{#if waiting.length > 0}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="tray" class:tray--over={overTray} ondragover={(event) => { over(event); overTray = true; }} ondragleave={() => { overTray = false; }} ondrop={(event) => drop(event, (id) => void writeBoard((one) => takeOff(one, id)))}><div class="tray__head"><b>{t('ui.board_tray')}</b><span class="small faint">{t('ui.board_tray_hint')}</span></div><div class="words tray__wall">{#each waiting as sentence (sentence.id)}<!-- svelte-ignore a11y_no_static_element_interactions --><div class="board-card" class:board-card--dragging={carrying === sentence.id} title={t('ui.board_drag_hint')} draggable="true" ondragstart={(event) => cardDragStart(event, sentence.id)} ondragend={clear}><WordCard {sentence} {provider} /><button class="board-card__move" type="button" aria-label={t('ui.board_put_on', { word: caption(sentence) })} disabled={free === -1} onclick={() => void writeBoard((one) => placeOn(one, sentence.id, firstFree(board)))}>↑</button></div>{/each}<AddTile label={t('ui.new_card')} onAdd={() => void handleNewCard()} /></div></div>{/if}
+
+{#snippet lineBin(what: 'spalte' | 'zeile', at: number, x: number, y: number)}{@const label = t(what === 'spalte' ? 'ui.game_delete_spalte' : 'ui.game_delete_row', { n: at + 1 })}<span class="board-edge__bin" class:board-edge__bin--on={(what === 'spalte' ? near?.col : near?.row) === at || (doom?.what === what && doom.at === at)} style:left="{x}px" style:top="{y}px"><button class="btn destructive icon" type="button" title={label} aria-label={label} onpointerenter={() => { doom = { what, at }; }} onpointerleave={() => { doom = null; }} onfocus={() => { doom = { what, at }; }} onblur={() => { doom = null; }} onclick={() => void takeLine(what, at)}><Icon name="trash" /></button></span>{/snippet}

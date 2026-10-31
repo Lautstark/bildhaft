@@ -8,10 +8,11 @@
    * Platzhalter, or the field's „+" while it is still to be chosen. „+ Zeile"
    * brings a head and a place under every column. Rows and columns are
    * dragged by their heads. Their bins stand at the table's edge, as a
-   * spreadsheet's do — over each column, left of each row, never on a card
-   * (her pick „A", 2026-10-30): one shows while the pointer is in its column
-   * or row, and pointed at, it outlines everything it would take out. Asked
-   * first, as every bin is.
+   * spreadsheet's do — over each column, right of each row, never on a card
+   * (her pick „A", 2026-10-30, the row's bin moved right with every other
+   * bin, 2026-10-31): one shows while the pointer is in its column or row,
+   * and pointed at, one frame goes round everything it would take out.
+   * Asked first, as every bin is.
    */
   import type { ProviderId, Sentence } from '../core/types.ts';
   import { tabelleOf } from '../core/game.ts';
@@ -81,8 +82,18 @@
   let doom = $state<{ what: 'zeile' | 'spalte'; at: number } | null>(null);
   const at = (spalte: number | null, zeile: number | null) => () => { near = { spalte, zeile }; };
   const shows = (what: 'zeile' | 'spalte', i: number): boolean => (what === 'spalte' ? near.spalte : near.zeile) === i || (doom?.what === what && doom.at === i);
-  const doomed = (spalte: number | null, zeile: number | null): string =>
-    (doom?.what === 'spalte' && doom.at === spalte) || (doom?.what === 'zeile' && doom.at === zeile) ? ' game-table--doomed' : '';
+  /* The one frame round a doomed column or row, measured off its cells. */
+  let grid = $state<HTMLElement>();
+  let frame = $derived.by(() => {
+    if (!doom || !grid) return null;
+    const cells = [...grid.querySelectorAll<HTMLElement>(doom.what === 'spalte' ? `[data-spalte="${doom.at}"]` : `[data-zeile="${doom.at}"]`)];
+    if (cells.length === 0) return null;
+    const left = Math.min(...cells.map((cell) => cell.offsetLeft));
+    const top = Math.min(...cells.map((cell) => cell.offsetTop));
+    const right = Math.max(...cells.map((cell) => cell.offsetLeft + cell.offsetWidth));
+    const bottom = Math.max(...cells.map((cell) => cell.offsetTop + cell.offsetHeight));
+    return { left, top, width: right - left, height: bottom - top };
+  });
 
   const done = () => { carry = null; over = null; };
   const mark = (what: 'zeile' | 'spalte', at: number): string => carry?.what !== what || over !== at || carry.from === at
@@ -90,6 +101,6 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="game-table" style:--spalten={table.spalten.length} ondragend={done} onpointerleave={() => { near = { spalte: null, zeile: null }; }}><span></span><span></span>{#each table.spalten as _, i (i)}{@render bin('spalte', i)}{/each}<span></span><span></span><span class="game-table__ecke" aria-hidden="true" onpointerenter={at(null, null)}>{t('ui.game_ecke')}</span>{#each table.spalten as karte, i (`${i}:${karte}`)}{@const sentence = cardOf(karte)}<div class="game-table__kopf{mark('spalte', i)}{doomed(i, null)}" role="group" aria-label="{t('ui.game_spalte')} {i + 1}" draggable={Boolean(sentence)} title={sentence ? t('ui.drag_to_reorder') : undefined} onpointerenter={at(i, null)} ondragstart={(event) => grab(event, 'spalte', i)} ondragover={(event) => hover(event, 'spalte', i)} ondrop={(event) => drop(event, 'spalte', i)}>{#if sentence}<WordCard {sentence} {provider} />{:else}<AddTile label={t('ui.game_add_kopf')} word={t('ui.game_spalte')} onAdd={() => void fillTabelle(null, i)} />{/if}</div>{/each}<span class="game-table__plus" onpointerenter={at(null, null)}>{#if room.spalte}<AddTile label={t('ui.game_add_spalte')} word={t('ui.game_spalte')} onAdd={() => void addTabelleSpalte()} />{/if}</span>{#each table.zeilen as zeile, r (zeile.id)}{@const kopf = cardOf(zeile.kopf)}{@render bin('zeile', r, zeile.id)}<div class="game-table__zeilenkopf{mark('zeile', r)}{doomed(null, r)}" role="group" aria-label={t('ui.game_row_n', { n: r + 1 })} draggable={Boolean(kopf)} title={kopf ? t('ui.drag_to_reorder') : undefined} onpointerenter={at(null, r)} ondragstart={(event) => grab(event, 'zeile', r)} ondragover={(event) => hover(event, 'zeile', r)} ondrop={(event) => drop(event, 'zeile', r)}>{#if kopf}<WordCard sentence={kopf} {provider} />{:else}<AddTile label={t('ui.game_add_kopf')} word={t('ui.game_zeile')} onAdd={() => void fillTabelle(zeile.id, null)} />{/if}</div>{#each zeile.felder as karte, i (`${i}:${karte}`)}{@const sentence = cardOf(karte)}<div class="game-table__feld{doomed(i, r)}" onpointerenter={at(i, r)}>{#if sentence}<span class="luecke"><WordCard {sentence} {provider} /></span>{:else}<AddTile platz label={t('ui.game_add_karte')} word={t('ui.game_platzhalter')} onAdd={() => void fillTabelle(zeile.id, i)} />{/if}</div>{/each}<span onpointerenter={at(null, r)}></span>{/each}</div>{#if room.zeile}<div class="game__more"><button class="song__plus song__plus--part" type="button" onclick={() => void addTabelleZeile()}>{t('ui.game_add_row')}</button></div>{/if}
+<div class="game-table" bind:this={grid} style:--spalten={table.spalten.length} ondragend={done} onpointerleave={() => { near = { spalte: null, zeile: null }; }}><span></span>{#each table.spalten as _, i (i)}{@render bin('spalte', i)}{/each}<span></span><span class="game-table__ecke" aria-hidden="true" onpointerenter={at(null, null)}>{t('ui.game_ecke')}</span>{#each table.spalten as karte, i (`${i}:${karte}`)}{@const sentence = cardOf(karte)}<div class="game-table__kopf{mark('spalte', i)}" data-spalte={i} role="group" aria-label="{t('ui.game_spalte')} {i + 1}" draggable={Boolean(sentence)} title={sentence ? t('ui.drag_to_reorder') : undefined} onpointerenter={at(i, null)} ondragstart={(event) => grab(event, 'spalte', i)} ondragover={(event) => hover(event, 'spalte', i)} ondrop={(event) => drop(event, 'spalte', i)}>{#if sentence}<WordCard {sentence} {provider} />{:else}<AddTile label={t('ui.game_add_kopf')} word={t('ui.game_spalte')} onAdd={() => void fillTabelle(null, i)} />{/if}</div>{/each}<span class="game-table__plus" onpointerenter={at(null, null)}>{#if room.spalte}<AddTile label={t('ui.game_add_spalte')} word={t('ui.game_spalte')} onAdd={() => void addTabelleSpalte()} />{/if}</span>{#each table.zeilen as zeile, r (zeile.id)}{@const kopf = cardOf(zeile.kopf)}<div class="game-table__zeilenkopf{mark('zeile', r)}" data-zeile={r} role="group" aria-label={t('ui.game_row_n', { n: r + 1 })} draggable={Boolean(kopf)} title={kopf ? t('ui.drag_to_reorder') : undefined} onpointerenter={at(null, r)} ondragstart={(event) => grab(event, 'zeile', r)} ondragover={(event) => hover(event, 'zeile', r)} ondrop={(event) => drop(event, 'zeile', r)}>{#if kopf}<WordCard sentence={kopf} {provider} />{:else}<AddTile label={t('ui.game_add_kopf')} word={t('ui.game_zeile')} onAdd={() => void fillTabelle(zeile.id, null)} />{/if}</div>{#each zeile.felder as karte, i (`${i}:${karte}`)}{@const sentence = cardOf(karte)}<div class="game-table__feld" data-spalte={i} data-zeile={r} onpointerenter={at(i, r)}>{#if sentence}<span class="luecke"><WordCard {sentence} {provider} /></span>{:else}<AddTile platz label={t('ui.game_add_karte')} word={t('ui.game_platzhalter')} onAdd={() => void fillTabelle(zeile.id, i)} />{/if}</div>{/each}{@render bin('zeile', r, zeile.id)}{/each}{#if frame}<span class="game-table__frame" aria-hidden="true" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></span>{/if}</div>{#if room.zeile}<div class="game__more"><button class="song__plus song__plus--part" type="button" onclick={() => void addTabelleZeile()}>{t('ui.game_add_row')}</button></div>{/if}
 
-{#snippet bin(what: 'zeile' | 'spalte', i: number, id = '')}{@const label = what === 'spalte' ? t('ui.game_delete_spalte', { n: i + 1 }) : t('ui.game_delete_row', { n: i + 1 })}<span class="game-table__bin" class:game-table__bin--on={shows(what, i)}><button class="btn destructive icon" type="button" title={label} aria-label={label} onpointerenter={() => { doom = { what, at: i }; }} onpointerleave={() => { doom = null; }} onfocus={() => { doom = { what, at: i }; }} onblur={() => { doom = null; }} onclick={() => { doom = null; void (what === 'spalte' ? takeSpalte(i) : takeZeile(id, i)); }}><Icon name="trash" /></button></span>{/snippet}
+{#snippet bin(what: 'zeile' | 'spalte', i: number, id = '')}{@const label = what === 'spalte' ? t('ui.game_delete_spalte', { n: i + 1 }) : t('ui.game_delete_row', { n: i + 1 })}<span class="game-table__bin game-table__bin--{what}" class:game-table__bin--on={shows(what, i)}><button class="btn destructive icon" type="button" title={label} aria-label={label} onpointerenter={() => { doom = { what, at: i }; }} onpointerleave={() => { doom = null; }} onfocus={() => { doom = { what, at: i }; }} onblur={() => { doom = null; }} onclick={() => { doom = null; void (what === 'spalte' ? takeSpalte(i) : takeZeile(id, i)); }}><Icon name="trash" /></button></span>{/snippet}

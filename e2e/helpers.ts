@@ -158,3 +158,33 @@ export async function closePicker(page: Page): Promise<void> {
   if (await sheet.count()) await sheet.locator('.foot').getByRole('button', { name: 'Fertig' }).click();
   await expect(sheet).toHaveCount(0);
 }
+
+/**
+ * The open Tafel's grid set by its edge, as she sets it: „+ Spalte" and
+ * „+ Zeile" to grow, the bin of the last column or row to shrink —
+ * confirmed where the line held a card or a colour.
+ */
+export async function gridTo(page: Page, cols?: number, rows?: number): Promise<void> {
+  const edge = page.locator('.board-edge');
+  const bins = (what: string) => edge.getByRole('button', { name: new RegExp(`^${what} \\d+ löschen$`) });
+  for (const [what, want] of [['Spalte', cols], ['Zeile', rows]] as const) {
+    if (want === undefined) continue;
+    let n = await bins(what).count();
+    while (n < want) {
+      await (what === 'Spalte' ? edge.getByRole('button', { name: '+ Spalte' }) : page.locator('.board-edge__more').getByRole('button', { name: '+ Zeile' })).click();
+      n += 1;
+      await expect(bins(what)).toHaveCount(n);
+    }
+    while (n > want) {
+      await edge.getByRole('button', { name: `${what} ${n} löschen`, exact: true }).click();
+      const ok = page.getByRole('dialog').getByRole('button', { name: 'Löschen' });
+      const left = n - 1;
+      /* An empty, bare line goes at once; one with a card or a colour asks first. */
+      await expect.poll(async () => {
+        if (await ok.isVisible()) await ok.click();
+        return bins(what).count();
+      }).toBe(left);
+      n = left;
+    }
+  }
+}

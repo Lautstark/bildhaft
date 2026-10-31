@@ -365,7 +365,7 @@
   button that took a deliberate press; a cross in the corner of a card takes a
   stray one, and what it throws away is a picture somebody chose and a text they
   wrote.
---><button class="word__drop" type="button" aria-label={t('ui.remove_word', { word: entry.token })} onclick={() => void drop(entry)}>×</button><!--
+--><button class="word__drop" type="button" aria-label={t('ui.remove_word', { word: entry.token })} onclick={() => void drop(entry)}><Icon name="trash" /></button><!--
   What is stored, in the order it is stored: the picture, the words that go with
   it, and — only when they differ — the word this answers to. The second line is
   why: „Omi" under a picture that answers to „oma" is a fact somebody has to be

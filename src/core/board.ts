@@ -129,6 +129,31 @@ export function resizeBoard(board: Board, cols: number, rows: number): Board {
 }
 
 /**
+ * The same board without one column or one row — the bin at its edge. Every
+ * other field keeps its card and its colour, closed up where the line was;
+ * the cards that lay in the line come off the board, as cards that fall off
+ * a smaller board do. The last column or row stays: a Tafel has a field.
+ */
+export function withoutLine(board: Board, what: 'spalte' | 'zeile', at: number): Board {
+  const cols = what === 'spalte' ? board.cols - 1 : board.cols;
+  const rows = what === 'zeile' ? board.rows - 1 : board.rows;
+  if (cols < 1 || rows < 1) return board;
+  const from = zonesOf(board);
+  const cells: (string | null)[] = [];
+  const zones: (string | null)[] = [];
+  for (let r = 0; r < board.rows; r += 1) {
+    if (what === 'zeile' && r === at) continue;
+    for (let c = 0; c < board.cols; c += 1) {
+      if (what === 'spalte' && c === at) continue;
+      cells.push(board.cells[r * board.cols + c] ?? null);
+      zones.push(from[r * board.cols + c] ?? null);
+    }
+  }
+  const { groups: _groups, ...rest } = board;
+  return tidy({ ...rest, cols, rows, cells, zones });
+}
+
+/**
  * These fields into the group `id`, drawn like `style`. The one act behind
  * every change in the group panel: the marked fields join the group (a field
  * is in one group at most, so it leaves the one it was in) and the group

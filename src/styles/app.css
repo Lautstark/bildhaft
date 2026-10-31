@@ -366,6 +366,22 @@ kbd {
 
 /* ------------------------------------------------------------------ rows */
 
+/* Der Mülleimer am Rand (EdgeBin.svelte), the same for every thing that is
+   taken out whole: right of the thing, in a margin of its own, level with
+   its first line. It shows while the pointer is in the thing; pointed at,
+   the thing is outlined in red — what goes is seen before the click. The
+   bin's box reaches back to the thing's edge, so the pointer never crosses
+   a gap on its way there. */
+.edge-host { position: relative; margin-right: 44px; }
+.edge-bin { position: absolute; top: 6px; left: 100%; width: 44px; display: flex; justify-content: flex-end; opacity: 0; transition: opacity .13s; }
+.edge-host:hover > .edge-bin, .edge-bin:focus-within { opacity: 1; }
+@media (hover: none) { .edge-bin { opacity: .7; } }
+/* What a bin would take out, the same everywhere: one red line 6 px outside
+   the thing, its corners the thing's own rounded by those 6 px, a breath of
+   red behind. The Tafel's and the Tabelle's frames (.board-edge__frame,
+   .game-table__frame) draw exactly this round their fields. */
+.edge-host:has(> .edge-bin:hover), .edge-host:has(> .edge-bin :focus-visible) { outline: 2px solid var(--danger); outline-offset: 6px; background-color: color-mix(in srgb, var(--danger) 6%, var(--surface)); }
+
 .rows { display: flex; flex-direction: column; gap: 10px; }
 
 .row {
@@ -381,8 +397,6 @@ kbd {
   gap: 8px;
   margin-bottom: 10px;
 }
-.row__actions { display: flex; gap: 2px; opacity: 0; transition: opacity .13s; }
-.row:hover .row__actions, .row:focus-within .row__actions { opacity: 1; }
 
 /* The row's name is a field that does not look like one until it is asked to —
    components.css's .title-input reasoning, at the row's size rather than the
@@ -1142,6 +1156,10 @@ footer.footer {
 }
 .word:hover .word__drop, .word__drop:focus-visible { opacity: 1; }
 .word__drop:hover { color: var(--danger, var(--text)); border-color: currentColor; }
+/* The card's bin is the trash of every other bin, small: one sign for
+   „löschen" everywhere, the × left for „schließen" (her call, 2026-10-31). */
+.word__drop svg { width: 13px; height: 13px; }
+.word__drop { color: var(--danger, var(--text-dim)); }
 
 /* A word's own tags. Not chips: components.css reserves those for "changes
    what is shown, never what is stored", and these are stored. The accent tint
@@ -1278,6 +1296,18 @@ footer.footer {
    fields are the same size as each other and as nothing else, because that is
    what a grid is; a card dropped into one takes the field's size. */
 .rows--tafel { gap: 18px; }
+/* The Tafel's edge (Der Mülleimer am Rand, as everywhere): a bin just over
+   every column and right of every row, placed off the measured fields; one
+   frame round what a bin would take; „+ Spalte" a strip right of the grid,
+   „+ Zeile" under it. */
+.board-edge { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; padding: 36px 92px 0 0; }
+.board-edge__bin { position: absolute; opacity: 0; transition: opacity .13s; }
+.board-edge__bin--on, .board-edge__bin:focus-within { opacity: 1; }
+@media (hover: none) { .board-edge__bin { opacity: .7; } }
+.board-edge__frame { position: absolute; z-index: 2; margin: -6px; padding: 6px; box-sizing: content-box; border: 2px solid var(--danger); border-radius: calc(var(--radius) + 6px); background: color-mix(in srgb, var(--danger) 6%, transparent); pointer-events: none; }
+.board-edge__add { position: absolute; width: 36px; border: 1px dashed var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--text-dim); font: inherit; font-size: 12.5px; writing-mode: vertical-rl; cursor: pointer; }
+.board-edge__add:hover { border-color: var(--accent); color: var(--accent-strong); }
+.board-edge__more { display: flex; justify-content: center; }
 .board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 18px; padding: 0 4px; }
 .board-step { display: inline-flex; align-items: center; gap: 6px; }
 .board-step label { color: var(--text-dim); margin-right: 2px; }
@@ -1548,20 +1578,18 @@ footer.footer {
 .song__bar { display: flex; justify-content: flex-end; }
 /* The part's name over its lines rather than beside them, so the lines have
    the whole width — a line of six symbols wrapped in a column it did not need. */
-.song__part { display: grid; gap: 6px; }
+.song__part { display: grid; gap: 6px; border-radius: var(--radius); }
 .song__head { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 650; color: var(--text-dim); }
 .song__head h3 { margin: 0; font: inherit; color: inherit; }
 /* The part's tools are quiet until the part is pointed at or tabbed into:
    the song is what is read, the tools are for now and then. */
 .song__tool { border: 1px solid transparent; background: transparent; color: var(--text-faint); font: inherit; font-size: 12.5px; font-weight: 600; padding: 0 9px; border-radius: 999px; cursor: pointer; opacity: .55; transition: opacity .13s; }
 .song__part:hover .song__tool, .song__tool:focus-visible { opacity: 1; border-color: var(--line); color: var(--text-dim); }
-.song__acts { margin-left: auto; opacity: 0; transition: opacity .13s; }
-.song__part:hover .song__acts, .song__acts:focus-within { opacity: 1; }
 /* Between two parts, the place to put another: faint until pointed at, so
    the song reads as a song and not as a form. */
 .song__gap { display: flex; gap: 8px; justify-content: center; margin: -6px 0; opacity: .4; transition: opacity .13s; }
 .song__gap:hover, .song__gap:focus-within { opacity: 1; }
-@media (hover: none) { .song__gap { opacity: .7; } .song__acts { opacity: 1; } }
+@media (hover: none) { .song__gap { opacity: .7; } }
 .song__plus { align-self: flex-start; border: 1px dashed var(--line); background: transparent; color: var(--text-dim); font: inherit; font-size: 13px; padding: 2px 12px; border-radius: 999px; cursor: pointer; }
 .song__plus:hover { color: var(--text); border-color: var(--text-dim); }
 .song__plus--part { padding: 6px 16px; font-size: 14px; }
@@ -1753,7 +1781,6 @@ footer.footer {
 /* The question is a title's line (SymbolLine), the page's bin beside it. */
 .talk__head { display: flex; align-items: center; gap: 10px; }
 .talk__head .title-line { flex: 1; min-width: 0; margin: 0; padding: 0; }
-.talk__page:hover .song__acts { opacity: 1; }
 .talk__more { display: flex; justify-content: center; }
 
 /* ------------------------------------------------------------------ spiel */
@@ -1778,8 +1805,6 @@ footer.footer {
 .game__row--before { box-shadow: 0 -3px 0 var(--accent); }
 .game__row--after { box-shadow: 0 3px 0 var(--accent); }
 .game__adds { display: flex; align-items: stretch; gap: 10px; }
-.game__acts { display: flex; justify-content: flex-end; opacity: 0; transition: opacity .13s; }
-.game__row:hover .game__acts, .game__acts:focus-within { opacity: 1; }
 .game__more { display: flex; justify-content: flex-start; }
 /* A Spiel · Tabelle in Bearbeiten, laid out as it prints: the empty corner,
    the column heads along the top with „+ Spalte" after them, each row its
@@ -1787,14 +1812,16 @@ footer.footer {
    edge — a thin row over the columns, a thin column left of the rows — and
    show for the column or row the pointer is in; pointed at, a bin outlines
    all it would take out. */
-.game-table { display: grid; grid-template-columns: 34px repeat(calc(var(--spalten) + 2), 118px); grid-template-rows: 34px; gap: 14px 12px; align-items: center; justify-items: center; padding: 10px 14px 14px 6px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; max-width: 100%; overflow-x: auto; }
+.game-table { position: relative; display: grid; grid-template-columns: repeat(calc(var(--spalten) + 2), 118px); grid-template-rows: 34px; gap: 14px 12px; align-items: center; justify-items: center; padding: 10px 14px 14px; border-radius: var(--radius); background: var(--surface); outline: 1px solid var(--line); margin-bottom: 12px; justify-content: start; max-width: 100%; overflow-x: auto; }
 .game-table .word { width: 104px; }
 .game-table__ecke { align-self: stretch; justify-self: stretch; display: grid; place-items: center; border-radius: var(--radius); background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--text) 5%, transparent) 8px 16px); color: var(--text-faint); font-size: 11px; }
 .game-table__kopf, .game-table__zeilenkopf, .game-table__feld { display: flex; border-radius: calc(var(--radius) + 4px); }
 .game-table__bin { opacity: 0; transition: opacity .13s; }
 .game-table__bin--on, .game-table__bin:focus-within { opacity: 1; }
-/* What a bin would take out, while it is pointed at. */
-.game-table--doomed { outline: 2px solid var(--danger); outline-offset: 4px; background: color-mix(in srgb, var(--danger) 12%, transparent); }
+/* A row's bin stands right of the row, in the column „+ Spalte" opens. */
+.game-table__bin--zeile { justify-self: start; }
+/* What a bin would take out, while it is pointed at: one frame round it. */
+.game-table__frame { position: absolute; margin: -6px; padding: 6px; box-sizing: content-box; border: 2px solid var(--danger); border-radius: calc(var(--radius) + 6px); background: color-mix(in srgb, var(--danger) 6%, transparent); pointer-events: none; }
 .game-table--spalte-before { box-shadow: -3px 0 0 var(--accent); }
 .game-table--spalte-after { box-shadow: 3px 0 0 var(--accent); }
 .game-table--zeile-before { box-shadow: 0 -3px 0 var(--accent); }

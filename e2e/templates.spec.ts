@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
 import { PDFDocument, PDFName, PDFRawStream } from 'pdf-lib';
 import { idForTerm, mockArasaac, readSentences } from './arasaac-mock.ts';
-import { backToPrint, closePicker, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
+import { backToPrint, closePicker, gridTo, openDing, pickPaper, pickTemplate, showMaterial, showSheet, translate, untilKept } from './helpers.ts';
 import { chooseFakeFolder, openSymbolSettings } from './metacom-folder.ts';
 
 /**
@@ -337,8 +337,7 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   // Tafel's, set over it: typed, or a step at a time.
   /* Der Standard ist quer; die Rechnung hier ist die des hohen Blatts. */
   await pickPaper(page, 'Hoch');
-  await page.getByLabel('Spalten').fill('3');
-  await page.getByRole('button', { name: 'Eine Zeile weniger' }).click();
+  await gridTo(page, 3, 2);
   await expect(cells).toHaveCount(6);
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
   // A field has its paper's shape: three across and two down on A4 upright
@@ -355,12 +354,11 @@ test('a Tafel takes its cards by dragging, and prints its free fields', async ({
   expect((await page.locator('.board').boundingBox())!.y).toBe(before);
   await page.getByRole('button', { name: 'Fertig' }).click();
   // Smaller again, and the card whose field went comes back to the tray, and that is said.
-  await page.getByLabel('Spalten').fill('1');
+  await gridTo(page, 1);
   await expect(cells).toHaveCount(2);
   await expect(page.locator('.tray .word__name')).toHaveText(['Apfel']);
   await expect(page.getByText('1 Karte liegt wieder unter „Noch nicht auf der Tafel“.')).toBeVisible();
-  await page.getByRole('button', { name: 'Eine Spalte mehr' }).click();
-  await page.getByRole('button', { name: 'Eine Spalte mehr' }).click();
+  await gridTo(page, 3);
   await expect(cells).toHaveCount(6);
   await page.getByRole('button', { name: '„Apfel“ ins erste freie Feld legen' }).click();
   await expect(page.locator('.board .word__name')).toHaveText(['Banane', 'Apfel']);
@@ -440,8 +438,7 @@ test('every card of a full Tafel can be dragged from the tray, one after the oth
   await bar.fill(names.join('\n'));
   await bar.press('Enter');
   await expect(page.locator('.tray .word__name')).toHaveCount(24);
-  await page.getByLabel('Spalten').fill('6');
-  await page.getByLabel('Zeilen').fill('4');
+  await gridTo(page, 6, 4);
   const cells = page.locator('.board .cell');
   await expect(cells).toHaveCount(24);
 
@@ -1653,7 +1650,7 @@ test('a word typed into a free field lies there, a list in the next free fields'
   // Empty, a Tafel is its box and its grid; its title line comes with its first card.
   await expect(page.locator('.title-line')).toHaveCount(0);
   const top = async (selector: string) => (await page.locator(selector).first().boundingBox())!.y;
-  expect(await top('.composer')).toBeLessThan(await top('.board-head'));
+  expect(await top('.composer')).toBeLessThan(await top('.board-edge'));
 
   await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
   const line = page.getByLabel('Wort für Feld 2');
@@ -1667,7 +1664,7 @@ test('a word typed into a free field lies there, a list in the next free fields'
   await openDing(page, 'Titel');
   await expect(page.getByLabel('Titel drucken')).toBeChecked();
   expect(await top('.title-line')).toBeLessThan(await top('.board'));
-  expect(await top('.board')).toBeLessThan(await top('.board-head'));
+  expect(await top('.board')).toBeLessThan(await top('.board-edge__more'));
 
   const box = page.getByLabel('Wörter hinzufügen');
   await box.fill('Kiwi');
