@@ -120,7 +120,7 @@ async function openSettings(page: Page): Promise<Locator> {
 /** Opens one folded panel by its heading and answers the panel itself. */
 async function openPanel(page: Page, heading: string): Promise<Locator> {
   const panel = page.locator('dialog.sheet details.panel', { hasText: heading });
-  await panel.locator('summary').click();
+  await panel.locator('> summary').click();
   await expect(panel).toHaveJSProperty('open', true);
   return panel;
 }
@@ -140,10 +140,8 @@ const stateOf = (page: Page, heading: string): Locator =>
  * whose whole subject is CSS. So the mask is kept to where the words are a fact
  * about the machine rather than about this page:
  *
- *   „Wo alles liegt" · .state    backup-panel's headline: „Ordner „X" ·
- *                                gesichert vor 3 Minuten". A folder somebody
- *                                picked, and an age that differs between two
- *                                runs a minute apart. This is the one the
+ *   „Deine Daten" · .state       the panel's headline: „im Ordner „X"". A
+ *                                folder somebody picked. This is the one the
  *                                `mask` option is really for.
  *
  *   METACOM · .state             The symbol total and the root name of a
@@ -151,8 +149,9 @@ const stateOf = (page: Page, heading: string): Locator =>
  *                                running this. Nobody else's directory names
  *                                belong in a committed picture.
  *
- *   .backup-panel .standing      The same age spelled out, in the sentence
- *                                inside the panel. `data-state` decides that
+ *   .where-panel .standing       The standing backup's line inside the panel:
+ *                                a folder and an age that differs between two
+ *                                runs a minute apart. `data-state` decides that
  *                                line's colour and is not masked: the mask
  *                                covers the text, the box keeps whatever the
  *                                stylesheet gives it.
@@ -178,13 +177,13 @@ const stateOf = (page: Page, heading: string): Locator =>
  * its contents' last measured geometry while painting none of it, and `mask`
  * believes that geometry: an unscoped `.standing` gets a magenta rectangle laid
  * across whatever now happens to be at those coordinates, which is how the
- * first version of this file put a pink bar through the „Alles löschen" shot.
+ * first version of this file put a pink bar through a neighbouring panel's shot.
  */
 function dynamic(page: Page): Locator[] {
   return [
-    stateOf(page, 'Wo alles liegt'),
+    stateOf(page, 'Deine Daten'),
     stateOf(page, 'METACOM'),
-    page.locator('dialog.sheet .panel[open] .backup-panel .standing'),
+    page.locator('dialog.sheet .panel[open] .where-panel .standing'),
   ];
 }
 
@@ -194,56 +193,42 @@ test('the settings sheet, as it opens', async ({ page }) => {
   /* No panel is touched first: which one is open on arrival is a decision — see
      settingsDialog.ts on why it is Sprache — and a column of headings with
      exactly one of them unfolded is what this shot is of. */
-  // Nine since the Anybook codes: their Stimme and Azure Speech came in.
-  await expect(sheet.locator('details.panel')).toHaveCount(9);
+  // Nine since the Anybook codes brought Stimme and Azure Speech; eight since
+  // „Alles löschen" moved into the ⋯ of „Deine Daten" (2026-10-31).
+  await expect(sheet.locator('details.panel')).toHaveCount(8);
   await expect(sheet).toHaveScreenshot('settings-sheet.png', { mask: dynamic(page) });
 });
 
 /*
- * The one this file was written for, in two frames.
+ * „Deine Daten", @lautstark/sicherung's DatenPanel: the box that says where the
+ * work is, the one button under it, the folded „Warum?" — and, in the second
+ * frame, the ⋯ menu open, which holds everything else including „Alles
+ * löschen" in red. Every class in it (.where-panel, .where, .dot, .menu-anchor,
+ * .menu, .menu__note, .where-why) is a package's name for a rule in
+ * components.css, so this is where a moved rule shows.
  *
- * „Wo alles liegt" is two packaged panels stacked: @lautstark/sicherung's
- * ablage-panel — the store, its explanatory tree, the states — and, under a
- * hairline, its backup-panel for the standing snapshot, with what bildhaft
- * alone offers between and below them. Almost every class name in it
- * (.where-panel, .where, .tree, .acts, .backup-panel, .standing, .dot) is a
- * package's name for a rule kept in this product's stylesheet, which is the
- * whole reason those rules are moving.
- *
- * **Why the sheet and not the panel element, here alone.** The sheet is capped
- * at `min(88vh, 800px)` and its body scrolls inside that; unfolded, this panel
- * is taller than the body can show. An element screenshot of it would therefore
- * be a picture of a box whose lower part the body clips — Playwright captures
- * the element's rectangle from what is actually painted there, and what is
- * painted below the body is the sheet's foot. The first version of this file
- * did exactly that and produced a shot with the credit line lying across the
- * import buttons. The honest frame is the sheet: it is a fixed 600×800 box, it
- * is all real pixels, and it is what a person looking at this panel sees.
- *
- * Two shots, then, at the two ends of the body's scroll. The scroll positions
- * are set outright rather than scrolled into view, because 0 and the maximum
- * are the two offsets that are a fact about the box rather than about where a
- * particular element happened to land.
+ * The element, not the sheet: short enough now to stand inside the body. The
+ * menu is absolutely positioned and hangs out of the panel's box, so the
+ * second frame is the sheet, scrolled to the panel.
  */
-test('the „Wo alles liegt" panel, unfolded', async ({ page }) => {
+test('the „Deine Daten" panel, unfolded', async ({ page }) => {
   const sheet = await openSettings(page);
-  const panel = await openPanel(page, 'Wo alles liegt');
+  const panel = await openPanel(page, 'Deine Daten');
 
-  /* Both halves are there before anything is taken. The store panel is drawn
-     synchronously; the backup panel is null in a browser with no directory
-     picker, and this project is Chromium, which has one — so if it were missing
-     the pictures below would be quietly half a panel. */
-  await expect(panel.locator('.where-panel')).toBeVisible();
-  await expect(panel.locator('.backup-panel')).toBeVisible();
+  /* A first visit: only in this browser, one button to choose a folder. */
+  await expect(panel.locator('.where-panel .where')).toBeVisible();
+  await expect(panel.locator('.where-panel .acts button')).toHaveText(['Ordner wählen …']);
+  await expect(panel).toHaveScreenshot('data-panel.png', { mask: dynamic(page) });
 
-  const body = sheet.locator('> .body');
-  await body.evaluate((node) => { node.scrollTop = 0; });
-  await expect(sheet).toHaveScreenshot('data-panel-top.png', { mask: dynamic(page) });
-
-  /* The rest of the same panel: the hairline, „Herausnehmen und einlesen", the
-     notice, and the backup panel with its status line and its buttons. */
-  await body.evaluate((node) => { node.scrollTop = node.scrollHeight; });
-  await expect(sheet).toHaveScreenshot('data-panel-rest.png', { mask: dynamic(page) });
+  await panel.getByRole('button', { name: 'Mehr' }).click();
+  const menu = panel.getByRole('menu');
+  await expect(menu.getByRole('menuitem').last()).toHaveClass('danger');
+  await menu.scrollIntoViewIfNeeded();
+  /* Not `dynamic()`: the menu opens upward over the headings, and the mask on
+     „Deine Daten"'s own heading would be laid across „Alles löschen", the one
+     row whose colour this frame is for. A fresh context has no folder, so that
+     heading says „nur in diesem Browser" on every machine. */
+  await expect(sheet).toHaveScreenshot('data-panel-menu.png', { mask: [stateOf(page, 'METACOM')] });
 });
 
 /*
@@ -252,8 +237,8 @@ test('the „Wo alles liegt" panel, unfolded', async ({ page }) => {
  * **Why this shot exists, and the measurement that asked for it.** The block
  * inside this panel is `@lautstark/bildquelle/metacom-panel`'s markup drawn by
  * `@lautstark/design`'s `.metacom-panel` rules — a package's DOM styled from a
- * second package, which is exactly the position the „Wo alles liegt" test above
- * describes for the two Sicherung boxes. components.css says so beside the
+ * second package, which is exactly the position the „Deine Daten" test above
+ * describes for the Sicherung box. components.css says so beside the
  * rules in as many words: they were added with no product emitting the class
  * yet, and the migration is where their drawing has to be checked. This is that
  * check.
@@ -269,7 +254,7 @@ test('the „Wo alles liegt" panel, unfolded', async ({ page }) => {
  * byte-identical, which looks like "nothing moved" and means "nothing was
  * looked at". vorlaut-editor reached the same conclusion the same way.
  *
- * The element and not the sheet, for the „Alles löschen" reason below: with no
+ * The element and not the sheet: with no
  * folder connected this panel is a paragraph, a link, a state line and a row of
  * buttons, which stands inside the sheet's body with room to spare.
  *
@@ -296,26 +281,6 @@ test('the METACOM panel, unfolded', async ({ page }) => {
   await expect(panel.locator('.metacom-panel .acts button')).toHaveCount(4);
 
   await expect(panel).toHaveScreenshot('metacom-panel.png', { mask: dynamic(page) });
-});
-
-/*
- * The panel element itself this time, which is the tighter frame and the one to
- * prefer wherever it works: a sentence and a button are short enough to stand
- * inside the sheet's body with room to spare, so every pixel in the shot is
- * this panel's own and nothing else on the dialog can move it.
- */
-test('the „Alles löschen" panel, unfolded', async ({ page }) => {
-  await openSettings(page);
-  const panel = await openPanel(page, 'Alles löschen');
-
-  /* The destructive button is what this panel is: it carries .destructive, and
-     that class is one of the ones moving. A panel whose one button had lost its
-     colour is exactly the kind of change a behaviour test sails through. */
-  await expect(panel.locator('button.destructive')).toBeVisible();
-
-  await expect(panel).toHaveScreenshot('delete-everything-panel.png', {
-    mask: dynamic(page),
-  });
 });
 
 /* ==========================================================================

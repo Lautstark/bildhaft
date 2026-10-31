@@ -808,55 +808,6 @@ img.mirrored { transform: scaleX(-1); }
    heading carries the state, so the card's separate name-plus-tag row and its
    accent outline had nothing left to do. */
 
-/*
- * The quiet plate a standing explanation sits on.
- *
- * This was `.notice`, and it was the one rule in this file genuinely keeping a
- * shared drawing off the page. Written in this repository's first commit, long
- * before components.css had a `.notice` at all: a grey plate, with
- * `.notice--accent` beside it for the loud version. The family later settled
- * `.notice` as the outcome line — accent-soft ground, accent-strong ink, 14px —
- * which is the same treatment `.notice--accent` had been. From that day this
- * file, loading second, drew every notice in bildhaft grey and the shared rule
- * reached nothing. Measured before the change: surface-2 ground, text-dim ink,
- * 13px, 11px/13px padding, every line of it this file's.
- *
- * Renamed rather than deleted, because the element wearing it is not a notice.
- * components.css is explicit that a .notice is "the outcome of an action just
- * taken"; bildhaft's only own use of the class is ui.backup_note, a paragraph
- * explaining what a backup is, which is standing prose and never an outcome.
- * Deleting the rule outright would have handed a permanent explainer the plate
- * the system reserves for "here is what just happened".
- *
- * Which leaves `.notice` to components.css, unshadowed — and it had two real
- * users here all along, both of them package markup wearing this file's grey:
- *
- *   the METACOM licence      @lautstark/bildquelle/metacom-panel emits the
- *                            licence paragraph as `.notice`, and components.css
- *                            claims it by name beside `.metacom-panel`:
- *                            "`.notice` for the licence, `.notice.bad` for the
- *                            state that has to be acted on". It is accent-soft
- *                            with accent-strong ink at 14px now, three lines
- *                            where it was two, and e2e/visual.spec.ts's
- *                            metacom-panel.png is re-recorded for it.
- *
- *   the „zweimal" line       @lautstark/sicherung/ablage-panel's `.notice bad`,
- *                            which had the shared red from `.notice.bad` but
- *                            this file's 13px and 11px/13px underneath it.
- *                            14px and 11px/14px now.
- *
- * `.notice--accent` went with it: emitted nowhere in this product's markup, and
- * exactly what the shared `.notice` now draws.
- */
-.explainer {
-  padding: 11px 13px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-dim);
-}
-
 .stopword-area {
   width: 100%;
   min-height: 200px;
