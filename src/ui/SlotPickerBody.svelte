@@ -84,7 +84,7 @@
    * under a hand that is still typing.
    */
   function statusFor(answer: SearchAnswer): string {
-    if (s.cropFailed) return s.cropFailed;
+    if (s.note) return s.note;
     if (answer.suggested) return s.idleMessage();
     if (answer.searching) return t('ui.searching');
     const term = answer.searched;

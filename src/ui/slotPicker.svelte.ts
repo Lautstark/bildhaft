@@ -28,6 +28,25 @@ async function readable(file: Blob): Promise<boolean> {
   try { await picture.decode(); return picture.naturalWidth > 0; } catch { return false; } finally { URL.revokeObjectURL(url); }
 }
 
+/**
+ * A HEIC as a JPEG, or null for anything else.
+ *
+ * An iPhone takes its photos as HEIC, and only Safari can draw one. The
+ * converter is libheif built for the browser, about 3 MB, so it is fetched
+ * only here — once a file has already turned out unreadable — and never with
+ * the page. Same quality as a cropped JPEG.
+ */
+async function fromHeic(file: File): Promise<File | null> {
+  try {
+    const { isHeic, heicTo } = await import('heic-to');
+    if (!(await isHeic(file))) return null;
+    const jpeg = await heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 });
+    return new File([jpeg], file.name.replace(/\.[^.]*$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return null;
+  }
+}
+
 export interface PickerHandlers {
   onChoose: (candidate: Candidate) => void;
   /**
@@ -82,9 +101,10 @@ export class Picking {
    *  component, which declines them the moment a word has been searched — so
    *  nothing here has to ask what is in a field it no longer owns. */
   suggested = $state.raw<Candidate[]>([]);
-  /** The one thing the search's own status line cannot say: a cut that failed.
-   *  Cleared by the next crop, so it is never left standing over a fresh one. */
-  cropFailed = $state('');
+  /** What the search's own status line cannot say: a picture being converted,
+   *  one that cannot be opened, a cut that failed. Cleared by the next file, so
+   *  it is never left standing over a fresh one. */
+  note = $state('');
   caption = $state('');
   /** Whether the search is open under the picture: closed while there is one (her pick „Karte"), open on an empty field. */
   searching = $state(false);
@@ -219,21 +239,27 @@ export class Picking {
      * instead and settles on the press that keeps one.
      *
      * No crop offered is not a failure and gets no sentence: the picture was
-     * already square, or the browser could not read a size off it, and both
-     * mean the file goes exactly as it did before this step existed.
+     * already square, and goes exactly as it did before this step existed.
      */
-    this.cropFailed = '';
-    const loaded = await loadSquare(file, file.name).catch(() => null);
-    if (loaded) { this.loaded = loaded; return; }
+    this.note = '';
     /*
-     * `loadSquare` says null for a square picture and for one the browser
-     * cannot open at all — an iPhone's HEIC in Chrome, say. The second used to
-     * be stored anyway and then stood in the field as ↻ for good, with
-     * „gespeichert" said over it. It is turned away here instead, with a
-     * sentence, and nothing is written.
+     * A file the browser cannot open used to be stored anyway — `loadSquare`
+     * says null for that and for a square picture alike — and then stood in
+     * the field as ↻ for good, with „gespeichert" said over it. A HEIC is made
+     * a JPEG first; anything else unreadable is turned away with a sentence,
+     * and nothing is written.
      */
-    if (!(await readable(file))) { this.cropFailed = t('ui.own_picture_unreadable'); return; }
-    this.settle(() => this.handlers.onOwnImage(file, file.name));
+    let picture: File | null = file;
+    if (!(await readable(file))) {
+      this.note = t('ui.own_picture_converting');
+      picture = await fromHeic(file);
+      this.note = picture ? '' : t('ui.own_picture_unreadable');
+      if (!picture) return;
+    }
+    const loaded = await loadSquare(picture, picture.name).catch(() => null);
+    if (loaded) { this.loaded = loaded; return; }
+    const square = picture;
+    this.settle(() => this.handlers.onOwnImage(square, square.name));
   }
 
   /** Back to the suggestions, keeping nothing. The one caller left is a cut
@@ -250,7 +276,7 @@ export class Picking {
     if (!loaded || !cropper) return;
     void cropper.cut().then(
       (square) => this.settle(() => this.handlers.onOwnImage(square, cropName(loaded.name, square.type))),
-      () => { this.endCrop(); this.cropFailed = t('ui.crop_failed'); });
+      () => { this.endCrop(); this.note = t('ui.crop_failed'); });
   }
 
   teardown(): void {

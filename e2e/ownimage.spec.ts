@@ -94,17 +94,33 @@ test('the picker shows the picture the field is already holding', async ({ page 
   await expect(page.getByRole('button', { name: 'Eigenes Bild entfernen' })).toHaveCount(0);
 });
 
+/** 60x40 red, written as HEIC by macOS `sips` — what an iPhone hands over. */
+const HEIC = 'AAAAJGZ0eXBoZWljAAAAAG1pZjFNaVBybWlhZk1pSEJoZWljAAABhm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAHBpY3QAAAAAAAAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAAADnBpdG0AAAAAAAEAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABodmMxAAAAAOZpcHJwAAAAxWlwY28AAAATY29scm5jbHgAAgACAAaAAAAADGNsbGkAywBAAAAAFGlzcGUAAAAAAAAAPAAAACgAAAAJaXJvdAAAAAAQcGl4aQAAAAADCAgIAAAAcWh2Y0MBA3AAAACwAAAAAAAe8AD8/fj4AAALA6AAAQAXQAEMAf//A3AAAAMAsAAAAwAAAwAecCShAAEAI0IBAQNwAAADALAAAAMAAAMAHqAUIEHBnG4h7kWVTcCAgYAgogABAAlEAcBhcshAUyQAAAAZaXBtYQAAAAAAAAABAAEGgQIDBYaEAAAAHmlsb2MAAAAARAAAAQABAAAAAQAAAboAAABoAAAAAW1kYXQAAAAAAAAAeAAAAGQoAa+jaUbFf/76k//lcch5No/sQmnOxgOVIjgZJiztFJIJOcWqMWcj/6I7gbmZ6bdhQLRALP20LsiADGs02X/6+9VmHxZngZPO0wb3CfznorbpIR1v9sKAvoJ+3/rPD5Os3o6Q';
+
 /**
- * A file the browser cannot draw — an iPhone's HEIC in Chrome — is turned away
- * with a sentence. It used to be stored anyway and then stood in the field as ↻
- * for good, under „Eigenes Bild gespeichert.".
+ * A file the browser cannot draw used to be stored anyway and then stood in the
+ * field as ↻ for good, under „Eigenes Bild gespeichert.". A HEIC is made a JPEG
+ * first — Chromium cannot draw one, so this goes through the converter — and
+ * being wider than high it is offered for cropping like any other photo.
  */
-test('turns away a picture the browser cannot open, and keeps the symbol', async ({ page }) => {
+test('makes a HEIC a JPEG, and crops it like any other photo', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   await page.locator('.row').first().locator('.slot').nth(2).click();
   await openSymbolSearch(page);
   await page.locator('.picker__own input[type=file]').setInputFiles({
-    name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from('not a picture this browser draws'),
+    name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from(HEIC, 'base64'),
+  });
+  await expect(page.locator('.picker__crop')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect.poll(() => widths(page)).toEqual([1, 1, 40, 1]);
+});
+
+test('turns away a file the browser cannot open, and keeps the symbol', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await page.locator('.row').first().locator('.slot').nth(2).click();
+  await openSymbolSearch(page);
+  await page.locator('.picker__own input[type=file]').setInputFiles({
+    name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from('not a picture at all'),
   });
   await expect(page.getByText('Dieses Bild kann der Browser nicht öffnen.', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Eigenes Bild entfernen' })).toHaveCount(0);
