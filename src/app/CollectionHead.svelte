@@ -74,6 +74,8 @@
   let laid = $derived(rowsOfGame(activeCollection()?.game).reduce((all, row) => all + row.zellen.filter((zelle) => zelle.platz && zelle.karte).length, 0));
   let count = $derived(kind() === 'rezept'
     ? (n === 1 ? t('ui.n_entries_one') : t('ui.n_entries', { n }))
+    : kind() === 'erzaehlen'
+    ? (n === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n }))
     : kind() === 'plauderbuch'
     ? (sayings === 1 ? t('ui.n_cards_one') : t('ui.n_cards', { n: sayings }))
     : kind() === 'spiel'

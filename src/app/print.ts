@@ -247,7 +247,7 @@ function buildOptions(
       ? talk.pages.flatMap((page) => [...(page.question ? [page.question] : []), ...page.sayings])
     : game
       ? game.rows.flatMap((row) => row.zellen.map((zelle) => zelle.karte))
-    : which === 'rezept'
+    : which === 'rezept' || which === 'erzaehlen'
       ? [...all].sort((a, b) => a.createdAt - b.createdAt)
       : contentOf(all);
   if ((chosen.length === 0 && !board) || !s.settings) return null;

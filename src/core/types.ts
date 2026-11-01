@@ -244,15 +244,27 @@ export interface Sentence {
    * Rezept's three parts, on no field of a Tafel, and no row or card of
    * anything — `contentOf` leaves it out.
    */
-  part?: RecipePart | 'titel';
+  part?: RecipePart | StoryPart | 'titel';
 }
 
 /** The three parts of a Rezept, in the order they are shown and printed. */
 export const RECIPE_PARTS = ['zutat', 'hilfsmittel', 'schritt'] as const;
 export type RecipePart = (typeof RECIPE_PARTS)[number];
 
-/** Which part of a Rezept a sentence is in. */
-export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | 'titel' => sentence.part ?? 'zutat';
+/**
+ * The three parts of an Erzählen sheet, top to bottom: what is said first
+ * („Hallo"), what is told — one to four cards, the week's —, and the cards
+ * to answer with („schön", „Und du?").
+ */
+export const STORY_PARTS = ['oben', 'mitte', 'unten'] as const;
+export type StoryPart = (typeof STORY_PARTS)[number];
+/** The most cards the middle of an Erzählen sheet holds: four still stand side by side on A5. */
+export const STORY_MIDDLE_MAX = 4;
+export const isStoryPart = (part: string | undefined): part is StoryPart =>
+  (STORY_PARTS as readonly string[]).includes(part ?? '');
+
+/** Which part of a Rezept, or of an Erzählen sheet, a sentence is in. */
+export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | StoryPart | 'titel' => sentence.part ?? 'zutat';
 
 const chosen = (slot: Slot): boolean => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean));
 
@@ -613,7 +625,7 @@ export interface BoardGroup {
  * `ui.template_*` is built from it and a third template with no sentence has to
  * fail a test rather than reach somebody as a dotted identifier.
  */
-export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied', 'plauderbuch', 'spiel'] as const;
+export const COLLECTION_KINDS = ['satzstreifen', 'wortkarten', 'tafel', 'einkaufsliste', 'rezept', 'lied', 'plauderbuch', 'spiel', 'erzaehlen'] as const;
 export type CollectionKind = (typeof COLLECTION_KINDS)[number];
 
 /**
@@ -726,7 +738,7 @@ export interface Override {
  * `plauderbuch`: a page per question with free fields to velcro onto, then
  * the cards to cut out for them.
  */
-export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied' | 'plauderbuch' | 'spiel';
+export type LayoutMode = 'strip' | 'sheet' | 'einkaufsliste' | 'rezept' | 'lied' | 'plauderbuch' | 'spiel' | 'erzaehlen';
 export type LabelPosition = 'below' | 'above';
 export type Orientation = 'portrait' | 'landscape';
 /**

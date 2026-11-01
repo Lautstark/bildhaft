@@ -285,6 +285,30 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     }),
   },
 
+  /* Opens on A5 lying on its side, one sheet: the name with its picture,
+     the Hallo under it, the week's one to four cards taking what the page
+     has, and the row to answer with on a block of the material's colour at
+     the foot. Laminated whole or not at all, so nothing is cut. A light blue
+     page until it is given another; white cards, so a photo and a symbol
+     stand on the same ground. The Anybook circle over the symbol's corner,
+     as on every card of given size. */
+  erzaehlen: {
+    cards: false,
+    zeileInEdit: true,
+    defaults: () => ({
+      paper: 'a5', orientation: 'landscape', symbolSizeMm: 18, cutMarginMm: 1.5,
+      showLabel: true, labelPosition: 'below', labelSizePt: 9,
+      cardBorderMm: 0, cardRadiusMm: 3, cardBackground: '#ffffff',
+      pageColour: '#dcebfb', accentColour: '#3f88e0',
+      ...HEADED, titleLine: false, showPageNumbers: false,
+    }),
+    fixed: (settings) => ({ layout: 'erzaehlen', titleEvery: false, ...(anybookOver(settings.anybookPlace) ? {} : { anybookPlace: 'over' as const }) }),
+    offers: () => ({
+      ...BASE, title: 'once', size: { kind: 'symbol', max: 40, fallback: 18, note: null, cut: false }, margin: 'symbol',
+      colour: true, anybookPlaces: ANYBOOK_CORNERS,
+    }),
+  },
+
   /* Opens on A4 lying on its side, one sheet per few rows: left the Ablage
      the cut cards live on, right the rows with a dashed Klett field per card
      — the sheet is laminated whole and goes into a folder. The cards come on

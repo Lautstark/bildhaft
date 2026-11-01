@@ -1,4 +1,4 @@
-import type { RecipePart, Sentence } from '../core/types.ts';
+import type { RecipePart, Sentence, StoryPart } from '../core/types.ts';
 import { partOf, sentenceCaption, slotCaption } from '../core/types.ts';
 import { deleteSentence, newId, putSentence } from '../db/repo.ts';
 import { emptySlot, openPicker } from './editing.ts';
@@ -12,10 +12,13 @@ import { s } from './state.svelte.ts';
  * part can be written again as text with „✎ Text".
  */
 
+/** A part that holds cards: one of a Rezept's, or one of an Erzählen sheet's (story.ts). */
+type CardPart = RecipePart | StoryPart;
+
 const linesOf = (text: string): string[] => text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 
 /** A part's entries top to bottom, the order the Rezept shows and prints. */
-export const entriesOf = (part: RecipePart): Sentence[] =>
+export const entriesOf = (part: CardPart): Sentence[] =>
   s.sentences.filter((sentence) => partOf(sentence) === part).sort((a, b) => a.createdAt - b.createdAt);
 
 /* What an entry reads as where it stands: a card its caption („2 Eier"), a
@@ -37,7 +40,7 @@ export function addToPart(part: RecipePart, text: string): Promise<string> {
  * picker open on it. Closed without a choice, the card goes again, as the
  * „+" card of a Wortkarten-Sammlung's does.
  */
-export async function addCard(part: RecipePart): Promise<void> {
+export async function addCard(part: CardPart): Promise<void> {
   const collectionId = s.activeId;
   if (!collectionId) return;
   const slot = emptySlot();
@@ -56,7 +59,7 @@ export async function addCard(part: RecipePart): Promise<void> {
  * age, so the moved ones are given new ones — counted up from the oldest the
  * part has, which keeps every other part where it was.
  */
-export async function moveEntry(part: RecipePart, from: number, to: number): Promise<void> {
+export async function moveEntry(part: CardPart, from: number, to: number): Promise<void> {
   const list = entriesOf(part);
   if (from === to || !list[from] || !list[to]) return;
   const base = list[0]!.createdAt;

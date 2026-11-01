@@ -18,7 +18,7 @@ import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printShe
 
 export const VORLAGE: Record<CollectionKind, string> = {
   satzstreifen: 'Satzstreifen', wortkarten: 'Wortkarten', tafel: 'Tafel', einkaufsliste: 'Einkaufsliste',
-  rezept: 'Rezept', lied: 'Lied', plauderbuch: 'Plauderbuch', spiel: 'Spiel',
+  rezept: 'Rezept', lied: 'Lied', plauderbuch: 'Plauderbuch', spiel: 'Spiel', erzaehlen: 'Erzählen',
 };
 
 /* ------------------------------------------------------------ symbols -- */
@@ -141,6 +141,15 @@ function testMaterial(which: CollectionKind): Omit<Material, 'id' | 'provider' |
       });
       return { name: 'Kita', sentences: [question, ...sayings], talk: { pages: [{ question, sayings }] } };
     }
+    case 'erzaehlen':
+      return {
+        name: 'Mein Wochenende',
+        sentences: [
+          sentence(['Hand'], { part: 'oben' }),
+          sentence(['Garten'], { part: 'mitte' }), sentence(['Blume'], { part: 'mitte' }), sentence(['Gummistiefel'], { part: 'mitte' }),
+          ...['Sonne', 'Ball', 'Topf', 'Fuß', 'Kopf'].map((word) => sentence([word], { part: 'unten' })),
+        ],
+      };
     case 'spiel': {
       const pairs = [['Fuß', 'Schuh'], ['Zahnbürste', 'Zahnpasta'], ['Kopf', 'Mütze'], ['Blume', 'Gießkanne'], ['Hand', 'Handschuh']];
       const rows = pairs.map(([a, b]) => ({ zellen: [{ karte: sentence([a!]), platz: false }, { karte: sentence([b!]), platz: true }] }));

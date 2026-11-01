@@ -22,9 +22,11 @@
   import Recipe from '../ui/Recipe.svelte';
   import Song from '../ui/Song.svelte';
   import Talk from '../ui/Talk.svelte';
+  import Story from '../ui/Story.svelte';
   import Game from '../ui/Game.svelte';
   import GameTabelle from '../ui/GameTabelle.svelte';
   import { handleNewCard } from './board.ts';
+  import { seedStory } from './story.ts';
   import { activeCollection, holdsWords, kind, providerId, s } from './state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -60,6 +62,8 @@
     else delete next.game;
     s.collections = s.collections.map((c) => (c.id === next.id ? next : c));
     await patchCollection(next.id, { kind: which, board: next.board, game: next.game });
+    /* An Erzählen sheet is born with its Hallo and its row to answer with. */
+    if (which === 'erzaehlen') await seedStory();
   }
 
   async function pick(which: TemplateTile): Promise<void> {
@@ -78,7 +82,7 @@
   A Rezept is drawn empty as well, under the tiles: its boxes are where it is
   typed into, so without them an empty Rezept would have no way to begin. A
   Lied too, for the same reason: its box is where the song is pasted.
--->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'spiel'}{#if activeCollection()?.game?.tabelle}<GameTabelle {provider} />{:else}<Game {provider} />{/if}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}<!--
+-->{#if choosing}{:else if kind() === 'rezept'}<Recipe {provider} />{:else if kind() === 'lied'}<Song {provider} />{:else if kind() === 'plauderbuch'}<Talk {provider} />{:else if kind() === 'erzaehlen'}<Story {provider} />{:else if kind() === 'spiel'}{#if activeCollection()?.game?.tabelle}<GameTabelle {provider} />{:else}<Game {provider} />{/if}{:else if kind() === 'tafel'}<div class="rows rows--tafel"><Tafel {provider} /></div>{:else if empty}<!--
   Leer ist die leere Version der Vorlage, nicht ein leerer Kasten: die Wand
   nur mit ihrer „+"-Kachel, der Streifen als gestrichelte Zeile, die zur Box
   führt (2026-10-23, ihr Grundsatz).

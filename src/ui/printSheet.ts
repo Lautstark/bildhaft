@@ -1,7 +1,7 @@
 import type {
-  Orientation, PaperSize, PrintSettings, ProviderId, PunchEdge, Sentence, Slot, SongPartKind, ZoneStyle,
+  Orientation, PaperSize, PrintSettings, ProviderId, PunchEdge, Sentence, Slot, SongPartKind, StoryPart, ZoneStyle,
 } from '../core/types.ts';
-import { partOf, picturesOf, sentenceCaption, slotCaption, symbolIdFor } from '../core/types.ts';
+import { STORY_MIDDLE_MAX, partOf, picturesOf, sentenceCaption, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
@@ -702,6 +702,9 @@ export type Block =
      name, and the rest go on. `last` ends the places' sheet. */
   | { kind: 'store'; slots: Slot[]; last: boolean }
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
+  /* An Erzählen sheet under its name: the page that is left, in its three
+     parts. One page and never more, as a Tafel is. */
+  | { kind: 'story'; top: Slot[]; middle: Slot[]; bottom: Slot[]; height: string }
   | { kind: 'recipe-step'; id: string; text: string; n: number; slots: Slot[]; first: boolean }
   /* `more`: a piece of a part too tall for a page after its first, named as
      going on. */
@@ -1202,6 +1205,19 @@ export function sheetBlocks(
     }
     sentences.filter((sentence) => partOf(sentence) === 'schritt').forEach((sentence, at) => {
       blocks.push({ kind: 'recipe-step', id: sentence.id, text: sentenceCaption(sentence), n: at + 1, slots: sentence.slots, first: at === 0 });
+    });
+  } else if (settings.layout === 'erzaehlen') {
+    /*
+     * One block the height of what the name leaves of the page. The top and
+     * the foot are cards at the symbol's size; the middle takes the rest, its
+     * cards side by side and as tall as it is — one card the whole width, four
+     * a quarter each.
+     */
+    const of = (part: StoryPart): Slot[] => sentences.filter((sentence) => partOf(sentence) === part)
+      .flatMap((sentence) => sentence.slots.slice(0, 1));
+    blocks.push({
+      kind: 'story', top: of('oben'), middle: of('mitte').slice(0, STORY_MIDDLE_MAX), bottom: of('unten'),
+      height: `${(page.height - reserve).toFixed(3)}mm`,
     });
   } else if (settings.layout === 'lied') {
     /*

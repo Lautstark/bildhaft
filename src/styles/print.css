@@ -713,6 +713,39 @@
   align-items: flex-start;
 }
 
+/* ------------------------------------------------------------- erzählen */
+
+/* An Erzählen sheet: one page under its name, in three parts. The middle
+   takes what the top and the foot leave, its cards side by side filling
+   their share; the row to answer with lies on a block of the material's
+   colour, paler, as a Tafel's group does. */
+.ps-story {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+}
+.ps-story__top,
+.ps-story__bottom {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2mm;
+}
+.ps-story__middle {
+  flex: 1 1 0;
+  min-height: 0;
+  --cell-h: 100%;
+  column-gap: 2mm;
+}
+.ps-story__bottom {
+  padding: 2mm;
+  border-radius: 3mm;
+  background: color-mix(in srgb, var(--recipe) 25%, #fff);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* ------------------------------------------------------------------ lied */
 
 /* The Lied's name at the top in its colour, as a Rezept's is. Then its parts,

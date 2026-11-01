@@ -1,4 +1,5 @@
-import type { RecipePart, Sentence } from '../core/types.ts';
+import type { RecipePart, Sentence, StoryPart } from '../core/types.ts';
+import { isStoryPart } from '../core/types.ts';
 import { normalizeInput, splitLines } from '@lautstark/bildquelle/german';
 import { buildSlots, buildWordSlot } from '../core/match.ts';
 import { buildPartSlot } from '../core/recipe.ts';
@@ -42,8 +43,8 @@ const LINES_AT_ONCE = 4;
  * two rows of „La la la" are two rows. Bounded by what timed out this session,
  * which is a handful of lines on a bad day.
  */
-/** How a line is looked up and where it lands: a part of a Rezept, or an Aussage. */
-type LinePart = RecipePart | 'aussage';
+/** How a line is looked up and where it lands: a part of a Rezept or of an Erzählen sheet, or an Aussage. */
+type LinePart = RecipePart | StoryPart | 'aussage';
 
 const unsettled = new Map<string, { id: string; createdAt: number }[]>();
 
@@ -193,7 +194,9 @@ export async function addLines(
              until the tab is closed. */
           slots: await withTimeout(
             words
-              ? (part === 'aussage' ? buildSayingSlot(line, options)
+              /* An Erzählen card is read as an Aussage is: „Und du?" is one
+                 card with the picture of „du" and the whole line under it. */
+              ? (part === 'aussage' || isStoryPart(part) ? buildSayingSlot(line, options)
                 : part ? buildPartSlot(line, options) : buildWordSlot(line, options)).then((slot) => [slot])
               : buildSlots(line, options),
             LOOKUP_MS, t('ui.wait_source')),

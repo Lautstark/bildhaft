@@ -87,7 +87,7 @@ function materialAus(c: Collection, all: Sentence[], provider: ProviderId): Mate
     tabelle: c.game.tabelle ? tabelleHeads(c.game, get) : null,
   } : undefined;
   const sentences = board ? placedIds(board).map(get).filter(some)
-    : which === 'rezept' ? [...all].sort((a, b) => a.createdAt - b.createdAt)
+    : which === 'rezept' || which === 'erzaehlen' ? [...all].sort((a, b) => a.createdAt - b.createdAt)
     : contentOf(all);
   return {
     id: c.id, quelle: c.name, name: titleOf(c), provider, sentences, pictures: titlePictures(all),
