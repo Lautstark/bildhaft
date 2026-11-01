@@ -4,7 +4,7 @@ import { createCollection, listCollections, loadSettings, pullFromFolder } from 
 import { ablage, adopted, moveWortschatz, restoreFolder, watchFolder } from '../db/folder.ts';
 import { offerRescue } from '../ui/rescue.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
-import { openNamed, refreshCollections, setActive } from './collections.ts';
+import { arrivingFrom, openNamed, refreshCollections, setActive } from './collections.ts';
 import { bringPrintUpToDate } from './print.ts';
 import { notify } from './notify.ts';
 import { standing } from './standing.ts';
@@ -24,6 +24,7 @@ import { t } from '../i18n/index.ts';
  * message has to go there instead.
  */
 export function boot(say: (message: string) => void): void {
+  arrivingFrom();
   void (async () => {
     /* Before anything is read. Where a folder is the store it is the truth, and a
        first paint from the browser's copy would be a library that changes under
@@ -107,6 +108,8 @@ export function boot(say: (message: string) => void): void {
     // and notify() writes into a toast the page has to be drawing already.
     await openNamed();
   })().catch((error: unknown) => {
+    // Nothing is coming any more, and the page must not wait for it.
+    s.arriving = null;
     /*
      * Boot had no catch at all until adr/0001, and the failure it was missing
      * is the one that ADR is about: a database this build cannot read left

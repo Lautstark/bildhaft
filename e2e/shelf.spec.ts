@@ -83,6 +83,35 @@ test('a Sammlung made in another symbol source still shows symbols', async ({ pa
   await expect(slot.locator('.word__pic img')).toBeVisible();
 });
 
+/* What she saw (2026-10-31): the link „did nothing" for long enough that she
+   tried again. The page showed the last Material until the new one landed on
+   it. Now the new one is the open one from the first paint, waiting, and the
+   last one is out of sight until it has come or failed. */
+test('a Sammlung on its way is shown waiting, and the last Material is out of sight', async ({ page }) => {
+  await mockArasaac(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(SHELF, async (route) => {
+    await held;
+    await route.fulfill({ json: published });
+  });
+
+  await page.goto('/?sammlung=vom-regal');
+
+  const waiting = page.locator('.arriving');
+  await expect(waiting).toContainText('kommt aus der Sammlung');
+  await expect(page.locator('.collections__item--arriving')).toHaveAttribute('aria-current', 'true');
+  // Only the arriving row is open, and none of the Material behind it shows.
+  await expect(page.locator('.sidebar__section--collections [aria-current]')).toHaveCount(1);
+  await expect(page.getByLabel('Name des Materials')).toHaveCount(0);
+
+  release();
+
+  await expect(page.getByLabel('Name des Materials')).toHaveValue('Vom Regal');
+  await expect(waiting).toHaveCount(0);
+  await expect(page.locator('.collections__item--arriving')).toHaveCount(0);
+});
+
 test('a link naming a Sammlung that is not there says so, and adds nothing', async ({ page }) => {
   await mockArasaac(page);
   await page.route(SHELF, (route) => route.fulfill({ status: 404, body: '' }));
@@ -90,6 +119,7 @@ test('a link naming a Sammlung that is not there says so, and adds nothing', asy
   await page.goto('/?sammlung=weg-damit');
 
   await expect(page.getByText(/gibt es hier nicht|no such collection/i)).toBeVisible();
+  await expect(page.locator('.arriving')).toHaveCount(0);
   // One Sammlung: the empty one every first visit starts with, and nothing else.
   await expect(page.locator('.sidebar__section--collections .collections__item')).toHaveCount(1);
 });

@@ -38,6 +38,13 @@ export class AppState {
      `activeId` stays put while the Wortschatz is open, so leaving it comes
      back to the same one. adr/0002 has why there are two. */
   wortschatz = $state.raw<{ tag: string | null } | null>(null);
+  /* A Material on its way from lautstark.tech/sammlungen, from the first paint
+     until its symbols are in. `name` is null until the file has come. While it
+     is set, the page shows that Material waiting rather than the last one
+     open: an import resolves every symbol, which took long enough for her to
+     think the link did nothing (2026-10-31, her pick „C“). `id` is the
+     Material once it is filed, and its row in the sidebar is then the open one. */
+  arriving = $state.raw<{ name: string | null; id: string | null } | null>(null);
   /** What the sidebar's Wortschatz rows count. Read with the Sammlungen. */
   wordCount = $state(0);
   tagRows = $state.raw<{ name: string; count: number }[]>([]);
