@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { slotCaption, type Slot } from '../../src/core/types.ts';
+import { slotCaption, titleOf, type Slot } from '../../src/core/types.ts';
 
 const card = (label?: string | null): Slot => ({
   id: 's', sourceToken: 'Hallo', concept: 'hallo', origin: 'manual', choice: {}, candidates: {},
@@ -17,5 +17,13 @@ describe('slotCaption', () => {
   });
   it('prints her own words', () => {
     expect(slotCaption(card('Hallo Mia'))).toBe('Hallo Mia');
+  });
+});
+
+describe('titleOf', () => {
+  it('is the name until the material has a title, and empty once it was emptied', () => {
+    expect(titleOf({ name: 'Wochenende' })).toBe('Wochenende');
+    expect(titleOf({ name: 'Wochenende', title: 'Am Wochenende' })).toBe('Am Wochenende');
+    expect(titleOf({ name: 'Wochenende', title: '' })).toBe('');
   });
 });

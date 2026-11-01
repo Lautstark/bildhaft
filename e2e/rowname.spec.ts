@@ -29,9 +29,8 @@ test.beforeEach(async ({ page }) => {
 test('names a row, prints the name, and keeps it across a reload', async ({ page }) => {
   await translate(page, 'waschen einseifen abtrocknen');
 
-  // Empty means unnamed, so the field shows the typed line only as a hint.
-  await expect(name(page)).toHaveValue('');
-  await expect(name(page)).toHaveAttribute('placeholder', 'waschen einseifen abtrocknen');
+  // The typed line stands in the field as text, not as a placeholder.
+  await expect(name(page)).toHaveValue('waschen einseifen abtrocknen');
 
   await name(page).fill('Hände waschen');
   await name(page).press('Enter');
@@ -59,7 +58,7 @@ test('leaves the symbols and their words alone', async ({ page }) => {
   await expect(labels).toHaveText(before);
 });
 
-test('clearing the field gives the typed line back', async ({ page }) => {
+test('clearing the field empties the name, on screen and on paper', async ({ page }) => {
   await translate(page, 'waschen einseifen abtrocknen');
 
   await name(page).fill('Hände waschen');
@@ -69,12 +68,19 @@ test('clearing the field gives the typed line back', async ({ page }) => {
   await name(page).fill('');
   await name(page).press('Enter');
 
-  // Stored as absent, so "never named" and "name cleared" stay one state.
-  await expect.poll(async () => (await readSentences(page))[0]?.title).toBeFalsy();
+  // Emptied is a name of its own (''), not "never named".
+  await expect.poll(async () => (await readSentences(page))[0]?.title).toBe('');
 
   await page.reload();
   await expect(name(page)).toHaveValue('');
-  await expect(name(page)).toHaveAttribute('placeholder', 'waschen einseifen abtrocknen');
+  await showSheet(page);
+  await expect(page.locator('.preview-frame .ps-caption')).toHaveText(['']);
+  await page.keyboard.press('Escape');
+
+  // The typed line typed back is no name at all again.
+  await name(page).fill('waschen einseifen abtrocknen');
+  await name(page).press('Enter');
+  await expect.poll(async () => (await readSentences(page))[0]?.title).toBeNull();
   await expect(name(page)).not.toHaveAttribute('title', /.+/);
 });
 
@@ -95,6 +101,7 @@ test('a write that lands mid-typing does not take the field away', async ({ page
   await translate(page, 'waschen einseifen abtrocknen');
 
   await name(page).click();
+  await name(page).press('ControlOrMeta+a');
   await name(page).pressSequentially('Hände');
   await expect.poll(async () => (await readSentences(page))[0]?.title).toBe('Hände');
   await name(page).pressSequentially(' waschen');

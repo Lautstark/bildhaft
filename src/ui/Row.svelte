@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ProviderId, Sentence, Slot } from '../core/types.ts';
-  import { slotCaption } from '../core/types.ts';
+  import { sentenceCaption, slotCaption } from '../core/types.ts';
   import TitleField from '@lautstark/design/svelte/TitleField';
   import Icon from '../pieces/Icon.svelte';
   import EdgeBin from './EdgeBin.svelte';
@@ -102,8 +102,8 @@
    * name *is* the input, and .row__title draws it as a line until it is
    * hovered.
    *
-   * Empty means unnamed, so the field shows the typed line as a placeholder and
-   * holds only a name that was actually given. The same reading the caption
+   * The field holds the words that print, the typed line until the row is
+   * named; emptied, the row prints no words. The same reading the caption
    * field in the picker has, so clearing works the same way in both.
    *
    * `@lautstark/design/svelte/TitleField` since design v1.40.0, which makes
@@ -140,14 +140,14 @@
 
   /* A named row still says what was typed, because those are the words the
      symbols were fetched with and the ones a search finds it by — and the
-     placeholder that was showing them is gone the moment there is a name.
+     field stops showing them the moment there is a name.
      Nowhere but here: the paper prints the name alone. */
   /* A Schritt's or a Lied's line's one code: its field under the line's words, as everywhere (her calls, 2026-10-28). */
   let line = $derived(lineCode(sentence));
-  let typedLine = $derived(sentence.title?.trim() ? t('ui.typed_line', { text: sentence.rawInput }) : null);
+  let typedLine = $derived(sentence.title != null ? t('ui.typed_line', { text: sentence.rawInput }) : null);
 </script>
 
-<article class="row edge-host" aria-label={sentence.rawInput}><EdgeBin label={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)} /><header class="row__head">{#if step !== undefined}<span class="row__step" class:row__step--grip={onGrab} aria-hidden="true" draggable={onGrab ? 'true' : undefined} title={onGrab ? t('ui.drag_to_reorder') : undefined} ondragstart={onGrab}>{step}</span>{/if}<span class="row__words"><TitleField value={sentence.title?.trim() ?? ''} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} placeholder={sentence.rawInput} title={typedLine} />{#if line}<AnyStift code={line} mode="line" />{/if}</span>{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}</header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
+<article class="row edge-host" aria-label={sentence.rawInput}><EdgeBin label={t('ui.delete_row')} onclick={() => void confirmDeleteSentence(sentence)} /><header class="row__head">{#if step !== undefined}<span class="row__step" class:row__step--grip={onGrab} aria-hidden="true" draggable={onGrab ? 'true' : undefined} title={onGrab ? t('ui.drag_to_reorder') : undefined} ondragstart={onGrab}>{step}</span>{/if}<span class="row__words"><TitleField value={sentenceCaption(sentence)} write={(typed) => void handleRename(sentence.id, typed)} class="row__title" maxlength={80} label={t('ui.row_name')} title={typedLine} />{#if line}<AnyStift code={line} mode="line" />{/if}</span>{#if sung !== undefined && sung > 1}<span class="row__sung" title={t('ui.song_sung_title', { n: sung })}><Icon name="link" />{t('ui.song_sung', { n: sung })}</span>{/if}</header><div class="slots">{#each sentence.slots as slot, index (slot.id)}<div
   class="slot"
   class:slot--empty={!symbolIdFor(slot, provider)}
   class:slot--dragging={dragFrom === index}

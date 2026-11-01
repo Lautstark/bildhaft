@@ -282,9 +282,9 @@ export const titlePictures = (sentences: readonly Sentence[]): Slot[] =>
 export const contentOf = (sentences: readonly Sentence[]): Sentence[] =>
   sentences.filter((sentence) => sentence.part !== 'titel');
 
-/** The title a material prints: its own when it was given one, else its name. */
+/** The title a material prints: its own when it was given one ('' is none at all), else its name. */
 export const titleOf = (collection: Pick<Collection, 'name' | 'title'>): string =>
-  collection.title?.trim() || collection.name;
+  collection.title != null ? collection.title.trim() : collection.name;
 
 /**
  * What a row is called, on screen, on paper and in the sidebar. One expression,
@@ -292,7 +292,7 @@ export const titleOf = (collection: Pick<Collection, 'name' | 'title'>): string 
  * printout disagrees with is a wasted sheet.
  */
 export function sentenceCaption(sentence: Sentence): string {
-  return sentence.title?.trim() || sentence.rawInput;
+  return sentence.title != null ? sentence.title.trim() : sentence.rawInput;
 }
 
 /** A named group of sentences — e.g. one book, one topic, one child. */

@@ -262,7 +262,7 @@ function buildOptions(
     song,
     talk,
     game,
-    collectionName: open ? titleOf(open) : 'bildhaft',
+    collectionName: open ? titleOf(open) || open.name : 'bildhaft',
     pictures: titlePictures(all),
     settings: printOf(open, over),
     onChange: hooks.onChange,

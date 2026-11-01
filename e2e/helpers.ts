@@ -29,8 +29,7 @@ export async function translateAll(page: Page, sentences: string[]): Promise<voi
  * this is exactly the detail that should only have to be learned once.
  */
 export function rowFor(page: Page, typed: string) {
-  return page.locator('.row')
-    .filter({ has: page.locator(`.row__title[placeholder="${typed}"]`) });
+  return page.locator(`.row[aria-label="${typed}"]`);
 }
 
 /**

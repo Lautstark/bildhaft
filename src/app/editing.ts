@@ -52,18 +52,17 @@ async function updateSentence(next: Sentence): Promise<void> {
  * Names a row, or takes the name off it again.
  *
  * Trimming is decided here rather than in the bound field, which hands over
- * exactly what was typed — bildhaft has somewhere to show an unnamed row, so
- * an empty name is allowed and means the typed line.
+ * exactly what was typed. The field holds the words that print, so an empty
+ * name is an empty one ('') and the typed line typed back is no name at all.
  */
 export function handleRename(sentenceId: string, title: string): Promise<void> {
   return queued(async () => {
     const sentence = s.sentences.find((x) => x.id === sentenceId);
     if (!sentence) return;
-    const next = title.trim();
-    if (next === (sentence.title?.trim() ?? '')) return;
-    // Empty is stored as absent, so "never named" and "name cleared" stay
-    // the one state rather than two that read alike.
-    await updateSentence({ ...sentence, title: next || null });
+    const typed = title.trim();
+    const next = typed === sentence.rawInput.trim() ? null : typed;
+    if (next === (sentence.title == null ? null : sentence.title.trim())) return;
+    await updateSentence({ ...sentence, title: next });
   });
 }
 
@@ -294,7 +293,7 @@ async function handleClosePicker(): Promise<void> {
 export async function confirmDeleteSentence(sentence: Sentence): Promise<void> {
   const ok = await confirmDialog({
     title: t('ui.delete_row_title'),
-    body: t('ui.row_will_be_removed', { text: sentenceCaption(sentence) }),
+    body: t('ui.row_will_be_removed', { text: sentenceCaption(sentence) || sentence.rawInput }),
     confirmLabel: t('ui.delete'),
     danger: true,
   });

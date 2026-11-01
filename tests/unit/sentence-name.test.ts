@@ -33,12 +33,13 @@ describe('what a row is called', () => {
     expect(sentenceCaption(line({ title: 'Hände waschen' }))).toBe('Hände waschen');
   });
 
-  /* Absent, null and blank are one state — "never named" and "name cleared"
-     have to read alike, or clearing a name would leave a row called nothing. */
-  it('is the typed line again when the name is taken off', () => {
-    for (const title of [null, '', '   ']) {
-      expect(sentenceCaption(line({ title }))).toBe('waschen einseifen abtrocknen');
-    }
+  /* Never named reads as the typed line; a name she emptied stays empty (her call, 2026-11-01). */
+  it('is the typed line while the row has no name', () => {
+    expect(sentenceCaption(line({ title: null }))).toBe('waschen einseifen abtrocknen');
+    expect(sentenceCaption(line({}))).toBe('waschen einseifen abtrocknen');
+  });
+  it('is empty when the name was emptied', () => {
+    for (const title of ['', '   ']) expect(sentenceCaption(line({ title }))).toBe('');
   });
 });
 

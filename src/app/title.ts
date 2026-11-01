@@ -40,12 +40,13 @@ export async function setTitle(text: string): Promise<void> {
   const id = s.activeId;
   const open = s.collections.find((c) => c.id === id);
   if (!id || !open) return;
-  const own = text.trim() && text.trim() !== open.name.trim() ? text.trim() : undefined;
+  /* The field holds the words that print: emptied, it prints none (''); the name typed back follows the name again. */
+  const own = text.trim() !== open.name.trim() ? text.trim() : undefined;
   if (own === open.title) return;
   s.collections = s.collections.map((c) => {
     if (c.id !== id) return c;
     const next = { ...c };
-    if (own) next.title = own; else delete next.title;
+    if (own !== undefined) next.title = own; else delete next.title;
     return next;
   });
   await patchCollection(id, { title: own });

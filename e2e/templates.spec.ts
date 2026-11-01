@@ -779,7 +779,7 @@ test('a Rezept takes each part where it stands, and prints them in order', async
   }
   await expect(schritte.locator('.row__step')).toHaveText(['1', '2']);
   const steps = () => schritte.locator('.row__title').evaluateAll((fields) =>
-    fields.map((field) => field.getAttribute('placeholder')));
+    fields.map((field) => (field as HTMLInputElement).value));
   expect(await steps()).toEqual(['Eier in die Schüssel', 'Rühren']);
 
   // Dragged: a card as a whole, a Schritt by its number.
@@ -854,7 +854,7 @@ test('a Rezept is changed part by part, and chooses its paper', async ({ page })
   await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(schritte.locator('.row__title')).toHaveCount(3);
   await expect.poll(async () => (await schritte.locator('.row__title').evaluateAll((fields) =>
-    fields.map((field) => field.getAttribute('placeholder'))))).toEqual(['Mehl dazu', 'Eier in die Schüssel', 'Backen']);
+    fields.map((field) => (field as HTMLInputElement).value)))).toEqual(['Mehl dazu', 'Eier in die Schüssel', 'Backen']);
   const after = await readSentences(page);
   expect(after.find((row) => row.rawInput === 'Eier in die Schüssel')!.id).toBe(eier);
   expect(after.map((row) => row.rawInput)).not.toContain('Rühren');
@@ -1251,7 +1251,7 @@ test('a Lied holds a repeated line once, and prints the song written out', async
   const rabRows = page.locator(`.row[aria-label="${rab}"]`);
   await expect(rabRows).toHaveCount(4);
   await expect(rabRows.locator('.row__sung')).toHaveText(Array(4).fill('4×'));
-  await expect(rabRows.first().locator('.row__title')).toHaveAttribute('placeholder', rab);
+  await expect(rabRows.first().locator('.row__title')).toHaveValue(rab);
 
   await showSheet(page);
   const sheet = page.locator('.preview-frame');
