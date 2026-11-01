@@ -514,11 +514,9 @@ test('a Tafel field or tray „+" closed without a choice leaves no card', async
   await bar.press('Enter');
   await expect(page.locator('.board .cell').nth(0).locator('.word__name')).toHaveText('Apfel');
 
-  // In a field: its „+" is a line to type in, the picker one press further;
-  // the picker opens on a card lying there, and closing it takes the card
-  // away again and leaves the field free.
+  // In a field: its „+" opens the picker, as every „+" does, on a card lying
+  // there; closing it takes the card away again and leaves the field free.
   await page.getByRole('button', { name: 'Neue Karte in Feld 3' }).click();
-  await page.getByRole('button', { name: 'Bild suchen' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -676,12 +674,12 @@ test('fields are marked and grouped, on screen and on paper', async ({ page }) =
   await expect(zoned).toHaveCount(5);
   await page.keyboard.press('Escape');
 
-  // Nothing was put into a mode: a free field's „+" still opens its line to
-  // type in, and a card is still dragged into a grouped field.
+  // Nothing was put into a mode: a free field's „+" still opens the picker,
+  // and a card is still dragged into a grouped field.
   await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
-  await expect(page.getByLabel('Wort für Feld 2')).toBeFocused();
+  await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByLabel('Wort für Feld 2')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   // And a word typed goes into the first free field, grouped or not.
   await page.getByLabel('Wörter hinzufügen').fill('Blau');
   await page.getByLabel('Wörter hinzufügen').press('Enter');
@@ -1644,12 +1642,11 @@ test('an Einkaufsliste takes a list in the box on top, its title over the cards'
 });
 
 /*
- * A Tafel is typed into where the card goes: a free field pressed is a line
- * to type in, and the word lies in that field — a list in the next free
- * fields from there. The box under the head fills the first free fields as
- * well; only what finds no field waits under the Tafel.
+ * A free field of a Tafel opens the picker, the same dialog every „+" opens,
+ * and the card chosen there lies in that field. The box under the head fills
+ * the first free fields; only what finds no field waits under the Tafel.
  */
-test('a word typed into a free field lies there, a list in the next free fields', async ({ page }) => {
+test('a free field opens the picker and the card lies there; the box fills the first free fields', async ({ page }) => {
   await pickTemplate(page, /^Tafel/);
   // Empty, a Tafel is its box and its grid; its title line comes with its first card.
   await expect(page.locator('.title-line')).toHaveCount(0);
@@ -1657,25 +1654,28 @@ test('a word typed into a free field lies there, a list in the next free fields'
   expect(await top('.composer')).toBeLessThan(await top('.board'));
 
   await page.getByRole('button', { name: 'Neue Karte in Feld 2' }).click();
-  const line = page.getByLabel('Wort für Feld 2');
-  await line.fill('Apfel, Banane');
-  await line.press('Enter');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAccessibleName('Symbol wählen');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
   const cells = page.locator('.board .cell');
-  await expect(cells.nth(1).locator('.word__name')).toHaveText('Apfel');
-  await expect(cells.nth(2).locator('.word__name')).toHaveText('Banane');
-  await expect(cells.nth(0)).toHaveClass(/cell--free/);
+  await expect(cells.nth(1)).toHaveClass(/cell--free/);
+  const box = page.getByLabel('Wörter hinzufügen');
+  await box.fill('Apfel, Banane');
+  await box.press('Enter');
+  await expect(cells.nth(0).locator('.word__name')).toHaveText('Apfel');
+  await expect(cells.nth(1).locator('.word__name')).toHaveText('Banane');
   // A Tafel starts without its title; the title line stands only while it prints.
   await openDing(page, 'Titel');
   await expect(page.getByLabel('Titel drucken')).toBeChecked();
   expect(await top('.title-line')).toBeLessThan(await top('.board'));
   expect(await top('.board')).toBeLessThan(await top('.board-size'));
 
-  // The box over the Tafel puts its words into the first free fields too:
-  // Kiwi lies in the first field, the one left free.
-  const box = page.getByLabel('Wörter hinzufügen');
+  // The next word lies in the next free field.
   await box.fill('Kiwi');
   await box.press('Enter');
-  await expect(cells.nth(0).locator('.word__name')).toHaveText('Kiwi');
+  await expect(cells.nth(2).locator('.word__name')).toHaveText('Kiwi');
   await expect(page.locator('.tray')).toHaveCount(0);
 });
 
