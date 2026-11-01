@@ -999,6 +999,38 @@ test('two A5 pages share each A4 of the printable copy', async ({ page }) => {
 });
 
 /*
+ * The preview of A5 shows the printer's A4, so A5 quer stood there as an A4
+ * hoch. Hints say what the sheet is — where it is cut, and that a lone page's
+ * other half is room — and they are the screen's: not in the printer's copy.
+ */
+test('an A5 sheet in the preview says where it is cut and what is room', async ({ page }) => {
+  await showMaterial(page);
+  await translateAll(page, ['Der Hund spielt im Garten', 'Die Katze schläft', 'Der Vogel singt']);
+  await showSheet(page);
+  await pickPaper(page, 'A5');
+  await pickPaper(page, 'Quer');
+  await openDing(page, 'Seite');
+  await page.getByLabel('Ein Satz pro Seite').check();
+  await expect(page.getByRole('button', { name: 'Papier wählen' })).toContainText('2 pro A4');
+
+  // Every sheet is cut; a sheet with its page alone says the other half is room.
+  const seen = await page.locator('.preview-frame .ps-paper--two').evaluateAll((sheets) => sheets.map((sheet) => ({
+    pages: sheet.querySelectorAll('.ps-page').length,
+    cut: [...sheet.querySelectorAll<HTMLElement>('.ps-hint--cut')].map((hint) => hint.innerText),
+    room: [...sheet.querySelectorAll<HTMLElement>('.ps-hint--room')].map((hint) => hint.innerText),
+  })));
+  expect(seen.some((sheet) => sheet.pages === 2)).toBe(true);
+  expect(seen.at(-1)!.pages).toBe(1);
+  seen.forEach((sheet, at) => {
+    expect(sheet.cut).toEqual(['✂ hier schneiden']);
+    expect(sheet.room).toEqual(sheet.pages === 1 ? [`Platz für Seite ${2 * at + 2}`] : []);
+  });
+
+  await page.emulateMedia({ media: 'print' });
+  for (const hint of await page.locator('#print-root .ps-hint').all()) await expect(hint).toBeHidden();
+});
+
+/*
  * bildhaft makes the PDF itself, from the preview. Without a folder to keep it
  * in, it is downloaded — and it is the preview: the same number of pages, on
  * the same paper, named for the day and the paper.

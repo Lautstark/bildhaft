@@ -69,6 +69,9 @@ async function addPages(pdf: PDFDocument, pages: HTMLElement[], settings: PrintS
       width: page.offsetWidth,
       height: page.offsetHeight,
       scale: DPI / CSS_DPI,
+      /* The preview's hints over an A5 sheet — the cut line, the empty half
+         marked as room — are help on the screen, not paper. */
+      filter: (node) => !(node instanceof Element && node.classList.contains('ps-hint')),
       /* Under the page, not over it: the option is laid on with !important,
          and white there painted out a coloured page — an Einkaufsliste's
          board. Its own colour where it has one, white where it has none. */

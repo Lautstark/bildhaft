@@ -292,4 +292,10 @@
   Two A5 pages on one A4, after each other, and a short mark at either
   edge where the sheet is folded and cut — on the edge only, so nothing of it
   is left on a page once it is cut.
---><div class="ps-paper ps-paper--two ps-paper--{settings.orientation === 'landscape' ? 'stacked' : 'side'}">{#each sheet.pages as at (at)}{@render paged(pages[at]!, at, 'half')}{/each}<span class="ps-fold ps-fold--a" aria-hidden="true"></span><span class="ps-fold ps-fold--b" aria-hidden="true"></span></div>{/if}{/each}{:else}{#if activation}<AnyCode {settings} key={ANYBOOK_START} standing="" start />{/if}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>
+
+  The preview shows the printer's sheet, so A5 quer stood there as an A4 hoch
+  and read as the wrong choice. The hints say what the sheet is: where it is
+  cut, and that an empty half is room rather than part of the page. They are
+  the app's, not the paper's — its colour, its chips — and print.css draws
+  them only in the preview; the PDF leaves them out by their class (pdf.ts).
+--><div class="ps-paper ps-paper--two ps-paper--{settings.orientation === 'landscape' ? 'stacked' : 'side'}">{#each sheet.pages as at (at)}{@render paged(pages[at]!, at, 'half')}{/each}{#if sheet.pages.length === 1}<div class="ps-hint ps-hint--room" aria-hidden="true"><span>{t('ui.sheet_room', { n: numberOf(sheet.pages[0]!) + 1 })}</span></div>{/if}<span class="ps-hint ps-hint--cut" aria-hidden="true"><span>✂ {t('ui.sheet_cut')}</span></span><span class="ps-fold ps-fold--a" aria-hidden="true"></span><span class="ps-fold ps-fold--b" aria-hidden="true"></span></div>{/if}{/each}{:else}{#if activation}<AnyCode {settings} key={ANYBOOK_START} standing="" start />{/if}{#each blocks as block, i (i)}{@render one(block)}{/each}{/if}</div>

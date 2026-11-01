@@ -1336,3 +1336,38 @@
   padding-top: calc(0.6mm * var(--talk-k));
   align-self: start;
 }
+
+/*
+ * The hints over a sheet of two A5 pages (PrintSheet.svelte): a cut line
+ * across the middle and, when a page stands alone, its empty half marked as
+ * room. Drawn as the app's own marks — its accent, its font, chips — so they
+ * read as help laid over the paper and not as ink on it. Nowhere but the
+ * preview: hidden in #print-root, and left out of the PDF by pdf.ts. In mm
+ * like the paper, so they scale with the preview.
+ */
+.ps-hint { display: none; }
+.preview-scaler .ps-hint--cut { display: block; position: absolute; z-index: 2; border: 0 dashed var(--accent); pointer-events: none; }
+.preview-scaler .ps-paper--stacked .ps-hint--cut { left: 0; right: 0; top: 50%; border-top-width: 1.2mm; }
+.preview-scaler .ps-paper--side .ps-hint--cut { top: 0; bottom: 0; left: 50%; border-left-width: 1.2mm; }
+.preview-scaler .ps-hint > span {
+  position: absolute;
+  white-space: nowrap;
+  font-family: var(--font);
+  font-size: 10mm;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3mm 6mm;
+  border-radius: 99mm;
+}
+.preview-scaler .ps-hint--cut > span { color: #fff; background: var(--accent); box-shadow: 0 0.5mm 2mm rgba(0, 0, 0, .25); }
+.preview-scaler .ps-paper--stacked .ps-hint--cut > span { left: 50%; top: 0; transform: translate(-50%, -50%); }
+.preview-scaler .ps-paper--side .ps-hint--cut > span { top: 50%; left: 0; transform: translate(-50%, -50%) rotate(-90deg); }
+.preview-scaler .ps-hint--room {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--accent) 14%, transparent) 0 2mm, transparent 2mm 5mm);
+}
+.preview-scaler .ps-paper--stacked .ps-hint--room { left: 0; right: 0; top: 50%; bottom: 0; }
+.preview-scaler .ps-paper--side .ps-hint--room { top: 0; bottom: 0; left: 50%; right: 0; }
+.preview-scaler .ps-hint--room > span { left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--accent); background: #fff; border: 0.5mm solid var(--accent); }
