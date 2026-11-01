@@ -1125,10 +1125,11 @@
   background: var(--any-fill, transparent);
 }
 /* Above, beside, left and below each said as strongly as the rule that sets
-   every circle at the top right, or it loses to it. --any-edge (below) keeps
-   the circle off a narrow Rand's cut line. */
+   every circle at the top right, or it loses to it. --any-edge (below) sets
+   the circle --any-gap from the card's edge or its frame's, out into a wide
+   Rand or in from a narrow one. */
 .ps-sheet.ps-sheet--anybook.ps-sheet--any-above :is(.ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img, .ps-talk__card .ps-title__pic, .ps-spiel__bild .ps-title__pic):has(img) > .ps-any {
-  top: var(--any-edge);
+  top: var(--any-rise, var(--any-edge));
   right: auto;
   left: calc(50% - 4.75mm);
 }
@@ -1140,12 +1141,12 @@
 /* Below: under the word, in the middle (her eight, 2026-10-28) — the word
    stays with its picture, and the card grows by the circle at its foot. */
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) {
-  padding-bottom: calc(var(--any-foot, var(--cut) + var(--any-edge) - 0.2mm) + 10.5mm);
+  padding-bottom: calc(var(--any-foot, var(--any-gap) - 0.2mm) + 10.5mm);
 }
-.ps-sheet--any-below .ps-card--framed > .ps-card__frame { --any-foot: var(--frame-pad); }
+.ps-sheet--any-below .ps-card--framed > .ps-card__frame { --any-foot: calc(var(--any-gap) - var(--frame-w)); }
 .ps-sheet--any-below :is(.ps-card:not(.ps-card--framed, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card), .ps-card--framed:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) > .ps-card__frame):has(img) > .ps-any {
   top: auto;
-  bottom: var(--any-foot, calc(var(--cut) + var(--any-edge) - 0.2mm));
+  bottom: var(--any-foot, calc(var(--any-gap) - 0.2mm));
   right: auto;
   left: calc(50% - 4.75mm);
 }
@@ -1229,24 +1230,38 @@
   --any-fill: #fff;
 }
 /* How near a code comes to a card's edge, said once for every place and
-   both sheets (her call, 2026-10-28): Studio's code, 10.8 mm across
-   (anybook.ts, STUDIO_CODE_MM), 1.5 mm from the cut line — the sticker's
-   9.5 mm circle, on the same middle, 2.15 mm; 2 mm cost a Spiel's small
-   symbols too much. Studio's code stands where the sticker does; nothing moves it
-   on its own sheet. In a corner that is --any-in (below); above, below,
-   left and right the circle keeps it however narrow the Rand: --any-edge
-   is what the Rand lacks of it, added to the room, and below to the foot. */
+   both sheets (her call, 2026-11-01, after a printed Erzählen sheet): the
+   sticker's 9.5 mm circle 1.5 mm from the cut line or the frame. Before
+   (2026-10-28) it was Studio's code that kept the 1.5 mm and the circle,
+   on the same middle, 2.15 mm — too far in on paper. Studio's code, 10.8 mm
+   across (anybook.ts, STUDIO_CODE_MM), still stands where the sticker does,
+   on its middle: 0.85 mm from the cut line, its rim the first a crooked cut
+   takes; nothing moves it on its own sheet. In a corner that is --any-in
+   (below), and the same from a frame's line as from a cut line. Above,
+   below, left and right likewise, however wide or narrow the Rand: before,
+   the circle never went out of the symbol's box, so a Rand of 3 mm held it
+   3 mm in. --any-edge is how far it stands out of the box, toward the edge
+   (less than nothing: in from it) — a card's box is its Rand in from the
+   cut line, a framed card's its frame's padding in from the frame's line. */
 .ps-sheet--anybook {
-  --any-gap: 2.15mm;
+  --any-gap: 1.5mm;
   --any-edge: max(0mm, var(--any-gap) - var(--cut));
 }
+.ps-sheet--anybook .ps-card { --any-edge: calc(var(--any-gap) - max(var(--cut), 0.2mm)); }
+.ps-sheet--anybook .ps-card--framed { --any-edge: calc(var(--any-gap) - var(--frame-w) - var(--frame-pad)); }
 
-/* The room, said once: on top for above, on the right for beside. */
-.ps-sheet--any-above { --any-top: calc(10.5mm + var(--any-edge)); }
-.ps-sheet--any-left { --any-left: calc(10.5mm + var(--any-edge)); }
-.ps-sheet--any-beside { --any-right: calc(10.5mm + var(--any-edge)); }
-/* A card that gets no circle gets no room: a Schritt's pictures, a place. */
-:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card { --any-left: 0mm; --any-right: 0mm; }
+/* The room, said once for each card: on top for above, on the right for
+   beside — the circle and 1 mm of air, less what of it lies in the Rand. */
+.ps-sheet--any-above .ps-card { --any-rise: var(--any-edge); --any-top: max(0mm, 10.5mm + var(--any-rise)); }
+/* Above with the word on top the circle stays between word and symbol: it
+   goes no further up than the symbol's box — the one place it is further
+   in than --any-gap. */
+.ps-sheet--any-above .ps-card--label-above { --any-rise: max(0mm, var(--any-edge)); }
+.ps-sheet--any-left .ps-card { --any-left: max(0mm, 10.5mm + var(--any-edge)); }
+.ps-sheet--any-beside .ps-card { --any-right: max(0mm, 10.5mm + var(--any-edge)); }
+/* A card that gets no circle gets no room: a Schritt's pictures, a place;
+   nor a photo of Erzählen's middle, whose circle sits on its edge. */
+:is(.ps-place, .ps-recipe-step, .ps-song-line, .ps-story__middle) .ps-card { --any-top: 0mm; --any-left: 0mm; --any-right: 0mm; }
 
 /* Above and beside — growing: the room comes on top of the symbol. Given: it comes off it. */
 .ps-sheet--anybook .ps-card:not(.ps-card--fill, .ps-card--exact, :is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card, .ps-cut .ps-card) .ps-card__img:has(img) {
@@ -1278,7 +1293,8 @@
  * leaves is covered, and that is the price of the pairing. --any-pad is how
  * far the symbol's box stands in from the card's edge: its padding; --any-in
  * how far the circle stands in from where it hangs: --any-gap from the
- * card's edge, so on a card inside its 0.2 mm border that much less.
+ * card's edge, so on a card inside its 0.2 mm border that much less, and
+ * inside a frame's line (its width, or a Spiel's 0.4 mm) that much less.
  *
  * The card keeps its size; the symbol gives up only what it must, keeps its
  * bottom line and stays centred. What it must: the circle may lie on the
@@ -1294,9 +1310,10 @@
  * sheet and card: printSheet.ts works it out once (anybookSymbol, --any-sym).
  */
 .ps-card { --any-pad: max(0mm, var(--cut) - 0.2mm); --any-in: calc(var(--any-gap) - 0.2mm); }
-.ps-card--framed { --any-pad: var(--frame-pad); --any-in: var(--any-gap); }
+.ps-card--framed { --any-pad: var(--frame-pad); --any-in: calc(var(--any-gap) - var(--frame-w)); }
 :is(.ps-talk__card, .ps-spiel__bild) { --any-pad: calc(1mm * var(--talk-k)); }
-:is(.ps-talk-cut__cell, .ps-spiel__bild) { --any-in: var(--any-gap); }
+.ps-talk-cut__cell { --any-in: var(--any-gap); }
+.ps-spiel__bild { --any-in: calc(var(--any-gap) - max(var(--frame-w), 0.4mm * var(--talk-k))); }
 
 .ps-sheet--any-over .ps-card:not(:is(.ps-place, .ps-recipe-step, .ps-song-line) .ps-card) .ps-card__img:has(img) {
   container-type: size;
