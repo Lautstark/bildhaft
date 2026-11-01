@@ -148,7 +148,6 @@ function testMaterial(which: CollectionKind): Omit<Material, 'id' | 'provider' |
       return {
         name: 'Mein Wochenende',
         sentences: [
-          sentence(['Hand'], { part: 'oben' }),
           sentence(['Garten'], { part: 'mitte' }), sentence(['Blume'], { part: 'mitte' }), sentence(['Gummistiefel'], { part: 'mitte' }),
           ...['Sonne', 'Ball', 'Topf', 'Fuß', 'Kopf'].map((word) => sentence([word], { part: 'unten' })),
         ],

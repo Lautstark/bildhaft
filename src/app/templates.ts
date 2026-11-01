@@ -80,6 +80,8 @@ export interface PrintOffer {
   game?: boolean;
   /** A Plauderbuch: its band's colour, and the line round its free field. */
   talk?: boolean;
+  /** An Erzählen sheet: its accent, the middle's block and, paler, the foot's. */
+  story?: boolean;
 }
 
 /**
@@ -305,7 +307,7 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
     fixed: (settings) => ({ layout: 'erzaehlen', titleEvery: false, ...(anybookOver(settings.anybookPlace) ? {} : { anybookPlace: 'over' as const }) }),
     offers: () => ({
       ...BASE, title: 'once', size: { kind: 'symbol', max: 40, fallback: 18, note: null, cut: false }, margin: 'symbol',
-      colour: true, anybookPlaces: ANYBOOK_CORNERS,
+      story: true, anybookPlaces: ANYBOOK_CORNERS,
     }),
   },
 

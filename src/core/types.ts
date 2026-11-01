@@ -247,7 +247,7 @@ export interface Sentence {
    * Rezept's three parts, on no field of a Tafel, and no row or card of
    * anything — `contentOf` leaves it out.
    */
-  part?: RecipePart | StoryPart | 'titel';
+  part?: RecipePart | StoryPart | 'titel' | 'oben';
 }
 
 /** The three parts of a Rezept, in the order they are shown and printed. */
@@ -255,11 +255,15 @@ export const RECIPE_PARTS = ['zutat', 'hilfsmittel', 'schritt'] as const;
 export type RecipePart = (typeof RECIPE_PARTS)[number];
 
 /**
- * The three parts of an Erzählen sheet, top to bottom: what is said first
- * („Hallo"), what is told — one to four cards, the week's —, and the cards
- * to answer with („schön", „Und du?").
+ * The two parts of an Erzählen sheet, top to bottom: what is told — one to
+ * four cards, the week's —, and the cards to answer with („schön", „Und du?").
+ *
+ * The first version had a third part above them, `oben`, for a „Hallo".
+ * It stood lost on paper and went (2026-11-01); a card saved there still
+ * carries the word and reads as one of the foot's, where it comes first,
+ * being the oldest — so nothing is rewritten and nothing is lost.
  */
-export const STORY_PARTS = ['oben', 'mitte', 'unten'] as const;
+export const STORY_PARTS = ['mitte', 'unten'] as const;
 export type StoryPart = (typeof STORY_PARTS)[number];
 /** The most cards the middle of an Erzählen sheet holds: four still stand side by side on A5. */
 export const STORY_MIDDLE_MAX = 4;
@@ -267,7 +271,8 @@ export const isStoryPart = (part: string | undefined): part is StoryPart =>
   (STORY_PARTS as readonly string[]).includes(part ?? '');
 
 /** Which part of a Rezept, or of an Erzählen sheet, a sentence is in. */
-export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | StoryPart | 'titel' => sentence.part ?? 'zutat';
+export const partOf = (sentence: Pick<Sentence, 'part'>): RecipePart | StoryPart | 'titel' =>
+  sentence.part === 'oben' ? 'unten' : sentence.part ?? 'zutat';
 
 const chosen = (slot: Slot): boolean => Boolean(slot.concept || slot.ownImage || Object.values(slot.choice).some(Boolean));
 

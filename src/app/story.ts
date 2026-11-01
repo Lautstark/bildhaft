@@ -4,17 +4,15 @@ import { addLines } from './composing.ts';
 import { t } from '../i18n/index.ts';
 
 /**
- * An Erzählen sheet: a Rezept's walls of cards in three parts, and one thing
- * of its own — it is born with cards in it. The Hallo at the top and the
- * row to answer with at the foot are the same every week; the middle is the
- * week's. They are ordinary cards in their parts, made from words the way a
+ * An Erzählen sheet: a Rezept's walls of cards in two parts, and one thing
+ * of its own — it is born with cards in it. The row to answer with at the
+ * foot is the same every week; the middle is the week's. They are ordinary cards in their parts, made from words the way a
  * Zutat typed as a line is, so a picture that did not fit is changed in the
  * same picker, and a card nobody wants goes in the same bin.
  */
 
 /** The cards a new Erzählen sheet starts with, looked up in the source in front of the reader. */
 export async function seedStory(): Promise<void> {
-  await addLines(t('ui.story_seed_oben'), 'oben');
   await addLines(t('ui.story_seed_unten'), 'unten');
 }
 

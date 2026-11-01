@@ -1,9 +1,9 @@
 <script lang="ts">
   /**
-   * An Erzählen sheet: three walls of cards, top to bottom as on paper —
-   * what is said first, what is told, and the cards to answer with.
+   * An Erzählen sheet: two walls of cards, top to bottom as on paper —
+   * what is told, and the cards to answer with.
    *
-   * A Rezept's Zutaten wall three times over, and nothing else. A photo is
+   * A Rezept's Zutaten wall twice over, and nothing else. A photo is
    * no different from a symbol: it is an own picture, chosen in the same
    * picker. The middle stops taking cards at four, which is all one row on
    * paper holds.
@@ -21,7 +21,7 @@
   /* Read through s.sentences, so every part follows a write. */
   let parts = $derived.by(() => {
     void s.sentences;
-    return { oben: entriesOf('oben'), mitte: entriesOf('mitte'), unten: entriesOf('unten') };
+    return { mitte: entriesOf('mitte'), unten: entriesOf('unten') };
   });
 </script>
 

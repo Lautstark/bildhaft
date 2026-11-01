@@ -715,28 +715,85 @@
 
 /* ------------------------------------------------------------- erzählen */
 
-/* An Erzählen sheet: one page under its name, in three parts. The middle
-   takes what the top and the foot leave, its cards side by side filling
-   their share; the row to answer with lies on a block of the material's
-   colour, paler, as a Tafel's group does. */
+/* An Erzählen sheet: one page under its name, in two parts. The middle
+   takes what the foot leaves, its cards side by side; the row to answer with lies on a block of the material's colour, paler,
+   as a Tafel's group does, its cards sharing the width — up to twice a
+   symbol's each, so „anstrengend" has the room the block has. */
 .ps-story {
   display: flex;
   flex-direction: column;
   gap: 3mm;
 }
-.ps-story__top,
 .ps-story__bottom {
   flex: none;
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
   gap: 2mm;
 }
+.ps-story__bottom > .ps-card {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(2 * var(--sym));
+}
+.ps-story__bottom .ps-card__label {
+  width: 100%;
+  hyphens: manual;
+}
+/* The middle is the week's, so it is set apart from the rest: its cards lie
+   as photos would on a stronger block of the colour — white, a wider edge
+   underneath for the word, a soft shadow, each a little turned and no two
+   alike. The picture is square and fills its frame; a card is as wide as
+   the block is high allows, so one card does not grow past the page. */
 .ps-story__middle {
   flex: 1 1 0;
   min-height: 0;
-  --cell-h: 100%;
-  column-gap: 2mm;
+  container-type: size;
+  column-gap: 5mm;
+  align-items: center;
+  justify-items: center;
+  padding: 2mm 4mm;
+  border-radius: 3mm;
+  background: color-mix(in srgb, var(--recipe) 70%, #fff);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ps-story__middle > .ps-card {
+  width: min(100%, calc(100cqh - 13mm));
+  height: auto;
+}
+.ps-story__middle > .ps-card:nth-child(4n + 1) { rotate: -2deg; }
+.ps-story__middle > .ps-card:nth-child(4n + 2) { rotate: 1.4deg; }
+.ps-story__middle > .ps-card:nth-child(4n + 3) { rotate: -1deg; }
+.ps-story__middle > .ps-card:nth-child(4n + 4) { rotate: 2deg; }
+.ps-story__middle .ps-card__frame {
+  height: auto;
+  padding: 2.2mm 2.2mm 0;
+  border: 0;
+  border-radius: 1mm;
+  background: #fff;
+  box-shadow: 0 0.4mm 1mm rgb(20 40 70 / 0.18), 0 2.5mm 6mm rgb(20 40 70 / 0.1);
+}
+.ps-story__middle .ps-card__img {
+  flex: none;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.5mm;
+}
+.ps-story__middle .ps-card__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ps-story__middle .ps-card__label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 8.5mm;
+  padding: 0;
+  font-weight: 600;
 }
 .ps-story__bottom {
   padding: 2mm;

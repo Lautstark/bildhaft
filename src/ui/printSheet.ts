@@ -704,7 +704,7 @@ export type Block =
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   /* An Erzählen sheet under its name: the page that is left, in its three
      parts. One page and never more, as a Tafel is. */
-  | { kind: 'story'; top: Slot[]; middle: Slot[]; bottom: Slot[]; height: string }
+  | { kind: 'story'; middle: Slot[]; bottom: Slot[]; height: string }
   | { kind: 'recipe-step'; id: string; text: string; n: number; slots: Slot[]; first: boolean }
   /* `more`: a piece of a part too tall for a page after its first, named as
      going on. */
@@ -1208,15 +1208,15 @@ export function sheetBlocks(
     });
   } else if (settings.layout === 'erzaehlen') {
     /*
-     * One block the height of what the name leaves of the page. The top and
-     * the foot are cards at the symbol's size; the middle takes the rest, its
+     * One block the height of what the name leaves of the page. The foot's
+     * cards share its width; the middle takes the rest, its
      * cards side by side and as tall as it is — one card the whole width, four
      * a quarter each.
      */
     const of = (part: StoryPart): Slot[] => sentences.filter((sentence) => partOf(sentence) === part)
       .flatMap((sentence) => sentence.slots.slice(0, 1));
     blocks.push({
-      kind: 'story', top: of('oben'), middle: of('mitte').slice(0, STORY_MIDDLE_MAX), bottom: of('unten'),
+      kind: 'story', middle: of('mitte').slice(0, STORY_MIDDLE_MAX), bottom: of('unten'),
       height: `${(page.height - reserve).toFixed(3)}mm`,
     });
   } else if (settings.layout === 'lied') {
