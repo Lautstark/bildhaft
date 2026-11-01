@@ -153,7 +153,8 @@ export class Picking {
     this.stored = slot.candidates[provider] ?? [];
     this.chosen = slot.ownImage ? null : slot.choice[provider] ?? null;
     this.suggested = this.stored;
-    this.caption = slot.label ?? '';
+    /* The words stand in the field, not as a placeholder: emptied, it is empty. */
+    this.caption = slot.label ?? (slot.sourceToken || slot.concept);
     this.searching = !symbolIdFor(slot, provider);
     this.negated = slot.negated ?? false;
     this.mirrored = slot.mirrored ?? false;

@@ -182,6 +182,7 @@
 --><input bind:this={upload} type="file" accept="image/*" hidden onchange={chose} /></label>{#if s.current.ownImage && s.handlers.onClearOwnImage}{@const clear = s.handlers.onClearOwnImage}<button class="btn sm destructive" type="button" onclick={() => s.settle(clear)}>{t('ui.own_picture_remove')}</button>{/if}</span>{/snippet}{#snippet caption(candidate, among)}<span class="small">{captionOf(candidate, among)}</span>{/snippet}</SymbolSearch></div>{/if}<!--
   The words. The caption is a field of its own rather than a rewrite of the
   source word, so a correction stays remembered under the word that was typed;
-  its placeholder is what would print without it, so clearing it is the reset.
+  It opens with the words that print, typed in rather than as a placeholder,
+  so clearing it prints no words (her call).
   What the pen says under it, where the material prints Anybook codes.
--->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept || t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if s.handlers.anybook}<div class="picker__say" hidden={cropping}><AnyStift code={s.handlers.anybook} mode="field" /></div>{/if}
+-->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept ? undefined : t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if s.handlers.anybook}<div class="picker__say" hidden={cropping}><AnyStift code={s.handlers.anybook} mode="field" /></div>{/if}

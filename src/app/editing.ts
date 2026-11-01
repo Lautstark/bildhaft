@@ -208,16 +208,18 @@ async function handleMirror(mirrored: boolean): Promise<void> {
  * Like negation, a rewording leaves the dialog open, so `picker` stays put:
  * the field being edited has to still be the one the next keystroke means.
  *
- * An empty field is stored as null rather than as '', because "" and "no
- * wording of its own" are the same state and only one of them should be
- * capable of being written to disk.
+ * The field opens with the words the card prints, so an empty field is an
+ * empty card and is stored as ''. The card's own word typed back is stored as
+ * null: no wording of its own, so it keeps following the word.
  */
 async function handleLabel(label: string): Promise<void> {
   if (!s.picker) return;
   const { sentenceId, slotId } = s.picker;
-  const next = label.trim() || null;
+  const typed = label.trim();
   await mutateSlots(sentenceId, (slots) =>
-    slots.map((sl) => (sl.id === slotId ? { ...sl, label: next } : sl)));
+    slots.map((sl) => (sl.id === slotId
+      ? { ...sl, label: typed === (sl.sourceToken || sl.concept) ? null : typed }
+      : sl)));
 }
 
 async function handleRemoveSlot(): Promise<void> {

@@ -26,9 +26,8 @@ test('prints a rewritten caption, and keeps it across a reload', async ({ page }
   await translate(page, 'Ich möchte einen Apfel essen');
 
   await page.locator('.row').first().locator('.slot', { hasText: 'Apfel' }).click();
-  // Empty means unchanged, so the field shows the word only as a placeholder.
-  await expect(caption(page)).toHaveValue('');
-  await expect(caption(page)).toHaveAttribute('placeholder', 'Apfel');
+  // The word stands in the field as text, not as a placeholder.
+  await expect(caption(page)).toHaveValue('Apfel');
   await caption(page).fill('der Apfel');
   await page.getByRole('button', { name: 'Fertig' }).click();
 
@@ -64,7 +63,7 @@ test('survives being settled by picking a symbol in the same breath', async ({ p
   }).toBe(`override:${String(idForTerm('Apfel') + 1)}`);
 });
 
-test('clearing the field gives the word back', async ({ page }) => {
+test('clearing the field empties the card, on screen and on paper', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
 
   const slot = page.locator('.row').first().locator('.slot', { hasText: 'Apfel' });
@@ -76,6 +75,15 @@ test('clearing the field gives the word back', async ({ page }) => {
   await page.locator('.row').first().locator('.slot').nth(2).click();
   await expect(caption(page)).toHaveValue('der Apfel');
   await caption(page).fill('');
+  await page.getByRole('button', { name: 'Fertig' }).click();
+  await expect(rowLabels(page).nth(2)).toHaveText('');
+
+  await page.reload();
+  await expect(rowLabels(page).nth(2)).toHaveText('');
+  await page.locator('.row').first().locator('.slot').nth(2).click();
+  await expect(caption(page)).toHaveValue('');
+  // Typed back, the word is the card's own again.
+  await caption(page).fill('Apfel');
   await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(rowLabels(page).nth(2)).toHaveText('Apfel');
 });

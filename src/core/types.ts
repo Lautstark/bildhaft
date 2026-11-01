@@ -104,9 +104,12 @@ export interface Slot {
 /**
  * The words under a slot's symbol, on screen and on paper. One expression, used
  * by both, because a caption the preview disagrees with is a wasted sheet.
+ *
+ * A label of '' is a card she emptied on purpose and prints no words; only a
+ * card with no label at all falls back to its word.
  */
 export function slotCaption(slot: Slot): string {
-  return slot.label?.trim() || slot.sourceToken || slot.concept;
+  return slot.label != null ? slot.label.trim() : slot.sourceToken || slot.concept;
 }
 
 /**
