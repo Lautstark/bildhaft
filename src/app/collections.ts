@@ -69,7 +69,7 @@ export function setActive(id: string): void {
     void saveSettings(s.settings);
   }
   const since = mark();
-  void listSentences(id).then((loaded) => {
+  opening = listSentences(id).then((loaded) => {
     if (s.activeId !== id) return;
     s.sentences = loaded.map(keepUnwritten(s.sentences, since));
     s.unreadable = 0;
@@ -85,9 +85,12 @@ export function setActive(id: string): void {
        drawn in METACOM opened entirely blank for a reader on ARASAAC, and the
        other way round. resolveSlotsForProvider leaves a slot alone once it has
        a choice, so this costs nothing in the ordinary case. */
-    void resolveOpen();
+    return resolveOpen();
   });
 }
+
+/** setActive()'s read and resolve, for the one caller that waits for them. */
+let opening: Promise<void> = Promise.resolve();
 
 export async function refreshCollections(): Promise<void> {
   const since = mark();
@@ -239,27 +242,62 @@ export async function handleExport(): Promise<void> {
  * Never rejects: this runs in boot, where a rejection would be read as the
  * page having failed to open.
  */
-export async function openNamed(here?: string): Promise<void> {
-  const asked = here === undefined ? await wanted() : await wanted(here);
-  switch (asked.kind) {
-    case 'none':
-      return;
-    case 'unknown':
-      notify(t('ui.shelf_unknown'));
-      return;
-    case 'offline':
-      notify(t('ui.shelf_offline', { error: asked.error.message }));
-      return;
-    case 'file':
-      // The same path „Sammlung einlesen" takes, down to the toast it writes
-      // and the collection it opens afterwards.
-      await handleImport(asked.file);
+export async function openNamed(here: string = window.location.href): Promise<void> {
+  if (!arrivingFrom(here)) return;
+  try {
+    const asked = await wanted(here);
+    switch (asked.kind) {
+      case 'none':
+        return;
+      case 'unknown':
+        notify(t('ui.shelf_unknown'));
+        return;
+      case 'offline':
+        notify(t('ui.shelf_offline', { error: asked.error.message }));
+        return;
+      case 'file':
+        s.arriving = { name: await nameIn(asked.file), id: null };
+        // The same path „Sammlung einlesen" takes, down to the toast it writes
+        // and the collection it opens afterwards. Once filed, its own row in
+        // the sidebar stands in for the waiting one, so there are never two.
+        await handleImport(asked.file, (id) => { s.arriving = { name: s.arriving?.name ?? null, id }; });
+        // Until the symbols are in: a Material shown before that draws its
+        // fields empty, which reads as broken rather than as coming.
+        await opening;
+    }
+  } finally {
+    s.arriving = null;
   }
 }
 
-export async function handleImport(file: File): Promise<void> {
+/**
+ * Whether the address names a Sammlung, and if so the page waits for it.
+ *
+ * Called from boot before anything is read, so the first paint is already the
+ * waiting Material and never the last one open with the new one landing on
+ * top of it later. openNamed() asks again for its own sake; the second time
+ * changes nothing.
+ */
+export function arrivingFrom(here: string = window.location.href): boolean {
+  if (!new URL(here).searchParams.has('sammlung')) return false;
+  s.arriving ??= { name: null, id: null };
+  return true;
+}
+
+/** The name the file gives its Sammlung, read ahead of the import that files it. */
+async function nameIn(file: File): Promise<string | null> {
+  try {
+    const name: unknown = (JSON.parse(await file.text()) as { collection?: { name?: unknown } }).collection?.name;
+    return typeof name === 'string' && name ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function handleImport(file: File, filed?: (id: string) => void): Promise<void> {
   try {
     const result = await importCollectionFile(file);
+    filed?.(result.collection.id);
     await refreshCollections();
     // setActive() resolves what it opens against the source in front of the
     // reader, which is what a file from somebody else needs.

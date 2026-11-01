@@ -22,6 +22,7 @@
   import TitleLine from './ui/TitleLine.svelte';
   import SongIntake from './ui/SongIntake.svelte';
   import Wortschatz from './ui/Wortschatz.svelte';
+  import Arriving from './app/Arriving.svelte';
   import Banners from './app/Banners.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
   import Material from './app/Material.svelte';
@@ -157,7 +158,7 @@
   Drawn as one block each rather than hidden, which is what keeps the symbol
   subscriptions of whichever is off screen from being kept alive — a block that
   is not entered has no components in it to hold one.
---><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}{hasSheet ? ' main__inner--printing' : ''}"><Banners />{#if s.wortschatz}<Wortschatz />{:else}<!--
+--><div class="main__inner{s.wortschatz ? '' : ' main__inner--work'}{hasSheet ? ' main__inner--printing' : ''}"><Banners />{#if s.arriving}<Arriving name={s.arriving.name} />{:else if s.wortschatz}<Wortschatz />{:else}<!--
   Two views of the open Sammlung, switched in its head. The box to type into
   and the head stay where they are in both; only what is under them changes:
   the material („Bearbeiten"), or the sheet with its pages and its settings

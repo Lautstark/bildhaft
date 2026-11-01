@@ -498,6 +498,44 @@ img.mirrored { transform: scaleX(-1); }
   color: var(--text-faint);
 }
 
+/* A Material from the shelf, on its way (app/Arriving.svelte). Where the
+   Material will be, and about as tall, so it does not jump when it comes. */
+.arriving {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 17px;
+}
+.arriving p { margin: 0; }
+/* Two classes deep: `.spinner` further down this file sets its 13px after. */
+.arriving .arriving__spinner {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+  margin-bottom: 12px;
+}
+.arriving__name {
+  color: var(--text);
+  font-weight: 600;
+}
+/* Its row in the sidebar: the open one, with the spinner where the template
+   and the day will be. */
+.collections__item--arriving { cursor: default; }
+.collections__item--arriving .collections__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.collections__item--arriving .spinner {
+  width: 9px;
+  height: 9px;
+}
+
 /* ---------------------------------------------------------------- dialog */
 
 /* The .overlay that used to sit here is gone with the <div> it styled: the
