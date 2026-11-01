@@ -1035,6 +1035,30 @@ test('a Rezept’s Anybook codes are set in Bearbeiten, under each card and in e
 });
 
 /*
+ * A card the „+" makes has no picture yet, so no code: the dialog used to ask
+ * once, as it opened, and showed „Stift sagt" only on the next open. It asks
+ * again once the picture is chosen.
+ */
+test('a new card’s Symbol dialog shows „Stift sagt“ as soon as its picture is chosen', async ({ page }) => {
+  await pickTemplate(page, /^Rezept/);
+  await addRecipeCard(page, 'Zutat', 'Eier');
+  await showSheet(page);
+  await openDing(page, 'Anybook');
+  await expect(page.getByLabel('Anybook-Codes', { exact: true })).toBeChecked();
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Zutat hinzufügen' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Stift sagt')).toHaveCount(0);
+  await page.getByLabel('Symbol suchen').fill('Milch');
+  await page.locator('.picker__item', { hasText: 'Milch' }).first().click();
+  await expect(dialog.getByLabel('Stift sagt')).toBeVisible();
+  await dialog.getByLabel('Stift sagt').fill('ein Becher Milch');
+  await dialog.getByRole('button', { name: 'Fertig' }).click();
+  await expect(page.locator('.preview-frame .ps-recipe-cards .ps-any').nth(1)).toHaveAttribute('data-said', 'ein Becher Milch');
+});
+
+/*
  * A Lied's line is sung as one, as a Schritt is read: one Anybook circle at
  * its start, none on its pictures, which keep their size — and no place to
  * choose for it.

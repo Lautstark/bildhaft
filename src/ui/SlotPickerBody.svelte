@@ -36,6 +36,8 @@
       a live grid of symbols under an open crop is a press that throws the crop
       away without saying so. */
   let cropping = $derived(s.loaded !== null);
+  /* Asked as the field stands: a new field gets its code with its picture. */
+  let code = $derived(s.handlers.anybook?.() ?? null);
 
   let source = $derived(getProvider(s.provider));
   /* The symbol just picked, shown at once (her call, 2026-10-28): the field
@@ -185,4 +187,4 @@
   It opens with the words that print, typed in rather than as a placeholder,
   so clearing it prints no words (her call).
   What the pen says under it, where the material prints Anybook codes.
--->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept ? undefined : t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if s.handlers.anybook}<div class="picker__say" hidden={cropping}><AnyStift code={s.handlers.anybook} mode="field" /></div>{/if}
+-->{#if s.handlers.onLabel}<label class="picker__caption" hidden={cropping}><span class="small muted">{t('ui.text_for')}</span><input class="field" type="text" placeholder={s.slot.sourceToken || s.slot.concept ? undefined : t('ui.text_for_new')} maxlength="60" value={s.caption} oninput={(event) => s.queueLabel(event.currentTarget.value)} onchange={() => s.flushLabel()} /></label>{/if}{#if code}<div class="picker__say" hidden={cropping}><AnyStift {code} mode="field" /></div>{/if}

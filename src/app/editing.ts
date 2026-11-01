@@ -90,7 +90,11 @@ export function openPicker(sentenceId: string, slotId: string): void {
     onRemove: () => void handleRemoveSlot(),
     onClose: () => void handleClosePicker(),
     live: () => s.sentences.find((x) => x.id === sentenceId)?.slots.find((sl) => sl.id === slotId),
-    anybook: cardCode(s.sentences.find((x) => x.id === sentenceId)!, slot) ?? undefined,
+    anybook: () => {
+      const sentence = s.sentences.find((x) => x.id === sentenceId);
+      const now = sentence?.slots.find((sl) => sl.id === slotId);
+      return sentence && now ? cardCode(sentence, now) : null;
+    },
   });
 }
 
