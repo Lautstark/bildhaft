@@ -1,12 +1,27 @@
 import type { AppSettings } from '../core/types.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { refreshSlotChoices } from '../core/match.ts';
-import { listSentences, overrideMap, putSentence, saveSettings } from '../db/repo.ts';
+import { listSentences, overrideMap, putSentence, rememberLanguage, saveSettings } from '../db/repo.ts';
+import { LANG, chooseLanguage, type LanguageCode } from '../i18n/index.ts';
 import { openSettings } from '../ui/settingsDialog.svelte.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
-import { providerId, s } from './state.svelte.ts';
+import { language, providerId, s } from './state.svelte.ts';
 
 /** The app's own settings: writing them, and the sheet they are edited in. */
+
+/**
+ * The page's language, changed — after every Sammlung that did not say which
+ * language it is written in has been told the one it was made in.
+ *
+ * The reload is i18n's; what comes first is why this is not just that. See
+ * `rememberLanguage`. A store that does not answer must not keep somebody in a
+ * language they cannot read, so the switch goes ahead regardless.
+ */
+export async function switchLanguage(code: LanguageCode): Promise<void> {
+  if (code === LANG) return;
+  await rememberLanguage(LANG).catch(() => undefined);
+  chooseLanguage(code);
+}
 
 export function persistSettings(next: AppSettings): void {
   const renderingChanged = s.settings?.metacomRendering !== next.metacomRendering;
@@ -30,7 +45,7 @@ async function repointToRendering(): Promise<void> {
 
   s.busy = true;
   try {
-    const overrides = await overrideMap('metacom');
+    const overrides = await overrideMap('metacom', language());
     const updated = await Promise.all((await listSentences(collectionId)).map(
       async (sentence) => ({
         ...sentence,

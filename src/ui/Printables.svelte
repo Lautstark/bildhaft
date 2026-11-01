@@ -14,4 +14,4 @@
   let { states }: { states: Printing[] } = $props();
 </script>
 
-{#each states as s, at (at)}<PrintSheet blocks={s.blocks} plan={s.plan} settings={s.settings} provider={s.options.provider} />{/each}
+{#each states as s, at (at)}<PrintSheet blocks={s.blocks} plan={s.plan} settings={s.settings} provider={s.options.provider} lang={s.options.language} />{/each}

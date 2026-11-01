@@ -351,7 +351,14 @@ export interface Collection {
    * no symbol they search for can be right; the labels around them are their own
    * choice and this does not touch them.
    *
-   * Absent means what it always meant: the page's own language, as before.
+   * Written at creation, since 2026-11-01, and written onto every Sammlung that
+   * still has none just before the page changes language (`rememberLanguage`).
+   * Absent means what it always meant — the page's own language — and the
+   * switch is the one moment that stops being the language the Sammlung was
+   * written in. So it drives more than the search now: the pipeline and the
+   * stopwords a new line is read with, the Wortschatz it is looked up in and
+   * a correction is filed under, and the words printed on its sheet
+   * (`language()` in app/state.svelte.ts). The interface stays the reader's.
    */
   language?: LanguageCode;
 

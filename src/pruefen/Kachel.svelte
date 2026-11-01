@@ -45,7 +45,7 @@
     board: m.board ?? null, song: m.song ?? null, talk: m.talk ?? null, game: m.game ?? null,
     collectionName: titel, pictures: m.pictures ?? [], settings,
     onChange: noop, onClose: noop,
-    provider: m.provider, attribution: getProvider(m.provider).attribution,
+    provider: m.provider, language: m.language ?? 'de', attribution: getProvider(m.provider).attribution,
   });
 
   let size = $state({ w: 0, h: 0 });
@@ -83,7 +83,7 @@
 </script>
 
 <div class="bogen" class:bogen--reihe={breite !== undefined} data-fall={fall.id} style:--reihe={breite ? `${breite / scale}px` : undefined} style:width={size.w ? `${size.w * scale}px` : undefined} style:height={size.h ? `${size.h * scale}px` : '120px'}>
-  <div class="preview-scaler bogen__scaler" style:transform="scale({scale})"><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={m.provider} /></div></div>
+  <div class="preview-scaler bogen__scaler" style:transform="scale({scale})"><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={m.provider} lang={preview.options.language} /></div></div>
 </div>
 
 <style>

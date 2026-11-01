@@ -8,7 +8,7 @@ import {
 // stays in this database; what the package supplies is where it starts.
 import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
 import { ENGLISH_STOPWORDS } from '@lautstark/bildquelle/english';
-import { LANG, LOCALE, t } from '../i18n/index.ts';
+import { LANG, LOCALE, t, type LanguageCode } from '../i18n/index.ts';
 import {
   DEFAULT_PRINT_SETTINGS, ownImagesInUse, slotCaption,
   type AppSettings, type Candidate, type Collection, type CollectionKind,
@@ -190,6 +190,10 @@ export async function createCollection(
        last month should be the same record when nobody chose anything, or the
        two are told apart by a field that means the same in both. */
     ...(kind && kind !== 'satzstreifen' ? { kind } : {}),
+    /* Unlike the template, the language is written even when it is the page's:
+       the page's can change, and what is typed into this Sammlung today does
+       not change with it. See `Collection.language`. */
+    language: LANG,
     createdAt: now,
     updatedAt: now,
   };
@@ -198,6 +202,23 @@ export async function createCollection(
   await fileCollection(collection);
   touched();
   return collection;
+}
+
+/**
+ * Writes the page's language onto every Sammlung that does not say one —
+ * called just before the page changes language.
+ *
+ * Absent has always meant "the page's language", which held until the page's
+ * language could move. A Sammlung made in English before Sammlungen carried a
+ * language would otherwise turn German with the switch: its next line read by
+ * the German pipeline, its symbols searched at the German endpoint, its sheet
+ * printed under German headings. This is the last moment the absent field still
+ * means what it meant when the Sammlung was made, so it is written down now.
+ */
+export async function rememberLanguage(lang: LanguageCode): Promise<void> {
+  for (const collection of await listCollections()) {
+    if (!collection.language) await patchCollection(collection.id, { language: lang });
+  }
 }
 
 /** What a write changes on a Sammlung. `undefined` takes the field off. */
@@ -562,12 +583,14 @@ export async function clearEverything(): Promise<void> {
  * before there was a second language has no language in its key and none in
  * its row; `mine` below is what reads those as German.
  */
-const overrideKey = (provider: ProviderId, token: string) =>
-  `${LANG}:${provider}:${token.toLowerCase()}`;
+const overrideKey = (provider: ProviderId, token: string, lang: LanguageCode = LANG) =>
+  `${lang}:${provider}:${token.toLowerCase()}`;
 
+/** Whether an entry belongs to a language — the page's, unless a Sammlung in another one asks. */
+const inLanguage = (lang: LanguageCode) => (override: Override) => (override.lang ?? 'de') === lang;
 
 /** Whether an entry belongs to the language this page is in. */
-const mine = (override: Override) => (override.lang ?? 'de') === LANG;
+const mine = inLanguage(LANG);
 
 /**
  * The stored entries for a word, found the way the list finds them.
@@ -642,14 +665,14 @@ async function patchOverride(
 }
 
 export async function putOverride(
-  provider: ProviderId, token: string, candidate: Candidate,
+  provider: ProviderId, token: string, candidate: Candidate, lang: LanguageCode = LANG,
 ): Promise<void> {
   /* A second correction of the same word replaces the picture and keeps the
      rest: the tags and the caption are the household's and stay on the record,
      or filing "Oma" under Familie and then picking a better picture for her
      quietly unfiles her. A patch is what says so — only the fields below move. */
-  await patchOverride(overrideKey(provider, token), () => ({
-    lang: LANG,
+  await patchOverride(overrideKey(provider, token, lang), () => ({
+    lang,
     provider,
     token: token.toLowerCase(),
     symbolId: candidate.id,
@@ -793,9 +816,12 @@ export async function deleteOverride(provider: ProviderId, token: string): Promi
   touched();
 }
 
-/** Every entry in *this* language. What the dictionary panel lists. */
-export async function listOverrides(provider?: ProviderId): Promise<Override[]> {
-  return (await listAllOverrides(provider)).filter(mine);
+/**
+ * Every entry in *this* language — what the dictionary panel lists — or in the
+ * one a Sammlung is written in, for the lines typed into it.
+ */
+export async function listOverrides(provider?: ProviderId, lang: LanguageCode = LANG): Promise<Override[]> {
+  return (await listAllOverrides(provider)).filter(inLanguage(lang));
 }
 
 /**
@@ -812,9 +838,9 @@ export async function listAllOverrides(provider?: ProviderId): Promise<Override[
   return all.sort((a, b) => a.token.localeCompare(b.token, LANG));
 }
 
-/** Loads this language's override table into a map — small, and consulted per token. */
-export async function overrideMap(provider: ProviderId): Promise<Map<string, Override>> {
-  const list = await listOverrides(provider);
+/** Loads one language's override table into a map — small, and consulted per token. */
+export async function overrideMap(provider: ProviderId, lang: LanguageCode = LANG): Promise<Map<string, Override>> {
+  const list = await listOverrides(provider, lang);
   return new Map(list.map((o) => [o.token, o]));
 }
 

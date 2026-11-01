@@ -15,6 +15,7 @@ import { ANYBOOK_PLACES, DEFAULT_PRINT_SETTINGS, PRINT_FONTS } from '../core/typ
 const PLATZ: Record<AnybookPlace, string> = { above: 'oben', below: 'unten', left: 'links', beside: 'rechts', 'over-tl': 'Ecke links oben', over: 'Ecke rechts oben', 'over-bl': 'Ecke links unten', 'over-br': 'Ecke rechts unten' };
 import { openPrint, settle, TEMPLATES } from '../app/templates.ts';
 import type { PrintBoard, PrintGame, PrintSong, PrintTalk } from '../ui/printSheet.ts';
+import type { LanguageCode } from '../i18n/index.ts';
 
 export const VORLAGE: Record<CollectionKind, string> = {
   satzstreifen: 'Satzstreifen', wortkarten: 'Wortkarten', tafel: 'Tafel', einkaufsliste: 'Einkaufsliste',
@@ -78,6 +79,8 @@ export interface Material {
   quelle: string;
   name: string;
   provider: ProviderId;
+  /** What the material is written in. Absent is German, which the test data are. */
+  language?: LanguageCode;
   sentences: Sentence[];
   /** The title's symbols. */
   pictures?: Slot[];

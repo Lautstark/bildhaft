@@ -37,6 +37,20 @@ async function openLanguagePanel(page: Page, lang: 'de' | 'en'): Promise<void> {
   await page.getByRole('group', { name: says(lang, 'ui.set_language') }).waitFor();
 }
 
+/**
+ * A new Satzstreifen, made on the page as it now is.
+ *
+ * Needed after a switch: the material that was open was written in the
+ * language the page had then, and stays in it (e2e/sprachwechsel.spec.ts). The
+ * page's language is what a *new* material is written in.
+ */
+async function newMaterial(page: Page, lang: 'de' | 'en'): Promise<void> {
+  await page.getByRole('button', { name: says(lang, 'ui.new_collection'), exact: true }).click();
+  const tiles = page.locator('.templates');
+  await tiles.getByRole('button', { name: new RegExp(`^${says(lang, 'ui.template_satzstreifen')}`) }).click();
+  await expect(tiles).toHaveCount(0);
+}
+
 test.beforeEach(async ({ page }) => {
   await mockArasaac(page);
   await page.goto('./');
@@ -82,12 +96,13 @@ test('asks ARASAAC for the language the page is in', async ({ page }) => {
   await openLanguagePanel(page, 'de');
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await expect(page.getByLabel(says('en', 'ui.composer_label'))).toBeVisible();
+  await newMaterial(page, 'en');
 
   asked.length = 0;
   const english = page.getByLabel(says('en', 'ui.composer_label'));
   await english.fill('apple');
   await english.press('Enter');
-  await expect(page.locator('.row')).toHaveCount(2);
+  await expect(page.locator('.row')).toHaveCount(1);
 
   expect(asked.length).toBeGreaterThan(0);
   // The one that matters: not a single word went to the other language.
@@ -97,6 +112,7 @@ test('asks ARASAAC for the language the page is in', async ({ page }) => {
 test('reads an English sentence with the English pipeline', async ({ page }) => {
   await openLanguagePanel(page, 'de');
   await page.getByRole('button', { name: 'English', exact: true }).click();
+  await newMaterial(page, 'en');
 
   const input = page.getByLabel(says('en', 'ui.composer_label'));
   await input.fill('Please clean up your room');
