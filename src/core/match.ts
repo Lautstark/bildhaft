@@ -3,6 +3,7 @@ import type { Override, ProviderId, Slot } from './types.ts';
 import type { SymbolProvider } from '@lautstark/bildquelle';
 import type { ResolvedWord } from '@lautstark/bildquelle/german';
 import { resolveText } from '../i18n/pipeline.ts';
+import type { LanguageCode } from '../i18n/index.ts';
 
 /**
  * How many candidates travel with a stored slot. Enough to change your mind
@@ -13,6 +14,8 @@ const STORED_CANDIDATES = 8;
 
 export interface MatchContext {
   provider: SymbolProvider;
+  /** The language the line is written in: the Sammlung's, not the page's. Absent is the page's. */
+  lang?: LanguageCode;
   stopwords: Set<string>;
   overrides: Map<string, Override>;
 }
@@ -42,7 +45,7 @@ export async function buildSlots(raw: string, ctx: MatchContext): Promise<Slot[]
         ? [{ id: override.symbolId, label: override.label, score: 1000 }]
         : null;
     },
-  });
+  }, ctx.lang);
   return words.map((word) => toSlot(word, ctx.provider.id, ctx.overrides));
 }
 

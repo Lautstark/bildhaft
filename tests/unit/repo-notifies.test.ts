@@ -22,6 +22,7 @@ const MUTATORS = [
   'renameCollection',
   'saveCollectionProvider',
   'saveCollectionOrdner',
+  'rememberLanguage',
   'deleteCollectionDeep',
   'putSentence',
   'deleteSentence',
@@ -93,6 +94,12 @@ describe('the change notifier', () => {
       const made = await repo.createCollection('Test');
       heard = 0;
       return repo.saveCollectionProvider(made.id, 'metacom');
+    },
+    rememberLanguage: async () => {
+      const made = await repo.createCollection('Test');
+      await repo.patchCollection(made.id, { language: undefined });
+      heard = 0;
+      return repo.rememberLanguage('en');
     },
     saveCollectionOrdner: async () => {
       const made = await repo.createCollection('Test');

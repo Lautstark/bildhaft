@@ -119,7 +119,20 @@ export function chooseLanguage(code: LanguageCode): void {
  * holds the table against the program, in both directions.
  */
 export function t(key: string, params?: Record<string, string | number>): string {
-  let out = TEXTS[LANG][key] ?? TEXTS.de[key] ?? key;
+  return tIn(LANG, key, params);
+}
+
+/**
+ * One label out of the table, in a language that need not be the page's.
+ *
+ * For what is printed on a material rather than around it. A Rezept written in
+ * English and printed after the page was switched to German came out with
+ * „Zutaten" over "2 eggs": the headings on the sheet followed the interface,
+ * the words under them stayed what was typed. The sheet is the material's, so
+ * it speaks the material's language — see `Collection.language`.
+ */
+export function tIn(lang: LanguageCode, key: string, params?: Record<string, string | number>): string {
+  let out = TEXTS[lang][key] ?? TEXTS.de[key] ?? key;
   if (params) {
     for (const name of Object.keys(params)) {
       out = out.split(`{${name}}`).join(String(params[name]));

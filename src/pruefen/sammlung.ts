@@ -90,7 +90,7 @@ function materialAus(c: Collection, all: Sentence[], provider: ProviderId): Mate
     : which === 'rezept' || which === 'erzaehlen' ? [...all].sort((a, b) => a.createdAt - b.createdAt)
     : contentOf(all);
   return {
-    id: c.id, quelle: c.name, name: titleOf(c), provider, sentences, pictures: titlePictures(all),
+    id: c.id, quelle: c.name, name: titleOf(c), provider, language: c.language, sentences, pictures: titlePictures(all),
     board: board ? { cols: board.cols, rows: board.rows, zones: zonesOf(board), styles: stylesOf(board), cells: board.cells.map((id) => (id ? get(id) ?? null : null)) } : undefined,
     song, talk, game,
   };

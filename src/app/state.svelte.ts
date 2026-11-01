@@ -5,6 +5,7 @@ import type { GroupPrintWhich } from '../core/ordner.ts';
 import { kindOf } from '../core/types.ts';
 import { TEMPLATES } from './templates.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
+import { LANG, type LanguageCode } from '../i18n/index.ts';
 
 /**
  * Everything the page knows that is not already in the store.
@@ -141,6 +142,14 @@ export const s = new AppState();
 
 export const activeCollection = (): Collection | null =>
   s.collections.find((c) => c.id === s.activeId) ?? null;
+
+/**
+ * The language the open Sammlung is written in — which the page's own need not
+ * be. Everything that reads or files its words follows this: the pipeline, the
+ * stopwords, the Wortschatz, the symbol search and the headings on its sheet.
+ * See `Collection.language` for why it is the Sammlung's to say.
+ */
+export const language = (): LanguageCode => activeCollection()?.language ?? LANG;
 
 /** The template the open Sammlung is drawn and typed as. */
 export const kind = (): CollectionKind => {

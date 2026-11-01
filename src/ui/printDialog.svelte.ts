@@ -10,6 +10,7 @@ import {
 import { peekSymbolUrl, warmSymbols } from './symbols.ts';
 import { previewsToPdf, previewToPdf } from './pdf.ts';
 import { settle } from '../app/templates.ts';
+import type { LanguageCode } from '../i18n/index.ts';
 
 export interface PrintOptions {
   sentences: Sentence[];
@@ -48,6 +49,8 @@ export interface PrintOptions {
   settings: PrintSettings;
   onChange: (settings: PrintSettings) => void;
   provider: ProviderId;
+  /** The language the material is written in, which the sheet's own words follow. */
+  language: LanguageCode;
   attribution: string | null;
   onClose: () => void;
 }

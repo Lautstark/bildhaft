@@ -154,7 +154,7 @@
       <div class="print-view__scroll"><div class="print-view__stage">
         {#key previews}
           {#each previews as preview, at (at)}
-            <div class="preview-frame print-view__frame" role="region" aria-label={t('ui.sheet_preview')} bind:this={preview.frame}><div bind:this={preview.sizer}><div class="preview-scaler" bind:this={preview.scaler}><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={preview.options.provider} /></div></div></div></div>
+            <div class="preview-frame print-view__frame" role="region" aria-label={t('ui.sheet_preview')} bind:this={preview.frame}><div bind:this={preview.sizer}><div class="preview-scaler" bind:this={preview.scaler}><div style="width:fit-content" bind:this={preview.holder}><PrintSheet blocks={preview.blocks} plan={preview.plan} settings={preview.settings} provider={preview.options.provider} lang={preview.options.language} /></div></div></div></div>
           {/each}
         {/key}
         {#if previews.length === 0}<p class="small faint">{t('ui.nothing_to_print')}</p>{/if}

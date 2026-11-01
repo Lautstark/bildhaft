@@ -11,7 +11,7 @@ import { sameOrdner, type GroupPrintWhich } from '../core/ordner.ts';
 import { listSentences, patchCollection } from '../db/repo.ts';
 import { keepsPdfs, pdfFolderFor, readPdf, writePdf } from '../db/folder.ts';
 import { download } from '@lautstark/werkzeuge/download';
-import { t } from '../i18n/index.ts';
+import { LANG, t } from '../i18n/index.ts';
 import { notify } from './notify.ts';
 import type { PrintOptions } from '../ui/printDialog.svelte.ts';
 import { activeCollection, kind, provider, providerId, s } from './state.svelte.ts';
@@ -268,6 +268,7 @@ function buildOptions(
     onChange: hooks.onChange,
     onPdf: hooks.onPdf,
     provider: providerId(),
+    language: open?.language ?? LANG,
     attribution: provider().attribution,
     onClose: () => undefined,
   };

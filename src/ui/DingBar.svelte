@@ -45,8 +45,8 @@
     || offer.background || offer.cutLines || which === 'einkaufsliste')));
   /* Was nur diese Vorlage hat, hinter einem Chip mit ihrem Namen — der
      vierte Knopf des Mocks. Ein Rezept hat nichts Eigenes und darum keinen. */
-  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel', spiel: 'ui.ding_spiel', plauderbuch: 'ui.ding_plauderbuch' };
-  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields || offer.game || offer.talk)));
+  const OWN_NAMES: Partial<Record<CollectionKind, string>> = { satzstreifen: 'ui.ding_streifen', lied: 'ui.ding_lied', tafel: 'ui.ding_tafel', spiel: 'ui.ding_spiel', plauderbuch: 'ui.ding_plauderbuch', erzaehlen: 'ui.ding_erzaehlen' };
+  let ownish = $derived(Boolean(offer && (offer.sentence || offer.stripFrame || offer.songChecks || offer.freeFields || offer.game || offer.talk || offer.story)));
   let ownName = $derived(OWN_NAMES[which] ? t(OWN_NAMES[which]!) : '');
   let exact = $derived(offer?.size?.kind === 'cards' && mp?.settings.sheetFit === 'card');
   /* The one colour of the material, set at the title: title, its line and
@@ -202,7 +202,7 @@
     </div>{/if}
     {#if offer.cutLines || which === 'einkaufsliste'}{@render check(t('ui.cut_lines'), mp.settings.showCutLines, (next) => mp?.set('showCutLines', next), false, 'showCutLines')}{/if}
   </div>{/if}</span>{/if}
-  {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{#if offer.talk}{#if mp.settings.gameGroundColour}<span class="ding__dot" style:--c={mp.settings.gameGroundColour}></span>{/if}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
+  {#if ownish && ownName}<span class="ding"><button class="ding__chip" type="button" aria-label={ownName} aria-expanded={open === 'own'} onclick={() => show('own')}>{ownName}{#if offer.talk}{#if mp.settings.gameGroundColour}<span class="ding__dot" style:--c={mp.settings.gameGroundColour}></span>{/if}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{#if offer.story}<span class="ding__dot" style:--c={mp.settings.accentColour}></span>{/if}{@render dd()}</button>{#if open === 'own'}<div class="ding__pop" role="group" aria-label={ownName}>
     {#if offer.sentence}{@render check(t('ui.print_sentence'), mp.settings.showSentenceText, (next) => mp?.set('showSentenceText', next), false, 'showSentenceText')}{#if any('showSentenceText')}<div class="ding__dep"><div class="ding__row"><span class="segmented">{#each POSITIONS as where (where)}<button type="button" aria-pressed={pressed('sentencePosition', where)} onclick={() => mp?.set('sentencePosition', where)}>{where === 'above' ? t('ui.label_above') : t('ui.label_below')}</button>{/each}</span>{@render num(t('ui.font_size'), mp.settings.sentenceSizePt, 5, 40, 0.5, 10, 'pt', (next) => mp?.set('sentenceSizePt', next), t('ui.sentence_size'), 'sentenceSizePt')}</div></div>{/if}{/if}
     {#if offer.stripFrame}{@render check(t('ui.frame_strip'), mp.settings.stripFrame, (next) => mp?.set('stripFrame', next), false, 'stripFrame')}{#if any('stripFrame')}<div class="ding__dep"><div class="ding__row">{@render num(t('ui.thickness'), mp.settings.cardBorderMm > 0 ? mp.settings.cardBorderMm : 0.5, 0.1, 5, 0.1, 0.5, 'mm', (next) => mp?.set('cardBorderMm', next), undefined, 'cardBorderMm')}{@render num(t('ui.corners'), mp.settings.cardRadiusMm, 0, 15, 0.5, 2, 'mm', (next) => mp?.set('cardRadiusMm', next), undefined, 'cardRadiusMm')}</div><PaletteRow label={t('ui.colour')} value={mp.settings.cardBorderColor} mixed={note('cardBorderColor')} strength="frame" ownStart="#333333" onPick={(next) => mp?.set('cardBorderColor', next ?? '#333333')} /></div>{/if}{/if}
     {#if offer.songChecks}{@render check(t('ui.song_headings'), mp.settings.songHeadings, (next) => mp?.set('songHeadings', next), false, 'songHeadings')}
@@ -221,6 +221,11 @@
       und die Linie um das freie Feld.
     --><PaletteRow label={t('ui.talk_band')} value={mp.settings.gameGroundColour} mixed={note('gameGroundColour')} strength="fill" none ownStart="#d8e9fc" onPick={(next) => mp?.set('gameGroundColour', next)} />
     <PaletteRow label={t('ui.talk_line')} value={mp.settings.accentColour} mixed={note('accentColour')} strength="frame" ownStart="#3f88e0" onPick={(next) => mp?.set('accentColour', next ?? '#3f88e0')} />{/if}
+    {#if offer.story}<!--
+      Die Akzentfarbe des Erzählen-Blatts in ihrem eigenen Menü (2026-11-01,
+      ihr Wunsch), nicht mehr mit dem Titel: die Fläche unter den Fotos und,
+      blasser, die unter der Antwortreihe.
+    --><PaletteRow label={t('ui.game_accent')} value={mp.settings.accentColour} mixed={note('accentColour')} strength="fill" ownStart="#3f88e0" onPick={(next) => mp?.set('accentColour', next ?? '#3f88e0')} />{/if}
   </div>{/if}</span>{/if}
   <!--
     Anybook als eigener Knopf (2026-10-28, ihr Wunsch): er ist der eine

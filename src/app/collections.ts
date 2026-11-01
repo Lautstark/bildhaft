@@ -11,13 +11,13 @@ import {
 } from '../db/repo.ts';
 import { downloadCollectionExport, exportCollection, importCollectionFile } from '../db/exportImport.ts';
 import { folderName, wipeReaches } from '../db/folder.ts';
-import { LANG, t } from '../i18n/index.ts';
+import { t } from '../i18n/index.ts';
 import { openSheet } from '@lautstark/design/svelte/sheet';
 import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
 import { forgetPenRecordings } from '../ui/anybookVoice.ts';
 import { pagesOf } from '../core/talk.ts';
-import { activeCollection, providerId, s } from './state.svelte.ts';
+import { activeCollection, language, providerId, s } from './state.svelte.ts';
 import { notify } from './notify.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
 import SayFoot from '../ui/SayFoot.svelte';
@@ -63,7 +63,7 @@ export function setActive(id: string): void {
    * search rather than reading it again at the end, so moving this while the
    * page is open is a thing that module was built for.
    */
-  setSymbolLanguage(s.collections.find((c) => c.id === id)?.language ?? LANG);
+  setSymbolLanguage(language());
   if (s.settings && s.settings.lastCollectionId !== id) {
     s.settings = { ...s.settings, lastCollectionId: id };
     void saveSettings(s.settings);
@@ -160,7 +160,7 @@ export async function resolveOpen(): Promise<void> {
      has not reached yet draws as it was. */
   const since = mark();
   try {
-    const overrides = await overrideMap(providerId());
+    const overrides = await overrideMap(providerId(), language());
     const current = await listSentences(id);
     const updated = await Promise.all(current.map(async (sentence) => ({
       ...sentence,
@@ -183,7 +183,13 @@ export async function resolveOpen(): Promise<void> {
        already made that judgement — a record memory kept is one this must
        not file. */
     for (const [i, sentence] of updated.entries()) {
-      if (sentence.slots === current[i]!.slots || merged[i] !== sentence) continue;
+      /* Slot by slot: the list is always a new array (Promise.all makes one),
+         so comparing the lists wrote every row of a Sammlung back each time it
+         was opened — the same slots under a new updatedAt, and a backup write
+         for each. resolveSlotsForProvider hands back the slot itself when it
+         has nothing to fill, which is what "unchanged" is. */
+      const same = sentence.slots.every((one, k) => one === current[i]!.slots[k]);
+      if (same || merged[i] !== sentence) continue;
       await withTimeout(putSentence(sentence), STORE_MS, t('ui.wait_store'));
     }
   } catch (err) {

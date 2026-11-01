@@ -19,11 +19,11 @@
   import { adoptFolder } from '../db/repo.ts';
   import { downloadJson, exportEverything } from '../db/exportImport.ts';
   import { activeCollection, s as store } from '../app/state.svelte.ts';
-  import { persistSettings } from '../app/settings.ts';
+  import { persistSettings, switchLanguage } from '../app/settings.ts';
   import { confirmClearAll, handleImport, refreshCollections, setActive, syncProvider } from '../app/collections.ts';
   import { notify } from '../app/notify.ts';
   import { standing } from '../app/standing.ts';
-  import { LANG, LANGUAGES, chooseLanguage, t, type LanguageCode } from '../i18n/index.ts';
+  import { LANG, LANGUAGES, t, type LanguageCode } from '../i18n/index.ts';
 
   let { s }: { s: { close(): void } } = $props();
 
@@ -85,7 +85,7 @@
     current: () => LANG,
     /* The module only ever calls back with a code out of `languages`, and
        `languages` is LANGUAGES itself. The cast asserts that and no more. */
-    choose: (code: string) => chooseLanguage(code as LanguageCode),
+    choose: (code: string) => void switchLanguage(code as LanguageCode),
     label: t('ui.set_language'),
   });
 

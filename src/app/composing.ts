@@ -6,8 +6,8 @@ import { buildPartSlot } from '../core/recipe.ts';
 import { buildSayingSlot } from '../core/talk.ts';
 import { findByNormalized, newId, overrideMap, putSentence } from '../db/repo.ts';
 import { withTimeout } from '../core/timeout.ts';
-import { LANG, t } from '../i18n/index.ts';
-import { holdsWords, kind, provider, providerId, s } from './state.svelte.ts';
+import { t } from '../i18n/index.ts';
+import { holdsWords, kind, language, provider, providerId, s } from './state.svelte.ts';
 import { addIntoFields } from './board.ts';
 import { notify } from './notify.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
@@ -167,8 +167,9 @@ export async function addLines(
     const words = part ? part !== 'schritt' : holdsWords();
     const options = {
       provider: provider(),
-      stopwords: new Set(s.settings.stopwords[LANG]),
-      overrides: await overrideMap(providerId()),
+      lang: language(),
+      stopwords: new Set(s.settings.stopwords[language()]),
+      overrides: await overrideMap(providerId(), language()),
     };
 
     /*

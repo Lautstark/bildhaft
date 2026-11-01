@@ -45,10 +45,9 @@
   Two pages of the book lying on their side: the question on its band with
   the free field at its end, the fields for the Aussagen under it.
 --><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art">{#each talkPages as p}<rect class="tpl__ink" x={8 + p * 60} y="5" width="56" height="36" rx="3" /><rect class="tpl__fill" x={11 + p * 60} y="8" width="50" height="10" rx="2" opacity="0.35" /><rect class="tpl__ink" x={47 + p * 60} y="9.5" width="12" height="7" rx="1.5" />{#each cardCols as col}{#each cardRows as row}<rect class="tpl__fill" x={11 + p * 60 + col * 17} y={22 + row * 9} width="14" height="7" rx="1.5" opacity="0.6" />{/each}{/each}{/each}</svg>{:else if kind === 'erzaehlen'}<!--
-  One sheet lying on its side: a small card at the top, three big ones side
-  by side in the middle, and a row of small ones on a coloured ground at the
-  foot — the big middle is what tells it from a Tafel.
---><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art"><rect class="tpl__ink" x="22" y="3" width="88" height="40" rx="3" /><rect class="tpl__ink" x="27" y="7" width="8" height="6" rx="1.2" />{#each [0, 1, 2] as i}<rect class="tpl__fill" x={27 + i * 26.7} y="16" width="24" height="15" rx="2" />{/each}<rect class="tpl__fill" x="26" y="34" width="80" height="7" rx="1.5" opacity="0.35" />{#each [0, 1, 2, 3, 4, 5] as i}<rect class="tpl__ink" x={28.5 + i * 13} y="35.5" width="10" height="4" rx="0.8" />{/each}</svg>{:else if kind === 'spiel'}<!--
+  One sheet lying on its side: three big cards side by side, and a row of
+  small ones on a coloured ground at the foot — the big middle is what tells it from a Tafel.
+--><svg viewBox="0 0 132 46" aria-hidden="true" class="tpl__art"><rect class="tpl__ink" x="22" y="3" width="88" height="40" rx="3" />{#each [0, 1, 2] as i}<rect class="tpl__fill" x={27 + i * 26.7} y="7" width="24" height="24" rx="2" />{/each}<rect class="tpl__fill" x="26" y="34" width="80" height="7" rx="1.5" opacity="0.35" />{#each [0, 1, 2, 3, 4, 5] as i}<rect class="tpl__ink" x={28.5 + i * 13} y="35.5" width="10" height="4" rx="0.8" />{/each}</svg>{:else if kind === 'spiel'}<!--
   One sheet lying on its side: left the Ablage's dashed fields, right two
   rows — a picture, then the dashed field its card is laid onto. The dashed
   fields are the whole argument: this paper is velcroed, not cut.

@@ -10,7 +10,7 @@ import { confirmDialog } from '../ui/dialog.ts';
 import { openSlotPicker } from '../ui/slotPicker.svelte.ts';
 import { cardCode } from '../ui/anybookEdit.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
-import { kind, providerId, s } from './state.svelte.ts';
+import { kind, language, providerId, s } from './state.svelte.ts';
 import { writeBoard } from './board.ts';
 import { takeOutOfSong } from './song.ts';
 import { takeOutOfTalk } from './talk.ts';
@@ -136,7 +136,7 @@ async function handleChoose(candidate: Candidate): Promise<void> {
       // so it fires again whether the same surface form or a variant shows up.
       const keys = new Set([slot.sourceToken.toLowerCase(), slot.concept.toLowerCase()]);
       for (const key of keys) {
-        if (key.trim()) await putOverride(source, key, candidate);
+        if (key.trim()) await putOverride(source, key, candidate, language());
       }
     }
   });

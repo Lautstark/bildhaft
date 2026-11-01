@@ -32,14 +32,21 @@
     SHOPPING, SHOPPING_SCALE, sheetsOf, TITLE_RULE_GAP_MM, TITLE_RULE_MM, titleColour, titlePictureMm, twoUp,
     type Block, type SheetPlan,
   } from './printSheet.ts';
-  import { t } from '../i18n/index.ts';
+  import { LANG, tIn, type LanguageCode } from '../i18n/index.ts';
 
-  let { blocks, plan, settings, provider }: {
+  let { blocks, plan, settings, provider, lang = LANG }: {
     blocks: Block[];
     plan: SheetPlan;
     settings: PrintSettings;
     provider: ProviderId;
+    /** The material's language: what the words on the sheet around its own are in. See `tIn`. */
+    lang?: LanguageCode;
   } = $props();
+
+  /* Everything this sheet says, it says in the material's language and not the
+     page's — „Zutaten" over "2 eggs" was a switched page printing an English
+     Rezept. The sheet is the material, so the page around it does not reach in. */
+  const t = (key: string, params?: Record<string, string | number>) => tIn(lang, key, params);
 
   let page = $derived(printableArea(settings.paper, settings.orientation, settings.punch));
   let margins = $derived(pageMargins(settings.punch));
@@ -216,7 +223,7 @@
   height that is left, then the row to answer with on a block of the
   material's colour. The middle's cards fill their share as a Tafel's fill
   their fields; the others are cards at the symbol's size, as a Rezept's are.
---><div class="ps-story" style:height={block.height}>{#if block.top.length > 0}<div class="ps-story__top">{#each block.top as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{/if}<div class="ps-grid ps-story__middle" style:--cols={String(Math.max(1, block.middle.length))}>{#each block.middle as slot (slot.id)}<PrintCard {slot} {settings} {provider} fill />{/each}</div>{#if block.bottom.length > 0}<div class="ps-story__bottom">{#each block.bottom as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{/if}</div>{:else if block.kind === 'recipe-step'}<!--
+--><div class="ps-story" style:height={block.height}><div class="ps-grid ps-story__middle" style:--cols={String(Math.max(1, block.middle.length))}>{#each block.middle as slot (slot.id)}<PrintCard {slot} {settings} {provider} fill />{/each}</div>{#if block.bottom.length > 0}<div class="ps-story__bottom">{#each block.bottom as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div>{/if}</div>{:else if block.kind === 'recipe-step'}<!--
   The heading rides with the first Schritt, so a page can never end on
   „Schritte" with nothing under it.
 --><div class="ps-recipe-step">{#if block.first}<h2 class="ps-recipe-head">{t('ui.recipe_schritt')}</h2>{/if}<div class="ps-recipe-step__row"><span class="ps-recipe-step__n">{block.n}{#if settings.anybookCircle}<AnyCode {settings} key={block.id} standing={block.text} />{/if}</span><div class="ps-recipe-step__slots">{#each block.slots as slot (slot.id)}<PrintCard {slot} {settings} {provider} />{/each}</div></div></div>{:else if block.kind === 'song-part'}<!--
@@ -256,6 +263,7 @@
 -->{@const tail = `, ${t('ui.made_with')} ${BILDHAFT_URL}`}<p class="ps-attribution" style:--credit-chars={Math.max(...block.lines.map((line, at) => line.length + (at === block.lines.length - 1 ? tail.length : 0)))}><span class="ps-attribution__text">{#each block.lines as line, at (line)}{#if at > 0}<br />{/if}{line}{/each}, {t('ui.made_with')} <a class="ps-url" href={BILDHAFT_URL}>{BILDHAFT_URL}</a></span></p>{/if}{/snippet}
 
 <div
+  {lang}
   class="ps-sheet{two ? ' ps-sheet--two' : ''}{cutUp && settings.showCutLines ? ' ps-sheet--cutlines' : ''}{pages ? ' ps-sheet--paged' : ''}{settings.layout === 'rezept' ? ' ps-sheet--recipe' : ''}{settings.layout === 'lied' ? ' ps-sheet--song' : ''}{settings.layout === 'plauderbuch' ? ' ps-sheet--talk' : ''}{settings.layout === 'erzaehlen' ? ' ps-sheet--story' : ''}{settings.layout === 'spiel' ? ' ps-sheet--spiel' : ''}{settings.layout === 'einkaufsliste' ? ' ps-sheet--shop' : ''}{bleed ? ' ps-sheet--bleed' : ''}{settings.punch === 'left' ? ' ps-sheet--punch-left' : ''}{settings.anybookCircle ? ` ps-sheet--anybook ps-sheet--any-${settings.anybookPlace}${anybookOver(settings.anybookPlace) && settings.anybookPlace !== 'over' ? ' ps-sheet--any-over' : ''}` : ''}"
   style:--print-font={PRINT_FONTS[settings.font]?.family ?? PRINT_FONTS.andika.family}
   style:--sym="{settings.symbolSizeMm}mm"
