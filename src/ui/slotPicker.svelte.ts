@@ -19,6 +19,15 @@ import type { CodeHere } from './anybookEdit.ts';
  * handler left out means the row is not there, rather than there and doing
  * nothing, which is what the Wortschatz's checkboxes did.
  */
+
+/** Whether this browser can draw the file at all. */
+async function readable(file: Blob): Promise<boolean> {
+  const url = URL.createObjectURL(file);
+  const picture = new Image();
+  picture.src = url;
+  try { await picture.decode(); return picture.naturalWidth > 0; } catch { return false; } finally { URL.revokeObjectURL(url); }
+}
+
 export interface PickerHandlers {
   onChoose: (candidate: Candidate) => void;
   /**
@@ -215,8 +224,16 @@ export class Picking {
      */
     this.cropFailed = '';
     const loaded = await loadSquare(file, file.name).catch(() => null);
-    if (!loaded) { this.settle(() => this.handlers.onOwnImage(file, file.name)); return; }
-    this.loaded = loaded;
+    if (loaded) { this.loaded = loaded; return; }
+    /*
+     * `loadSquare` says null for a square picture and for one the browser
+     * cannot open at all — an iPhone's HEIC in Chrome, say. The second used to
+     * be stored anyway and then stood in the field as ↻ for good, with
+     * „gespeichert" said over it. It is turned away here instead, with a
+     * sentence, and nothing is written.
+     */
+    if (!(await readable(file))) { this.cropFailed = t('ui.own_picture_unreadable'); return; }
+    this.settle(() => this.handlers.onOwnImage(file, file.name));
   }
 
   /** Back to the suggestions, keeping nothing. The one caller left is a cut
