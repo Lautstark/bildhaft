@@ -75,8 +75,13 @@ export interface PickerHandlers {
    */
   onRemove?: () => void;
   onClose?: () => void;
-  /** The field's Anybook code, where the material prints codes and this field carries one: the „Anybook-Stift“ section. */
-  anybook?: CodeHere;
+  /**
+   * The field's Anybook code, where the material prints codes and this field
+   * carries one: the „Anybook-Stift“ section. Asked as the field stands, not
+   * once as the dialog opens: a field the „+" made gets its code only with
+   * its picture, and used to show „Stift sagt" only the next time.
+   */
+  anybook?: () => CodeHere | null;
   /**
    * The field as it stands now. Given, a picture chosen does not close the
    * dialog — the search folds shut and the picture shows the new one, and the
