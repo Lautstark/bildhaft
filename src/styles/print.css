@@ -778,14 +778,56 @@
   width: 100%;
   height: auto;
   aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 0.5mm;
 }
 .ps-story__middle .ps-card__img img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 0.5mm;
 }
+/* The Anybook circle on a photo (her call, 2026-11-01): in whichever of the
+   eight places the material has, as everywhere, but as a sticker on the
+   photo's edge — its middle on the edge, on a corner a little further in —
+   so the photo keeps its whole size and still looks like one. No room is
+   made for it and the picture gives nothing up; the circle hangs on the
+   white frame, not on the picture's box. Said as strongly as the Anybook
+   rules further down, or it loses to them. */
+.ps-story__middle {
+  --any-top: 0mm;
+  --any-left: 0mm;
+  --any-right: 0mm;
+  --pin: 4.75mm;
+  --pin-corner: 3.5mm;
+}
+.ps-sheet.ps-sheet--anybook.ps-sheet--story .ps-story .ps-story__middle > .ps-card.ps-card--fill > .ps-card__frame:has(img) {
+  position: relative;
+  padding-bottom: 0;
+}
+.ps-sheet.ps-sheet--anybook.ps-sheet--story .ps-story .ps-story__middle > .ps-card--fill .ps-card__img {
+  position: static;
+  padding: 0;
+}
+.ps-sheet.ps-sheet--anybook.ps-sheet--story .ps-story .ps-story__middle > .ps-card--fill .ps-card__img img {
+  max-width: none;
+  max-height: none;
+  translate: none;
+}
+.ps-sheet.ps-sheet--anybook.ps-sheet--story .ps-story .ps-story__middle > .ps-card.ps-card--fill > .ps-card__frame:has(img) .ps-any {
+  inset: var(--pin-t, auto) var(--pin-r, auto) var(--pin-b, auto) var(--pin-l, auto);
+  --any-line: solid;
+  --any-ring-w: 0.5mm;
+  --any-ring: var(--recipe);
+  --any-fill: #fff;
+  box-shadow: 0 0.4mm 1.2mm rgb(20 40 70 / 0.25);
+}
+.ps-sheet--any-above .ps-story__middle { --pin-t: calc(-1 * var(--pin)); --pin-l: calc(50% - var(--pin)); }
+.ps-sheet--any-below .ps-story__middle { --pin-b: calc(-1 * var(--pin)); --pin-l: calc(50% - var(--pin)); }
+.ps-sheet--any-left .ps-story__middle { --pin-l: calc(-1 * var(--pin)); --pin-t: calc(50% - var(--pin)); }
+.ps-sheet--any-beside .ps-story__middle { --pin-r: calc(-1 * var(--pin)); --pin-t: calc(50% - var(--pin)); }
+.ps-sheet--any-over .ps-story__middle { --pin-t: calc(-1 * var(--pin-corner)); --pin-r: calc(-1 * var(--pin-corner)); }
+.ps-sheet--any-over-tl .ps-story__middle { --pin-t: calc(-1 * var(--pin-corner)); --pin-l: calc(-1 * var(--pin-corner)); --pin-r: auto; }
+.ps-sheet--any-over-bl .ps-story__middle { --pin-b: calc(-1 * var(--pin-corner)); --pin-l: calc(-1 * var(--pin-corner)); --pin-t: auto; --pin-r: auto; }
+.ps-sheet--any-over-br .ps-story__middle { --pin-b: calc(-1 * var(--pin-corner)); --pin-r: calc(-1 * var(--pin-corner)); --pin-t: auto; }
 .ps-story__middle .ps-card__label {
   flex: none;
   display: flex;
