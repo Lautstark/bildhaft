@@ -2,10 +2,10 @@
   /**
    * The Tafel on screen: a grid of fields, and under it the cards not yet on it.
    *
-   * Two places for one set of cards, and a way to type into each. A free field
-   * pressed becomes a line to type in, and what is typed there lies there —
-   * the next words in the next free fields. What is typed into the box under
-   * the head waits in the tray: typing ten words is fast and deciding where
+   * Two places for one set of cards. A free field pressed opens the picker, as
+   * every „+" does, and the card made there lies there. What is typed into the
+   * box under the head fills the free fields, and what finds none waits in the
+   * tray: typing ten words is fast and deciding where
    * each one goes is a different act done afterwards, by hand: a card is
    * dragged into a field, from field to field (they swap), or back into the
    * tray. A field left free is left free on paper too.
@@ -37,7 +37,7 @@
   import AddTile from './AddTile.svelte';
   import TitleLine from './TitleLine.svelte';
   import { activeCollection, s } from '../app/state.svelte.ts';
-  import { addIntoFields, handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
+  import { handleNewCard, resizeOpenBoard, writeBoard } from '../app/board.ts';
   import SizePick from './SizePick.svelte';
   import { t } from '../i18n/index.ts';
 
@@ -71,21 +71,6 @@
     const at = tafelField({ cols, rows });
     return at ? t('ui.board_field_mm', { w: Math.round(at.width), h: Math.round(at.height) }) : '';
   };
-
-  /** The free field being typed into, and what is typed there. */
-  let typingAt = $state<number | null>(null);
-  let fieldText = $state('');
-  const focus = (node: HTMLInputElement) => { node.focus(); };
-
-  async function typeInto(index: number): Promise<void> {
-    const text = fieldText;
-    typingAt = null;
-    fieldText = '';
-    if (!text.trim()) return;
-    const left = await addIntoFields(text, index);
-    /* What could not be looked up comes back into the field, as it does into the box. */
-    if (left) { fieldText = left; typingAt = index; }
-  }
 
   /** Which card is being carried, while the drag is ours. */
   let carrying = $state<string | null>(null);
@@ -377,9 +362,9 @@
   A field with nothing in it is also where a card that does not exist yet can be
   made — the same „+" the wall ends with, in the place the card is going to lie.
 --><!--
-  Pressed, it is a line to type in; the picker, for somebody with a picture in
-  mind rather than a word, is one press further.
--->{#if typingAt === index}<div class="cell__type"><input use:focus class="cell__input" type="text" bind:value={fieldText} placeholder={t('ui.board_type_placeholder')} aria-label={t('ui.board_type_here', { n: index + 1 })} disabled={s.busy} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void typeInto(index); } else if (event.key === 'Escape') { typingAt = null; fieldText = ''; } }} onblur={() => { if (!fieldText.trim()) typingAt = null; }} /><button class="linklike small" type="button" onpointerdown={(event) => event.preventDefault()} onclick={() => { typingAt = null; fieldText = ''; void handleNewCard(index); }}>{t('ui.board_pick_here')}</button></div>{:else}<button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => { fieldText = ''; typingAt = index; }}>+</button>{/if}{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div><div class="board-size"><SizePick cols={board.cols} rows={board.rows} maxCols={BOARD_PICK.cols} maxRows={BOARD_PICK.rows} unit={t('ui.board_fields')} hint={sizeHint} onPick={(cols, rows) => resize(cols, rows)} /></div>
+  Pressed, it opens the picker, as every „+" in the app does: the word is
+  typed into its search.
+--><button class="cell__add" type="button" aria-label={t('ui.board_new_here', { n: index + 1 })} onclick={() => void handleNewCard(index)}>+</button>{/if}</div>{/each}{#if frame}<div class="board__frame" style:left="{frame.left}px" style:top="{frame.top}px" style:width="{frame.width}px" style:height="{frame.height}px"></div>{/if}</div><div class="board-size"><SizePick cols={board.cols} rows={board.rows} maxCols={BOARD_PICK.cols} maxRows={BOARD_PICK.rows} unit={t('ui.board_fields')} hint={sizeHint} onPick={(cols, rows) => resize(cols, rows)} /></div>
 
 {#if selected.size > 0}<div class="board-dock">{@render panel()}</div>{/if}
 {#if !board.cells.some(Boolean) && waiting.length === 0}<p class="empty-whisper" style="text-align:center;margin:2px 0 0">{t('ui.tafel_whisper')}</p>{/if}

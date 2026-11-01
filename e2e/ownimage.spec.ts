@@ -94,6 +94,24 @@ test('the picker shows the picture the field is already holding', async ({ page 
   await expect(page.getByRole('button', { name: 'Eigenes Bild entfernen' })).toHaveCount(0);
 });
 
+/**
+ * A file the browser cannot draw — an iPhone's HEIC in Chrome — is turned away
+ * with a sentence. It used to be stored anyway and then stood in the field as ↻
+ * for good, under „Eigenes Bild gespeichert.".
+ */
+test('turns away a picture the browser cannot open, and keeps the symbol', async ({ page }) => {
+  await translate(page, 'Ich möchte einen Apfel essen');
+  await page.locator('.row').first().locator('.slot').nth(2).click();
+  await openSymbolSearch(page);
+  await page.locator('.picker__own input[type=file]').setInputFiles({
+    name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from('not a picture this browser draws'),
+  });
+  await expect(page.getByText('Dieses Bild kann der Browser nicht öffnen.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Eigenes Bild entfernen' })).toHaveCount(0);
+  await closePicker(page);
+  await expect.poll(() => widths(page)).toEqual([1, 1, 1, 1]);
+});
+
 test('leaves the symbol underneath, and uncovers it again on removal', async ({ page }) => {
   await translate(page, 'Ich möchte einen Apfel essen');
   const slot = page.locator('.row').first().locator('.slot').nth(2);
