@@ -2117,7 +2117,8 @@ footer.footer {
 .title-line__words, .row__words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .title-line__words > .title-line__text, .row__words > .row__title { flex: none; align-self: stretch; }
 .title-line__words > .any-pen--line { margin-left: 8px; }
-.row__words > .any-pen--line { margin-left: -1px; }
+/* A row's pen is the row name's twin: the same left edge (.row__title's -7px) and the same full width. */
+.row__words > .any-pen--line { width: auto; align-self: stretch; margin-left: -7px; }
 .any-stift__say--small {
   gap: 1px; padding: 0 2px 0 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface);
 }
