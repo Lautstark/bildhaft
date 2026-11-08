@@ -124,6 +124,7 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
 
   /* Read off the sheet too: Spiel and Plauderbuch put it „überlappend“ whatever the setting says. */
   const ueber = holder.querySelector('.ps-sheet--any-over') !== null;
+  const oben = holder.querySelector('.ps-sheet--any-above') !== null;
   const stuecke: Stueck[] = [];
   for (const kind of ARTEN) {
     for (const el of holder.querySelectorAll(kind.sel)) {
@@ -137,9 +138,12 @@ export function messen(holder: HTMLElement, fall: Fall): Messung {
       const any = fall.settings.anybookCircle ? 2 as const : undefined;
       if (sym && wort && overlap(sym, wort)) befunde.push({ schwere: 'fehler', text: 'Symbol liegt über der Beschriftung', frage: any });
       if (kreis && wort && overlap(kreis, wort)) {
-        /* Überlappend with the word on top: the corner is the word's too, and only a short word clears it (her call). */
+        /* Überlappend with the word on top: the corner is the word's too, and only a short word clears it (her call).
+           Above with the word on top: the circle keeps its 1.5 mm from the edge, on the word (her call, 2026-11-08). */
         befunde.push(ueber && fall.settings.labelPosition === 'above'
           ? { schwere: 'hinweis', text: 'Anybook-Kreis liegt über der Beschriftung — oben und überlappend geht nur mit kurzen Wörtern' }
+          : oben && fall.settings.labelPosition === 'above'
+          ? { schwere: 'hinweis', text: 'Anybook-Kreis liegt über der Beschriftung — Wort oben und Kreis oben teilen sich den Platz' }
           : { schwere: 'fehler', text: 'Anybook-Kreis liegt über der Beschriftung', frage: 2 });
       }
       if (sym && outside(sym, box)) befunde.push({ schwere: 'fehler', text: 'Symbol ragt aus der Karte', frage: any });
