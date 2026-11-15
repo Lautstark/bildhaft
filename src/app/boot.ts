@@ -1,6 +1,8 @@
 import { metacom } from '@lautstark/bildquelle';
 import { isBlockedByOtherTab, onBlockedChange, takeMigrationNote } from '../db/db.ts';
-import { createCollection, listCollections, loadSettings, pullFromFolder } from '../db/repo.ts';
+import {
+  bringRecordsUpToDate, createCollection, dataIsNewer, listCollections, loadSettings, pullFromFolder,
+} from '../db/repo.ts';
 import { ablage, adopted, moveWortschatz, restoreFolder, watchFolder } from '../db/folder.ts';
 import { offerRescue } from '../ui/rescue.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
@@ -35,6 +37,10 @@ export function boot(say: (message: string) => void): void {
        its words over here, once. */
     await moveWortschatz().catch(() => 0);
     await pullFromFolder().catch(() => false);
+    /* The household without a folder: its records are brought up here, since
+       they never come in through a file. core/format.ts. */
+    await bringRecordsUpToDate().catch(() => undefined);
+    s.newerData = dataIsNewer();
 
     const loaded = await loadSettings();
     let all = await listCollections();
@@ -81,6 +87,9 @@ export function boot(say: (message: string) => void): void {
        constantly, and all of those changes are ours. */
     void adopted().then((yes: boolean) => {
       if (yes) watchFolder(() => void pullFromFolder().then(() => {
+        /* Another device moved on to a newer bildhaft while this page stayed
+           open: the page stops here and asks to be loaded again. */
+        s.newerData = dataIsNewer();
         void refreshCollections();
         if (s.activeId) setActive(s.activeId);
       }));

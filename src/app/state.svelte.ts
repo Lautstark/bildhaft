@@ -91,6 +91,13 @@ export class AppState {
   dbBlocked = $state(false);
 
   /*
+   * What was read — the folder, or this browser's own records — was written by
+   * a newer bildhaft than the one this page is running. Nothing more is written
+   * and the page asks to be loaded again: core/format.ts, adr/0004.
+   */
+  newerData = $state(false);
+
+  /*
    * A METACOM folder grant is per site and per browsing session. The index is
    * cached, so the source can report itself ready while every actual file read
    * is refused — the app looks fine and every symbol is blank. Counting

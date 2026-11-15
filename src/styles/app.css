@@ -2175,3 +2175,20 @@ footer.footer {
 .picker__pic[hidden], .picker__say[hidden] { display: none; }
 .any-stift__error, .any-error { color: var(--danger); }
 .any-voice { display: flex; align-items: center; gap: 10px; }
+
+/* The page stopped because its data is ahead of it (app/Outdated.svelte). A
+   dialog of its own rather than a sheet: a sheet can be closed, and the one
+   thing this must not offer is carrying on. */
+.outdated {
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.outdated::backdrop { background: rgba(20, 16, 12, .45); }
+.outdated h2 { margin: 0 0 10px; font-size: 18px; }
+.outdated p { margin: 0 0 12px; line-height: 1.5; }
+.outdated .btn { margin-top: 6px; }

@@ -4,6 +4,7 @@ import {
   OWN_PREFIX, ownImageId, ownImagesInUse,
   type GameBook, type Override, type OwnImage, type OwnImageExport, type PrintSettings, type Sentence, type Slot, type Song, type TalkBook,
 } from '../core/types.ts';
+import { FORMAT, holdsNewer, upgradeLibrary, type Library } from '../core/format.ts';
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
 import {
@@ -287,6 +288,32 @@ function remapOverride(override: Override, mapping: Map<string, string>): Overri
 }
 
 /**
+ * What a file holds, in this build's format — the one door every opened file
+ * comes through, a single Sammlung and a Sicherung alike.
+ *
+ * A file names its own version at the top, and that is about the file: which
+ * fields the envelope has. This is about the records inside it, which say for
+ * themselves which format they are in, the same way they do in the folder.
+ * Everything handed back is stamped, so a record that arrived saying nothing
+ * does not leave here still saying nothing.
+ */
+function arriving(found: Library): Library {
+  const held: Library = {
+    collections: found.collections.filter(Boolean),
+    sentences: found.sentences.filter(Boolean),
+    overrides: found.overrides.filter(Boolean),
+  };
+  if (holdsNewer(held)) throw new Error(t('export.file_newer'));
+  const { library } = upgradeLibrary(held);
+  const stamp = <T>(record: T): T => ({ ...record, v: FORMAT });
+  return {
+    collections: library.collections.map(stamp),
+    sentences: library.sentences.map(stamp),
+    overrides: library.overrides.map(stamp),
+  };
+}
+
+/**
  * Imports a collection file. Always creates a NEW collection with fresh ids rather
  * than overwriting anything: importing must never be able to destroy existing work.
  */
@@ -299,20 +326,24 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     throw new Error('Das ist keine bildhaft-Datei.');
   }
   if (typeof parsed.version !== 'number' || parsed.version > EXPORT_VERSION) {
-    throw new Error('Diese Datei stammt aus einer neueren Version von bildhaft.');
+    throw new Error(t('export.file_newer'));
   }
 
-  const source = parsed.collection;
-  if (!source || !Array.isArray(parsed.sentences)) {
+  if (!parsed.collection || !Array.isArray(parsed.sentences)) {
     throw new Error(t('export.file_incomplete'));
   }
+
+  const arrived = arriving({
+    collections: [parsed.collection as Collection], sentences: parsed.sentences, overrides: parsed.overrides ?? [],
+  });
+  const source = arrived.collections[0]!;
 
   const now = Date.now();
   const collectionId = newId();
   const imageIds = await restoreImages(parsed.ownImages);
 
   const sentenceIds = new Map<string, string>();
-  const sentences: Sentence[] = parsed.sentences.map((s) => {
+  const sentences: Sentence[] = arrived.sentences.map((s) => {
     const id = newId();
     sentenceIds.set(s.id, id);
     return remapImages(
@@ -348,6 +379,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
     ...(typeof source.title === 'string' && source.title.trim() ? { title: source.title } : {}),
     createdAt: now,
     updatedAt: now,
+    v: FORMAT,
   };
 
   const db = await getDB();
@@ -359,7 +391,7 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
   // should extend the personal dictionary, never overrule it.
   const added: Override[] = [];
   const store = tx.objectStore('overrides');
-  for (const override of parsed.overrides ?? []) {
+  for (const override of arrived.overrides) {
     if (!override?.key) continue;
     if (await store.get(override.key)) continue;
     const entry = remapOverride(override, imageIds);
@@ -485,8 +517,11 @@ function remapPrint(print: Partial<PrintSettings>, ids: Map<string, string>): Pa
 
 /** Restores a full backup. Like a single import, it only ever adds. */
 async function importBackup(parsed: AnyExport): Promise<ImportResult> {
-  const sourceCollections = parsed.collections ?? [];
-  if (sourceCollections.length === 0) throw new Error(t('export.backup_empty'));
+  if (!parsed.collections?.length) throw new Error(t('export.backup_empty'));
+  const arrived = arriving({
+    collections: parsed.collections, sentences: parsed.sentences ?? [], overrides: parsed.overrides ?? [],
+  });
+  const sourceCollections = arrived.collections;
 
   const now = Date.now();
   // Fresh ids throughout, so restoring a backup never collides with existing work.
@@ -495,7 +530,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   /* A backup made before `sentenceIds` went still has one on every Sammlung,
      listing the old ids. It is left behind rather than carried: nothing reads
      it, and the ids in it are not the ones the rows are about to get. */
-  const collections: Collection[] = sourceCollections.map(({ sentenceIds: _old, ...c }) => ({
+  const collections: Collection[] = (sourceCollections as (Collection & { sentenceIds?: unknown })[]).map(({ sentenceIds: _old, ...c }) => ({
     ...c,
     id: idMap.get(c.id)!,
     createdAt: c.createdAt ?? now,
@@ -506,7 +541,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
   const sentenceIds = new Map<string, string>();
   const imageIds = await restoreImages(parsed.ownImages);
 
-  for (const source of parsed.sentences ?? []) {
+  for (const source of arrived.sentences) {
     const target = idMap.get(source.collectionId);
     if (!target) continue; // orphaned row; drop rather than guess
     const sentence: Sentence = remapImages({
@@ -534,7 +569,7 @@ async function importBackup(parsed: AnyExport): Promise<ImportResult> {
 
   const added: Override[] = [];
   const store = tx.objectStore('overrides');
-  for (const override of parsed.overrides ?? []) {
+  for (const override of arrived.overrides) {
     if (!override?.key) continue;
     if (await store.get(override.key)) continue;
     const entry = remapOverride(override, imageIds);

@@ -208,6 +208,12 @@ export interface Sentence {
   collectionId: string;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Which format this record is in — see core/format.ts. Absent means 1, the
+   * format records were in before they said. Stamped on every write, and it is
+   * the same `v` the folder puts at the foot of a file.
+   */
+  v?: number;
 
   /**
    * What this row is called, when the words that fetched the symbols are not
@@ -305,6 +311,8 @@ export interface Collection {
   id: string;
   /** e.g. "Der Grüffelo" */
   name: string;
+  /** Which format this record is in; absent means 1. See `Sentence.v`. */
+  v?: number;
   /* `sentenceIds` stood here: the rows, listed on the Sammlung as well as by
      the store's `byCollection` index. It was written on every add and removal
      and read by nothing, and every whole-record put from a copy on screen could
@@ -666,6 +674,8 @@ export const kindOf = (collection: Collection): CollectionKind =>
 export interface Override {
   /** `${language}:${providerId}:${normalizedToken}` */
   key: string;
+  /** Which format this record is in; absent means 1. See `Sentence.v`. */
+  v?: number;
   /**
    * Which language the word was written in.
    *

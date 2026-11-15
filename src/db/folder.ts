@@ -1,4 +1,5 @@
 import { Ablage, announceFolder, announcedFolder, stopAnnouncing } from '@lautstark/sicherung/ablage';
+import { FORMAT } from '../core/format.ts';
 import type { Collection, OwnImage, Override, Sentence } from '../core/types.js';
 
 /**
@@ -22,7 +23,9 @@ export type Kind = (typeof KINDS)[number];
 export const HOME = 'Lautstark';
 export const APP = 'bildhaft';
 
-export const ablage = new Ablage({ app: APP, kinds: KINDS });
+/* `version` is what the folder writes at the foot of every file, and what it
+   compares a file it reads against — core/format.ts says what the number means. */
+export const ablage = new Ablage({ app: APP, kinds: KINDS, version: FORMAT });
 
 /**
  * The Wortschatz, in a compartment of its own beside bildhaft's.
@@ -43,7 +46,7 @@ export const ablage = new Ablage({ app: APP, kinds: KINDS });
  */
 export const SHARED = 'wortschatz';
 export const SHARED_KINDS = ['woerterbuch'] as const;
-export const shared = new Ablage({ app: SHARED, kinds: SHARED_KINDS, follows: APP });
+export const shared = new Ablage({ app: SHARED, kinds: SHARED_KINDS, follows: APP, version: FORMAT });
 
 /** Which Ablage a kind lives in. One kind has moved out; the rest are bildhaft's. */
 const homeOf = (kind: Kind | 'woerterbuch') => (kind === 'woerterbuch' ? shared : ablage);
@@ -108,10 +111,20 @@ const asStored = {
   bilder: ({ blob: _blob, ...rest }: OwnImage) => ({ ...rest, updatedAt: rest.createdAt }),
 } as const;
 
+/**
+ * Whether a file read so far was written by a build newer than this one.
+ *
+ * Means nothing before a read. Once it is true this build writes nothing more
+ * into the folder: what it holds is the older shape, and filing that over a
+ * newer file is how another device's work turns into empty fields.
+ */
+export const sawNewer = (): boolean => ablage.shape.sawNewer || shared.shape.sawNewer;
+
 /* A write reaches the folder only where the folder is the store, and never while
    it is stale — a copy that took writes nobody else can see would be the second
-   source of truth this whole arrangement exists to avoid. */
-const canWrite = () => isStore() && !isStale();
+   source of truth this whole arrangement exists to avoid. Nor once the folder
+   has turned out to be ahead of this build. */
+const canWrite = () => isStore() && !isStale() && !sawNewer();
 /* The compartment has its own status, and a write that goes nowhere because it
    was never restored is the quietest kind of loss. It borrows bildhaft's folder,
    so in practice the two agree — this is the guard for the case where they do

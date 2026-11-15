@@ -24,6 +24,7 @@
   import Wortschatz from './ui/Wortschatz.svelte';
   import Arriving from './app/Arriving.svelte';
   import Banners from './app/Banners.svelte';
+  import Outdated from './app/Outdated.svelte';
   import CollectionHead from './app/CollectionHead.svelte';
   import Material from './app/Material.svelte';
   import { boot } from './app/boot.ts';
@@ -142,7 +143,7 @@
 
 
 
-{#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} drawer={s.mobileNavOpen} {collapsed} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
+{#if s.newerData}<Outdated />{/if}{#if !ready}<div class="loading-state" bind:this={loading}>{#if instead}<p class="banner" role="alert">{instead}</p>{:else}<span class="spinner"></span>{/if}</div>{:else}<div class="app" id="app-root" class:app--collapsed={!sidebarOpen} class:app--nav-open={s.isMobile && s.mobileNavOpen}><Sidebar onNavigated={closeNavOnMobile} onCollapse={toggleSidebar} drawer={s.mobileNavOpen} {collapsed} ondismiss={() => { s.mobileNavOpen = false; }} /><!--
   The page behind the drawer, and the way out of it. Always in the markup now
   and hidden by the component, which is what lets it keep `[hidden]` ahead of
   any `display` a stylesheet has — so app.css drops the `display: none` base it

@@ -49,13 +49,13 @@ const MUTATORS = [
  * They are named here rather than left out so the completeness check keeps its
  * promise: a new export nobody classified still fails.
  */
-const FOLDER = ['pullFromFolder', 'adoptFolder'];
+const FOLDER = ['pullFromFolder', 'adoptFolder', 'bringRecordsUpToDate'];
 
 /** Reads, listed so the completeness check below can tell the two apart. */
 const READS = [
   'defaultSettings', 'loadSettings', 'listCollections', 'getCollection',
   'defaultCollectionName', 'listSentences', 'findByNormalized', 'searchSentences',
-  'countSentences', 'libraryTotals', 'listOverrides', 'listAllOverrides', 'overrideMap',
+  'countSentences', 'dataIsNewer', 'libraryTotals', 'listOverrides', 'listAllOverrides', 'overrideMap',
   'getOwnImage', 'listOwnImages', 'newId', 'onChanged',
   /* What the screen asks before it lets a store read replace what it holds.
      They report on writes rather than making any — see `isWriting`. */

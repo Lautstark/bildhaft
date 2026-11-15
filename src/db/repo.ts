@@ -2,8 +2,9 @@ import { clearAllProviderData } from '@lautstark/bildquelle';
 import { getDB } from './db.ts';
 import {
   adopt, adopted, fileCollection, fileImage, fileNameFor, fileOverride, fileSentence, isStore,
-  pushKind, readImage, readKind, unfile, unfileOverride, type Kind,
+  pushKind, readImage, readKind, sawNewer, unfile, unfileOverride, type Kind,
 } from './folder.ts';
+import { FORMAT, holdsNewer, upgradeLibrary, type Library } from '../core/format.ts';
 // The seed for a user's own editable list. The list itself stays theirs and
 // stays in this database; what the package supplies is where it starts.
 import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
@@ -196,6 +197,7 @@ export async function createCollection(
     language: LANG,
     createdAt: now,
     updatedAt: now,
+    v: FORMAT,
   };
   const db = await getDB();
   await db.put('collections', collection);
@@ -254,7 +256,7 @@ export async function patchCollection(
       await tx.done;
       return null;
     }
-    const merged: Collection = { ...held, ...patch, updatedAt: Date.now() };
+    const merged: Collection = { ...held, ...patch, updatedAt: Date.now(), v: FORMAT };
     for (const field of Object.keys(patch) as (keyof CollectionPatch)[]) {
       if (patch[field] === undefined) delete (merged as Partial<Collection>)[field];
     }
@@ -348,12 +350,20 @@ export async function pullFromFolder(): Promise<boolean> {
      flight. */
   if (writing.size > 0) return false;
   const db = await getDB();
-  const [collections, sentences, overrides, images] = await Promise.all([
+  const [found, rows, words, images] = await Promise.all([
     readKind<Collection>('sammlungen'),
     readKind<Sentence>('saetze'),
     readKind<Override & { id?: string }>('woerterbuch'),
     readKind<Omit<OwnImage, 'blob'>>('bilder'),
   ]);
+  /* Before anything of it is kept. A folder ahead of this build is not read
+     over the browser's copy, and — folder.ts — not written to either. */
+  if (sawNewer() || holdsNewer({ collections: found, sentences: rows, overrides: words })) {
+    newer = true;
+    return false;
+  }
+  const { library: { collections, sentences, overrides }, changed } =
+    upgradeLibrary({ collections: found, sentences: rows, overrides: words });
   /* A picture's bytes lie beside its record; one without them would render as a
      hole, so it is left out rather than restored broken. */
   const withBytes: OwnImage[] = [];
@@ -369,12 +379,69 @@ export async function pullFromFolder(): Promise<boolean> {
     ...collections.map((item) => tx.objectStore('collections').put(item)),
     ...sentences.map((item) => tx.objectStore('sentences').put(item)),
     /* The id was only ever a filename; the store is keyed by the word. */
-    ...overrides.map(({ id: _id, ...rest }) => tx.objectStore('overrides').put(rest)),
+    ...(overrides as (Override & { id?: string })[])
+      .map(({ id: _id, ...rest }) => tx.objectStore('overrides').put(rest)),
     ...withBytes.map((item) => tx.objectStore('ownImages').put(item)),
     tx.done,
   ]);
+  /* What a step rewrote goes back as files, so the next device to read the
+     folder finds it done. After the transaction: a folder write cannot happen
+     inside one. */
+  await fileUpgraded(changed);
   touched();
   return true;
+}
+
+/* ------------------------------------------------------- record format --- */
+
+let newer = false;
+
+/**
+ * Whether what was read — folder or browser — is ahead of this build.
+ *
+ * It stays true once it is: nothing here can make an old build newer, and the
+ * page that asks stops and offers the one thing that can, which is loading
+ * the new one.
+ */
+export const dataIsNewer = (): boolean => newer;
+
+async function fileUpgraded(changed: Library): Promise<void> {
+  for (const sentence of changed.sentences) await fileSentence(sentence);
+  for (const collection of changed.collections) await fileCollection(collection);
+  for (const { id: _id, ...override } of changed.overrides as (Override & { id?: string })[]) {
+    await fileOverride(override);
+  }
+}
+
+/**
+ * The browser's own records, brought up to this build's format.
+ *
+ * Where a folder is the store pullFromFolder() has already done it, on the
+ * way in. This is the household without one, whose records never pass
+ * through a file. Called once at start, before the first read.
+ */
+export async function bringRecordsUpToDate(): Promise<void> {
+  if (isStore()) return;
+  const db = await getDB();
+  const held: Library = {
+    collections: await db.getAll('collections'),
+    sentences: await db.getAll('sentences'),
+    overrides: await db.getAll('overrides'),
+  };
+  if (holdsNewer(held)) {
+    newer = true;
+    return;
+  }
+  const { changed } = upgradeLibrary(held);
+  if (!changed.collections.length && !changed.sentences.length && !changed.overrides.length) return;
+  const tx = db.transaction(['collections', 'sentences', 'overrides'], 'readwrite');
+  await Promise.all([
+    ...changed.collections.map((item) => tx.objectStore('collections').put(item)),
+    ...changed.sentences.map((item) => tx.objectStore('sentences').put(item)),
+    ...changed.overrides.map((item) => tx.objectStore('overrides').put(item)),
+    tx.done,
+  ]);
+  touched();
 }
 
 /* Connecting a folder for the first time is the migration with a before and an
@@ -424,7 +491,7 @@ export async function putSentence(sentence: Sentence): Promise<void> {
 
 async function writeSentence(sentence: Sentence): Promise<void> {
   const db = await getDB();
-  const kept = { ...sentence, updatedAt: Date.now() };
+  const kept = { ...sentence, updatedAt: Date.now(), v: FORMAT };
   const tx = db.transaction(['sentences', 'collections'], 'readwrite');
   const sentences = tx.objectStore('sentences');
   const before = await sentences.get(sentence.id);
@@ -654,7 +721,7 @@ async function patchOverride(
     await tx.done;
     return null;
   }
-  const merged = { ...held, ...change, key, updatedAt: Date.now() } as Override;
+  const merged = { ...held, ...change, key, updatedAt: Date.now(), v: FORMAT } as Override;
   for (const field of Object.keys(change) as (keyof OverridePatch)[]) {
     if (change[field] === undefined) delete (merged as Partial<Override>)[field];
   }

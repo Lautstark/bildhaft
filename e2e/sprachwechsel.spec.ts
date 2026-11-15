@@ -229,9 +229,11 @@ test('switching the language leaves every material as it was', async ({ page }) 
   expect(after.overrides).toEqual(stored.overrides);
   expect(after.ownImages).toEqual(stored.ownImages);
   // A Sammlung gained one thing — the language it was written in, said out loud
-  // now that the page's no longer says it for it — and lost nothing.
+  // now that the page's no longer says it for it — and lost nothing. Writing
+  // that down is a write, and every write stamps the record's format (`v`,
+  // core/format.ts), which the seeded records did not say.
   const strip = (all: unknown[]) => (all as Record<string, unknown>[])
-    .map(({ language: _, updatedAt: __, ...rest }) => rest)
+    .map(({ language: _, updatedAt: __, v: ___, ...rest }) => rest)
     .sort((a, b) => String(a.id).localeCompare(String(b.id)));
   expect(strip(after.collections)).toEqual(strip(stored.collections));
   for (const collection of after.collections as { id: string; language?: string }[]) {
