@@ -288,8 +288,9 @@ export const TEMPLATES: Record<CollectionKind, Template> = {
   },
 
   /* Opens on A5 lying on its side, one sheet: the name with its picture,
-     the week's one to four cards as photos on a block of the material's
-     colour, and the row to answer with on a paler one at the foot.
+     the week's cards — four on A5, up to nine on A4 — as photos on a block
+     of the material's colour, and the row to answer with on a paler one at
+     the foot.
      Laminated whole or not at all, so nothing is cut. A light blue page
      until it is given another; white cards, so a photo and a symbol stand
      on the same ground. The Anybook circle in any of the eight places, as

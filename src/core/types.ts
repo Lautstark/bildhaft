@@ -261,8 +261,8 @@ export const RECIPE_PARTS = ['zutat', 'hilfsmittel', 'schritt'] as const;
 export type RecipePart = (typeof RECIPE_PARTS)[number];
 
 /**
- * The two parts of an Erzählen sheet, top to bottom: what is told — one to
- * four cards, the week's —, and the cards to answer with („schön", „Und du?").
+ * The two parts of an Erzählen sheet, top to bottom: what is told — the
+ * week's cards, as many as its paper holds (storyMiddle) —, and the cards to answer with („schön", „Und du?").
  *
  * The first version had a third part above them, `oben`, for a „Hallo".
  * It stood lost on paper and went (2026-11-01); a card saved there still
@@ -271,8 +271,27 @@ export type RecipePart = (typeof RECIPE_PARTS)[number];
  */
 export const STORY_PARTS = ['mitte', 'unten'] as const;
 export type StoryPart = (typeof STORY_PARTS)[number];
-/** The most cards the middle of an Erzählen sheet holds: four still stand side by side on A5. */
-export const STORY_MIDDLE_MAX = 4;
+/**
+ * How many cards the middle of an Erzählen sheet holds on its paper, and how
+ * many stand side by side at most. Her call (2026-11-22, from a mock at
+ * scale): A5 keeps four — one row lying, two by two standing —, A4 lying
+ * takes eight in two rows of four, A4 standing nine in three rows of three.
+ * Each photo is then about as big as the next paper's.
+ */
+export function storyMiddle(paper: PaperSize, orientation: Orientation): { max: number; cols: number } {
+  if (paper === 'a4') return orientation === 'landscape' ? { max: 8, cols: 4 } : { max: 9, cols: 3 };
+  return orientation === 'landscape' ? { max: 4, cols: 4 } : { max: 4, cols: 2 };
+}
+
+/**
+ * The rows `count` cards lie in, at most `cols` to a row: as few rows as
+ * hold them, and as even as they go, the short row last — five on A4 lying
+ * are three and two, not four and one. Fewer cards are bigger ones.
+ */
+export function storyRows(count: number, cols: number): { cols: number; rows: number } {
+  const rows = Math.max(1, Math.ceil(count / cols));
+  return { cols: Math.max(1, Math.ceil(count / rows)), rows };
+}
 export const isStoryPart = (part: string | undefined): part is StoryPart =>
   (STORY_PARTS as readonly string[]).includes(part ?? '');
 

@@ -742,15 +742,24 @@
 /* The middle is the week's, so it is set apart from the rest: its cards lie
    as photos would on a stronger block of the colour — white, a wider edge
    underneath for the word, a soft shadow, each a little turned and no two
-   alike. The picture is square and fills its frame; a card is as wide as
-   the block is high allows, so one card does not grow past the page. */
+   alike. The picture is square and fills its frame. The cards lie in the
+   rows the sheet worked out (--cols, --rows; storyRows), each in a cell of
+   its own width and height and as big as that cell allows either way, so
+   one card does not grow past the page. A short last row sits in the
+   middle — that is why it is a wrapping flex and not the grid: a card's
+   side margins make up its cell, so exactly --cols fit to a row. */
 .ps-story__middle {
   flex: 1 1 0;
   min-height: 0;
   container-type: size;
-  column-gap: 5mm;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: space-evenly;
   align-items: center;
-  justify-items: center;
+  /* Resolved on the cards, against this block. */
+  --cell-w: calc(100cqw / var(--cols));
+  --cell-h: calc((100cqh - (var(--rows) - 1) * 3mm) / var(--rows));
   padding: 2mm 4mm;
   border-radius: 3mm;
   background: color-mix(in srgb, var(--recipe) 70%, #fff);
@@ -758,8 +767,11 @@
   print-color-adjust: exact;
 }
 .ps-story__middle > .ps-card {
-  width: min(100%, calc(100cqh - 13mm));
+  --photo-w: min(calc(var(--cell-w) - 5mm), calc(var(--cell-h) - 13mm));
+  width: var(--photo-w);
   height: auto;
+  /* A hair under the cell, or rounding wraps the last of a row. */
+  margin-inline: calc((var(--cell-w) - var(--photo-w)) / 2 - 0.05mm);
 }
 .ps-story__middle > .ps-card:nth-child(4n + 1) { rotate: -2deg; }
 .ps-story__middle > .ps-card:nth-child(4n + 2) { rotate: 1.4deg; }

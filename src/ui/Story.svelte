@@ -5,14 +5,14 @@
    *
    * A Rezept's Zutaten wall twice over, and nothing else. A photo is
    * no different from a symbol: it is an own picture, chosen in the same
-   * picker. The middle stops taking cards at four, which is all one row on
-   * paper holds.
+   * picker. The middle stops taking cards when its paper is full — four on
+   * A5, eight on A4 lying, nine standing (storyMiddle).
    */
   import type { ProviderId } from '../core/types.ts';
   import { STORY_PARTS } from '../core/types.ts';
   import CardWall from './CardWall.svelte';
   import { entriesOf, moveEntry } from '../app/recipe.ts';
-  import { addStoryCard, roomIn } from '../app/story.ts';
+  import { addStoryCard, middleOver, middleWhisper, roomIn } from '../app/story.ts';
   import { s } from '../app/state.svelte.ts';
   import { t } from '../i18n/index.ts';
 
@@ -23,6 +23,11 @@
     void s.sentences;
     return { mitte: entriesOf('mitte'), unten: entriesOf('unten') };
   });
+  /* Read through the cards and the paper, so it follows either. */
+  let over = $derived.by(() => {
+    void s.sentences;
+    return middleOver();
+  });
 </script>
 
-<div class="recipe"><div class="recipe__box">{#each STORY_PARTS as which (which)}<section class="recipe__part" aria-label={t(`ui.story_${which}`)}><div class="recipe__head"><h3>{t(`ui.story_${which}`)}</h3></div><CardWall entries={parts[which]} {provider} addLabel={roomIn(which) ? t('ui.story_add') : null} onAdd={() => void addStoryCard(which)} onMove={(from, to) => void moveEntry(which, from, to)} whisper={which === 'mitte' ? t('ui.story_mitte_whisper') : null} /></section>{/each}</div></div>
+<div class="recipe"><div class="recipe__box">{#each STORY_PARTS as which (which)}<section class="recipe__part" aria-label={t(`ui.story_${which}`)}><div class="recipe__head"><h3>{t(`ui.story_${which}`)}</h3></div><CardWall entries={parts[which]} {provider} addLabel={roomIn(which) ? t('ui.story_add') : null} onAdd={() => void addStoryCard(which)} onMove={(from, to) => void moveEntry(which, from, to)} whisper={which === 'mitte' ? middleWhisper() : null} />{#if which === 'mitte' && over}<p class="empty-whisper">{over}</p>{/if}</section>{/each}</div></div>

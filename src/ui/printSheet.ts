@@ -1,7 +1,7 @@
 import type {
   Orientation, PaperSize, PrintSettings, ProviderId, PunchEdge, Sentence, Slot, SongPartKind, StoryPart, ZoneStyle,
 } from '../core/types.ts';
-import { STORY_MIDDLE_MAX, partOf, picturesOf, sentenceCaption, slotCaption, symbolIdFor } from '../core/types.ts';
+import { partOf, storyMiddle, storyRows, picturesOf, sentenceCaption, slotCaption, symbolIdFor } from '../core/types.ts';
 import { foldRepeats } from '../core/song.ts';
 
 /** The margin @page reserves at the top and sides. Millimetres, because the sheet is. */
@@ -704,7 +704,7 @@ export type Block =
   | { kind: 'recipe-part'; part: 'zutat' | 'hilfsmittel'; slots: Slot[] }
   /* An Erzählen sheet under its name: the page that is left, in its three
      parts. One page and never more, as a Tafel is. */
-  | { kind: 'story'; middle: Slot[]; bottom: Slot[]; height: string }
+  | { kind: 'story'; middle: Slot[]; bottom: Slot[]; height: string; cols: number; rows: number }
   | { kind: 'recipe-step'; id: string; text: string; n: number; slots: Slot[]; first: boolean }
   /* `more`: a piece of a part too tall for a page after its first, named as
      going on. */
@@ -1209,14 +1209,17 @@ export function sheetBlocks(
   } else if (settings.layout === 'erzaehlen') {
     /*
      * One block the height of what the name leaves of the page. The foot's
-     * cards share its width; the middle takes the rest, its
-     * cards side by side and as tall as it is — one card the whole width, four
-     * a quarter each.
+     * cards share its width; the middle takes the rest, its cards in rows
+     * as the paper has them (storyMiddle) — one card the whole block, more
+     * smaller. Cards past what the paper holds stay in the material and are
+     * not printed: they come back on a bigger paper.
      */
     const of = (part: StoryPart): Slot[] => sentences.filter((sentence) => partOf(sentence) === part)
       .flatMap((sentence) => sentence.slots.slice(0, 1));
+    const fits = storyMiddle(settings.paper, settings.orientation);
+    const middle = of('mitte').slice(0, fits.max);
     blocks.push({
-      kind: 'story', middle: of('mitte').slice(0, STORY_MIDDLE_MAX), bottom: of('unten'),
+      kind: 'story', middle, bottom: of('unten'), ...storyRows(middle.length, fits.cols),
       height: `${(page.height - reserve).toFixed(3)}mm`,
     });
   } else if (settings.layout === 'lied') {
