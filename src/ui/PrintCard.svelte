@@ -47,7 +47,9 @@
   $effect(() => {
     const wanted = id;
     if (!wanted) { url = null; return; }
-    const following = followSymbolUrl(provider, wanted, (found) => { url = found; });
+    /* `whole`: this is paper. A card drawn from the screen's small copy would
+       print soft, and the PDF is filmed off this very DOM. See `ui/symbols.ts`. */
+    const following = followSymbolUrl(provider, wanted, (found) => { url = found; }, true);
     followed = following;
     return following.stop;
   });

@@ -195,6 +195,23 @@ export interface OwnImage {
   name: string;
   type: string;
   blob: Blob;
+  /**
+   * The same picture, small, for the screen. `db/thumb.ts` makes it.
+   *
+   * A photo off a phone is twelve megapixels, and a browser decodes all of them
+   * however small the box is: twelve pictures in one Sammlung measured 558 MB
+   * of bitmap against 2.3 MB as thumbnails, and bitmaps that large get
+   * discarded and decoded again on every scroll. So the screen is drawn from
+   * this and paper is drawn from `blob` — `ui/symbols.ts` asks for one or the
+   * other, and the difference is only ever which of the two it hands back.
+   *
+   * Optional, and derived: absent means nobody has needed it yet (a picture
+   * imported before this field existed, or one restored from a file), and one
+   * is made and written back the first time it is drawn. It does not travel to
+   * the folder or into an export, because it can always be made again from the
+   * picture itself.
+   */
+  thumb?: Blob;
   createdAt: number;
 }
 

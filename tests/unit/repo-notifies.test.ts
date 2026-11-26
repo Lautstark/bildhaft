@@ -51,6 +51,17 @@ const MUTATORS = [
  */
 const FOLDER = ['pullFromFolder', 'adoptFolder', 'bringRecordsUpToDate'];
 
+/**
+ * Writes that are not changes to the library.
+ *
+ * `rememberThumb` keeps the small copy of a picture beside the picture, and a
+ * thumbnail is derived: it is left out of what the folder gets and out of an
+ * export, and it can be made again from the bytes next to it. So it announces
+ * nothing — a `touched()` would file a backup every time an old picture was
+ * drawn for the first time — and it owes the folder nothing. See `db/thumb.ts`.
+ */
+const DERIVED = ['rememberThumb'];
+
 /** Reads, listed so the completeness check below can tell the two apart. */
 const READS = [
   'defaultSettings', 'loadSettings', 'listCollections', 'getCollection',
@@ -180,7 +191,7 @@ describe('the change notifier', () => {
 
   it('accounts for every export, so a new one cannot slip in unclassified', () => {
     const exported = Object.keys(repo).sort();
-    const known = [...MUTATORS, ...READS, ...FOLDER].sort();
+    const known = [...MUTATORS, ...READS, ...FOLDER, ...DERIVED].sort();
     expect(exported).toEqual(known);
   });
 

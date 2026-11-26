@@ -1,6 +1,7 @@
 import type { ProviderId } from '../core/types.ts';
 import { OWN_PREFIX, ownImageId, symbolIdFor } from '../core/types.ts';
-import { getOwnImage } from '../db/repo.ts';
+import { getOwnImage, rememberThumb } from '../db/repo.ts';
+import { makeThumb } from '../db/thumb.ts';
 import { getProvider, metacom } from '@lautstark/bildquelle';
 import { changes } from '@lautstark/werkzeuge/changed';
 
@@ -18,8 +19,19 @@ const pending = new Map<string, Promise<string | null>>();
 // shows a symbol already imports this file.
 export { ownImageId, symbolIdFor };
 
-const cacheKey = (provider: ProviderId, id: string) =>
-  (id.startsWith(OWN_PREFIX) ? `own:${id}` : `${provider}:${id}`);
+/**
+ * **`whole` is only ever about a picture of the user's own**, and it is the one
+ * thing in this file that distinguishes two URLs for one id: the screen is
+ * drawn from the small copy (`db/thumb.ts`) and paper from the picture itself.
+ * Both are cached, under keys of their own, because a Sammlung's rows and its
+ * print preview are on screen at the same time and want different ones.
+ *
+ * For a symbol out of a source there is one picture and one key, whichever is
+ * asked for — passing `whole` there must not halve the cache that makes a
+ * symbol cost one lookup however many places draw it.
+ */
+const cacheKey = (provider: ProviderId, id: string, whole = false) =>
+  (id.startsWith(OWN_PREFIX) ? `own:${whole ? 'whole:' : ''}${id}` : `${provider}:${id}`);
 
 /**
  * Resolution must not be able to hang. Every caller here awaits the database,
@@ -27,8 +39,8 @@ const cacheKey = (provider: ProviderId, id: string) =>
  */
 const RESOLVE_TIMEOUT_MS = 12_000;
 
-export function peekSymbolUrl(provider: ProviderId, id: string): string | null {
-  return cache.get(cacheKey(provider, id)) ?? null;
+export function peekSymbolUrl(provider: ProviderId, id: string, whole = false): string | null {
+  return cache.get(cacheKey(provider, id, whole)) ?? null;
 }
 
 /**
@@ -41,10 +53,23 @@ export function peekSymbolUrl(provider: ProviderId, id: string): string | null {
  * miss asks by name before giving up. ARASAAC ids are opaque numbers and get
  * no second try.
  */
-async function resolveUrl(provider: ProviderId, id: string): Promise<string | null> {
+async function resolveUrl(
+  provider: ProviderId, id: string, whole = false,
+): Promise<string | null> {
   if (id.startsWith(OWN_PREFIX)) {
-    const image = await getOwnImage(id.slice(OWN_PREFIX.length));
-    return image ? URL.createObjectURL(image.blob) : null;
+    const held = id.slice(OWN_PREFIX.length);
+    const image = await getOwnImage(held);
+    if (!image) return null;
+    if (whole) return URL.createObjectURL(image.blob);
+    /* The small copy for the screen, and one is made here for a picture stored
+       before there were any — on the first draw, not in a pass over the library
+       at start. A picture too small to shrink has none and is drawn as it is.
+       `rememberThumb` writes it back and tells nobody: it is derived. */
+    if (image.thumb) return URL.createObjectURL(image.thumb);
+    const made = await makeThumb(image.blob);
+    if (!made) return URL.createObjectURL(image.blob);
+    await rememberThumb(held, made).catch(() => undefined);
+    return URL.createObjectURL(made);
   }
 
   const direct = await getProvider(provider).getImageUrl(id);
@@ -62,7 +87,8 @@ async function resolveUrl(provider: ProviderId, id: string): Promise<string | nu
  * revoking one of those here would blank a picture another part of the page
  * is still drawing from the same cache.
  */
-const isOwnKey = (key: string): boolean => key.startsWith(`own:${OWN_PREFIX}`);
+const isOwnKey = (key: string): boolean =>
+  key.startsWith(`own:${OWN_PREFIX}`) || key.startsWith(`own:whole:${OWN_PREFIX}`);
 
 function forget(key: string): void {
   const url = cache.get(key);
@@ -70,8 +96,10 @@ function forget(key: string): void {
   cache.delete(key);
 }
 
-export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<string | null> {
-  const key = cacheKey(provider, id);
+export function resolveSymbolUrl(
+  provider: ProviderId, id: string, whole = false,
+): Promise<string | null> {
+  const key = cacheKey(provider, id, whole);
 
   const hit = cache.get(key);
   if (hit) return Promise.resolve(hit);
@@ -86,7 +114,7 @@ export function resolveSymbolUrl(provider: ProviderId, id: string): Promise<stri
    * arrives rather than left holding the bytes for the life of the page.
    */
   let gaveUp = false;
-  const lookup = resolveUrl(provider, id);
+  const lookup = resolveUrl(provider, id, whole);
   void lookup.then((url) => {
     if (gaveUp && url && isOwnKey(key)) URL.revokeObjectURL(url);
   }, () => undefined);
@@ -165,7 +193,7 @@ export interface FollowedSymbol {
  * instead of asking for ever.
  */
 export function followSymbolUrl(
-  provider: ProviderId, id: string, show: (url: string | null) => void,
+  provider: ProviderId, id: string, show: (url: string | null) => void, whole = false,
 ): FollowedSymbol {
   let attempt = 0;
   let stopped = false;
@@ -174,11 +202,11 @@ export function followSymbolUrl(
   let broken: string | null = null;
   const offer = (url: string | null): void => show(url === broken ? null : url);
   const load = (): void => {
-    const known = peekSymbolUrl(provider, id);
+    const known = peekSymbolUrl(provider, id, whole);
     if (known) { offer(known); return; }
     const mine = ++attempt;
     show(null);
-    void resolveSymbolUrl(provider, id).then((found) => {
+    void resolveSymbolUrl(provider, id, whole).then((found) => {
       if (!stopped && mine === attempt && found) offer(found);
     });
   };
@@ -190,7 +218,7 @@ export function followSymbolUrl(
       if (stopped) return;
       if (broken !== null) { show(null); return; }
       broken = url;
-      dropSymbolUrl(provider, id, url);
+      dropSymbolUrl(provider, id, url, whole);
       load();
     },
   };
@@ -205,8 +233,10 @@ export function followSymbolUrl(
  * the sheet after a long session, a row whose lazy picture loaded late. Only
  * this URL: one a newer lookup has already replaced is left alone.
  */
-export function dropSymbolUrl(provider: ProviderId, id: string, url: string): void {
-  const key = cacheKey(provider, id);
+export function dropSymbolUrl(
+  provider: ProviderId, id: string, url: string, whole = false,
+): void {
+  const key = cacheKey(provider, id, whole);
   if (cache.get(key) === url) forget(key);
 }
 
@@ -228,8 +258,10 @@ export function clearSymbolCache(provider: ProviderId): void {
  * Resolves every id up front. Called before window.print() so the browser never
  * opens its print dialog over half-loaded images.
  */
-export async function warmSymbols(provider: ProviderId, ids: string[]): Promise<void> {
-  await Promise.all([...new Set(ids)].map((id) => resolveSymbolUrl(provider, id)));
+export async function warmSymbols(
+  provider: ProviderId, ids: string[], whole = false,
+): Promise<void> {
+  await Promise.all([...new Set(ids)].map((id) => resolveSymbolUrl(provider, id, whole)));
 }
 
 /**

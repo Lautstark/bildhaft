@@ -108,7 +108,12 @@ const asStored = {
      the package's open record shape, and the copy costs nothing. */
   sammlungen: (item: Collection) => ({ ...item }),
   saetze: (item: Sentence) => ({ ...item }),
-  bilder: ({ blob: _blob, ...rest }: OwnImage) => ({ ...rest, updatedAt: rest.createdAt }),
+  /* The bytes go beside the record, and the thumbnail goes nowhere: it is a
+     second rendition of those same bytes (see `db/thumb.ts`), so filing it
+     would put the same picture in the folder twice and a reader could not tell
+     which one it was looking at. Whoever reads this record back makes their
+     own. */
+  bilder: ({ blob: _blob, thumb: _thumb, ...rest }: OwnImage) => ({ ...rest, updatedAt: rest.createdAt }),
 } as const;
 
 /**

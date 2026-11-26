@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
-import { closePicker, openSymbolSearch, rowFor, translate } from './helpers.ts';
+import { closePicker, openSymbolSearch, rowFor, showSheet, translate } from './helpers.ts';
 
 /**
  * A picture of the user's own, in place of a symbol.
@@ -261,4 +261,82 @@ test('adding the store keeps a database that was already there', async ({ page }
   await page.reload();
   await expect(page.locator('.sidebar__section--collections .collections__item')).toContainText(['Aus Version 3']);
   await expect(rowFor(page, 'Der Hund liegt unter dem Tisch')).toHaveCount(1);
+});
+
+/**
+ * A big picture is drawn small on screen and whole on paper.
+ *
+ * A photo off a phone is twelve megapixels and a browser decodes all of them
+ * whatever size the box is — twelve of them in one Sammlung measured 558 MB of
+ * bitmap. So a small copy is kept beside the picture and the screen is drawn
+ * from it, while the sheet, the PDF filmed off it and every export keep the
+ * picture itself. See `src/db/thumb.ts`.
+ *
+ * The 3x3 pictures above are smaller than the longest edge a thumbnail is made
+ * at, so they have none and are drawn as they are — which is why this case
+ * makes its own, through the same file input somebody chooses a photo with.
+ */
+test('is drawn small on screen and whole on paper', async ({ page }) => {
+  await translate(page, 'Oma');
+  await rowFor(page, 'Oma').locator('.slot').first().click();
+  await openSymbolSearch(page);
+
+  /* 1024x1024, made in the page and handed to the input a person would use.
+     Square, so it goes straight in rather than through the crop — same reason
+     the 3x3 above is. */
+  await page.evaluate(async () => {
+    const canvas = new OffscreenCanvas(1024, 1024);
+    const paint = canvas.getContext('2d')!;
+    paint.fillStyle = '#4a7';
+    paint.fillRect(0, 0, 1024, 1024);
+    for (let i = 0; i < 60; i++) {
+      paint.fillStyle = `hsl(${i * 6} 70% 50%)`;
+      paint.fillRect(i * 17, (i * 13) % 950, 40, 40);
+    }
+    const file = new File([await canvas.convertToBlob({ type: 'image/jpeg' })], 'Oma.jpg', { type: 'image/jpeg' });
+    const handing = new DataTransfer();
+    handing.items.add(file);
+    const input = document.querySelector('.picker__own input[type=file]') as HTMLInputElement;
+    input.files = handing.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await closePicker(page);
+
+  /* What is stored: the picture as it arrived, and a copy of it no wider than
+     the longest edge thumbnails are made at. */
+  const stored = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((res) => {
+      const open = indexedDB.open('bildhaft');
+      open.onsuccess = () => res(open.result);
+    });
+    const rows = await new Promise<{ blob: Blob; thumb?: Blob }[]>((res) => {
+      const all = db.transaction('ownImages').objectStore('ownImages').getAll();
+      all.onsuccess = () => res(all.result);
+    });
+    db.close();
+    const held = rows[0]!;
+    const sizeOf = async (blob: Blob | undefined) => {
+      if (!blob) return null;
+      const bitmap = await createImageBitmap(blob);
+      const size = { width: bitmap.width, height: bitmap.height };
+      bitmap.close();
+      return size;
+    };
+    return { picture: await sizeOf(held.blob), thumb: await sizeOf(held.thumb) };
+  });
+  expect(stored.picture).toEqual({ width: 1024, height: 1024 });
+  expect(stored.thumb).toEqual({ width: 512, height: 512 });
+
+  // The row draws the small one.
+  await expect
+    .poll(() => rowFor(page, 'Oma').locator('.slot img').first()
+      .evaluate((img) => (img as HTMLImageElement).naturalWidth))
+    .toBe(512);
+
+  // The sheet draws the picture itself.
+  await showSheet(page);
+  await expect
+    .poll(() => page.locator('.preview-frame .ps-card__img img').first()
+      .evaluate((img) => (img as HTMLImageElement).naturalWidth))
+    .toBe(1024);
 });

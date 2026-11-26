@@ -218,7 +218,9 @@ export class Printing {
 
   /** Every picture this preview draws, and its type, ready to be measured. */
   async drawn(): Promise<void> {
-    await warmSymbols(this.options.provider, this.symbolIds());
+    /* `whole`: the sheet is paper, and the browser must not open its print
+       dialog over a card still holding the screen's small copy. */
+    await warmSymbols(this.options.provider, this.symbolIds(), true);
     await document.fonts?.ready;
   }
 
@@ -233,7 +235,11 @@ export class Printing {
    */
   async replanWhenDrawn(): Promise<void> {
     const { provider } = this.options;
-    const late = this.symbolIds().some((id) => !peekSymbolUrl(provider, id)) || document.fonts?.status === 'loading';
+    /* Asked of the pictures the sheet draws, which for an own picture is the
+       original rather than the screen's small copy — `whole`, as in warmSymbols
+       above. Asking about the other one would call a sheet ready while its
+       cards were still blank. */
+    const late = this.symbolIds().some((id) => !peekSymbolUrl(provider, id, true)) || document.fonts?.status === 'loading';
     if (!late) return;
     await this.drawn();
     if (this.holder?.isConnected) this.replan();

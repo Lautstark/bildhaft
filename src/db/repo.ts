@@ -5,6 +5,7 @@ import {
   pushKind, readImage, readKind, sawNewer, unfile, unfileOverride, type Kind,
 } from './folder.ts';
 import { FORMAT, holdsNewer, upgradeLibrary, type Library } from '../core/format.ts';
+import { makeThumb } from './thumb.ts';
 // The seed for a user's own editable list. The list itself stays theirs and
 // stays in this database; what the package supplies is where it starts.
 import { GERMAN_STOPWORDS } from '@lautstark/bildquelle/german';
@@ -1180,12 +1181,17 @@ export async function overrideMap(provider: ProviderId, lang: LanguageCode = LAN
 export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage> {
   // Not inside a folder read — see `syncing`.
   await whenSynced();
+  /* Made here, once, rather than on the first draw: the picture is in hand and
+     already decoded by whatever produced it. A picture the maker cannot shrink
+     gets none, and the screen draws the picture itself — see `db/thumb.ts`. */
+  const thumb = await makeThumb(picture);
   const image: OwnImage = {
     id: newId(),
     name,
     type: picture.type || 'image/*',
     // The bytes, detached from the file they came from.
     blob: new Blob([await picture.arrayBuffer()], { type: picture.type || 'image/*' }),
+    ...(thumb ? { thumb } : {}),
     createdAt: Date.now(),
   };
   const db = await getDB();
@@ -1198,6 +1204,29 @@ export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage
 export async function getOwnImage(id: string): Promise<OwnImage | undefined> {
   const db = await getDB();
   return db.get('ownImages', id);
+}
+
+/**
+ * Keeps the small copy of a picture that was stored without one.
+ *
+ * **Announces nothing and owes the folder nothing**, which is the whole reason
+ * it is its own function rather than a `patch`. A thumbnail is not a change to
+ * the picture: it is derived from it, it is left out of what the folder gets
+ * (`asStored.bilder`) and out of an export, and it can be made again from the
+ * bytes beside it at any time. A `touched()` here would write a backup every
+ * time an old picture was drawn for the first time, and an `owe()` would send
+ * the folder a record whose stored shape has not changed.
+ *
+ * Which also means it cannot be the thing that loses a picture: it writes the
+ * record back as it read it, with one field added, and skips the write if the
+ * picture has gone in the meantime.
+ */
+export async function rememberThumb(id: string, thumb: Blob): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('ownImages', 'readwrite');
+  const held = await tx.store.get(id);
+  if (held) await tx.store.put({ ...held, thumb });
+  await tx.done;
 }
 
 export async function listOwnImages(): Promise<OwnImage[]> {

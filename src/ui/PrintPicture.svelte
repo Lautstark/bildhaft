@@ -16,7 +16,8 @@
   $effect(() => {
     const wanted = id;
     if (!wanted) { url = null; return; }
-    const following = followSymbolUrl(provider, wanted, (found) => { url = found; });
+    // `whole`: paper, as in PrintCard — the original rather than the screen's copy.
+    const following = followSymbolUrl(provider, wanted, (found) => { url = found; }, true);
     followed = following;
     return following.stop;
   });
