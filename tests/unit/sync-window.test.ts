@@ -52,12 +52,16 @@ vi.mock('../../src/db/folder.ts', async (importOriginal) => {
       return inFolder[kind];
     },
     readImage: async () => null,
-    fileCollection: async () => {},
-    fileSentence: async () => {},
-    fileOverride: async () => {},
-    fileImage: async () => {},
-    unfile: async () => {},
-    unfileOverride: async () => {},
+    /* True, because since adr/0006 that is what these answer: the folder has
+       it. A mock that answered `undefined` left every change owed, and a read
+       refuses to run while anything is owed — so the sync under test ended
+       before it had begun. */
+    fileCollection: async () => true,
+    fileSentence: async () => true,
+    fileOverride: async () => true,
+    fileImage: async () => true,
+    unfile: async () => true,
+    unfileOverride: async () => true,
     pushKind: async () => {},
   };
 });

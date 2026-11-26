@@ -19,3 +19,4 @@ rather than at your own branch.
 | [0003](0003-the-page-is-svelte-components-over-the-same-core.md) | The page is Svelte components over the same core |
 | [0004](0004-a-record-says-its-format-and-every-way-in-runs-the-same-steps.md) | A record says its format, and every way in runs the same steps |
 | [0005](0005-the-library-first-the-folder-after.md) | The library first, the folder after — and nothing planned between |
+| [0006](0006-a-save-is-done-when-the-browser-has-it.md) | A save is done when the browser has it; the folder is delivered to |

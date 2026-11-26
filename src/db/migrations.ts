@@ -84,6 +84,25 @@ export interface Step {
 
 export const STEPS: readonly Step[] = [
   {
+    /* 4 -> 5: what the folder has not been told yet gets a store, and nothing
+     * else is touched. adr/0006.
+     *
+     * It reads no record, so it cannot lose one, and it starts empty on
+     * purpose: a database arriving here has been writing its files inline, so
+     * the folder is as up to date as it was ever going to be and there is no
+     * debt to invent. What this store will hold from now on is the change the
+     * folder has not had *yet*, which before this version was a change nobody
+     * kept a note of at all.
+     */
+    to: 5,
+    expects: ['collections', 'sentences', 'overrides', 'settings', 'ownImages'],
+    run(db) {
+      if (!db.objectStoreNames.contains('waiting')) {
+        db.createObjectStore('waiting', { keyPath: 'id' });
+      }
+    },
+  },
+  {
     /* 3 -> 4: pictures of the user's own get a store, and nothing else is
      * touched.
      *

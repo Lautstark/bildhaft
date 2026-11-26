@@ -1,5 +1,5 @@
 import { clearAllProviderData } from '@lautstark/bildquelle';
-import { getDB } from './db.ts';
+import { getDB, type Waiting } from './db.ts';
 import {
   adopt, adopted, fileCollection, fileImage, fileNameFor, fileOverride, fileSentence, isStore,
   pushKind, readImage, readKind, sawNewer, unfile, unfileOverride, type Kind,
@@ -159,6 +159,131 @@ export async function whenSynced(): Promise<void> {
   while (sync) await sync.catch(() => undefined);
 }
 
+/* ------------------------------------------------------------------ owed --- */
+
+/*
+ * What the folder has not been told yet, and how it is told. adr/0006.
+ *
+ * A write used to reach IndexedDB and then the file, and the caller waited for
+ * both. On a share across the house one file is several round trips — opening
+ * the kind's folder, the file, a swap file, writing, swapping it in — and
+ * moving one card in a list of thirty wrote thirty of them, one after another,
+ * while the screen stood still.
+ *
+ * So the debt is written first and the file afterwards: `owe` puts a row in
+ * `waiting` and returns, and the delivery goes on one queue, in the order the
+ * changes were made. Three things make that safe:
+ *
+ * - **A delivery reads the record as IndexedDB holds it now**, not as it was
+ *   when it was queued. Three quick edits of one Sammlung deliver the last of
+ *   them, and an edit followed by a deletion delivers the deletion. This is
+ *   also what retires `freshest()`, which existed because a snapshot taken
+ *   inside a transaction is old by the time the file is written — the delivery
+ *   never holds a snapshot at all.
+ * - **A row is paid only for what was delivered.** The delivery remembers the
+ *   row's stamp before it reads anything and deletes the row only if the stamp
+ *   has not moved. An edit made while a delivery was under way leaves a newer
+ *   row, which its own delivery pays.
+ * - **Nothing that reads or rewrites the folder runs while a delivery is on
+ *   its way.** `pullFromFolder` drains the queue and then pays what is still
+ *   owed before it reads, and refuses to read at all while anything is
+ *   outstanding: a folder read back without our own change in it would put the
+ *   version from before the edit back on screen. `mirror` and `adoptFolder`
+ *   drain it too.
+ *
+ * And the row is the thing bildhaft did not have. A write whose file failed —
+ * folder away, permission withdrawn — left no trace anywhere, and the next
+ * read, which replaces the library wholesale, deleted the record that only
+ * this browser had. `tests/unit/import-folder.test.ts` records what that cost
+ * once: eighteen imported Spiele, of which the two that survived were the two
+ * that had been edited since.
+ */
+
+/** Never the same stamp twice: two changes to one record inside a millisecond
+ *  would leave a row the first delivery takes for its own and pays. */
+let stamp = 0;
+
+/** One queue, so the folder gets the changes in the order they were made. */
+let outbox: Promise<void> = Promise.resolve();
+
+/**
+ * Says the folder is owed a change to this record, and sets off to deliver it.
+ *
+ * Returns as soon as the row is written. Where no folder is the store there is
+ * nothing to owe and no row is made — which is most households, and they are
+ * left exactly as they were.
+ */
+async function owe(kind: Kind, record: string): Promise<void> {
+  if (!isStore()) return;
+  const at = stamp = Math.max(Date.now(), stamp + 1);
+  await (await getDB()).put('waiting', { id: `${kind}/${record}`, kind, record, at });
+  outbox = outbox.then(() => deliver(kind, record)).catch(() => undefined);
+}
+
+/** Waits until every change made so far has been delivered, or is owed. */
+export async function delivered(): Promise<void> {
+  /* A loop, because a delivery may be queued while the last one is awaited. */
+  for (let last; last !== outbox;) { last = outbox; await last; }
+}
+
+/** How many changes the folder has not had. For a page that says so. */
+export const owed = async (): Promise<number> => (await getDB()).count('waiting');
+
+/** The record as it stands now, written to the folder — or removed from it,
+ *  where the record is gone. */
+async function deliverTo(kind: Kind, record: string): Promise<boolean> {
+  const db = await getDB();
+  switch (kind) {
+    case 'sammlungen': {
+      const held = await db.get('collections', record);
+      return held ? fileCollection(held) : unfile('sammlungen', record);
+    }
+    case 'saetze': {
+      const held = await db.get('sentences', record);
+      return held ? fileSentence(held) : unfile('saetze', record);
+    }
+    case 'woerterbuch': {
+      const held = await db.get('overrides', record);
+      return held ? fileOverride(held) : unfileOverride(record);
+    }
+    case 'bilder': {
+      const held = await db.get('ownImages', record);
+      return held ? fileImage(held) : unfile('bilder', record);
+    }
+  }
+}
+
+async function deliver(kind: Kind, record: string): Promise<void> {
+  const row = await (await getDB()).get('waiting', `${kind}/${record}`);
+  if (!row) return;
+  if (await deliverTo(kind, record)) await paid(row);
+}
+
+/** Clears a row, but only if it is still the one the delivery was about. */
+async function paid(row: Waiting): Promise<void> {
+  const tx = (await getDB()).transaction('waiting', 'readwrite');
+  if ((await tx.store.get(row.id))?.at === row.at) await tx.store.delete(row.id);
+  await tx.done;
+}
+
+/**
+ * Pays what is owed, oldest first, and stops at the first thing that will not
+ * land.
+ *
+ * Stops rather than running to the end: whatever refused the first one is
+ * almost always about the folder rather than about the record, and a loop that
+ * went on would write the same failure forty times before saying so. What is
+ * left stays owed and is tried again on the next read.
+ */
+async function settleUp(): Promise<void> {
+  const db = await getDB();
+  const rows = (await db.getAll('waiting')).sort((a, b) => a.at - b.at);
+  for (const row of rows) {
+    if (!(await deliverTo(row.kind, row.record))) return;
+    await paid(row);
+  }
+}
+
 /* ---------------------------------------------------------------- change --- */
 
 /*
@@ -280,7 +405,7 @@ export async function createCollection(
   };
   const db = await getDB();
   await db.put('collections', collection);
-  await fileCollection(collection);
+  await owe('sammlungen', collection.id);
   touched();
   return collection;
 }
@@ -341,7 +466,7 @@ export async function patchCollection(
     }
     await tx.store.put(merged);
     await tx.done;
-    await fileCollection(await freshest(db, merged));
+    await owe('sammlungen', merged.id);
     return merged;
   });
   if (kept) touched();
@@ -386,8 +511,8 @@ export async function deleteCollectionDeep(id: string): Promise<void> {
   /* Named removals rather than a wholesale mirror: the ids that went are the
      ones just deleted, and finding them by reading the whole folder back costs
      a second per hundred sentences filed. */
-  for (const key of sentenceIds) await unfile('saetze', String(key));
-  await unfile('sammlungen', id);
+  for (const key of sentenceIds) await owe('saetze', String(key));
+  await owe('sammlungen', id);
   touched();
 }
 
@@ -396,6 +521,9 @@ export async function deleteCollectionDeep(id: string): Promise<void> {
    IndexedDB transaction is mirrored afterwards, wholesale, because a folder write
    cannot happen inside a transaction that has to stay open. */
 async function mirror(...kinds: Kind[]): Promise<void> {
+  /* A delivery still on its way would land in the middle of the push, which
+     writes a whole kind from what the browser holds. adr/0006. */
+  await delivered();
   const db = await getDB();
   for (const kind of kinds) {
     if (kind === 'sammlungen') await pushKind('sammlungen', await db.getAll('collections'));
@@ -446,6 +574,27 @@ export async function pullFromFolder(): Promise<boolean> {
        go ahead — the gate was not closed yet. Measured by
        `tests/unit/sync-window.test.ts`, which caught exactly that. */
     if (!(await adopted())) return;
+
+    /*
+     * What this browser owes the folder goes first, and this is the one place
+     * it cannot be forgotten: `pull` replaces four stores with what the folder
+     * holds, so a record the folder has never been told about is a record the
+     * next line deletes. adr/0006.
+     *
+     * The deliveries already on their way are drained before the rest are
+     * paid, and nothing new can join them — a write waits for this sync, so
+     * the queue stays empty for as long as this runs.
+     */
+    await delivered();
+    await settleUp();
+
+    /* And if anything is still owed, the folder is not read at all. Whatever
+       refused the delivery — out of reach, permission withdrawn — would refuse
+       the read as well, or, worse, would not: a folder read back without our
+       own change in it puts the version from before the edit on screen and
+       then deletes the change for good. The next read tries again. */
+    if (await owed() > 0) return;
+
     replaced = await pull();
   });
   return replaced;
@@ -554,6 +703,9 @@ export async function bringRecordsUpToDate(): Promise<void> {
    that is not adopts what this browser holds — written, checked, and only then
    marked. Which happened is reported rather than assumed. */
 export async function adoptFolder(): Promise<'pushed' | 'pulled' | 'incomplete'> {
+  /* Before a folder becomes the store, or is read as one: a change still on
+     its way belongs to whichever of the two this turns out to be. adr/0006. */
+  await delivered();
   if (await adopted()) { await pullFromFolder(); return 'pulled'; }
   const db = await getDB();
   const overrides = await db.getAll('overrides');
@@ -623,25 +775,8 @@ async function writeSentence(sentence: Sentence): Promise<void> {
      folder to find out what differs: with 280 sentences filed that is around
      a second of disk before the row on screen is allowed to change, on every
      single edit, growing with the library. What changed is known here. */
-  await fileSentence(kept);
-  if (listed) await fileCollection(await freshest(db, listed));
-}
-
-/**
- * The record as the store has it now, not as this transaction saw it.
- *
- * A Sammlung is written from more than one place: a card dragged on a Tafel
- * writes the board while a sentence written beside it appends an id to the same
- * record. The snapshot taken inside a transaction is old the moment the
- * transaction closes, and filing it would put the folder's copy back to the
- * board from before the drag — the previous code never noticed because it
- * mirrored the whole kind afterwards, reading each record fresh. Reading one
- * record back costs nothing next to that.
- */
-async function freshest(
-  db: Awaited<ReturnType<typeof getDB>>, fallback: Collection,
-): Promise<Collection> {
-  return (await db.get('collections', fallback.id)) ?? fallback;
+  await owe('saetze', kept.id);
+  if (listed) await owe('sammlungen', listed.id);
 }
 
 export async function deleteSentence(id: string): Promise<void> {
@@ -664,8 +799,8 @@ async function removeSentence(id: string): Promise<void> {
     }
   }
   await tx.done;
-  await unfile('saetze', id);
-  if (shortened) await fileCollection(await freshest(db, shortened));
+  await owe('saetze', id);
+  if (shortened) await owe('sammlungen', shortened.id);
 }
 
 /**
@@ -740,7 +875,11 @@ export async function clearEverything(): Promise<void> {
   // Not inside a folder read — see `syncing`.
   await whenSynced();
   const db = await getDB();
-  const stores = ['collections', 'sentences', 'overrides', 'ownImages'] as const;
+  /* `waiting` goes with them, and that is not tidiness: `mirror` below tells
+     the folder about every kind wholesale, so after this there is nothing left
+     for a row to be about — and a row pointing at a record nobody holds any
+     more would stop the next folder read from running at all (adr/0006). */
+  const stores = ['collections', 'sentences', 'overrides', 'ownImages', 'waiting'] as const;
   const tx = db.transaction(stores, 'readwrite');
   for (const store of stores) await tx.objectStore(store).clear();
   await tx.done;
@@ -813,9 +952,11 @@ type OverridePatch = Partial<Omit<Override, 'key' | 'updatedAt'>>;
  * Synchronous on purpose: a transaction closes at the first await that is not
  * its own, so the patch cannot be allowed to wait on anything.
  *
- * Filed from the store afterwards rather than from what was put, the way
- * `freshest` files a Sammlung: two of these can finish in either order, and
- * the folder has to end with the later one.
+ * What reaches the folder is read from the store by the delivery rather than
+ * taken from what was put here: two of these can finish in either order, and
+ * the folder has to end with the later one. That used to be a reason for this
+ * function to re-read the entry before filing it; it is the delivery's own
+ * rule now (`owe`), and one no caller can forget.
  */
 async function patchOverride(
   key: string, patch: (held: Override | undefined) => OverridePatch | null,
@@ -836,7 +977,7 @@ async function patchOverride(
   }
   await tx.store.put(merged);
   await tx.done;
-  await fileOverride((await db.get('overrides', key)) ?? merged);
+  await owe('woerterbuch', key);
   return merged;
 }
 
@@ -989,7 +1130,7 @@ export async function deleteOverride(provider: ProviderId, token: string): Promi
      that is a thing to look up rather than to predict. */
   for (const held of await entriesFor(provider, token)) {
     await db.delete('overrides', held.key);
-    await unfileOverride(held.key);
+    await owe('woerterbuch', held.key);
   }
   touched();
 }
@@ -1049,7 +1190,7 @@ export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage
   };
   const db = await getDB();
   await db.put('ownImages', image);
-  await fileImage(image);
+  await owe('bilder', image.id);
   touched();
   return image;
 }

@@ -13,6 +13,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  *
  * So the test is about the count, not about the contents: an edit to one
  * record files that record.
+ *
+ * Since adr/0006 a save returns once the browser has it and the file follows,
+ * so these cases wait for the delivery before they ask what the folder got —
+ * what is being asserted is still "one edit, one file", not when it lands.
+ * `isStore` is mocked true throughout, because a household with no folder is
+ * owed nothing and files nothing.
  */
 
 /**
@@ -53,29 +59,40 @@ vi.mock('../../src/db/folder.ts', async (importOriginal) => {
     fileSentence: vi.fn(async (item: { id: string }) => {
       filed.sentences.push(item.id);
       const held = gate;
-      if (!held) return;
+      if (!held) return true;
       gate = null;
       held.arrive();
       await held.go;
+      return true;
     }),
     fileCollection: vi.fn(async (item: { id: string; name: string }) => {
       filed.collections.push(item.id);
       filed.collectionRecords.set(item.id, { name: item.name });
+      return true;
     }),
-    unfile: vi.fn(async (kind: string, id: string) => { filed.removed.push(`${kind}/${id}`); }),
+    unfile: vi.fn(async (kind: string, id: string) => { filed.removed.push(`${kind}/${id}`); return true; }),
     pushKind: vi.fn(async () => { filed.listed += 1; }),
+    isStore: () => true,
   };
 });
 
 const repo = await import('../../src/db/repo.ts');
+const { getDB } = await import('../../src/db/db.ts');
 
-beforeEach(() => {
+beforeEach(async () => {
+  /* Whatever a previous case left owed, delivered and cleared before this one
+     counts anything: a row outliving its test would be filed again here. */
+  await repo.delivered();
+  await (await getDB()).clear('waiting');
   filed.sentences = [];
   filed.collections = [];
   filed.removed = [];
   filed.listed = 0;
   filed.collectionRecords.clear();
 });
+
+/** What the folder has, once everything owed has been tried. adr/0006. */
+const settled = () => repo.delivered();
 
 async function aCollectionWith(n: number): Promise<{ id: string; sentenceIds: string[] }> {
   const collection = await repo.createCollection();
@@ -93,6 +110,7 @@ async function aCollectionWith(n: number): Promise<{ id: string; sentenceIds: st
       updatedAt: Date.now(),
     });
   }
+  await repo.delivered();
   return { id: collection.id, sentenceIds };
 }
 
@@ -114,6 +132,7 @@ describe('an edit and the folder', () => {
       updatedAt: Date.now(),
     });
 
+    await settled();
     expect(filed.sentences).toEqual([again]);
     // Already listed in the collection, so the collection record did not move.
     expect(filed.collections).toEqual([]);
@@ -122,6 +141,9 @@ describe('an edit and the folder', () => {
 
   it('files the collection too when the sentence is a new one in it', async () => {
     const collection = await repo.createCollection();
+    /* Its own delivery first: the counters below are about the sentence, and a
+       Sammlung filed by the line above would be counted twice. */
+    await settled();
     filed.collections = [];
     filed.listed = 0;
 
@@ -136,6 +158,7 @@ describe('an edit and the folder', () => {
       updatedAt: Date.now(),
     });
 
+    await settled();
     expect(filed.sentences).toEqual([id]);
     expect(filed.collections).toEqual([collection.id]);
     expect(filed.listed).toBe(0);
@@ -155,6 +178,7 @@ describe('an edit and the folder', () => {
        sentence's folder write is held open and the other write is made
        inside it. */
     const collection = await repo.createCollection('Vorher');
+    await settled();
     filed.collections = [];
     filed.collectionRecords.clear();
 
@@ -174,6 +198,7 @@ describe('an edit and the folder', () => {
     await repo.patchCollection(collection.id, { name: 'Nachher' });
     held.release();
     await writing;
+    await settled();
 
     // Whatever was filed last for this Sammlung has to be the newer name.
     expect(filed.collectionRecords.get(collection.id)?.name).toBe('Nachher');
@@ -187,6 +212,7 @@ describe('an edit and the folder', () => {
 
     await repo.deleteSentence(sentenceIds[0]);
 
+    await settled();
     expect(filed.removed).toEqual([`saetze/${sentenceIds[0]}`]);
     expect(filed.collections).toEqual([id]);
     expect(filed.listed).toBe(0);
@@ -198,6 +224,7 @@ describe('an edit and the folder', () => {
     filed.listed = 0;
 
     await repo.deleteCollectionDeep(id);
+    await settled();
 
     expect(new Set(filed.removed)).toEqual(new Set([
       ...sentenceIds.map((sentenceId) => `saetze/${sentenceId}`),

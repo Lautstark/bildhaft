@@ -63,6 +63,10 @@ const READS = [
   /* The folder read as a state rather than as a write: one says when it starts
      and ends, the other is what every write waits on. adr/0005. */
   'onSyncing', 'whenSynced',
+  /* And the folder's debt, which is a fact about writes already announced:
+     `delivered` waits for what is on its way, `owed` counts what is not.
+     adr/0006. */
+  'delivered', 'owed',
 ];
 
 describe('the change notifier', () => {

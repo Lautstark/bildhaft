@@ -51,7 +51,10 @@ async function repointToRendering(): Promise<void> {
         ...sentence,
         slots: await refreshSlotChoices(sentence.slots, getProvider('metacom'), overrides),
       })));
-    for (const sentence of updated) await putSentence(sentence);
+    /* Together: a preference about renderings re-points every row of the open
+       Sammlung, and with a folder as the store each of those used to be its own
+       file write, awaited in turn. adr/0006. */
+    await Promise.all(updated.map((sentence) => putSentence(sentence)));
     s.sentences = updated;
     resetSymbolResolution('metacom');
   } finally {

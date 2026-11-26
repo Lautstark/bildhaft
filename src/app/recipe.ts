@@ -65,14 +65,27 @@ export async function moveEntry(part: CardPart, from: number, to: number): Promi
   const base = list[0]!.createdAt;
   const [moved] = list.splice(from, 1);
   list.splice(to, 0, moved!);
-  const placed = new Map<string, Sentence>();
-  for (const [at, sentence] of list.entries()) {
-    if (sentence.createdAt === base + at) continue;
-    const next = { ...sentence, createdAt: base + at };
-    await putSentence(next);
-    placed.set(next.id, next);
-  }
+
+  /* Only the cards whose place actually moved, and all of them at once.
+   *
+   * Dragging one card to the front renumbers everything behind it, and each of
+   * those was written and awaited in turn — with a folder as the store that was
+   * a file on disk per card, one after another, while the card sat where it had
+   * been dropped. The writes do not depend on each other, so they go together;
+   * what the folder gets is a delivery each, in order, afterwards (adr/0006).
+   */
+  const renumbered = list
+    .map((sentence, at) => ({ sentence, at }))
+    .filter(({ sentence, at }) => sentence.createdAt !== base + at)
+    .map(({ sentence, at }) => ({ ...sentence, createdAt: base + at }));
+  if (renumbered.length === 0) return;
+
+  /* The screen first. It is drawn from memory and the store is written after —
+     repo.ts's note on that window — and a drag is the one gesture where the
+     hand has already said where the card goes. */
+  const placed = new Map(renumbered.map((one) => [one.id, one]));
   s.sentences = s.sentences.map((sentence) => placed.get(sentence.id) ?? sentence);
+  await Promise.all(renumbered.map((one) => putSentence(one)));
 }
 
 /**
@@ -103,14 +116,18 @@ export async function rewritePart(part: RecipePart, text: string): Promise<strin
   if (s.activeId !== collectionId) return '';
 
   const placed: Sentence[] = [];
+  const renumbered: Sentence[] = [];
   for (const [at, line] of lines.entries()) {
     const sentence = kept[at] ?? made.get(line)?.shift();
     if (!sentence) continue;
     const next = { ...sentence, createdAt: base + at };
-    if (next.createdAt !== sentence.createdAt) await putSentence(next);
+    if (next.createdAt !== sentence.createdAt) renumbered.push(next);
     placed.push(next);
   }
-  for (const gone of pool) await deleteSentence(gone.id);
+  /* Together rather than in turn, for `moveEntry`'s reason: a part rewritten as
+     text renumbers every line under the first one that moved. */
+  await Promise.all(renumbered.map((one) => putSentence(one)));
+  await Promise.all(pool.map((gone) => deleteSentence(gone.id)));
   const byId = new Map(placed.map((sentence) => [sentence.id, sentence]));
   const goneIds = new Set(pool.map((sentence) => sentence.id));
   s.sentences = s.sentences.filter((sentence) => !goneIds.has(sentence.id)).map((sentence) => byId.get(sentence.id) ?? sentence);

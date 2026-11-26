@@ -133,27 +133,46 @@ const canWriteShared = () =>
   canWrite() && shared.status.kind !== 'off' && shared.status.kind !== 'unsupported'
   && shared.status.kind !== 'stale';
 
-export async function fileCollection(item: Collection): Promise<void> {
-  if (canWrite()) await ablage.write('sammlungen', asStored.sammlungen(item));
+/*
+ * Each of these answers **whether the folder now has it**, because since
+ * adr/0006 somebody is listening: a change the folder did not take is a row in
+ * `waiting`, and a row is only paid off by a write that landed.
+ *
+ * `true` where there is no folder at all, and that is not a white lie — there
+ * is nothing to tell and nothing to remember. `false` means the folder is the
+ * store and did not take it: out of reach, its permission withdrawn, or ahead
+ * of this build. Those are the cases the row exists for.
+ */
+const nothingToTell = (): boolean => !isStore();
+const landed = (status: { kind: string }): boolean => status.kind === 'idle';
+
+export async function fileCollection(item: Collection): Promise<boolean> {
+  if (!canWrite()) return nothingToTell();
+  return landed(await ablage.write('sammlungen', asStored.sammlungen(item)));
 }
-export async function fileSentence(item: Sentence): Promise<void> {
-  if (canWrite()) await ablage.write('saetze', asStored.saetze(item));
+export async function fileSentence(item: Sentence): Promise<boolean> {
+  if (!canWrite()) return nothingToTell();
+  return landed(await ablage.write('saetze', asStored.saetze(item)));
 }
-export async function fileOverride(item: Override): Promise<void> {
-  if (!canWriteShared()) return;
-  await shared.write('woerterbuch', { ...item, id: await fileNameFor(item.key) });
+export async function fileOverride(item: Override): Promise<boolean> {
+  if (!canWriteShared()) return nothingToTell();
+  return landed(await shared.write('woerterbuch', { ...item, id: await fileNameFor(item.key) }));
 }
-export async function fileImage(item: OwnImage): Promise<void> {
-  if (!canWrite()) return;
-  await ablage.write('bilder', asStored.bilder(item));
-  await ablage.writeFile('bilder', item.id, item.blob);
+export async function fileImage(item: OwnImage): Promise<boolean> {
+  if (!canWrite()) return nothingToTell();
+  /* Both halves, and the bytes last: a record whose picture is not beside it
+     reads as a hole, and the record is what a reader looks for first. */
+  if (!landed(await ablage.write('bilder', asStored.bilder(item)))) return false;
+  return landed(await ablage.writeFile('bilder', item.id, item.blob));
 }
 
-export async function unfile(kind: Kind, id: string): Promise<void> {
-  if (canWrite()) await homeOf(kind).remove(kind, id);
+export async function unfile(kind: Kind, id: string): Promise<boolean> {
+  if (!canWrite()) return nothingToTell();
+  return landed(await homeOf(kind).remove(kind, id));
 }
-export async function unfileOverride(key: string): Promise<void> {
-  if (canWriteShared()) await shared.remove('woerterbuch', await fileNameFor(key));
+export async function unfileOverride(key: string): Promise<boolean> {
+  if (!canWriteShared()) return nothingToTell();
+  return landed(await shared.remove('woerterbuch', await fileNameFor(key)));
 }
 
 /* A batch — a collection imported, everything cleared — happens inside one

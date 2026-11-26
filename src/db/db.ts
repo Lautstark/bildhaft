@@ -1,5 +1,6 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Collection, Override, OwnImage, Sentence, AppSettings } from '../core/types.ts';
+import type { Kind } from './folder.ts';
 import { migrate, WRONG_SHAPE, type OldDB, type OldTx } from './migrations.ts';
 
 interface BildhaftDB extends DBSchema {
@@ -12,6 +13,31 @@ interface BildhaftDB extends DBSchema {
   overrides: { key: string; value: Override; indexes: { byProvider: string } };
   settings: { key: string; value: AppSettings };
   ownImages: { key: string; value: OwnImage };
+  /**
+   * What the folder has not been told yet. adr/0006.
+   *
+   * It holds no record of its own — only the fact that one is owed, because the
+   * record itself is in the store beside it and reading it there cannot go
+   * stale. Keyed `kind/record`, so a Sammlung edited five times while the
+   * folder was away is owed once.
+   *
+   * A household without a folder never has a row in here: there is nothing to
+   * owe it to.
+   */
+  waiting: { key: string; value: Waiting };
+}
+
+/** One change the folder is owed. See the store's own note above. */
+export interface Waiting {
+  /** `${kind}/${record}` — the key, so a record is owed once however often it
+   *  is written. */
+  id: string;
+  kind: Kind;
+  /** The record's id, or an override's key. */
+  record: string;
+  /** When it was owed. A delivery pays the row only if this has not moved —
+   *  see `paid` in `repo.ts`. */
+  at: number;
 }
 
 /*
@@ -30,7 +56,7 @@ interface BildhaftDB extends DBSchema {
  * mistake, rather than a database quietly misread for weeks.
  */
 const DB_NAME = 'bildhaft';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 let dbPromise: Promise<IDBPDatabase<BildhaftDB>> | null = null;
 
@@ -192,6 +218,7 @@ const SHAPE: Record<string, readonly string[]> = {
   overrides: ['byProvider'],
   settings: [],
   ownImages: [],
+  waiting: [],
 };
 
 /** Refuses a database that is not the shape its version claims to be.
@@ -261,6 +288,7 @@ function createStores(db: IDBPDatabase<BildhaftDB>): void {
 
   if (!has('settings')) db.createObjectStore('settings');
   if (!has('ownImages')) db.createObjectStore('ownImages', { keyPath: 'id' });
+  if (!has('waiting')) db.createObjectStore('waiting', { keyPath: 'id' });
 }
 
 export type { BildhaftDB };

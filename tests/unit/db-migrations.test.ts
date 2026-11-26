@@ -87,6 +87,29 @@ async function seedV3(collections = 2): Promise<void> {
   db.close();
 }
 
+/** A database at version 4: the shape before `waiting` was added. */
+async function seedV4(): Promise<void> {
+  const db = await openDB(DB_NAME, 4, {
+    upgrade(db) {
+      db.createObjectStore('collections', { keyPath: 'id' });
+      const sentences = db.createObjectStore('sentences', { keyPath: 'id' });
+      sentences.createIndex('byNormalized', 'normalizedInput');
+      sentences.createIndex('byCollection', 'collectionId');
+      sentences.createIndex('byUpdated', 'updatedAt');
+      const overrides = db.createObjectStore('overrides', { keyPath: 'key' });
+      overrides.createIndex('byProvider', 'provider');
+      db.createObjectStore('settings');
+      db.createObjectStore('ownImages', { keyPath: 'id' });
+    },
+  });
+  await db.put('collections', { id: 'c0', name: 'Sammlung', createdAt: 1, updatedAt: 1, v: 1 });
+  await db.put('sentences', {
+    id: 's1', collectionId: 'c0', normalizedInput: 'apfel', rawInput: 'Apfel',
+    slots: [], createdAt: 1, updatedAt: 1, v: 1,
+  });
+  db.close();
+}
+
 /**
  * What the build before adr/0001 makes out of a v1 database: version 4, the
  * stores created beside the old ones, and `sentences` still without the
@@ -138,7 +161,7 @@ describe('opening a database', () => {
     const db = await getDB();
 
     expect([...db.objectStoreNames].sort())
-      .toEqual(['collections', 'overrides', 'ownImages', 'sentences', 'settings']);
+      .toEqual(['collections', 'overrides', 'ownImages', 'sentences', 'settings', 'waiting']);
     // The other half of assertShape: a fresh database has to satisfy the table
     // db.ts checks every open against, or the two have drifted apart.
     expect([...db.transaction('sentences').store.indexNames].sort())
@@ -154,20 +177,41 @@ describe('opening a database', () => {
     const { getDB, takeMigrationNote } = await load();
     const db = await getDB();
 
-    expect(db.version).toBe(4);
+    expect(db.version).toBe(5);
     expect(db.objectStoreNames.contains('ownImages')).toBe(true);
+    expect(db.objectStoreNames.contains('waiting')).toBe(true);
     expect(await db.count('collections')).toBe(2);
     expect(await db.count('overrides')).toBe(1);
     const rows = await db.getAllFromIndex('sentences', 'byCollection', 'c0');
     expect(rows.map((row) => row.rawInput)).toEqual(['Ich möchte einen Apfel']);
 
-    expect(takeMigrationNote()).toEqual({ from: 3, to: 4, collections: 2 });
+    expect(takeMigrationNote()).toEqual({ from: 3, to: 5, collections: 2 });
     // Once. It is a sentence to be said, not a state to be drawn.
     expect(takeMigrationNote()).toBeNull();
     db.close();
   });
 
+  it('gives a version 4 database the store the folder\'s debt goes in', async () => {
+    /* The 4 -> 5 step, and the half of it that matters: it adds a store and
+       reads no record, so a library that has been here all along is still
+       here afterwards. Empty on purpose — a database arriving at 5 has been
+       writing its files inline, so the folder owes nothing yet. adr/0006. */
+    await seedV4();
+    const { getDB, takeMigrationNote } = await load();
+    const db = await getDB();
+
+    expect(db.version).toBe(5);
+    expect(db.objectStoreNames.contains('waiting')).toBe(true);
+    expect(await db.count('waiting')).toBe(0);
+    expect(await db.count('collections')).toBe(1);
+    const rows = await db.getAllFromIndex('sentences', 'byCollection', 'c0');
+    expect(rows.map((row) => row.rawInput)).toEqual(['Apfel']);
+    expect(takeMigrationNote()).toEqual({ from: 4, to: 5, collections: 1 });
+    db.close();
+  });
+
   it('refuses a version it has no step for, and changes nothing', async () => {
+
     await seedV1();
     const { getDB } = await load();
 
@@ -218,7 +262,7 @@ describe('opening a database', () => {
     await discardEverything();
 
     const db = await getDB();
-    expect(db.version).toBe(4);
+    expect(db.version).toBe(5);
     // Cast because `sessions` is not in the current schema, which is the whole
     // assertion: it is a store an old database had and this one must not.
     expect(db.objectStoreNames.contains('sessions' as never)).toBe(false);
