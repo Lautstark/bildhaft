@@ -8,7 +8,7 @@ import { FORMAT, holdsNewer, upgradeLibrary, type Library } from '../core/format
 import { getDB } from './db.ts';
 import { t } from '../i18n/index.ts';
 import {
-  getOwnImage, listCollections, listAllOverrides, listOwnImages, listSentences, newId,
+  getOwnImage, listCollections, listAllOverrides, listOwnImages, listSentences, newId, whenSynced,
 } from './repo.ts';
 import {
   fileCollection, fileImage, fileOverride, fileSentence, isStale, isStore,
@@ -318,6 +318,11 @@ function arriving(found: Library): Library {
  * than overwriting anything: importing must never be able to destroy existing work.
  */
 export async function importCollectionFile(file: File): Promise<ImportResult> {
+  /* Not into the middle of a folder read: `pullFromFolder` replaces the four
+     stores this writes into, and an import that landed between its clear and
+     its fill was an import nothing kept. The header above this file records
+     what that cost once — eighteen Spiele. adr/0005. */
+  await whenSynced();
   const parsed = JSON.parse(await file.text()) as AnyExport;
 
   if (parsed?.format === BACKUP_FORMAT) return importBackup(parsed);
@@ -417,6 +422,11 @@ export async function importCollectionFile(file: File): Promise<ImportResult> {
 export async function copyCollection(
   source: Collection, name: string, withContent: boolean,
 ): Promise<Collection> {
+  /* Not into the middle of a folder read: `pullFromFolder` replaces the four
+     stores this writes into, and an import that landed between its clear and
+     its fill was an import nothing kept. The header above this file records
+     what that cost once — eighteen Spiele. adr/0005. */
+  await whenSynced();
   const now = Date.now();
   const id = newId();
   const sentenceIds = new Map<string, string>();
@@ -517,6 +527,11 @@ function remapPrint(print: Partial<PrintSettings>, ids: Map<string, string>): Pa
 
 /** Restores a full backup. Like a single import, it only ever adds. */
 async function importBackup(parsed: AnyExport): Promise<ImportResult> {
+  /* Not into the middle of a folder read: `pullFromFolder` replaces the four
+     stores this writes into, and an import that landed between its clear and
+     its fill was an import nothing kept. The header above this file records
+     what that cost once — eighteen Spiele. adr/0005. */
+  await whenSynced();
   if (!parsed.collections?.length) throw new Error(t('export.backup_empty'));
   const arrived = arriving({
     collections: parsed.collections, sentences: parsed.sentences ?? [], overrides: parsed.overrides ?? [],

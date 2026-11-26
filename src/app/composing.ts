@@ -10,6 +10,7 @@ import { t } from '../i18n/index.ts';
 import { holdsWords, kind, language, provider, providerId, s } from './state.svelte.ts';
 import { addIntoFields } from './board.ts';
 import { notify } from './notify.ts';
+import { syncing } from './syncing.svelte.ts';
 import { LOOKUP_MS, STORE_MS, sayWhy } from './waiting.ts';
 
 /**
@@ -99,6 +100,11 @@ function placeRow(sentence: Sentence): void {
 export async function handleSubmit(): Promise<void> {
   const raw = s.draft.trim();
   if (!raw || !s.settings || !s.activeId || s.busy) return;
+  /* Not into a library the folder has not confirmed yet. adr/0005: the page
+     draws this browser's copy first, and a line typed before the read has
+     ended goes into a Sammlung the read may be about to replace. Said rather
+     than silently refused — nothing on screen explains a dead press. */
+  if (syncing()) { notify(t('ui.syncing_wait')); return; }
   /*
    * The box is emptied now, not at the end. A pasted text is the case where
    * the wait is long enough to read as a hang, and a box still holding the

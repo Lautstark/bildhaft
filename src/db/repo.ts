@@ -70,8 +70,15 @@ export const writtenSince = (id: string, since: number): boolean =>
   (lastWrite.get(id) ?? 0) > since;
 
 async function claim<T>(id: string, write: () => Promise<T>): Promise<T> {
+  /* Counted as writing from the moment it is asked for, and only then held
+     back. Both halves of that matter: a reader that asks `isWriting` in this
+     tick is behind whatever this is about to write and has to be told so —
+     which is what the whole block at the top of this file is about — while
+     the write itself must not land inside a folder read. So the bookkeeping
+     comes first and the waiting second. */
   writing.set(id, (writing.get(id) ?? 0) + 1);
   try {
+    await whenSynced();
     return await write();
   } finally {
     const left = (writing.get(id) ?? 1) - 1;
@@ -80,6 +87,76 @@ async function claim<T>(id: string, write: () => Promise<T>): Promise<T> {
     writes += 1;
     lastWrite.set(id, writes);
   }
+}
+
+/* ------------------------------------------------------------------ sync --- */
+
+/*
+ * The time between the library being drawn and its being known to be the
+ * folder's. adr/0005.
+ *
+ * `boot` draws what this browser holds and reaches for the folder afterwards,
+ * so there is now a window in which the page shows a copy nobody has checked.
+ * Two things are needed for that to be honest, and both are here rather than
+ * in the page: somewhere to say that the check is running, and a guarantee
+ * that nothing is written into the window.
+ *
+ * **One sync at a time, and every route to one comes through
+ * `pullFromFolder`** — the boot, the five-minute watch, the permission click.
+ * So it is announced from there and nowhere else, and no caller has to
+ * remember to say so.
+ *
+ * **Every write into the four stores the folder replaces waits for it.** `pull`
+ * empties those stores and fills them again; a write landing between the two
+ * halves was a write the second half deleted. `claim` waits, `patchOverride`
+ * waits, and the handful of mutators that go through neither wait at their
+ * first line — `tests/unit/sync-window.test.ts` asks that of every export
+ * whose name says it writes, so the one added next year is not the one that
+ * slips through. `pull` itself never waits, which is what stops it waiting on
+ * itself.
+ */
+const syncWatchers = new Set<(busy: boolean) => void>();
+
+/** Told when a folder read starts and when it ends. For the page's sentence. */
+export function onSyncing(listener: (busy: boolean) => void): () => void {
+  syncWatchers.add(listener);
+  return () => syncWatchers.delete(listener);
+}
+
+let sync: Promise<void> | null = null;
+
+/**
+ * Runs the one thing that replaces the library, saying so at both ends.
+ *
+ * The flag is set synchronously, with no await between the check above it and
+ * the assignment: a write that asks `whenSynced()` after this point finds a
+ * sync and waits for it.
+ *
+ * **What it does not do is wait for writes already under way.** It cannot: a
+ * write registers itself in `writing` before it waits here (a reader asking in
+ * that moment has to be told it is behind — see the note at the top of this
+ * file), so a sync that waited for `writing` to empty would be waiting for the
+ * writes that are waiting for it. The caller is where that is settled instead,
+ * and at boot there is exactly one such write to settle: `boot` awaits the
+ * Sammlung it opened before it reads the folder. adr/0005 names the window
+ * that leaves.
+ */
+async function syncing(work: () => Promise<void>): Promise<void> {
+  while (sync) await sync.catch(() => undefined);
+  const tell = (busy: boolean) => { for (const watch of syncWatchers) watch(busy); };
+  tell(true);
+  sync = work().finally(() => { sync = null; tell(false); });
+  await sync;
+}
+
+/**
+ * Waits for a folder read that is replacing the library.
+ *
+ * A loop rather than one await: a second sync may have begun in the moment
+ * between the first one ending and the write going ahead.
+ */
+export async function whenSynced(): Promise<void> {
+  while (sync) await sync.catch(() => undefined);
 }
 
 /* ---------------------------------------------------------------- change --- */
@@ -183,6 +260,8 @@ export function defaultCollectionName(): string {
 export async function createCollection(
   name?: string, kind?: CollectionKind,
 ): Promise<Collection> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const now = Date.now();
   const collection: Collection = {
     id: newId(),
@@ -296,6 +375,8 @@ export async function saveCollectionOrdner(id: string, ordner: string | null): P
 
 /** Deletes a collection AND its sentences. Only ever called behind a named confirm. */
 export async function deleteCollectionDeep(id: string): Promise<void> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const db = await getDB();
   const tx = db.transaction(['collections', 'sentences'], 'readwrite');
   const sentenceIds = await tx.objectStore('sentences').index('byCollection').getAllKeys(id);
@@ -342,13 +423,37 @@ async function mirror(...kinds: Kind[]): Promise<void> {
    that back is indistinguishable from "everything was deleted elsewhere". It is
    not the same thing, and guessing cost a household its calendar once. */
 export async function pullFromFolder(): Promise<boolean> {
-  if (!isStore() || !(await adopted())) return false;
-  /* Never over an edit that has not landed. This clears the library and writes
-     the folder's copy in — and the folder has not been told about a write still
-     in the air, so the edit would be undone in the store as well as on screen.
-     The watch comes round again; boot, the other caller, has nothing in
-     flight. */
-  if (writing.size > 0) return false;
+  /* Asked before the sync is announced because it is the one question that can
+     be answered without touching the folder: where no folder is the store
+     there is nothing to read and nothing to say. */
+  if (!isStore()) return false;
+  /*
+   * Through `syncing`, which is the one place a folder read is announced and
+   * the one thing writes wait for. adr/0005.
+   *
+   * An edit that has not landed used to make this return at once — "the watch
+   * comes round again; boot, the other caller, has nothing in flight". Boot
+   * has something in flight now: the library is drawn before this runs, and
+   * opening a Sammlung resolves the slots that were never resolved for this
+   * source. So the read waits for those writes instead of skipping itself,
+   * because skipping would leave the copy on screen as the answer with
+   * nothing coming for five minutes.
+   */
+  let replaced = false;
+  await syncing(async () => {
+    /* Inside the sync, not before it: reading the folder's mark is a file read
+       like any other, and a write that arrived while it was in the air used to
+       go ahead — the gate was not closed yet. Measured by
+       `tests/unit/sync-window.test.ts`, which caught exactly that. */
+    if (!(await adopted())) return;
+    replaced = await pull();
+  });
+  return replaced;
+}
+
+/** The read itself: everything the folder holds, over everything this browser
+ *  holds. Only ever called inside `syncing`. */
+async function pull(): Promise<boolean> {
   const db = await getDB();
   const [found, rows, words, images] = await Promise.all([
     readKind<Collection>('sammlungen'),
@@ -632,6 +737,8 @@ export async function libraryTotals(): Promise<{
  * the user's disk.
  */
 export async function clearEverything(): Promise<void> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const db = await getDB();
   const stores = ['collections', 'sentences', 'overrides', 'ownImages'] as const;
   const tx = db.transaction(stores, 'readwrite');
@@ -713,6 +820,8 @@ type OverridePatch = Partial<Omit<Override, 'key' | 'updatedAt'>>;
 async function patchOverride(
   key: string, patch: (held: Override | undefined) => OverridePatch | null,
 ): Promise<Override | null> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const db = await getDB();
   const tx = db.transaction('overrides', 'readwrite');
   const held = await tx.store.get(key);
@@ -871,6 +980,8 @@ export async function setOverrideCaption(
 }
 
 export async function deleteOverride(provider: ProviderId, token: string): Promise<void> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const db = await getDB();
   /* Every row the word has, by its own key rather than by a rebuilt one. The
      two constructed keys this used to delete covered the two spellings we knew
@@ -926,6 +1037,8 @@ export async function overrideMap(provider: ProviderId, lang: LanguageCode = LAN
  * Blob the page drew and has no name of its own. See @lautstark/design/crop.
  */
 export async function putOwnImage(picture: Blob, name: string): Promise<OwnImage> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const image: OwnImage = {
     id: newId(),
     name,
@@ -963,6 +1076,8 @@ export async function listOwnImages(): Promise<OwnImage[]> {
  * not there to delete.
  */
 export async function pruneOwnImages(): Promise<number> {
+  // Not inside a folder read — see `syncing`.
+  await whenSynced();
   const db = await getDB();
   const tx = db.transaction(['sentences', 'overrides', 'ownImages'], 'readwrite');
   const used = ownImagesInUse(

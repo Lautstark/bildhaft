@@ -60,6 +60,9 @@ const READS = [
   /* What the screen asks before it lets a store read replace what it holds.
      They report on writes rather than making any — see `isWriting`. */
   'isWriting', 'mark', 'writtenSince',
+  /* The folder read as a state rather than as a write: one says when it starts
+     and ends, the other is what every write waits on. adr/0005. */
+  'onSyncing', 'whenSynced',
 ];
 
 describe('the change notifier', () => {

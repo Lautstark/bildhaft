@@ -24,6 +24,7 @@
   import { sourceStatusLine } from '../ui/symbolSources.ts';
   import { resetSymbolResolution } from '../ui/symbols.ts';
   import { followsDefault, provider, providerId, s } from './state.svelte.ts';
+  import { syncing } from './syncing.svelte.ts';
   import { openAppSettings } from './settings.ts';
   import { t } from '../i18n/index.ts';
 
@@ -51,6 +52,36 @@
    */
   let translating = $derived(s.batch !== null);
   /*
+   * The folder being read, which is the third thing that shares this banner for
+   * the reason the paragraph above gives: it is the same sentence — something
+   * is working, wait. adr/0005.
+   *
+   * It is the one of the three that is also a promise about what is on screen,
+   * so it is said first where more than one is true: the library is this
+   * browser's copy until the read has ended, and that is the more useful half
+   * of the same wait.
+   *
+   * **Drawn only once the wait is worth a sentence.** A boot counts as
+   * unconfirmed whether or not a folder is connected (see `syncing.svelte.ts`),
+   * and the five-minute watch syncs again every time whether anything changed
+   * or not — so without this the banner would flash past on every load and
+   * twice an hour afterwards. A household with no folder never sees it at all,
+   * because its boot confirms itself in a few milliseconds.
+   *
+   * The delay is kept here rather than in a keyframe on `visibility`, which is
+   * how wochenwerk does it for a span in its top bar: a banner is a block, and
+   * one that is hidden but drawn would hold its height open for the wait and
+   * push the page down for nothing.
+   */
+  const SHOWS_AFTER = 400;
+  let waited = $state(false);
+  $effect(() => {
+    if (!syncing()) { waited = false; return; }
+    const timer = setTimeout(() => { waited = true; }, SHOWS_AFTER);
+    return () => clearTimeout(timer);
+  });
+  let checking = $derived(syncing() && waited);
+  /*
    * The active source cannot answer. For METACOM this is the normal state
    * after anything that resets a browser's per-site permissions — a new
    * address, cleared site data — because the folder grant is scoped to the
@@ -63,11 +94,13 @@
 
   /* The source's own words win: a folder being read is why nothing is being
      looked up yet, which is the more useful half of the same wait. */
-  let busyMessage = $derived(status.kind === 'loading'
-    ? sourceStatusLine(status)
-    : s.batch
-      ? t('ui.translating_lines', { n: Math.min(s.batch.done + 1, s.batch.total), total: s.batch.total })
-      : t('ui.one_moment'));
+  let busyMessage = $derived(checking
+    ? t('ui.syncing_folder')
+    : status.kind === 'loading'
+      ? sourceStatusLine(status)
+      : s.batch
+        ? t('ui.translating_lines', { n: Math.min(s.batch.done + 1, s.batch.total), total: s.batch.total })
+        : t('ui.one_moment'));
 
   /**
    * The sentence for "METACOM is what this page is drawing in, and it cannot
@@ -108,4 +141,4 @@
   }
 </script>
 
-<div class="banners" role="status">{#if sourceBusy || translating}<div class="banner banner--busy"><span class="spinner"></span><span style="flex:1">{busyMessage}</span></div>{/if}{#if sourceUnusable}<div class="banner" role="alert"><span style="flex:1">{unusableMessage}</span><button class="btn sm primary" type="button" style:display={providerId() === 'metacom' ? '' : 'none'} onclick={() => void regrant()}>{t('ui.confirm_access')}</button><button class="btn sm" type="button" onclick={() => openAppSettings()}>{t('ui.settings')}</button></div>{/if}{#if s.dbBlocked}<div class="banner" role="alert">{t('ui.blocked_by_tab')}</div>{/if}</div>
+<div class="banners" role="status">{#if sourceBusy || translating || checking}<div class="banner banner--busy"><span class="spinner"></span><span style="flex:1">{busyMessage}</span></div>{/if}{#if sourceUnusable}<div class="banner" role="alert"><span style="flex:1">{unusableMessage}</span><button class="btn sm primary" type="button" style:display={providerId() === 'metacom' ? '' : 'none'} onclick={() => void regrant()}>{t('ui.confirm_access')}</button><button class="btn sm" type="button" onclick={() => openAppSettings()}>{t('ui.settings')}</button></div>{/if}{#if s.dbBlocked}<div class="banner" role="alert">{t('ui.blocked_by_tab')}</div>{/if}</div>

@@ -11,6 +11,7 @@ import { openSlotPicker } from '../ui/slotPicker.svelte.ts';
 import { cardCode } from '../ui/anybookEdit.ts';
 import { resetSymbolResolution } from '../ui/symbols.ts';
 import { kind, language, providerId, s } from './state.svelte.ts';
+import { syncing } from './syncing.svelte.ts';
 import { writeBoard } from './board.ts';
 import { takeOutOfSong } from './song.ts';
 import { takeOutOfTalk } from './talk.ts';
@@ -78,6 +79,11 @@ function mutateSlots(sentenceId: string, fn: (slots: Slot[]) => Slot[]): Promise
 export function openPicker(sentenceId: string, slotId: string): void {
   const slot = s.sentences.find((x) => x.id === sentenceId)?.slots.find((sl) => sl.id === slotId);
   if (!slot) return;
+  /* Not for a row the folder has not confirmed yet. adr/0005: the page draws
+     this browser's copy first, and a symbol picked into a row that is about to
+     be replaced is a correction nobody keeps. Said rather than silently
+     refused — a sheet that does not open explains nothing. */
+  if (syncing()) { notify(t('ui.syncing_wait')); return; }
   s.picker = { sentenceId, slotId };
   openSlotPicker(slot, providerId(), {
     onChoose: (candidate) => void handleChoose(candidate),

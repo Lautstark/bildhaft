@@ -15,6 +15,7 @@ import { t } from '../i18n/index.ts';
 import { openSheet } from '@lautstark/design/svelte/sheet';
 import { CLOSE, confirmDialog } from '../ui/dialog.ts';
 import { openCollectionSource } from '../ui/collectionSource.svelte.ts';
+import { syncing } from './syncing.svelte.ts';
 import { forgetPenRecordings } from '../ui/anybookVoice.ts';
 import { pagesOf } from '../core/talk.ts';
 import { activeCollection, language, providerId, s } from './state.svelte.ts';
@@ -89,8 +90,20 @@ export function setActive(id: string): void {
   });
 }
 
-/** setActive()'s read and resolve, for the one caller that waits for them. */
+/** setActive()'s read and resolve, for the callers that wait for them. */
 let opening: Promise<void> = Promise.resolve();
+
+/**
+ * The open Sammlung's read and resolve, for somebody who must not run over it.
+ *
+ * `boot` waits for this before it reads the folder. Opening a Sammlung fills
+ * in the slots that were never resolved for this source and writes them back,
+ * and the read that follows empties the stores those writes go into — see
+ * `syncing` in `db/repo.ts`, which deliberately does not wait for writes
+ * itself. This is the one write at boot that is reliably under way, so it is
+ * settled here where the promise already exists rather than guessed at there.
+ */
+export const whenOpened = (): Promise<void> => opening;
 
 export async function refreshCollections(): Promise<void> {
   const since = mark();
@@ -200,6 +213,12 @@ export async function resolveOpen(): Promise<void> {
 /* ------------------------------------------------------------ actions --- */
 
 export async function handleNewCollection(): Promise<void> {
+  /* Not into a library the folder has not confirmed yet. adr/0005: the page
+     draws this browser's copy first, and the read that follows replaces the
+     Sammlungen wholesale — one made in that moment would be filed into the
+     folder and then cleared out of the browser. Said rather than silently
+     refused. */
+  if (syncing()) { notify(t('ui.syncing_wait')); return; }
   /* Ein unberührtes Material wird wiederverwendet statt verdoppelt: wer
      „+ Neues Material" drückt, noch eins drückt und wieder eins, legt sonst
      drei leere an (2026-10-25, ihr Wunsch). Unberührt heißt: nichts drin
