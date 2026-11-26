@@ -145,6 +145,33 @@ export async function untilKept(page: Page, key: string, value: unknown): Promis
   }, [key, value] as const)).toBe(true);
 }
 
+/**
+ * Waits until the settings hold an Ordner of this name.
+ *
+ * `untilKept`'s reason, for the other store: the sidebar shows a name as soon
+ * as it is typed and the settings are written after, so a reload straight
+ * after Enter can come first and find the name from before. The app writes as
+ * promptly as it can — `persistSettings` hands the write back and
+ * `renameOrdner` waits for it — and nothing in a page can outrun a reload
+ * fired in the same breath. A test about what survives a reload therefore
+ * waits for the store rather than for the screen.
+ */
+export async function untilOrdner(page: Page, name: string): Promise<void> {
+  await expect.poll(() => page.evaluate(async (wanted) => {
+    const db: IDBDatabase = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('bildhaft');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const rows: { ordner?: { name: string }[] }[] = await new Promise((resolve) => {
+      const req = db.transaction('settings').objectStore('settings').getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+    db.close();
+    return rows.some((row) => row.ordner?.some((one) => one.name === wanted));
+  }, name)).toBe(true);
+}
+
 /** The Symbol dialog keeps its search folded under the picture while one is chosen (her pick „Karte“): opens it. */
 export async function openSymbolSearch(page: Page): Promise<void> {
   const tile = page.locator('dialog.sheet .picker__tile');

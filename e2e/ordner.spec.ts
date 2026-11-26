@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mockArasaac } from './arasaac-mock.ts';
+import { untilOrdner } from './helpers.ts';
 
 /**
  * Ordner in a template's group, and „Kopieren …" (her picks, 2026-10-27):
@@ -71,6 +72,9 @@ test('„+ Neuer Ordner" makes an empty one, named in place, and it stays after 
   await expect(ordnerRow(page, 'Arztbesuch')).toBeVisible();
   await expect(ordnerRow(page, 'Arztbesuch').locator('.sidebar__count')).toHaveText('0');
 
+  /* The name is on screen before it is in the store, and this case is about
+     what a reload finds — so it waits for the store. See `untilOrdner`. */
+  await untilOrdner(page, 'Arztbesuch');
   await page.reload();
   await expect(ordnerRow(page, 'Arztbesuch')).toBeVisible();
 });

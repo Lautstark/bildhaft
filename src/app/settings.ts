@@ -23,14 +23,31 @@ export async function switchLanguage(code: LanguageCode): Promise<void> {
   chooseLanguage(code);
 }
 
-export function persistSettings(next: AppSettings): void {
+/**
+ * The settings on screen and in the store.
+ *
+ * **It hands back the write**, and that is not decoration: the screen is set
+ * from memory and the store is written after, and anything that reloads the
+ * page in that window loses the change. An Ordner renamed and the page
+ * reloaded in the same breath came back under its old name — reproduced in
+ * `e2e/ordner.spec.ts`, where it had been failing one run in three, and the
+ * reason it looked like a flake is that any read inserted before the reload
+ * gave the write the moment it needed.
+ *
+ * Callers that can wait, wait: everything in `app/ordner.ts` is already
+ * `async`. A handler that cannot — a button in a component — keeps the old
+ * shape by ignoring what comes back, which is still an improvement on there
+ * being nothing to ignore.
+ */
+export function persistSettings(next: AppSettings): Promise<void> {
   const renderingChanged = s.settings?.metacomRendering !== next.metacomRendering;
   s.settings = next;
-  void saveSettings(next);
+  const written = saveSettings(next);
   if (renderingChanged) {
     metacom.preferRendering(next.metacomRendering);
     void repointToRendering();
   }
+  return written;
 }
 
 /*

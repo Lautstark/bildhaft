@@ -28,16 +28,21 @@ export const ordnerIn = (kind: CollectionKind) =>
   ordnerOf(s.collections.filter((c) => kindOf(c) === kind), kind, known());
 
 /** Into the settings' list, so the Ordner stays when it is emptied. */
-function remember(kind: CollectionKind, name: string): void {
-  if (!s.settings) return;
-  if (known().some((entry) => entry.kind === kind && sameOrdner(entry.name, name))) return;
-  persistSettings({ ...s.settings, ordner: [...known(), { kind, name }] });
+function remember(kind: CollectionKind, name: string): Promise<void> {
+  if (!s.settings) return Promise.resolve();
+  if (known().some((entry) => entry.kind === kind && sameOrdner(entry.name, name))) {
+    return Promise.resolve();
+  }
+  return persistSettings({ ...s.settings, ordner: [...known(), { kind, name }] });
 }
 
 /** „+ Neuer Ordner": an empty one, its name open for typing. */
 export function handleNewOrdner(kind: CollectionKind): void {
   const name = freeName(t('ui.new_ordner_name'), ordnerIn(kind).ordner.map((o) => o.name));
-  remember(kind, name);
+  /* Not awaited, and it does not need to be: this is a press, and the field it
+     opens is about to replace the name through `renameOrdner`, which does
+     wait. */
+  void remember(kind, name);
   s.renamingOrdner = { kind, name };
 }
 
@@ -45,7 +50,7 @@ export function handleNewOrdner(kind: CollectionKind): void {
 export async function putInOrdner(id: string, name: string | null): Promise<void> {
   const collection = s.collections.find((c) => c.id === id);
   if (!collection) return;
-  if (name) remember(kindOf(collection), name);
+  if (name) await remember(kindOf(collection), name);
   await saveCollectionOrdner(id, name);
   await refreshCollections();
 }
@@ -64,7 +69,9 @@ export async function renameOrdner(kind: CollectionKind, from: string, raw: stri
   if (!to || to === from || !s.settings) return;
   const clash = ordnerIn(kind).ordner.some((o) => !sameOrdner(o.name, from) && sameOrdner(o.name, to));
   if (clash) { notify(t('ui.ordner_taken', { name: to })); return; }
-  persistSettings({
+  /* Awaited: a name typed and the page reloaded in the same breath used to
+     come back as the old one. See `persistSettings`. */
+  await persistSettings({
     ...s.settings,
     ordner: [
       ...known().filter((entry) => !(entry.kind === kind && sameOrdner(entry.name, from))),
@@ -80,7 +87,7 @@ export async function renameOrdner(kind: CollectionKind, from: string, raw: stri
 /** The Ordner goes; what was in it lies loose in the group again. */
 export async function deleteOrdner(kind: CollectionKind, name: string): Promise<void> {
   if (!s.settings) return;
-  persistSettings({
+  await persistSettings({
     ...s.settings,
     ordner: known().filter((entry) => !(entry.kind === kind && sameOrdner(entry.name, name))),
   });
@@ -105,7 +112,7 @@ export async function dropOnMaterial(movedId: string, ontoId: string): Promise<v
   if (kindOf(moved) !== kind) { notify(t('ui.ordner_one_template')); return; }
   if (onto.ordner) { await putInOrdner(moved.id, onto.ordner); return; }
   const name = freeName(t('ui.new_ordner_name'), ordnerIn(kind).ordner.map((o) => o.name));
-  remember(kind, name);
+  await remember(kind, name);
   await saveCollectionOrdner(onto.id, name);
   await saveCollectionOrdner(moved.id, name);
   await refreshCollections();
