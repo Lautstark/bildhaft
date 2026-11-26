@@ -289,20 +289,36 @@ export const metacomInFolder = () => ablage.folderHolding('METACOM_Symbole');
  */
 const EVERY = 5 * 60 * 1000;
 
-export const watchFolder = (onChange: () => void) => {
+export const watchFolder = (onChange: () => void, read = false) => {
   const stop: (() => void)[] = [];
-  /* Primed before it is armed. A poll answers "what differs from the last
-     poll", and there has not been one: the first would report every file in
-     the folder as newly appeared and pull the whole library back over what is
-     on screen — thirty seconds into every session, taking any edit made in the
-     meantime with it. The priming read is what the watch would otherwise call
-     a change. */
-  void Promise.all([ablage.poll(), shared.poll()]).then(() => {
+  const arm = (): void => {
     stop.push(
       ablage.watch(EVERY, (found) => { if (found.length) onChange(); }),
       shared.watch(EVERY, (found) => { if (found.length) onChange(); }),
     );
-  }).catch(() => undefined);
+  };
+  /*
+   * Primed before it is armed. A poll answers "what differs from the last
+   * poll", and there has not been one: the first would report every file in
+   * the folder as newly appeared and pull the whole library back over what is
+   * on screen — taking any edit made in the meantime with it. The priming read
+   * is what the watch would otherwise call a change.
+   *
+   * **Unless the folder has just been read**, which at boot it has:
+   * `pullFromFolder` opened every file a moment ago, and since
+   * `@lautstark/sicherung` 1.21 a read is a memory — `all()` writes what it
+   * saw into the same place a poll compares against. So the priming read was
+   * the folder read a second time, end to end, for nothing. Measured against a
+   * folder of thirty-one records: a start spent 308 file-system calls on the
+   * folder, 205 without this second read, and 145 once the package keeps its
+   * directory handles as well.
+   *
+   * `read` is what the caller knows and this cannot ask: a pull that was
+   * refused — not adopted, something still owed the folder (adr/0006) — read
+   * nothing, and arming the watch over that would be the bug above.
+   */
+  if (read) { arm(); return () => { for (const end of stop) end(); }; }
+  void Promise.all([ablage.poll(), shared.poll()]).then(arm).catch(() => undefined);
   return () => { for (const end of stop) end(); };
 };
 

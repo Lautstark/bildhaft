@@ -169,13 +169,15 @@ export function boot(say: (message: string) => void): void {
        Only once the folder is the store: a folder mid-adoption changes
        constantly, and all of those changes are ours. */
     void adopted().then((yes: boolean) => {
+      /* `pulled` says the folder was read just now, so the watch needs no
+         priming read of its own — see `watchFolder`. */
       if (yes) watchFolder(() => void pullFromFolder().then(() => {
         /* Another device moved on to a newer bildhaft while this page stayed
            open: the page stops here and asks to be loaded again. */
         s.newerData = dataIsNewer();
         void refreshCollections();
         if (s.activeId) setActive(s.activeId);
-      }));
+      }), pulled);
     });
 
     /*
